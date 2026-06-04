@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Family Running Championships</title>
+
+
+    <style>
+
+        .medal {
+            font-size: 2em;
+            line-height: 1;
+        }
+
+        body {
+            font-family: Segoe UI, Arial, sans-serif;
+            max-width: 1400px;
+            margin: auto;
+            padding: 30px;
+            background: #f4f6f8;
+            color: #222;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 1.4rem;
+            color: #555;
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            margin-top: 40px;
+            padding: 14px;
+            background: #1e3a5f;
+            color: white;
+            border-radius: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            margin-bottom: 40px;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        th {
+            background: #2b5c88;
+            color: white;
+            text-align: left;
+            padding: 14px;
+        }
+
+        td {
+            padding: 14px;
+            border-top: 1px solid #ddd;
+        }
+
+        tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        tr:hover {
+            background: #eef5ff;
+        }
+
+        table td:first-child,
+        table th:first-child {
+            text-align: center;
+            width: 90px;
+            font-weight: bold;
+            vertical-align: middle;
+        }
+
+        /* Podium Highlighting */
+
+        tr:nth-child(2) td:first-child {
+            background: rgba(255,215,0,0.15);
+        }
+
+        tr:nth-child(3) td:first-child {
+            background: rgba(192,192,192,0.15);
+        }
+
+        tr:nth-child(4) td:first-child {
+            background: rgba(205,127,50,0.15);
+        }
+
+        /* Age Grade Badges */
+
+        .club {
+            background: #cd7f32;
+            color: white;
+            font-weight: bold;
+            padding: 6px 14px;
+            border-radius: 999px;
+            display: inline-block;
+            font-size: 0.9em;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        }
+
+        .local {
+            background: #c0c0c0;
+            color: black;
+            font-weight: bold;
+            padding: 6px 14px;
+            border-radius: 999px;
+            display: inline-block;
+            font-size: 0.9em;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        }
+
+        .regional {
+            background: #ffd700;
+            color: black;
+            font-weight: bold;
+            padding: 6px 14px;
+            border-radius: 999px;
+            display: inline-block;
+            font-size: 0.9em;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        }
+
+        .national {
+            background: #b9f2ff;
+            color: black;
+            font-weight: bold;
+            padding: 6px 14px;
+            border-radius: 999px;
+            display: inline-block;
+            font-size: 0.9em;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        }
+
+        .international {
+            background: #ff4d4d;
+            color: white;
+            font-weight: bold;
+            padding: 6px 14px;
+            border-radius: 999px;
+            display: inline-block;
+            font-size: 0.9em;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        }
+
+.footer {
+    text-align: center;
+    color: #777;
+    margin-top: -20px;
+    margin-bottom: 40px;
+    font-size: 0.95em;
+}
+
+    </style>
+
+</head>
+
+<body>
+
+    <h1>🏃 Family Running Championships</h1>
+
+    <div class="subtitle">
+        Age-Graded Rankings Across Generations
+    </div>
+
+    <div class="footer">
+        Last Updated: 04 Jun 2026 17:15
+    </div>
+
+    <h2>🏆 Current Champions</h2>
+    <div id="current"></div>
+
+    <h2>🏆 All Time Champions</h2>
+    <div id="alltime"></div>
+
+    <script src="leaderboard.js"></script>
+
+</body>    <div id="current"></div>
+
+    <script src="leaderboard.js"></script>
+
+
+
+</body>
+
+</html>
