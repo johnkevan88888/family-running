@@ -78,3 +78,16 @@ async function buildLeaderboards() {
 }
 
 buildLeaderboards();
+
+async function loadSiteInfo() {
+    const rows = await fetchCSV('data/siteinfo.csv');
+
+    const lastUpdatedRow = rows.find(row => row[0] === 'Last Updated');
+
+    if (lastUpdatedRow) {
+        document.getElementById('last-updated').innerText =
+            `Last Updated: ${lastUpdatedRow[1]}`;
+    }
+}
+
+loadSiteInfo();
