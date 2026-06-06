@@ -29,7 +29,7 @@ function renderTable(rows) {
                 if (category === 'local competitive') cell = '<span class="local">🥈 Local Competitive</span>';
                 if (category === 'regional class') cell = '<span class="regional">🥇 Regional Class</span>';
                 if (category === 'national class') cell = '<span class="national">🏛️ National Class</span>';
-                if (category === 'international class') cell = '<span class="international">🌍 International Class</span>';
+                if (category === 'world class') cell = '<span class="world">🌍 World Class</span>';
 
                 html += `<td>${cell}</td>`;
             }
