@@ -24,11 +24,12 @@ function renderTable(rows) {
 
                 const category = cell.toLowerCase();
 
+                if (category === 'recreational') cell = '<span class="recreational">🟢 Recreational</span>';
                 if (category === 'club') cell = '<span class="club">🥉 Club</span>';
                 if (category === 'local competitive') cell = '<span class="local">🥈 Local Competitive</span>';
                 if (category === 'regional class') cell = '<span class="regional">🥇 Regional Class</span>';
-                if (category === 'national class') cell = '<span class="national">National Class</span>';
-                if (category === 'international class') cell = '<span class="international">International Class</span>';
+                if (category === 'national class') cell = '<span class="national">🏛️ National Class</span>';
+                if (category === 'international class') cell = '<span class="international">🌍 International Class</span>';
 
                 html += `<td>${cell}</td>`;
             }
@@ -77,11 +78,8 @@ async function buildLeaderboards() {
     document.getElementById('leaderboards').innerHTML = pageHtml;
 }
 
-buildLeaderboards();
-
 async function loadSiteInfo() {
     const rows = await fetchCSV('data/siteinfo.csv');
-
     const lastUpdatedRow = rows.find(row => row[0] === 'Last Updated');
 
     if (lastUpdatedRow) {
@@ -90,4 +88,5 @@ async function loadSiteInfo() {
     }
 }
 
+buildLeaderboards();
 loadSiteInfo();
