@@ -8,6 +8,10 @@ async function fetchCSV(file) {
         .map(parseCSVRow);
 }
 
+const params = new URLSearchParams(window.location.search);
+const site = params.get('site') || 'family';
+const dataPath = `data/${site}`;
+
 function parseCSVRow(row) {
     const result = [];
     let current = '';
@@ -64,7 +68,7 @@ function renderTable(rows) {
 }
 
 async function buildLeaderboards() {
-    const metadata = await fetchCSV('data/webtables.csv');
+    const metadata = await fetchCSV(`${dataPath}/webtables.csv`);
     const headers = metadata[0];
     const rows = metadata.slice(1);
 
@@ -85,7 +89,7 @@ async function buildLeaderboards() {
         const description = row[descIndex];
         const fileName = row[fileIndex];
 
-        const tableRows = await fetchCSV(`data/${fileName}`);
+        const tableRows = await fetchCSV(`${dataPath}/${fileName}`);
 
         pageHtml += `
             <section class="leaderboard-section">
@@ -100,7 +104,7 @@ async function buildLeaderboards() {
 }
 
 async function loadSiteInfo() {
-    const rows = await fetchCSV('data/siteinfo.csv');
+    const rows = await fetchCSV(`${dataPath}/siteinfo.csv`);
 
     const lastUpdatedRow = rows.find(row => row[0] === 'LastUpdatedUTC');
     const publishedFromRow = rows.find(row => row[0] === 'PublishedFrom');
