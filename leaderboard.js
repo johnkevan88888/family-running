@@ -8,6 +8,36 @@ async function fetchCSV(file) {
         .map(parseCSVRow);
 }
 
+async function loadSiteInfo() {
+    const rows = await fetchCSV(`${dataPath}/siteinfo.csv`);
+
+    const lastUpdatedRow = rows.find(row => row[0] === 'LastUpdatedUTC');
+    const publishedFromRow = rows.find(row => row[0] === 'PublishedFrom');
+    const siteVersionRow = rows.find(row => row[0] === 'SiteVersion');
+    const siteNameRow = rows.find(row => row[0] === 'SiteName');
+
+    if (siteNameRow) {
+        document.getElementById('site-title').innerText =
+            `🏆 ${siteNameRow[1]}`;
+    }
+
+    if (lastUpdatedRow) {
+        const utcDate = new Date(lastUpdatedRow[1]);
+
+        const localTime = utcDate.toLocaleString(undefined, {
+            dateStyle: 'medium',
+            timeStyle: 'short'
+        });
+
+        const publishedFrom = publishedFromRow ? publishedFromRow[1] : 'Unknown';
+        const siteVersion = siteVersionRow ? ` • ${siteVersionRow[1]}` : '';
+
+        document.getElementById('last-updated').innerHTML =
+            `🏁 Last Updated: ${localTime}<br>
+             📍 Published from: ${publishedFrom}${siteVersion}`;
+    }
+}
+
 const params = new URLSearchParams(window.location.search);
 const site = params.get('site') || 'family';
 const dataPath = `data/${site}`;
