@@ -1,3 +1,15 @@
+function toggleSection(button) {
+    const content = button.nextElementSibling;
+
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        button.innerText = button.innerText.replace('▶', '▼');
+    } else {
+        content.style.display = 'none';
+        button.innerText = button.innerText.replace('▼', '▶');
+    }
+}
+
 async function fetchCSV(file) {
     const response = await fetch(file);
     const text = await response.text();
@@ -97,6 +109,18 @@ function renderTable(rows) {
     return html;
 }
 
+function toggleSection(button) {
+    const content = button.nextElementSibling;
+
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        button.innerText = button.innerText.replace('▶', '▼');
+    } else {
+        content.style.display = 'none';
+        button.innerText = button.innerText.replace('▼', '▶');
+    }
+}
+
 async function buildLeaderboards() {
     const metadata = await fetchCSV(`${dataPath}/webtables.csv`);
     const headers = metadata[0];
@@ -118,7 +142,6 @@ async function buildLeaderboards() {
 
     enabledRows.forEach(row => {
         const timeClass = timeClassIndex >= 0 ? row[timeClassIndex] : 'All';
-
         const sectionKey = timeClass === 'Official' ? 'Official' : 'All';
 
         let section = sections.find(s => s.key === sectionKey);
@@ -128,14 +151,27 @@ async function buildLeaderboards() {
                 key: sectionKey,
                 title: sectionKey === 'Official'
                     ? '🏆 Official Championships'
-                    : '🏃 All Results Championships',
-                rows: []
+                    : '📊 All Results Championships',
+                groups: []
             };
 
             sections.push(section);
         }
 
-        section.rows.push(row);
+        const distance = distanceIndex >= 0 ? row[distanceIndex] : 'Overall';
+
+        let group = section.groups.find(g => g.distance === distance);
+
+        if (!group) {
+            group = {
+                distance: distance,
+                rows: []
+            };
+
+            section.groups.push(group);
+        }
+
+        group.rows.push(row);
     });
 
     let pageHtml = '';
@@ -146,31 +182,38 @@ async function buildLeaderboards() {
                 <h2 class="distance-title">${section.title}</h2>
         `;
 
-        let currentDistance = '';
+        for (const group of section.groups) {
+            const isDefaultOpen =
+                section.key === 'Official' &&
+                group.distance === 'Overall';
 
-        for (const row of section.rows) {
-            const distance = distanceIndex >= 0 ? row[distanceIndex] : 'Overall';
-            const title = row[titleIndex];
-            const description = row[descIndex];
-            const fileName = row[fileIndex];
+            const arrow = isDefaultOpen ? '▼' : '▶';
+            const displayStyle = isDefaultOpen ? 'block' : 'none';
 
-            if (distance !== currentDistance) {
-                currentDistance = distance;
+            pageHtml += `
+                <button class="distance-toggle" onclick="toggleSection(this)">
+                    ${arrow} ${group.distance}
+                </button>
+                <div class="distance-content" style="display:${displayStyle};">
+            `;
+
+            for (const row of group.rows) {
+                const title = row[titleIndex];
+                const description = row[descIndex];
+                const fileName = row[fileIndex];
+
+                const tableRows = await fetchCSV(`${dataPath}/${fileName}`);
 
                 pageHtml += `
-                    <h3 class="distance-subtitle">${distance}</h3>
+                    <section class="leaderboard-section">
+                        <h4>${title}</h4>
+                        <p class="description">${description}</p>
+                        ${renderTable(tableRows)}
+                    </section>
                 `;
             }
 
-            const tableRows = await fetchCSV(`${dataPath}/${fileName}`);
-
-            pageHtml += `
-                <section class="leaderboard-section">
-                    <h4>${title}</h4>
-                    <p class="description">${description}</p>
-                    ${renderTable(tableRows)}
-                </section>
-            `;
+            pageHtml += `</div>`;
         }
 
         pageHtml += `</section>`;
@@ -178,6 +221,5 @@ async function buildLeaderboards() {
 
     document.getElementById('leaderboards').innerHTML = pageHtml;
 }
-
 buildLeaderboards();
 loadSiteInfo();
