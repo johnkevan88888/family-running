@@ -109,6 +109,12 @@ async function loadSiteInfo() {
     const lastUpdatedRow = rows.find(row => row[0] === 'LastUpdatedUTC');
     const publishedFromRow = rows.find(row => row[0] === 'PublishedFrom');
     const siteVersionRow = rows.find(row => row[0] === 'SiteVersion');
+const siteNameRow = rows.find(row => row[0] === 'SiteName');
+
+if (siteNameRow) {
+    document.getElementById('site-title').innerText =
+        `🏆 ${siteNameRow[1]}`;
+}
 
     if (lastUpdatedRow) {
         const utcDate = new Date(lastUpdatedRow[1]);
