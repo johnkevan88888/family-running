@@ -5,9 +5,30 @@ async function fetchCSV(file) {
     return text
         .trim()
         .split('\n')
-        .map(row => row.split(',').map(cell => cell.replace(/"/g, '').trim()));
+        .map(parseCSVRow);
 }
 
+function parseCSVRow(row) {
+    const result = [];
+    let current = '';
+    let insideQuotes = false;
+
+    for (let i = 0; i < row.length; i++) {
+        const char = row[i];
+
+        if (char === '"') {
+            insideQuotes = !insideQuotes;
+        } else if (char === ',' && !insideQuotes) {
+            result.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+
+    result.push(current.trim());
+    return result;
+}
 function renderTable(rows) {
     let html = '<table>';
 
@@ -80,13 +101,26 @@ async function buildLeaderboards() {
 
 async function loadSiteInfo() {
     const rows = await fetchCSV('data/siteinfo.csv');
-    const lastUpdatedRow = rows.find(row => row[0] === 'Last Updated');
+
+    const lastUpdatedRow = rows.find(row => row[0] === 'LastUpdatedUTC');
+    const publishedFromRow = rows.find(row => row[0] === 'PublishedFrom');
+    const siteVersionRow = rows.find(row => row[0] === 'SiteVersion');
 
     if (lastUpdatedRow) {
-        document.getElementById('last-updated').innerText =
-            `Last Updated: ${lastUpdatedRow[1]}`;
+        const utcDate = new Date(lastUpdatedRow[1]);
+
+        const localTime = utcDate.toLocaleString(undefined, {
+            dateStyle: 'medium',
+            timeStyle: 'short'
+        });
+
+        const publishedFrom = publishedFromRow ? publishedFromRow[1] : 'Unknown';
+        const siteVersion = siteVersionRow ? ` • ${siteVersionRow[1]}` : '';
+
+        document.getElementById('last-updated').innerHTML =
+            `🏁 Last Updated: ${localTime}<br>
+             📍 Published from: ${publishedFrom}${siteVersion}`;
     }
 }
-
 buildLeaderboards();
 loadSiteInfo();
