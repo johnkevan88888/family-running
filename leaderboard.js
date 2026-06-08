@@ -4,23 +4,41 @@ const dataPath = `data/${site}`;
 
 async function buildHallOfFame() {
     const rows = await fetchCSV(`${dataPath}/halloffame.csv`);
-    const data = rows.slice(1);
+    const data = rows.slice(1).filter(row => row.some(cell => cell !== ''));
 
     let html = '<div class="hall-of-fame">';
 
     data.forEach(row => {
         const award = row[0] || '';
-        const participant = row[1] || '';
+        const participant = row[1] || 'Championship Vacant';
         const distance = row[2] || '';
         const time = row[3] || '';
         const ageGrade = row[4] || '';
-        const event = row[6] || '';
         const date = row[5] || '';
+        const event = row[6] || '';
 
-const cardClass =
-    award.toLowerCase().includes('champion')
-        ? 'hof-card champion'
-        : 'hof-card record';
+        const isVacant = participant.toLowerCase().includes('vacant');
+
+        let cardClass = 'hof-card record';
+
+if (award.toLowerCase().includes('current')) {
+    cardClass = 'hof-card champion';
+}
+else if (award.toLowerCase().includes('all time')) {
+    cardClass = 'hof-card legend';
+}
+
+        if (isVacant) {
+            html += `
+                <div class="${cardClass} vacant">
+                    <div class="hof-medal">🏅</div>
+                    <div class="hof-award">${award}</div>
+                    <div class="hof-name">Championship Vacant</div>
+                    <div class="hof-detail">No qualifying official performance recorded</div>
+                </div>
+            `;
+            return;
+        }
 
         html += `
             <div class="${cardClass}">
@@ -30,9 +48,9 @@ const cardClass =
                 <div class="hof-grade">${ageGrade}</div>
                 <div class="hof-distance">${distance}</div>
                 <div class="hof-time">${time}</div>
-		<div class="hof-meta">
-    			📅 ${date} • 📍 ${event}
-</div>
+                <div class="hof-meta">
+                    📅 ${date} • 📍 ${event}
+                </div>
             </div>
         `;
     });
