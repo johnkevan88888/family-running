@@ -1,9 +1,9 @@
-Rank,Participant,Race Year,Time Class,SexAgeEvent,Time,Age Graded Score,Age Graded Category
-1,Carolyn Kevan,2017,Official,F58|5 km,00:25:46,69.0%,Local Competitive
-2,Poppy Coleman,2025,Official,F24|5 km,00:22:37,61.5%,Local Competitive
-3,Jack Graham-Kevan,2015,Official,M12|5 km,00:23:32,59.5%,Club
-4,David Graham-Kevan,2018,Official,M48|5 km,00:24:29,58.7%,Club
-5,Caitlin Siostrom,2026,Official,F41|5 km,00:25:19,58.3%,Club
-6,John Kevan,2026,Official,M46|5 km,00:24:39,57.4%,Club
-7,Ben Graham-Kevan,2017,Official,M13|5 km,00:25:17,53.9%,Club
-8,Louise Hamilton,2014,Official,F34|5 km,00:34:31,40.9%,Recreational
+Rank,Participant,Race Year,Time Class,SexAgeEvent,Time,Age Graded Score,Age Graded Category,Athlete ID
+1,Carolyn Kevan,2017,Official,F58|5 km,00:25:46,69.0%,Local Competitive,carolyn-kevan
+2,Poppy Coleman,2025,Official,F24|5 km,00:22:37,61.5%,Local Competitive,poppy-coleman
+3,Jack Graham-Kevan,2015,Official,M12|5 km,00:23:32,59.5%,Club,jack-graham-kevan
+4,David Graham-Kevan,2018,Official,M48|5 km,00:24:29,58.7%,Club,david-graham-kevan
+5,Caitlin Siostrom,2026,Official,F41|5 km,00:25:19,58.3%,Club,caitlin-siostrom
+6,John Kevan,2026,Official,M46|5 km,00:24:39,57.4%,Club,john-kevan
+7,Ben Graham-Kevan,2017,Official,M13|5 km,00:25:17,53.9%,Club,ben-graham-kevan
+8,Louise Hamilton,2014,Official,F34|5 km,00:34:31,40.9%,Recreational,louise-hamilton

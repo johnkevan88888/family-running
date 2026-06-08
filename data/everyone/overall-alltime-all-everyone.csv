@@ -1,16 +1,16 @@
-Rank,Participant,Race Year,Time Class,SexAgeEvent,Time,Age Graded Score,Age Graded Category
-1,Carolyn Kevan,2019,Official,F60|10 km,00:46:54,78.4%,Regional Class
-2,John Kevan,1997,Unofficial,M17|1 Mile,00:05:02,76.5%,Regional Class
-3,David Graham-Kevan,2013,Unofficial,M43|5 km,00:19:59,69.2%,Local Competitive
-4,Jim Chambers,2025,Official,M69|5 km,00:25:54,66.5%,Local Competitive
-5,Poppy Coleman,2026,Unofficial,F24|5 km,00:22:17,62.4%,Local Competitive
-6,Blake Coleman,2025,Unofficial,M22|5 km,00:20:42,61.9%,Local Competitive
-7,Jack Graham-Kevan,2015,Official,M12|5 km,00:23:32,59.5%,Club
-8,Laura Foster,2026,Unofficial,F26|5 km,00:23:33,59.0%,Club
-9,Caitlin Siostrom,2026,Official,F41|5 km,00:25:19,58.3%,Club
-10,Grace Chambers,2025,Official,F34|5 km,00:25:36,55.2%,Club
-11,Ben Graham-Kevan,2017,Official,M13|5 km,00:25:17,53.9%,Club
-12,Debbie Martin,2017,Official,F34|10 km,00:54:56,52.9%,Club
-13,Matthew Johnson,2021,Official,M41|Marathon,04:16:22,48.5%,Recreational
-14,Jess Graham-Kevan,2025,Official,F8|1 Mile,00:11:18,46.3%,Recreational
-15,Louise Hamilton,2014,Official,F34|5 km,00:34:31,40.9%,Recreational
+Rank,Participant,Race Year,Time Class,SexAgeEvent,Time,Age Graded Score,Age Graded Category,Athlete ID
+1,Carolyn Kevan,2019,Official,F60|10 km,00:46:54,78.4%,Regional Class,carolyn-kevan
+2,John Kevan,1997,Unofficial,M17|1 Mile,00:05:02,76.5%,Regional Class,john-kevan
+3,David Graham-Kevan,2013,Unofficial,M43|5 km,00:19:59,69.2%,Local Competitive,david-graham-kevan
+4,Jim Chambers,2025,Official,M69|5 km,00:25:54,66.5%,Local Competitive,jim-chambers
+5,Poppy Coleman,2026,Unofficial,F24|5 km,00:22:17,62.4%,Local Competitive,poppy-coleman
+6,Blake Coleman,2025,Unofficial,M22|5 km,00:20:42,61.9%,Local Competitive,blake-coleman
+7,Jack Graham-Kevan,2015,Official,M12|5 km,00:23:32,59.5%,Club,jack-graham-kevan
+8,Laura Foster,2026,Unofficial,F26|5 km,00:23:33,59.0%,Club,laura-foster
+9,Caitlin Siostrom,2026,Official,F41|5 km,00:25:19,58.3%,Club,caitlin-siostrom
+10,Grace Chambers,2025,Official,F34|5 km,00:25:36,55.2%,Club,grace-chambers
+11,Ben Graham-Kevan,2017,Official,M13|5 km,00:25:17,53.9%,Club,ben-graham-kevan
+12,Debbie Martin,2017,Official,F34|10 km,00:54:56,52.9%,Club,debbie-martin
+13,Matthew Johnson,2021,Official,M41|Marathon,04:16:22,48.5%,Recreational,matthew-johnson
+14,Jess Graham-Kevan,2025,Official,F8|1 Mile,00:11:18,46.3%,Recreational,jess-graham-kevan
+15,Louise Hamilton,2014,Official,F34|5 km,00:34:31,40.9%,Recreational,louise-hamilton

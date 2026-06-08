@@ -29,3 +29,7 @@ function parseCSVRow(row) {
     result.push(current.trim());
     return result;
 }
+
+function athleteLink(id, name) {
+    return `<a href="athlete.html?id=${id}">${name}</a>`;
+}

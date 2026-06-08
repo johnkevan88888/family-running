@@ -1,8 +1,8 @@
-Rank,Participant,Race Year,Time Class,SexAgeEvent,Time,Age Graded Score,Age Graded Category
-1,Carolyn Kevan,2019,Official,F60|10 km,00:46:54,78.4%,Regional Class
-2,David Graham-Kevan,1993,Unofficial,M23|10 km,00:38:45,68.1%,Local Competitive
-3,Poppy Coleman,2026,Unofficial,F24|10 km,00:47:22,60.7%,Local Competitive
-4,Laura Foster,2026,Unofficial,F26|10 km,00:49:58,57.6%,Club
-5,Blake Coleman,2026,Unofficial,M24|10 km,00:49:34,53.3%,Club
-6,Debbie Martin,2017,Official,F34|10 km,00:54:56,52.9%,Club
-7,Caitlin Siostrom,2013,Official,F28|10 km,01:01:39,46.7%,Recreational
+Rank,Participant,Race Year,Time Class,SexAgeEvent,Time,Age Graded Score,Age Graded Category,Athlete ID
+1,Carolyn Kevan,2019,Official,F60|10 km,00:46:54,78.4%,Regional Class,carolyn-kevan
+2,David Graham-Kevan,1993,Unofficial,M23|10 km,00:38:45,68.1%,Local Competitive,david-graham-kevan
+3,Poppy Coleman,2026,Unofficial,F24|10 km,00:47:22,60.7%,Local Competitive,poppy-coleman
+4,Laura Foster,2026,Unofficial,F26|10 km,00:49:58,57.6%,Club,laura-foster
+5,Blake Coleman,2026,Unofficial,M24|10 km,00:49:34,53.3%,Club,blake-coleman
+6,Debbie Martin,2017,Official,F34|10 km,00:54:56,52.9%,Club,debbie-martin
+7,Caitlin Siostrom,2013,Official,F28|10 km,01:01:39,46.7%,Recreational,caitlin-siostrom

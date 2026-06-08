@@ -4,29 +4,47 @@ const dataPath = `data/${site}`;
 
 async function buildHallOfFame() {
     const rows = await fetchCSV(`${dataPath}/halloffame.csv`);
+
+    const headers = rows[0].map(h => String(h).trim());
+
+    const awardIndex = headers.findIndex(h => h.toLowerCase() === 'award');
+    const participantIndex = headers.findIndex(h => h.toLowerCase() === 'participant');
+    const distanceIndex = headers.findIndex(h => h.toLowerCase() === 'distance');
+    const timeIndex = headers.findIndex(h => h.toLowerCase() === 'time');
+    const ageGradeIndex = headers.findIndex(h => h.toLowerCase() === 'agegrade');
+    const dateIndex = headers.findIndex(h => h.toLowerCase() === 'date');
+    const eventIndex = headers.findIndex(h => h.toLowerCase() === 'event');
+    const athleteIdIndex = headers.findIndex(h =>
+        h.toLowerCase().replace(/\s+/g, '') === 'athleteid'
+    );
+
     const data = rows.slice(1).filter(row => row.some(cell => cell !== ''));
 
     let html = '<div class="hall-of-fame">';
 
     data.forEach(row => {
-        const award = row[0] || '';
-        const participant = row[1] || 'Championship Vacant';
-        const distance = row[2] || '';
-        const time = row[3] || '';
-        const ageGrade = row[4] || '';
-        const date = row[5] || '';
-        const event = row[6] || '';
+        const award = row[awardIndex] || '';
+        const participantName = row[participantIndex] || 'Championship Vacant';
+        const distance = row[distanceIndex] || '';
+        const time = row[timeIndex] || '';
+        const ageGrade = row[ageGradeIndex] || '';
+        const date = row[dateIndex] || '';
+        const event = row[eventIndex] || '';
+        const athleteId = athleteIdIndex >= 0 ? row[athleteIdIndex] || '' : '';
 
-        const isVacant = participant.toLowerCase().includes('vacant');
+        const isVacant = participantName.toLowerCase().includes('vacant');
+
+        const participant = athleteId && !isVacant
+            ? athleteLink(athleteId.trim(), participantName)
+            : participantName;
 
         let cardClass = 'hof-card record';
 
-if (award.toLowerCase().includes('current')) {
-    cardClass = 'hof-card champion';
-}
-else if (award.toLowerCase().includes('all time')) {
-    cardClass = 'hof-card legend';
-}
+        if (award.toLowerCase().includes('current')) {
+            cardClass = 'hof-card champion';
+        } else if (award.toLowerCase().includes('all time')) {
+            cardClass = 'hof-card legend';
+        }
 
         if (isVacant) {
             html += `
@@ -93,30 +111,55 @@ async function loadSiteInfo() {
 
 
 function renderTable(rows) {
+    const headers = rows[0].map(h => String(h).trim());
+
+    const athleteIdIndex = headers.findIndex(h =>
+        h.toLowerCase().replace(/\s+/g, '') === 'athleteid'
+    );
+
+    const participantIndex = headers.findIndex(h =>
+        h.toLowerCase().trim() === 'participant'
+    );
+
     let html = '<table>';
 
-    rows.forEach((row, index) => {
+    rows.forEach((row, rowIndex) => {
         html += '<tr>';
 
-        row.forEach(cell => {
-            if (index === 0) {
-                html += `<th>${cell}</th>`;
-            } else {
-                if (row[0] === '1' && cell === row[0]) cell = '<span class="medal">🥇</span>';
-                if (row[0] === '2' && cell === row[0]) cell = '<span class="medal">🥈</span>';
-                if (row[0] === '3' && cell === row[0]) cell = '<span class="medal">🥉</span>';
-
-                const category = cell.toLowerCase();
-
-                if (category === 'recreational') cell = '<span class="recreational">🟢 Recreational</span>';
-                if (category === 'club') cell = '<span class="club">🥉 Club</span>';
-                if (category === 'local competitive') cell = '<span class="local">🥈 Local Competitive</span>';
-                if (category === 'regional class') cell = '<span class="regional">🥇 Regional Class</span>';
-                if (category === 'national class') cell = '<span class="national">🏛️ National Class</span>';
-                if (category === 'world class') cell = '<span class="world">🌍 World Class</span>';
-
-                html += `<td>${cell}</td>`;
+        headers.forEach((header, cellIndex) => {
+            if (cellIndex === athleteIdIndex) {
+                return;
             }
+
+            if (rowIndex === 0) {
+                html += `<th>${header}</th>`;
+                return;
+            }
+
+            let cell = row[cellIndex] || '';
+
+            if (
+                cellIndex === participantIndex &&
+                athleteIdIndex >= 0 &&
+                row[athleteIdIndex]
+            ) {
+                cell = athleteLink(row[athleteIdIndex], cell);
+            }
+
+            if (row[0] === '1' && cell === row[0]) cell = '<span class="medal">🥇</span>';
+            if (row[0] === '2' && cell === row[0]) cell = '<span class="medal">🥈</span>';
+            if (row[0] === '3' && cell === row[0]) cell = '<span class="medal">🥉</span>';
+
+            const category = String(cell).toLowerCase();
+
+            if (category === 'recreational') cell = '<span class="recreational">🟢 Recreational</span>';
+            if (category === 'club') cell = '<span class="club">🥉 Club</span>';
+            if (category === 'local competitive') cell = '<span class="local">🥈 Local Competitive</span>';
+            if (category === 'regional class') cell = '<span class="regional">🥇 Regional Class</span>';
+            if (category === 'national class') cell = '<span class="national">🏛️ National Class</span>';
+            if (category === 'world class') cell = '<span class="world">🌍 World Class</span>';
+
+            html += `<td>${cell}</td>`;
         });
 
         html += '</tr>';
