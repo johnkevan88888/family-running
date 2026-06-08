@@ -228,12 +228,63 @@
     cursor: pointer;
 }
 
+.hall-of-fame {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    margin-bottom: 50px;
+}
+
+.hof-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+}
+
+.hof-award {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #666;
+    margin-bottom: 12px;
+}
+
+.hof-name {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 15px;
+}
+
+.hof-race,
+.hof-time,
+.hof-grade {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #1e3a5f;
+    margin-top: 15px;
+}
+
+.hof-detail {
+    color: #666;
+    margin-top: 8px;
+}
+
 .distance-toggle:hover {
     background: #1e3a5f;
 }
 
 .distance-content {
     display: block;
+}
+
+.hof-card.champion {
+    border-top: 6px solid #28a745;
+}
+
+.hof-card.record {
+    border-top: 6px solid #ffd700;
 }
 
     </style>
@@ -251,6 +302,9 @@
 <div class="footer" id="last-updated">
     Last Updated: loading...
 </div>
+
+<h2>🏆 Hall of Fame</h2>
+<div id="hall-of-fame"></div>
 
 <div id="leaderboards"></div>
     <script src="leaderboard.js"></script>

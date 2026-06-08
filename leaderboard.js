@@ -1,13 +1,37 @@
-function toggleSection(button) {
-    const content = button.nextElementSibling;
+const params = new URLSearchParams(window.location.search);
+const site = params.get('site') || 'family';
+const dataPath = `data/${site}`;
 
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        button.innerText = button.innerText.replace('▶', '▼');
-    } else {
-        content.style.display = 'none';
-        button.innerText = button.innerText.replace('▼', '▶');
-    }
+async function buildHallOfFame() {
+    const rows = await fetchCSV(`${dataPath}/halloffame.csv`);
+    const data = rows.slice(1);
+
+    let html = '<div class="hall-of-fame">';
+
+    data.forEach(row => {
+        const award = row[0];
+        const participant = row[1];
+        const race = row[2];
+        const time = row[3];
+        const ageGrade = row[4];
+
+        const cardClass = award.toLowerCase().includes('current')
+            ? 'hof-card champion'
+            : 'hof-card record';
+
+        html += `
+            <div class="${cardClass}">
+                <div class="hof-award">${award}</div>
+                <div class="hof-name">${participant}</div>
+                <div class="hof-grade">${ageGrade}</div>
+                <div class="hof-detail">${race} • ${time}</div>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+
+    document.getElementById('hall-of-fame').innerHTML = html;
 }
 
 async function fetchCSV(file) {
@@ -49,10 +73,6 @@ async function loadSiteInfo() {
              📍 Published from: ${publishedFrom}${siteVersion}`;
     }
 }
-
-const params = new URLSearchParams(window.location.search);
-const site = params.get('site') || 'family';
-const dataPath = `data/${site}`;
 
 function parseCSVRow(row) {
     const result = [];
@@ -221,5 +241,6 @@ async function buildLeaderboards() {
 
     document.getElementById('leaderboards').innerHTML = pageHtml;
 }
+buildHallOfFame();
 buildLeaderboards();
 loadSiteInfo();
