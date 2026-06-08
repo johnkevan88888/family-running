@@ -60,15 +60,6 @@ else if (award.toLowerCase().includes('all time')) {
     document.getElementById('hall-of-fame').innerHTML = html;
 }
 
-async function fetchCSV(file) {
-    const response = await fetch(file);
-    const text = await response.text();
-
-    return text
-        .trim()
-        .split('\n')
-        .map(parseCSVRow);
-}
 
 async function loadSiteInfo() {
     const rows = await fetchCSV(`${dataPath}/siteinfo.csv`);
@@ -100,27 +91,7 @@ async function loadSiteInfo() {
     }
 }
 
-function parseCSVRow(row) {
-    const result = [];
-    let current = '';
-    let insideQuotes = false;
 
-    for (let i = 0; i < row.length; i++) {
-        const char = row[i];
-
-        if (char === '"') {
-            insideQuotes = !insideQuotes;
-        } else if (char === ',' && !insideQuotes) {
-            result.push(current.trim());
-            current = '';
-        } else {
-            current += char;
-        }
-    }
-
-    result.push(current.trim());
-    return result;
-}
 function renderTable(rows) {
     let html = '<table>';
 
