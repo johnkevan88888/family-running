@@ -9,22 +9,30 @@ async function buildHallOfFame() {
     let html = '<div class="hall-of-fame">';
 
     data.forEach(row => {
-        const award = row[0];
-        const participant = row[1];
-        const race = row[2];
-        const time = row[3];
-        const ageGrade = row[4];
+        const award = row[0] || '';
+        const participant = row[1] || '';
+        const distance = row[2] || '';
+        const time = row[3] || '';
+        const ageGrade = row[4] || '';
+        const event = row[6] || '';
+        const date = row[5] || '';
 
-        const cardClass = award.toLowerCase().includes('current')
-            ? 'hof-card champion'
-            : 'hof-card record';
+const cardClass =
+    award.toLowerCase().includes('champion')
+        ? 'hof-card champion'
+        : 'hof-card record';
 
         html += `
             <div class="${cardClass}">
+                <div class="hof-medal">🥇</div>
                 <div class="hof-award">${award}</div>
                 <div class="hof-name">${participant}</div>
                 <div class="hof-grade">${ageGrade}</div>
-                <div class="hof-detail">${race} • ${time}</div>
+                <div class="hof-distance">${distance}</div>
+                <div class="hof-time">${time}</div>
+		<div class="hof-meta">
+    			📅 ${date} • 📍 ${event}
+</div>
             </div>
         `;
     });

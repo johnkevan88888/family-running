@@ -257,8 +257,17 @@
     margin-bottom: 15px;
 }
 
-.hof-race,
-.hof-time,
+
+.hof-race {
+    margin-top: 10px;
+    font-size: 0.95rem;
+    opacity: 0.8;
+}
+
+.hof-time {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
 .hof-grade {
     font-size: 2.5rem;
     font-weight: bold;
@@ -287,6 +296,36 @@
     border-top: 6px solid #ffd700;
 }
 
+.hof-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.hof-medal {
+    position: absolute;
+    top: 18px;
+    right: 24px;
+    font-size: 7rem;
+    line-height: 1;
+    z-index: 2;
+}
+
+.hof-footer {
+    margin-top: 12px;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.hof-footer div {
+    margin-top: 2px;
+}
+
+.hof-meta {
+    margin-top: 10px;
+    font-size: 0.95rem;
+    color: #555;
+}
+
     </style>
 
 </head>
@@ -308,6 +347,7 @@
 
 <div id="leaderboards"></div>
     <script src="leaderboard.js"></script>
+
 
 </body>    <div id="current"></div>
 
