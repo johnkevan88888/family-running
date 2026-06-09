@@ -20,6 +20,148 @@ function timeToSeconds(time) {
     return Number.MAX_SAFE_INTEGER;
 }
 
+
+function buildProgressionChart(results) {
+    const canvas = document.getElementById('age-grade-chart');
+
+    if (!canvas) return;
+
+    const chartResults = results
+        .filter(row => row.Date && row.AgeGrade)
+        .sort((a, b) => parseDate(a.Date) - parseDate(b.Date));
+
+    if (chartResults.length === 0) {
+        document.getElementById('progression').innerHTML = '<p>No progression data found.</p>';
+        return;
+    }
+
+    const officialResults = chartResults.filter(row =>
+        clean(row.TimeClass) === 'official'
+    );
+
+    const unofficialResults = chartResults.filter(row =>
+        clean(row.TimeClass) === 'unofficial');
+
+const ageGrades = chartResults.map(r =>
+    ageGradeToNumber(r.AgeGrade)
+);
+
+const minAgeGrade = Math.min(...ageGrades);
+const maxAgeGrade = Math.max(...ageGrades);
+
+const yMin = Math.floor((minAgeGrade - 2) / 5) * 5;
+const yMax = Math.ceil((maxAgeGrade + 2) / 5) * 5;
+
+const padding = Math.max(
+    1,
+    (maxAgeGrade - minAgeGrade) * 0.1
+);
+    
+console.log("chartResults", chartResults.length);
+console.log("officialResults", officialResults.length);
+console.log("unofficialResults", unofficialResults.length);
+
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: 'Official Age Grade %',
+                    data: officialResults.map(row => ({
+                        x: parseDate(row.Date),
+                        y: ageGradeToNumber(row.AgeGrade)
+                    })),
+                    borderColor: '#2b5c88',
+                    backgroundColor: '#2b5c88',
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    borderWidth: 2,
+                    tension: 0,
+spanGaps: true
+                },
+                {
+                    label: 'Unofficial Age Grade %',
+                    data: unofficialResults.map(row => ({
+                        x: parseDate(row.Date),
+                        y: ageGradeToNumber(row.AgeGrade)
+                    })),
+                    borderColor: '#999999',
+                    backgroundColor: '#999999',
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    borderWidth: 2,
+                    borderDash: [6, 4],
+                    tension: 0,
+spanGaps: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            parsing: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        afterLabel: function(context) {
+                            const datasetLabel = context.dataset.label;
+                            const sourceResults =
+    context.dataset.label === 'Official Age Grade %'
+        ? officialResults
+        : unofficialResults;
+
+                            const row = sourceResults[context.dataIndex];
+
+                            return [
+                                `Event: ${row.Event}`,
+                                `Distance: ${row.Distance}`,
+                                `Time: ${row.Time}`,
+                                `Class: ${row.TimeClass}`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    min: yMin,
+                    max: yMax,
+                    ticks: {
+                        stepSize: 5,
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Age Grade %'
+                    }
+                },
+                x: {
+                    type: 'time',
+                    min: chartResults[0].Date ? parseDate(chartResults[0].Date) : undefined,
+                    max: chartResults[chartResults.length - 1].Date ? parseDate(chartResults[chartResults.length - 1].Date) : undefined,
+                    time: {
+                        unit: 'year',
+                        tooltipFormat: 'dd MMM yyyy',
+                        displayFormats: {
+                            year: 'yyyy'
+                        }
+                    },
+                    ticks: {
+                        source: 'auto',
+                        autoSkip: true,
+                        maxRotation: 0
+                    },
+                    title: {
+                        display: true,
+                        text: 'Date'
+                    }
+                }
+            }
+        }
+    });
+}
+
 function renderTable(rows) {
     if (rows.length === 0) {
         return '<p>No results found.</p>';
@@ -62,23 +204,24 @@ function distanceMatches(rowDistance, allowedDistances) {
 
 function buildPersonalBests(results) {
     const distances = [
-    { label: 'Marathon', values: ['Marathon'] },
-    { label: 'Half Marathon', values: ['Half Marathon', 'H. Mar', 'H Mar', 'HMar', 'Half Mar'] },
-    { label: '10 km', values: ['10 km', '10km'] },
-    { label: '5 km', values: ['5 km', '5km'] }
-];
+        { label: 'Marathon', values: ['Marathon'] },
+        { label: 'Half Marathon', values: ['Half Marathon', 'H. Mar', 'H Mar', 'HMar', 'Half Mar'] },
+        { label: '10 km', values: ['10 km', '10km'] },
+        { label: '5 km', values: ['5 km', '5km'] }
+    ];
+
     const pbContainer = document.getElementById('personal-bests');
 
     let html = '<div class="pb-card-grid">';
 
     distances.forEach(distanceConfig => {
-    const distance = distanceConfig.label;
-    const distanceValues = distanceConfig.values;
+        const distance = distanceConfig.label;
+        const distanceValues = distanceConfig.values;
 
-    const officialTimePB = getFastestResult(results, distanceValues, 'Official');
-    const unofficialTimePB = getFastestResult(results, distanceValues, 'Unofficial');
-    const officialAgeGradePB = getBestAgeGradeResult(results, distanceValues, 'Official');
-    const unofficialAgeGradePB = getBestAgeGradeResult(results, distanceValues, 'Unofficial');
+        const officialTimePB = getFastestResult(results, distanceValues, 'Official');
+        const unofficialTimePB = getFastestResult(results, distanceValues, 'Unofficial');
+        const officialAgeGradePB = getBestAgeGradeResult(results, distanceValues, 'Official');
+        const unofficialAgeGradePB = getBestAgeGradeResult(results, distanceValues, 'Unofficial');
 
         html += `
             <div class="pb-card">
@@ -106,7 +249,6 @@ function buildPersonalBests(results) {
     pbContainer.innerHTML = html;
 }
 
-
 function getFastestResult(results, distances, timeClass) {
     const matching = results.filter(row =>
         distanceMatches(row.Distance, distances) &&
@@ -132,7 +274,6 @@ function getBestAgeGradeResult(results, distances, timeClass) {
         ageGradeToNumber(b.AgeGrade) - ageGradeToNumber(a.AgeGrade)
     )[0];
 }
-
 
 function ageGradeToNumber(ageGrade) {
     return Number(String(ageGrade).replace('%', '').trim()) || 0;
@@ -228,6 +369,7 @@ async function buildAthletePage() {
     document.getElementById('athlete-name').innerText = athleteResults[0].Participant;
 
     buildPersonalBests(athleteResults);
+    buildProgressionChart(athleteResults);
     buildRecentResults(athleteResults);
 
     document.getElementById('all-results').innerHTML = renderTable(athleteResults);
