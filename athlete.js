@@ -54,70 +54,150 @@ function renderTable(rows) {
     return html;
 }
 
+function distanceMatches(rowDistance, allowedDistances) {
+    return allowedDistances
+        .map(normaliseDistance)
+        .includes(normaliseDistance(rowDistance));
+}
+
 function buildPersonalBests(results) {
-    const distances = ['Marathon', 'Half Marathon', '10 km', '5 km'];
+    const distances = [
+    { label: 'Marathon', values: ['Marathon'] },
+    { label: 'Half Marathon', values: ['Half Marathon', 'H. Mar', 'H Mar', 'HMar', 'Half Mar'] },
+    { label: '10 km', values: ['10 km', '10km'] },
+    { label: '5 km', values: ['5 km', '5km'] }
+];
     const pbContainer = document.getElementById('personal-bests');
 
-    let html = '';
+    let html = '<div class="pb-card-grid">';
 
-    distances.forEach(distance => {
-        const matching = results.filter(row => row.Distance === distance);
+    distances.forEach(distanceConfig => {
+    const distance = distanceConfig.label;
+    const distanceValues = distanceConfig.values;
 
-        if (matching.length === 0) {
-            html += `
-                <div>
-                    <h3>${distance}</h3>
-                    <p>-</p>
-                </div>
-            `;
-            return;
-        }
-
-        const fastest = matching.sort((a, b) =>
-            timeToSeconds(a.Time) - timeToSeconds(b.Time)
-        )[0];
+    const officialTimePB = getFastestResult(results, distanceValues, 'Official');
+    const unofficialTimePB = getFastestResult(results, distanceValues, 'Unofficial');
+    const officialAgeGradePB = getBestAgeGradeResult(results, distanceValues, 'Official');
+    const unofficialAgeGradePB = getBestAgeGradeResult(results, distanceValues, 'Unofficial');
 
         html += `
-            <div>
-                <h3>${distance}</h3>
-                <p>${fastest.Time}</p>
-                <p>${fastest.Event}</p>
-                <p>${fastest.Date}</p>
+            <div class="pb-card">
+                <div class="pb-card-title">${distance}</div>
+
+                <div class="pb-columns">
+                    <div class="pb-column official">
+                        <div class="pb-column-title">Official</div>
+                        ${formatPBBlock('Best Age Grade', officialAgeGradePB, true)}
+                        ${formatPBBlock('Fastest Time', officialTimePB, false)}
+                    </div>
+
+                    <div class="pb-column unofficial">
+                        <div class="pb-column-title">Unofficial</div>
+                        ${formatPBBlock('Best Age Grade', unofficialAgeGradePB, true)}
+                        ${formatPBBlock('Fastest Time', unofficialTimePB, false)}
+                    </div>
+                </div>
             </div>
         `;
     });
 
+    html += '</div>';
+
     pbContainer.innerHTML = html;
 }
 
+
+function getFastestResult(results, distances, timeClass) {
+    const matching = results.filter(row =>
+        distanceMatches(row.Distance, distances) &&
+        clean(row.TimeClass) === clean(timeClass)
+    );
+
+    if (matching.length === 0) return null;
+
+    return matching.sort((a, b) =>
+        timeToSeconds(a.Time) - timeToSeconds(b.Time)
+    )[0];
+}
+
+function getBestAgeGradeResult(results, distances, timeClass) {
+    const matching = results.filter(row =>
+        distanceMatches(row.Distance, distances) &&
+        clean(row.TimeClass) === clean(timeClass)
+    );
+
+    if (matching.length === 0) return null;
+
+    return matching.sort((a, b) =>
+        ageGradeToNumber(b.AgeGrade) - ageGradeToNumber(a.AgeGrade)
+    )[0];
+}
+
+
+function ageGradeToNumber(ageGrade) {
+    return Number(String(ageGrade).replace('%', '').trim()) || 0;
+}
+
+function clean(value) {
+    return String(value || '')
+        .trim()
+        .toLowerCase();
+}
+
+function normaliseDistance(value) {
+    return String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\./g, '')
+        .replace(/\s+/g, '');
+}
+
+function formatPBBlock(label, result, isAgeGrade) {
+    if (!result) {
+        return `
+            <div class="pb-block empty">
+                <div class="pb-label">${label}</div>
+                <div class="pb-value">-</div>
+            </div>
+        `;
+    }
+
+    const mainValue = isAgeGrade ? result.AgeGrade : result.Time;
+    const secondaryValue = isAgeGrade ? result.Time : result.AgeGrade;
+
+    return `
+        <div class="pb-block">
+            <div class="pb-label">${label}</div>
+            <div class="pb-value">${mainValue}</div>
+            <div class="pb-sub">${secondaryValue}</div>
+        </div>
+    `;
+}
+
+function formatPB(result) {
+    if (!result) {
+        return '-';
+    }
+
+    return `
+        <strong>${result.Time}</strong><br>
+        <span>${result.Event}</span><br>
+        <span>${result.Date}</span>
+    `;
+}
+
 function buildRecentResults(results) {
-    const recent = results.slice(0, 10);
     const recentContainer = document.getElementById('recent-results');
 
-    let html = `
-        <table border="1" cellpadding="8" cellspacing="0">
-            <tr>
-                <th>Date</th>
-                <th>Distance</th>
-                <th>Time</th>
-                <th>Event</th>
-            </tr>
-    `;
+    const today = new Date();
+    const twelveMonthsAgo = new Date(today);
+    twelveMonthsAgo.setFullYear(today.getFullYear() - 1);
 
-    recent.forEach(row => {
-        html += `
-            <tr>
-                <td>${row.Date}</td>
-                <td>${row.Distance}</td>
-                <td>${row.Time}</td>
-                <td>${row.Event}</td>
-            </tr>
-        `;
-    });
+    const recent = results.filter(row =>
+        parseDate(row.Date) >= twelveMonthsAgo
+    );
 
-    html += '</table>';
-
-    recentContainer.innerHTML = html;
+    recentContainer.innerHTML = renderTable(recent);
 }
 
 async function buildAthletePage() {

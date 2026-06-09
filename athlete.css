@@ -1,0 +1,232 @@
+body {
+    font-family: Segoe UI, Arial, sans-serif;
+    max-width: 1200px;
+    margin: auto;
+    padding: 24px;
+    background: #f4f6f8;
+    color: #222;
+}
+
+.pb-table th[colspan="2"] {
+    text-align: center;
+    font-size: 1.1rem;
+}
+
+.pb-table th[rowspan="2"] {
+    vertical-align: middle;
+}
+
+.pb-value {
+    font-size: 1.9rem;
+}
+
+.pb-block {
+    padding: 18px;
+}
+
+.back-link {
+    display: inline-block;
+    margin-bottom: 20px;
+    color: #1e3a5f;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+#athlete-name {
+    background: #1e3a5f;
+    color: white;
+    padding: 28px;
+    border-radius: 16px;
+    font-size: 2.4rem;
+    margin-bottom: 30px;
+}
+
+#personal-bests {
+    display: block;
+}
+
+.pb-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 22px;
+}
+
+.pb-card {
+    background: white;
+    border-radius: 18px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.14);
+    overflow: hidden;
+    border-top: 7px solid #ffd700;
+}
+
+.pb-card-title {
+    background: #1e3a5f;
+    color: white;
+    font-size: 1.45rem;
+    font-weight: 700;
+    padding: 16px 20px;
+}
+
+.pb-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.pb-column {
+    padding: 18px;
+}
+
+.pb-column.official {
+    border-right: 1px solid #ddd;
+}
+
+.pb-column-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pb-block {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 14px;
+    border-left: 5px solid #2b5c88;
+}
+
+.pb-block.empty {
+    opacity: 0.55;
+}
+
+.pb-label {
+    font-size: 0.78rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 6px;
+}
+
+.pb-value {
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: #1e3a5f;
+    line-height: 1.1;
+}
+
+.pb-sub {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #555;
+    margin-top: 4px;
+}
+
+.pb-meta {
+    font-size: 0.88rem;
+    color: #555;
+    margin-top: 8px;
+}
+
+.pb-date {
+    font-size: 0.82rem;
+    color: #777;
+    margin-top: 3px;
+}
+
+@media (max-width: 950px) {
+    .pb-card-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .pb-columns {
+        grid-template-columns: 1fr;
+    }
+
+    .pb-column.official {
+        border-right: none;
+        border-bottom: 1px solid #ddd;
+    }
+}
+
+h2 {
+    margin-top: 40px;
+    padding: 14px 18px;
+    background: #2b5c88;
+    color: white;
+    border-radius: 10px;
+}
+
+
+
+#personal-bests h3 {
+    margin-top: 0;
+    color: #1e3a5f;
+}
+
+#personal-bests p:nth-child(2) {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    margin-bottom: 40px;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+th {
+    background: #2b5c88;
+    color: white;
+    text-align: left;
+    padding: 14px;
+}
+
+td {
+    padding: 14px;
+    border-top: 1px solid #ddd;
+}
+
+tr:nth-child(even) {
+    background: #f8fafc;
+}
+
+tr:hover {
+    background: #eef5ff;
+}
+
+@media (max-width: 900px) {
+    #personal-bests {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    body {
+        padding: 14px;
+    }
+
+    #personal-bests {
+        grid-template-columns: 1fr;
+    }
+
+    #athlete-name {
+        font-size: 1.8rem;
+    }
+
+    table {
+        font-size: 0.85rem;
+    }
+
+    th,
+    td {
+        padding: 9px;
+    }
+}
