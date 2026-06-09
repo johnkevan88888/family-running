@@ -31,5 +31,5 @@ function parseCSVRow(row) {
 }
 
 function athleteLink(id, name) {
-    return `<a href="athlete.html?id=${id}">${name}</a>`;
+    return `<a href=".athlete.html?id=${id}">${name}</a>`;
 }
