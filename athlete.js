@@ -1,6 +1,16 @@
 const params = new URLSearchParams(window.location.search);
 const athleteId = params.get('id');
 
+const site = params.get('site') || 'family';
+
+function updateBackLink() {
+    const backLink = document.querySelector('.back-link');
+
+    if (!backLink) return;
+
+    backLink.href = `index.html?site=${site}`;
+}
+
 function parseDate(dateStr) {
     const [day, month, year] = dateStr.split('/');
     return new Date(year, month - 1, day);
@@ -342,6 +352,7 @@ function buildRecentResults(results) {
 }
 
 async function buildAthletePage() {
+	updateBackLink();
     const rows = await fetchCSV('data/athlete_results.csv');
     const headers = rows[0];
     const data = rows.slice(1);

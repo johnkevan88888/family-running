@@ -31,5 +31,8 @@ function parseCSVRow(row) {
 }
 
 function athleteLink(id, name) {
-    return `<a href=".athlete.html?id=${id}">${name}</a>`;
+    const params = new URLSearchParams(window.location.search);
+    const site = params.get('site') || 'family';
+
+    return `<a href="athlete.html?id=${id}&site=${site}">${name}</a>`;
 }
