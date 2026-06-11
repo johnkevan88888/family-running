@@ -5,79 +5,199 @@ const dataPath = `data/${site}`;
 async function buildHallOfFame() {
     const rows = await fetchCSV(`${dataPath}/halloffame.csv`);
 
+    if (!rows.length) {
+        document.getElementById('hall-of-fame').innerHTML = '';
+        return;
+    }
+
     const headers = rows[0].map(h => String(h).trim());
+    const normalizedHeaders = headers.map(normalizeHeader);
 
-    const awardIndex = headers.findIndex(h => h.toLowerCase() === 'award');
-    const participantIndex = headers.findIndex(h => h.toLowerCase() === 'participant');
-    const distanceIndex = headers.findIndex(h => h.toLowerCase() === 'distance');
-    const timeIndex = headers.findIndex(h => h.toLowerCase() === 'time');
-    const ageGradeIndex = headers.findIndex(h => h.toLowerCase() === 'agegrade');
-    const dateIndex = headers.findIndex(h => h.toLowerCase() === 'date');
-    const eventIndex = headers.findIndex(h => h.toLowerCase() === 'event');
-    const athleteIdIndex = headers.findIndex(h =>
-        h.toLowerCase().replace(/\s+/g, '') === 'athleteid'
-    );
+    const data = rows
+        .slice(1)
+        .filter(row => row.some(cell => cell !== ''))
+        .map(row => hofRowToObject(headers, normalizedHeaders, row))
+        .sort((a, b) => Number(a.sortorder || 999) - Number(b.sortorder || 999));
 
-    const data = rows.slice(1).filter(row => row.some(cell => cell !== ''));
-
-    let html = '<div class="hall-of-fame">';
-
-    data.forEach(row => {
-        const award = row[awardIndex] || '';
-        const participantName = row[participantIndex] || 'Championship Vacant';
-        const distance = row[distanceIndex] || '';
-        const time = row[timeIndex] || '';
-        const ageGrade = row[ageGradeIndex] || '';
-        const date = row[dateIndex] || '';
-        const event = row[eventIndex] || '';
-        const athleteId = athleteIdIndex >= 0 ? row[athleteIdIndex] || '' : '';
-
-        const isVacant = participantName.toLowerCase().includes('vacant');
-
-        const participant = athleteId && !isVacant
-            ? athleteLink(athleteId.trim(), participantName)
-            : participantName;
-
-        let cardClass = 'hof-card record';
-
-        if (award.toLowerCase().includes('current')) {
-            cardClass = 'hof-card champion';
-        } else if (award.toLowerCase().includes('all time')) {
-            cardClass = 'hof-card legend';
+    const groups = [
+        {
+            key: 'champions',
+            title: 'Champions',
+            rows: data.filter(row => hofGroup(row) === 'champions')
+        },
+        {
+            key: 'records',
+            title: 'Record Book',
+            rows: data.filter(row => hofGroup(row) === 'records')
+        },
+        {
+            key: 'history',
+            title: 'Historical Achievements',
+            rows: data.filter(row => hofGroup(row) === 'history')
         }
+    ].filter(group => group.rows.length);
 
-        if (isVacant) {
-            html += `
-                <div class="${cardClass} vacant">
-                    <div class="hof-medal">🏅</div>
-                    <div class="hof-award">${award}</div>
-                    <div class="hof-name">Championship Vacant</div>
-                    <div class="hof-detail">No qualifying official performance recorded</div>
-                </div>
-            `;
-            return;
-        }
-
-        html += `
-            <div class="${cardClass}">
-                <div class="hof-medal">🥇</div>
-                <div class="hof-award">${award}</div>
-                <div class="hof-name">${participant}</div>
-                <div class="hof-grade">${ageGrade}</div>
-                <div class="hof-distance">${distance}</div>
-                <div class="hof-time">${time}</div>
-                <div class="hof-meta">
-                    📅 ${date} • 📍 ${event}
-                </div>
+    const html = groups.map(group => `
+        <section class="hof-group hof-group-${group.key}">
+            <h3>${group.title}</h3>
+            <div class="hall-of-fame">
+                ${group.rows.map(renderHallOfFameCard).join('')}
             </div>
-        `;
-    });
-
-    html += '</div>';
+        </section>
+    `).join('');
 
     document.getElementById('hall-of-fame').innerHTML = html;
 }
 
+function normalizeHeader(header) {
+    return String(header).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function hofRowToObject(headers, normalizedHeaders, row) {
+    const result = {};
+
+    headers.forEach((header, index) => {
+        result[normalizedHeaders[index]] = row[index] || '';
+    });
+
+    result.award = result.award || '';
+    result.participant = result.participant || '';
+    result.athleteid = result.athleteid || '';
+    result.cardtype = result.cardtype || inferHallOfFameCardType(result.award);
+    result.group = result.group || inferHallOfFameGroup(result.cardtype, result.award);
+    result.primarymetriclabel = result.primarymetriclabel || defaultPrimaryMetricLabel(result);
+    result.primarymetric = result.primarymetric || defaultPrimaryMetric(result);
+    result.secondarymetriclabel = result.secondarymetriclabel || defaultSecondaryMetricLabel(result);
+    result.secondarymetric = result.secondarymetric || defaultSecondaryMetric(result);
+
+    return result;
+}
+
+function inferHallOfFameCardType(award) {
+    const value = award.toLowerCase();
+
+    if (value.includes('current')) return 'champion';
+    if (value.includes('all time')) return 'legend';
+    if (value.includes('fastest')) return 'speed';
+    if (value.includes('record')) return 'record';
+
+    return 'record';
+}
+
+function inferHallOfFameGroup(cardType, award) {
+    const value = `${cardType} ${award}`.toLowerCase();
+
+    if (value.includes('champion')) return 'champions';
+    if (value.includes('history') || value.includes('standing') || value.includes('legend')) return 'history';
+
+    return 'records';
+}
+
+function hofGroup(row) {
+    const group = row.group.toLowerCase().trim();
+
+    if (['champion', 'champions'].includes(group)) return 'champions';
+    if (['history', 'historical', 'legacy'].includes(group)) return 'history';
+    if (['record', 'records', 'record book'].includes(group)) return 'records';
+
+    return inferHallOfFameGroup(row.cardtype, row.award);
+}
+
+function defaultPrimaryMetricLabel(row) {
+    if (row.time) return 'Time';
+    if (row.agegrade) return 'Age grade';
+    return '';
+}
+
+function defaultPrimaryMetric(row) {
+    return row.time || row.agegrade || '';
+}
+
+function defaultSecondaryMetricLabel(row) {
+    if (row.time && row.agegrade) return 'Age grade';
+    return '';
+}
+
+function defaultSecondaryMetric(row) {
+    if (row.time && row.agegrade) return row.agegrade;
+    return '';
+}
+
+function renderHallOfFameCard(row) {
+    const cardType = row.cardtype.toLowerCase().trim() || 'record';
+    const participantName = row.participant || 'Championship Vacant';
+    const isVacant = participantName.toLowerCase().includes('vacant');
+    const participant = row.athleteid && !isVacant
+        ? athleteLink(row.athleteid.trim(), escapeHTML(participantName))
+        : escapeHTML(participantName);
+    const cardClasses = ['hof-card', cardType, isVacant ? 'vacant' : ''].filter(Boolean).join(' ');
+    const badge = hallOfFameBadge(cardType, isVacant);
+    const details = [
+        row.distance,
+        row.resulttype,
+        row.race
+    ].filter(Boolean).map(escapeHTML).join(' / ');
+    const dateEvent = [row.date, row.event].filter(Boolean).map(escapeHTML).join(' / ');
+
+    if (isVacant) {
+        return `
+            <article class="${cardClasses}">
+                <div class="hof-badge">${badge}</div>
+                <div class="hof-award">${escapeHTML(row.award)}</div>
+                <div class="hof-name">Championship Vacant</div>
+                <div class="hof-detail">No qualifying official performance recorded</div>
+            </article>
+        `;
+    }
+
+    return `
+        <article class="${cardClasses}">
+            <div class="hof-badge">${badge}</div>
+            <div class="hof-award">${escapeHTML(row.award)}</div>
+            <div class="hof-name">${participant}</div>
+            ${row.primarymetric ? `
+                <div class="hof-primary">
+                    ${row.primarymetriclabel ? `<span>${escapeHTML(row.primarymetriclabel)}</span>` : ''}
+                    ${escapeHTML(row.primarymetric)}
+                </div>
+            ` : ''}
+            ${row.secondarymetric ? `
+                <div class="hof-secondary">
+                    ${row.secondarymetriclabel ? `<span>${escapeHTML(row.secondarymetriclabel)}</span>` : ''}
+                    ${escapeHTML(row.secondarymetric)}
+                </div>
+            ` : ''}
+            ${details ? `<div class="hof-detail">${details}</div>` : ''}
+            ${dateEvent ? `<div class="hof-meta">${dateEvent}</div>` : ''}
+        </article>
+    `;
+}
+
+function hallOfFameBadge(cardType, isVacant) {
+    if (isVacant) return '&#9671;';
+
+    const badges = {
+        champion: '&#9679;',
+        legend: '&#9813;',
+        record: '&#9733;',
+        speed: '&#9201;',
+        improvement: '&#8593;',
+        finish: '&#8644;',
+        pb: 'PB',
+        history: '&#8987;'
+    };
+
+    return badges[cardType] || '&#9733;';
+}
+
+function escapeHTML(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
 
 async function loadSiteInfo() {
     const rows = await fetchCSV(`${dataPath}/siteinfo.csv`);
@@ -89,7 +209,7 @@ async function loadSiteInfo() {
 
     if (siteNameRow) {
         document.getElementById('site-title').innerText =
-            `🏆 ${siteNameRow[1]}`;
+            siteNameRow[1];
     }
 
     if (lastUpdatedRow) {
@@ -101,14 +221,13 @@ async function loadSiteInfo() {
         });
 
         const publishedFrom = publishedFromRow ? publishedFromRow[1] : 'Unknown';
-        const siteVersion = siteVersionRow ? ` • ${siteVersionRow[1]}` : '';
+        const siteVersion = siteVersionRow ? ` / ${siteVersionRow[1]}` : '';
 
         document.getElementById('last-updated').innerHTML =
-            `🏁 Last Updated: ${localTime}<br>
-             📍 Published from: ${publishedFrom}${siteVersion}`;
+            `Last Updated: ${localTime}<br>
+             Published from: ${publishedFrom}${siteVersion}`;
     }
 }
-
 
 function renderTable(rows) {
     const headers = rows[0].map(h => String(h).trim());
@@ -146,18 +265,18 @@ function renderTable(rows) {
                 cell = athleteLink(row[athleteIdIndex], cell);
             }
 
-            if (row[0] === '1' && cell === row[0]) cell = '<span class="medal">🥇</span>';
-            if (row[0] === '2' && cell === row[0]) cell = '<span class="medal">🥈</span>';
-            if (row[0] === '3' && cell === row[0]) cell = '<span class="medal">🥉</span>';
+            if (row[0] === '1' && cell === row[0]) cell = '<span class="medal">&#129351;</span>';
+            if (row[0] === '2' && cell === row[0]) cell = '<span class="medal">&#129352;</span>';
+            if (row[0] === '3' && cell === row[0]) cell = '<span class="medal">&#129353;</span>';
 
             const category = String(cell).toLowerCase();
 
-            if (category === 'recreational') cell = '<span class="recreational">🟢 Recreational</span>';
-            if (category === 'club') cell = '<span class="club">🥉 Club</span>';
-            if (category === 'local competitive') cell = '<span class="local">🥈 Local Competitive</span>';
-            if (category === 'regional class') cell = '<span class="regional">🥇 Regional Class</span>';
-            if (category === 'national class') cell = '<span class="national">🏛️ National Class</span>';
-            if (category === 'world class') cell = '<span class="world">🌍 World Class</span>';
+            if (category === 'recreational') cell = '<span class="recreational">Recreational</span>';
+            if (category === 'club') cell = '<span class="club">Club</span>';
+            if (category === 'local competitive') cell = '<span class="local">Local Competitive</span>';
+            if (category === 'regional class') cell = '<span class="regional">Regional Class</span>';
+            if (category === 'national class') cell = '<span class="national">National Class</span>';
+            if (category === 'world class') cell = '<span class="world">World Class</span>';
 
             html += `<td>${cell}</td>`;
         });
@@ -174,10 +293,10 @@ function toggleSection(button) {
 
     if (content.style.display === 'none') {
         content.style.display = 'block';
-        button.innerText = button.innerText.replace('▶', '▼');
+        button.innerText = button.innerText.replace('[+]', '[-]');
     } else {
         content.style.display = 'none';
-        button.innerText = button.innerText.replace('▼', '▶');
+        button.innerText = button.innerText.replace('[-]', '[+]');
     }
 }
 
@@ -210,8 +329,8 @@ async function buildLeaderboards() {
             section = {
                 key: sectionKey,
                 title: sectionKey === 'Official'
-                    ? '🏆 Official Championships'
-                    : '📊 All Results Championships',
+                    ? 'Official Championships'
+                    : 'All Results Championships',
                 groups: []
             };
 
@@ -247,7 +366,7 @@ async function buildLeaderboards() {
                 section.key === 'Official' &&
                 group.distance === 'Overall';
 
-            const arrow = isDefaultOpen ? '▼' : '▶';
+            const arrow = isDefaultOpen ? '[-]' : '[+]';
             const displayStyle = isDefaultOpen ? 'block' : 'none';
 
             pageHtml += `
@@ -281,6 +400,7 @@ async function buildLeaderboards() {
 
     document.getElementById('leaderboards').innerHTML = pageHtml;
 }
+
 buildHallOfFame();
 buildLeaderboards();
 loadSiteInfo();

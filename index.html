@@ -232,54 +232,112 @@
 
 .hall-of-fame {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 25px;
-    margin-bottom: 50px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 22px;
+    margin-bottom: 42px;
+}
+
+.hof-group {
+    margin-bottom: 34px;
+}
+
+.hof-group h3 {
+    margin: 18px 0 18px;
+    color: #1e3a5f;
+    font-size: 1.35rem;
+    border-bottom: 2px solid #d8e2ec;
+    padding-bottom: 8px;
 }
 
 .hof-card {
-    background: #ffffff;
+    position: relative;
+    overflow: hidden;
+    min-height: 220px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
     border-radius: 12px;
-    padding: 16px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+    padding: 22px;
+    box-shadow: 0 8px 22px rgba(15,36,56,0.14);
+    border: 1px solid #dce4ec;
+    border-top: 7px solid #8ea4b8;
+}
+
+.hof-card::after {
+    content: "";
+    position: absolute;
+    right: -44px;
+    top: -44px;
+    width: 145px;
+    height: 145px;
+    border-radius: 50%;
+    background: rgba(30,58,95,0.08);
+    pointer-events: none;
+}
+
+.hof-badge {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    width: 58px;
+    height: 58px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #f3f6f9;
+    color: #1e3a5f;
+    font-size: 2rem;
+    font-weight: 800;
+    box-shadow: inset 0 0 0 1px rgba(30,58,95,0.12);
+    z-index: 1;
 }
 
 .hof-award {
     font-size: 0.85rem;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    color: #666;
+    letter-spacing: 0.08em;
+    color: #566474;
     margin-bottom: 12px;
+    max-width: calc(100% - 72px);
 }
 
 .hof-name {
-    font-size: 1.8rem;
+    font-size: 1.7rem;
     font-weight: 700;
     color: #1e3a5f;
-    margin-bottom: 15px;
+    line-height: 1.15;
+    margin-bottom: 18px;
+    max-width: calc(100% - 70px);
 }
 
-
-.hof-race {
+.hof-primary {
+    font-size: 2.35rem;
+    font-weight: 800;
+    color: #1e3a5f;
+    line-height: 1;
     margin-top: 10px;
-    font-size: 0.95rem;
-    opacity: 0.8;
 }
 
-.hof-time {
+.hof-primary span,
+.hof-secondary span {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #667484;
+    font-weight: 700;
+}
+
+.hof-secondary {
+    margin-top: 12px;
     font-size: 1.2rem;
     font-weight: 700;
-}
-.hof-grade {
-    font-size: 2.5rem;
-    font-weight: bold;
-    color: #1e3a5f;
-    margin-top: 15px;
+    color: #2b5c88;
 }
 
 .hof-detail {
-    color: #666;
-    margin-top: 8px;
+    color: #4f5f70;
+    margin-top: 16px;
+    font-weight: 600;
 }
 
 .distance-toggle:hover {
@@ -291,35 +349,70 @@
 }
 
 .hof-card.champion {
-    border-top: 6px solid #28a745;
+    border-top-color: #d6a019;
+    background: linear-gradient(135deg, #fffaf0 0%, #ffffff 55%, #eef5ff 100%);
+}
+
+.hof-card.champion .hof-badge {
+    background: #ffd766;
+    color: #3f3000;
 }
 
 .hof-card.record {
-    border-top: 6px solid #ffd700;
+    border-top-color: #2b5c88;
 }
 
-.hof-card {
-    position: relative;
-    overflow: hidden;
+.hof-card.record .hof-badge {
+    background: #dbe9f6;
 }
 
-.hof-medal {
-    position: absolute;
-    top: 18px;
-    right: 24px;
-    font-size: 5rem;
-    line-height: 1;
-    z-index: 2;
+.hof-card.speed {
+    border-top-color: #c75c30;
 }
 
-.hof-footer {
-    margin-top: 12px;
-    font-size: 0.9rem;
-    color: #666;
+.hof-card.speed .hof-badge {
+    background: #ffe2d6;
+    color: #7b2b10;
 }
 
-.hof-footer div {
-    margin-top: 2px;
+.hof-card.legend,
+.hof-card.history {
+    border-top-color: #596176;
+    background: linear-gradient(135deg, #ffffff 0%, #f5f3ee 100%);
+}
+
+.hof-card.legend .hof-badge,
+.hof-card.history .hof-badge {
+    background: #eee7d9;
+    color: #4d4639;
+}
+
+.hof-card.improvement {
+    border-top-color: #2f8f63;
+}
+
+.hof-card.improvement .hof-badge {
+    background: #dff4e9;
+    color: #17623d;
+}
+
+.hof-card.finish {
+    border-top-color: #6f42c1;
+}
+
+.hof-card.finish .hof-badge {
+    background: #ebe2fb;
+    color: #4e268d;
+}
+
+.hof-card.pb {
+    border-top-color: #0f766e;
+}
+
+.hof-card.pb .hof-badge {
+    background: #d8f3ef;
+    color: #0d5e58;
+    font-size: 1.15rem;
 }
 
 .hof-meta {
@@ -330,7 +423,7 @@
 
 .hof-card.vacant {
     opacity: 0.75;
-    border-top: 6px solid #999;
+    border-top-color: #999;
 }
 
 .hof-card.vacant .hof-name {
@@ -344,7 +437,25 @@
 }
 
 .hof-card.legend {
-    border-top: 6px solid #6fa8dc;
+    border-top-color: #596176;
+}
+
+@media (max-width: 700px) {
+    .hall-of-fame {
+        grid-template-columns: 1fr;
+    }
+
+    .hof-card {
+        min-height: 0;
+    }
+
+    .hof-name {
+        font-size: 1.45rem;
+    }
+
+    .hof-primary {
+        font-size: 2rem;
+    }
 }
 
     </style>
@@ -353,7 +464,7 @@
 
 <body>
 
-<h1 id="site-title">🏆 Family Running Championships</h1>
+<h1 id="site-title">Family Running Championships</h1>
 
 <div class="subtitle">
     Age-Graded Rankings Across Generations
@@ -363,7 +474,7 @@
     Last Updated: loading...
 </div>
 
-<h2>🏆 Hall of Fame</h2>
+<h2>Hall of Fame</h2>
 <div id="hall-of-fame"></div>
 
 <div id="leaderboards"></div>
