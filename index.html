@@ -263,18 +263,20 @@
 
 .hof-badge {
     position: absolute;
-    top: 15px;
-    right: 18px;
-    width: 46px;
-    height: 46px;
+    top: 16px;
+    right: 22px;
+    width: auto;
+    height: auto;
     display: grid;
     place-items: center;
-    border-radius: 50%;
-    background: #eef3f7;
+    border-radius: 0;
+    background: transparent;
     color: #1e3a5f;
-    font-size: 1.5rem;
+    font-size: 4.3rem;
+    line-height: 1;
     font-weight: 800;
-    opacity: 0.92;
+    opacity: 0.22;
+    pointer-events: none;
 }
 
 .hof-award {
@@ -283,7 +285,7 @@
     letter-spacing: 0.06em;
     color: #666;
     margin-bottom: 8px;
-    max-width: calc(100% - 58px);
+    max-width: calc(100% - 74px);
 }
 
 .hof-name {
@@ -292,7 +294,7 @@
     color: #0f2438;
     line-height: 1.08;
     margin-bottom: 12px;
-    max-width: calc(100% - 55px);
+    max-width: calc(100% - 78px);
 }
 
 .hof-primary {
@@ -341,8 +343,7 @@
 }
 
 .hof-card.champion .hof-badge {
-    background: rgba(40,167,69,0.14);
-    color: #1f7a38;
+    color: #d6a019;
 }
 
 .hof-card.record {
@@ -350,7 +351,6 @@
 }
 
 .hof-card.record .hof-badge {
-    background: rgba(255,215,0,0.22);
     color: #8a6600;
 }
 
@@ -359,7 +359,6 @@
 }
 
 .hof-card.speed .hof-badge {
-    background: #ffe2d6;
     color: #7b2b10;
 }
 
@@ -370,7 +369,6 @@
 
 .hof-card.legend .hof-badge,
 .hof-card.history .hof-badge {
-    background: #eee7d9;
     color: #4d4639;
 }
 
@@ -379,7 +377,6 @@
 }
 
 .hof-card.improvement .hof-badge {
-    background: #dff4e9;
     color: #17623d;
 }
 
@@ -388,7 +385,6 @@
 }
 
 .hof-card.finish .hof-badge {
-    background: #ebe2fb;
     color: #4e268d;
 }
 
@@ -397,9 +393,8 @@
 }
 
 .hof-card.pb .hof-badge {
-    background: #d8f3ef;
     color: #0d5e58;
-    font-size: 1.15rem;
+    font-size: 3.1rem;
 }
 
 .hof-meta {

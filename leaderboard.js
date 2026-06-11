@@ -178,12 +178,12 @@ function renderHallOfFameCard(row) {
 }
 
 function hallOfFameBadge(cardType, isVacant) {
-    if (isVacant) return '&#9671;';
+    if (isVacant) return '&#127941;';
 
     const badges = {
-        champion: '&#9679;',
-        legend: '&#9813;',
-        record: '&#9733;',
+        champion: '&#129351;',
+        legend: '&#127942;',
+        record: '&#127941;',
         speed: '&#9201;',
         improvement: '&#8593;',
         finish: '&#8644;',
