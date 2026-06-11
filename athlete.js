@@ -337,6 +337,89 @@ function formatPB(result) {
     `;
 }
 
+async function buildOfficialMedals() {
+    const section = document.getElementById('official-medals-section');
+    const container = document.getElementById('official-medals');
+
+    if (!section || !container) return;
+
+    const rows = await fetchCSV(`data/${site}/official_medals.csv`);
+
+    if (!rows.length) return;
+
+    const medals = csvRowsToObjects(rows)
+        .filter(row => clean(row.AthleteId) === clean(athleteId))
+        .sort((a, b) => Number(a.SortOrder || 9999) - Number(b.SortOrder || 9999));
+
+    if (medals.length === 0) {
+        section.classList.add('hidden');
+        container.innerHTML = '';
+        return;
+    }
+
+    section.classList.remove('hidden');
+    container.innerHTML = `
+        <div class="official-medal-grid">
+            ${medals.map(renderOfficialMedal).join('')}
+        </div>
+    `;
+}
+
+function csvRowsToObjects(rows) {
+    const headers = rows[0].map(header => String(header).trim());
+
+    return rows.slice(1)
+        .filter(row => row.some(cell => cell !== ''))
+        .map(row => {
+            const obj = {};
+
+            headers.forEach((header, index) => {
+                obj[header] = row[index] || '';
+            });
+
+            return obj;
+        });
+}
+
+function renderOfficialMedal(medal) {
+    const medalName = medal.Medal || '';
+    const medalClass = clean(medalName);
+    const metric = [medal.Time, medal.AgeGrade].filter(Boolean).join(' · ');
+    const event = [medal.EventDate, medal.EventName].filter(Boolean).join(' · ');
+    const context = [medal.Distance, medal.Period].filter(Boolean).join(' · ');
+
+    return `
+        <article class="official-medal ${medalClass}">
+            <div class="official-medal-icon">${medalIcon(medalName)}</div>
+            <div class="official-medal-content">
+                <div class="official-medal-title">${escapeHTML(medal.AwardTitle)}</div>
+                <div class="official-medal-context">${escapeHTML(context)}</div>
+                ${metric ? `<div class="official-medal-metric">${escapeHTML(metric)}</div>` : ''}
+                ${event ? `<div class="official-medal-event">${escapeHTML(event)}</div>` : ''}
+            </div>
+        </article>
+    `;
+}
+
+function medalIcon(medal) {
+    const value = clean(medal);
+
+    if (value === 'gold') return '&#129351;';
+    if (value === 'silver') return '&#129352;';
+    if (value === 'bronze') return '&#129353;';
+
+    return '&#127941;';
+}
+
+function escapeHTML(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function buildRecentResults(results) {
     const recentContainer = document.getElementById('recent-results');
 
@@ -372,6 +455,8 @@ async function buildAthletePage() {
     if (athleteResults.length === 0) {
         document.getElementById('athlete-name').innerText = 'Athlete not found';
         document.getElementById('personal-bests').innerHTML = '';
+        document.getElementById('official-medals-section').classList.add('hidden');
+        document.getElementById('official-medals').innerHTML = '';
         document.getElementById('recent-results').innerHTML = '';
         document.getElementById('all-results').innerHTML = '<p>No results found for this athlete.</p>';
         return;
@@ -380,6 +465,7 @@ async function buildAthletePage() {
     document.getElementById('athlete-name').innerText = athleteResults[0].Participant;
 
     buildPersonalBests(athleteResults);
+    await buildOfficialMedals();
     buildProgressionChart(athleteResults);
     buildRecentResults(athleteResults);
 

@@ -57,6 +57,10 @@ body {
     display: block;
 }
 
+.hidden {
+    display: none;
+}
+
 .pb-card-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -147,8 +151,80 @@ body {
     margin-top: 3px;
 }
 
+.official-medal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 40px;
+}
+
+.official-medal {
+    display: grid;
+    grid-template-columns: 58px 1fr;
+    gap: 14px;
+    align-items: center;
+    background: white;
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.13);
+    border-left: 7px solid #8ea4b8;
+}
+
+.official-medal.gold {
+    border-left-color: #ffd700;
+    background: linear-gradient(135deg, #fff8dc 0%, #ffffff 65%);
+}
+
+.official-medal.silver {
+    border-left-color: #c0c0c0;
+    background: linear-gradient(135deg, #f4f6f8 0%, #ffffff 65%);
+}
+
+.official-medal.bronze {
+    border-left-color: #cd7f32;
+    background: linear-gradient(135deg, #fff0e4 0%, #ffffff 65%);
+}
+
+.official-medal-icon {
+    font-size: 2.45rem;
+    line-height: 1;
+    text-align: center;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.18));
+}
+
+.official-medal-title {
+    color: #1e3a5f;
+    font-size: 1.02rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.official-medal-context {
+    margin-top: 4px;
+    color: #555;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.official-medal-metric {
+    margin-top: 7px;
+    color: #0f2438;
+    font-size: 1.08rem;
+    font-weight: 800;
+}
+
+.official-medal-event {
+    margin-top: 4px;
+    color: #666;
+    font-size: 0.88rem;
+}
+
 @media (max-width: 950px) {
     .pb-card-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .official-medal-grid {
         grid-template-columns: 1fr;
     }
 }
