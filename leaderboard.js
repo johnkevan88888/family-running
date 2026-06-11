@@ -137,7 +137,7 @@ function renderHallOfFameCard(row) {
         row.resulttype,
         row.race
     ].filter(Boolean).map(escapeHTML).join(' / ');
-    const dateEvent = [row.date, row.event].filter(Boolean).map(escapeHTML).join(' / ');
+    const dateEvent = [row.event, row.date].filter(Boolean).map(escapeHTML).join(' / ');
 
     if (isVacant) {
         return `
@@ -145,6 +145,10 @@ function renderHallOfFameCard(row) {
                 <div class="hof-badge">${badge}</div>
                 <div class="hof-award">${escapeHTML(row.award)}</div>
                 <div class="hof-name">Championship Vacant</div>
+                <div class="hof-primary">
+                    <span>Result</span>
+                    No qualifier
+                </div>
                 <div class="hof-detail">No qualifying official performance recorded</div>
             </article>
         `;
