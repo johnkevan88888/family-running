@@ -69,7 +69,10 @@ function hofRowToObject(headers, normalizedHeaders, row) {
     result.primarymetric = result.primarymetric || defaultPrimaryMetric(result);
     result.secondarymetriclabel = result.secondarymetriclabel || defaultSecondaryMetricLabel(result);
     result.secondarymetric = result.secondarymetric || defaultSecondaryMetric(result);
-    result.agegradedcategory = result.agegradedcategory || result.category || '';
+    result.agegradedcategory =
+        result.agegradedcategory ||
+        result.category ||
+        inferAgeGradedCategory(result.agegrade);
 
     return result;
 }
@@ -122,6 +125,19 @@ function defaultSecondaryMetricLabel(row) {
 function defaultSecondaryMetric(row) {
     if (row.time && row.agegrade) return row.agegrade;
     return '';
+}
+
+function inferAgeGradedCategory(ageGrade) {
+    const value = Number(String(ageGrade || '').replace('%', '').trim());
+
+    if (!value) return '';
+    if (value >= 90) return 'World Class';
+    if (value >= 80) return 'National Class';
+    if (value >= 70) return 'Regional Class';
+    if (value >= 60) return 'Local Competitive';
+    if (value >= 50) return 'Club';
+
+    return 'Recreational';
 }
 
 function renderHallOfFameCard(row) {
