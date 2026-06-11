@@ -69,6 +69,7 @@ function hofRowToObject(headers, normalizedHeaders, row) {
     result.primarymetric = result.primarymetric || defaultPrimaryMetric(result);
     result.secondarymetriclabel = result.secondarymetriclabel || defaultSecondaryMetricLabel(result);
     result.secondarymetric = result.secondarymetric || defaultSecondaryMetric(result);
+    result.agegradedcategory = result.agegradedcategory || result.category || '';
 
     return result;
 }
@@ -132,6 +133,10 @@ function renderHallOfFameCard(row) {
         : escapeHTML(participantName);
     const cardClasses = ['hof-card', cardType, isVacant ? 'vacant' : ''].filter(Boolean).join(' ');
     const badge = hallOfFameBadge(cardType, isVacant);
+    const ageGradedCategory = row.agegradedcategory || '';
+    const standardClass = ageGradedCategory
+        ? ` standard-${normalizeHeader(ageGradedCategory)}`
+        : '';
     const details = [
         row.distance,
         row.resulttype,
@@ -142,7 +147,10 @@ function renderHallOfFameCard(row) {
     if (isVacant) {
         return `
             <article class="${cardClasses}">
-                <div class="hof-badge">${badge}</div>
+                <div class="hof-honours">
+                    <div class="hof-badge">${badge}</div>
+                    <div class="hof-standard standard-vacant">${standardBadgeContent('Open')}</div>
+                </div>
                 <div class="hof-award">${escapeHTML(row.award)}</div>
                 <div class="hof-name">Championship Vacant</div>
                 <div class="hof-primary">
@@ -156,7 +164,10 @@ function renderHallOfFameCard(row) {
 
     return `
         <article class="${cardClasses}">
-            <div class="hof-badge">${badge}</div>
+            <div class="hof-honours">
+                <div class="hof-badge">${badge}</div>
+                ${ageGradedCategory ? `<div class="hof-standard${standardClass}">${standardBadgeContent(ageGradedCategory)}</div>` : ''}
+            </div>
             <div class="hof-award">${escapeHTML(row.award)}</div>
             <div class="hof-name">${participant}</div>
             ${row.primarymetric ? `
@@ -175,6 +186,28 @@ function renderHallOfFameCard(row) {
             ${dateEvent ? `<div class="hof-meta">${dateEvent}</div>` : ''}
         </article>
     `;
+}
+
+function standardBadgeContent(category) {
+    const icon = ageGradedCategoryIcon(category);
+
+    return `${icon ? `<span class="standard-icon">${icon}</span>` : ''}<span>${escapeHTML(category)}</span>`;
+}
+
+function ageGradedCategoryIcon(category) {
+    const value = normalizeHeader(category);
+
+    const icons = {
+        recreational: '&#128994;',
+        club: '&#129353;',
+        localcompetitive: '&#129352;',
+        regionalclass: '&#129351;',
+        nationalclass: '&#127963;',
+        worldclass: '&#127757;',
+        open: '&#9671;'
+    };
+
+    return icons[value] || '';
 }
 
 function hallOfFameBadge(cardType, isVacant) {

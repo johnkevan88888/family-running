@@ -256,45 +256,82 @@
     overflow: hidden;
     background: #ffffff;
     border-radius: 12px;
-    padding: 16px;
+    padding: 16px 190px 18px 16px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.16);
     border-top: 6px solid #8ea4b8;
+    min-height: 205px;
 }
 
-.hof-card > *:not(.hof-badge) {
+.hof-card > *:not(.hof-honours) {
     position: relative;
     z-index: 1;
 }
 
-.hof-badge {
+.hof-honours {
     position: absolute;
-    top: 12px;
-    right: 18px;
-    width: auto;
-    height: auto;
-    display: grid;
-    place-items: center;
-    border-radius: 0;
-    background: transparent;
-    color: #1e3a5f;
-    font-size: 4.8rem;
-    line-height: 1;
-    font-weight: 800;
-    opacity: 0.9;
+    top: 50%;
+    right: 42px;
+    width: 160px;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
     pointer-events: none;
-    text-shadow:
-        0 2px 0 rgba(255,255,255,0.9),
-        0 4px 10px rgba(0,0,0,0.22);
     z-index: 0;
 }
 
-.hof-award {
-    font-size: 0.78rem;
+.hof-badge {
+    color: #1e3a5f;
+    font-size: 6.2rem;
+    line-height: 0.9;
+    font-weight: 800;
+    opacity: 0.9;
+    text-shadow:
+        0 2px 0 rgba(255,255,255,0.9),
+        0 4px 10px rgba(0,0,0,0.22);
+}
+
+.hof-standard {
+    width: 155px;
+    max-width: 155px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #eef3f7;
+    color: #1e3a5f;
+    font-size: 0.7rem;
+    font-weight: 800;
+    line-height: 1.1;
+    text-align: center;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #666;
-    margin-bottom: 8px;
-    max-width: calc(100% - 74px);
+    letter-spacing: 0.04em;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.16);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    white-space: normal;
+    z-index: 2;
+    pointer-events: auto;
+}
+
+.standard-icon {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.hof-award {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.055em;
+    color: #1e3a5f;
+    margin-bottom: 10px;
+    max-width: 100%;
+    min-height: 0;
+    font-weight: 800;
+    line-height: 1.25;
+    border-bottom: 1px solid rgba(30,58,95,0.22);
+    padding-bottom: 6px;
 }
 
 .hof-name {
@@ -303,7 +340,7 @@
     color: #0f2438;
     line-height: 1.08;
     margin-bottom: 12px;
-    max-width: calc(100% - 78px);
+    max-width: 100%;
 }
 
 .hof-primary {
@@ -410,7 +447,42 @@
 
 .hof-card.pb .hof-badge {
     color: #14a79b;
-    font-size: 3.4rem;
+    font-size: 4rem;
+}
+
+.hof-standard.standard-recreational {
+    background: #28a745;
+    color: white;
+}
+
+.hof-standard.standard-club {
+    background: #cd7f32;
+    color: white;
+}
+
+.hof-standard.standard-localcompetitive {
+    background: #c0c0c0;
+    color: #111;
+}
+
+.hof-standard.standard-regionalclass {
+    background: #ffd700;
+    color: #111;
+}
+
+.hof-standard.standard-nationalclass {
+    background: #6f42c1;
+    color: white;
+}
+
+.hof-standard.standard-worldclass {
+    background: #dc3545;
+    color: white;
+}
+
+.hof-standard.standard-vacant {
+    background: #999;
+    color: white;
 }
 
 .hof-meta {
@@ -454,6 +526,35 @@
 
     .hof-primary {
         font-size: 1.45rem;
+    }
+
+    .hof-award,
+    .hof-name {
+        max-width: 100%;
+    }
+
+    .hof-badge {
+        font-size: 5rem;
+    }
+
+    .hof-honours {
+        right: 32px;
+        width: 138px;
+    }
+
+    .hof-standard {
+        width: 132px;
+        max-width: 132px;
+        font-size: 0.66rem;
+    }
+
+    .hof-card {
+        padding-right: 158px;
+        min-height: 190px;
+    }
+
+    .hof-award {
+        max-width: 100%;
     }
 }
 
