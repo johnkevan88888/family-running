@@ -69,10 +69,7 @@ function hofRowToObject(headers, normalizedHeaders, row) {
     result.primarymetric = result.primarymetric || defaultPrimaryMetric(result);
     result.secondarymetriclabel = result.secondarymetriclabel || defaultSecondaryMetricLabel(result);
     result.secondarymetric = result.secondarymetric || defaultSecondaryMetric(result);
-    result.agegradedcategory =
-        result.agegradedcategory ||
-        result.category ||
-        inferAgeGradedCategory(result.agegrade);
+    result.agegradedcategory = result.agegradedcategory || result.category || '';
 
     return result;
 }
@@ -125,19 +122,6 @@ function defaultSecondaryMetricLabel(row) {
 function defaultSecondaryMetric(row) {
     if (row.time && row.agegrade) return row.agegrade;
     return '';
-}
-
-function inferAgeGradedCategory(ageGrade) {
-    const value = Number(String(ageGrade || '').replace('%', '').trim());
-
-    if (!value) return '';
-    if (value >= 90) return 'World Class';
-    if (value >= 80) return 'National Class';
-    if (value >= 70) return 'Regional Class';
-    if (value >= 60) return 'Local Competitive';
-    if (value >= 50) return 'Club';
-
-    return 'Recreational';
 }
 
 function renderHallOfFameCard(row) {
@@ -341,16 +325,45 @@ function renderTable(rows) {
     return html;
 }
 
-function toggleSection(button) {
+const leaderboardGroups = new Map();
+
+async function toggleSection(button) {
     const content = button.nextElementSibling;
 
     if (content.style.display === 'none') {
         content.style.display = 'block';
         button.innerText = button.innerText.replace('[+]', '[-]');
+        await renderLeaderboardGroup(content.dataset.groupId);
     } else {
         content.style.display = 'none';
         button.innerText = button.innerText.replace('[-]', '[+]');
     }
+}
+
+async function renderLeaderboardGroup(groupId) {
+    const group = leaderboardGroups.get(groupId);
+
+    if (!group || group.loaded) return;
+
+    const container = document.querySelector(`[data-group-id="${groupId}"]`);
+    if (!container) return;
+
+    container.innerHTML = '<p class="description">Loading...</p>';
+
+    const sections = await Promise.all(group.rows.map(async row => {
+        const tableRows = await fetchCSV(`${dataPath}/${row.fileName}`);
+
+        return `
+            <section class="leaderboard-section">
+                <h4>${row.title}</h4>
+                <p class="description">${row.description}</p>
+                ${renderTable(tableRows)}
+            </section>
+        `;
+    }));
+
+    container.innerHTML = sections.join('');
+    group.loaded = true;
 }
 
 async function buildLeaderboards() {
@@ -406,7 +419,9 @@ async function buildLeaderboards() {
         group.rows.push(row);
     });
 
+    leaderboardGroups.clear();
     let pageHtml = '';
+    let groupCounter = 0;
 
     for (const section of sections) {
         pageHtml += `
@@ -421,29 +436,24 @@ async function buildLeaderboards() {
 
             const arrow = isDefaultOpen ? '[-]' : '[+]';
             const displayStyle = isDefaultOpen ? 'block' : 'none';
+            const groupId = `leaderboard-group-${groupCounter++}`;
+            const renderRows = group.rows.map(row => ({
+                title: row[titleIndex],
+                description: row[descIndex],
+                fileName: row[fileIndex]
+            }));
+
+            leaderboardGroups.set(groupId, {
+                rows: renderRows,
+                loaded: false
+            });
 
             pageHtml += `
                 <button class="distance-toggle" onclick="toggleSection(this)">
                     ${arrow} ${group.distance}
                 </button>
-                <div class="distance-content" style="display:${displayStyle};">
+                <div class="distance-content" data-group-id="${groupId}" style="display:${displayStyle};">
             `;
-
-            for (const row of group.rows) {
-                const title = row[titleIndex];
-                const description = row[descIndex];
-                const fileName = row[fileIndex];
-
-                const tableRows = await fetchCSV(`${dataPath}/${fileName}`);
-
-                pageHtml += `
-                    <section class="leaderboard-section">
-                        <h4>${title}</h4>
-                        <p class="description">${description}</p>
-                        ${renderTable(tableRows)}
-                    </section>
-                `;
-            }
 
             pageHtml += `</div>`;
         }
@@ -452,6 +462,11 @@ async function buildLeaderboards() {
     }
 
     document.getElementById('leaderboards').innerHTML = pageHtml;
+
+    const defaultGroup = document.querySelector('.distance-content[style*="block"]');
+    if (defaultGroup) {
+        await renderLeaderboardGroup(defaultGroup.dataset.groupId);
+    }
 }
 
 buildHallOfFame();

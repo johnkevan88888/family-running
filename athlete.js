@@ -36,6 +36,11 @@ function buildProgressionChart(results) {
 
     if (!canvas) return;
 
+    if (typeof Chart === 'undefined') {
+        document.getElementById('progression').innerHTML = '<p>Progression chart could not be loaded.</p>';
+        return;
+    }
+
     const chartResults = results
         .filter(row => row.Date && row.AgeGrade)
         .sort((a, b) => parseDate(a.Date) - parseDate(b.Date));
@@ -67,10 +72,6 @@ const padding = Math.max(
     (maxAgeGrade - minAgeGrade) * 0.1
 );
     
-console.log("chartResults", chartResults.length);
-console.log("officialResults", officialResults.length);
-console.log("unofficialResults", unofficialResults.length);
-
     new Chart(canvas, {
         type: 'line',
         data: {
@@ -420,6 +421,15 @@ function escapeHTML(value) {
         .replace(/'/g, '&#039;');
 }
 
+function runWhenIdle(callback) {
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(callback, { timeout: 1500 });
+        return;
+    }
+
+    setTimeout(callback, 0);
+}
+
 function buildRecentResults(results) {
     const recentContainer = document.getElementById('recent-results');
 
@@ -466,10 +476,16 @@ async function buildAthletePage() {
 
     buildPersonalBests(athleteResults);
     await buildOfficialMedals();
-    buildProgressionChart(athleteResults);
     buildRecentResults(athleteResults);
+    document.getElementById('all-results').innerHTML = '<p>Loading full results...</p>';
 
-    document.getElementById('all-results').innerHTML = renderTable(athleteResults);
+    runWhenIdle(() => {
+        buildProgressionChart(athleteResults);
+    });
+
+    runWhenIdle(() => {
+        document.getElementById('all-results').innerHTML = renderTable(athleteResults);
+    });
 }
 
 buildAthletePage();

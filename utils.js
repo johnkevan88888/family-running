@@ -1,11 +1,32 @@
-async function fetchCSV(file) {
-    const response = await fetch(file);
-    const text = await response.text();
+const csvCache = new Map();
 
-    return text
-        .trim()
-        .split('\n')
-        .map(parseCSVRow);
+async function fetchCSV(file) {
+    if (csvCache.has(file)) {
+        return csvCache.get(file);
+    }
+
+    const promise = fetch(file)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to load ${file}: ${response.status}`);
+            }
+
+            return response.text();
+        })
+        .then(text => {
+            const trimmed = text.trim();
+
+            if (!trimmed) {
+                return [];
+            }
+
+            return trimmed
+                .split(/\r?\n/)
+                .map(parseCSVRow);
+        });
+
+    csvCache.set(file, promise);
+    return promise;
 }
 
 function parseCSVRow(row) {
