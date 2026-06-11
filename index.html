@@ -257,14 +257,19 @@
     background: #ffffff;
     border-radius: 12px;
     padding: 16px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.16);
     border-top: 6px solid #8ea4b8;
+}
+
+.hof-card > *:not(.hof-badge) {
+    position: relative;
+    z-index: 1;
 }
 
 .hof-badge {
     position: absolute;
-    top: 16px;
-    right: 22px;
+    top: 12px;
+    right: 18px;
     width: auto;
     height: auto;
     display: grid;
@@ -272,11 +277,15 @@
     border-radius: 0;
     background: transparent;
     color: #1e3a5f;
-    font-size: 4.3rem;
+    font-size: 4.8rem;
     line-height: 1;
     font-weight: 800;
-    opacity: 0.22;
+    opacity: 0.9;
     pointer-events: none;
+    text-shadow:
+        0 2px 0 rgba(255,255,255,0.9),
+        0 4px 10px rgba(0,0,0,0.22);
+    z-index: 0;
 }
 
 .hof-award {
@@ -339,62 +348,69 @@
 }
 
 .hof-card.champion {
-    border-top-color: #28a745;
+    border-top-color: #ffd700;
+    background: linear-gradient(135deg, #fff8dc 0%, #ffffff 58%);
 }
 
 .hof-card.champion .hof-badge {
-    color: #d6a019;
+    color: #f0b400;
 }
 
 .hof-card.record {
     border-top-color: #ffd700;
+    background: linear-gradient(135deg, #fffdf2 0%, #ffffff 62%);
 }
 
 .hof-card.record .hof-badge {
-    color: #8a6600;
+    color: #f0b400;
 }
 
 .hof-card.speed {
     border-top-color: #c75c30;
+    background: linear-gradient(135deg, #fff3ec 0%, #ffffff 62%);
 }
 
 .hof-card.speed .hof-badge {
-    color: #7b2b10;
+    color: #e86c2d;
 }
 
 .hof-card.legend,
 .hof-card.history {
     border-top-color: #6fa8dc;
+    background: linear-gradient(135deg, #eef7ff 0%, #ffffff 62%);
 }
 
 .hof-card.legend .hof-badge,
 .hof-card.history .hof-badge {
-    color: #4d4639;
+    color: #4d9de0;
 }
 
 .hof-card.improvement {
     border-top-color: #2f8f63;
+    background: linear-gradient(135deg, #effaf4 0%, #ffffff 62%);
 }
 
 .hof-card.improvement .hof-badge {
-    color: #17623d;
+    color: #24a86a;
 }
 
 .hof-card.finish {
     border-top-color: #6f42c1;
+    background: linear-gradient(135deg, #f5efff 0%, #ffffff 62%);
 }
 
 .hof-card.finish .hof-badge {
-    color: #4e268d;
+    color: #7d4de3;
 }
 
 .hof-card.pb {
     border-top-color: #0f766e;
+    background: linear-gradient(135deg, #effcf9 0%, #ffffff 62%);
 }
 
 .hof-card.pb .hof-badge {
-    color: #0d5e58;
-    font-size: 3.1rem;
+    color: #14a79b;
+    font-size: 3.4rem;
 }
 
 .hof-meta {
@@ -405,6 +421,12 @@
 
 .hof-card.vacant {
     border-top-color: #999;
+    background: linear-gradient(135deg, #f7f7f7 0%, #ffffff 62%);
+}
+
+.hof-card.vacant .hof-badge {
+    color: #b4b4b4;
+    opacity: 0.75;
 }
 
 .hof-card.vacant .hof-name {
