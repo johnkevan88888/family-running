@@ -418,14 +418,23 @@ function isRenderableCrownStandard(standard) {
 function renderCrownStandard(standard) {
     const status = standard.Status || 'Chasing';
     const statusClass = crownStandardStatusClass(status);
+    const periodClass = crownStandardPeriodClass(standard.Period);
     const isHeld = clean(status) === 'held';
-    const holder = standard.CrownHolderName
-        ? `Held by ${escapeHTML(standard.CrownHolderName)}`
-        : '';
-    const crownMeta = [
-        holder,
-        standard.CrownAgeGrade ? escapeHTML(standard.CrownAgeGrade) : ''
-    ].filter(Boolean).join(' &middot; ');
+    const holderName = standard.CrownHolderName || 'Championship Vacant';
+    const periodLabel = clean(standard.Period) === 'all time'
+        ? 'All-Time'
+        : standard.Period;
+    const holderLabel = isHeld
+        ? `You hold the ${periodLabel} crown`
+        : `${periodLabel} crown holder`;
+    const crownDistance = standard.CrownDistance || standard.CrownEvent || standard.Distance || '';
+    const showCrownDistance = crownDistance &&
+        (clean(standard.Distance) === 'overall' || clean(crownDistance) !== clean(standard.Distance));
+    const crownFacts = [
+        `${standard.Distance} crown`,
+        showCrownDistance ? `Winning distance: ${crownDistance}` : '',
+        standard.CrownAgeGrade ? `Age grade: ${standard.CrownAgeGrade}` : ''
+    ].filter(Boolean);
     const gap = !isHeld && standard.GapToPB
         ? `<div class="crown-standard-gap">PB gap: ${escapeHTML(standard.GapToPB)}</div>`
         : '';
@@ -434,19 +443,25 @@ function renderCrownStandard(standard) {
         : '';
 
     return `
-        <article class="crown-standard-card ${statusClass}">
+        <article class="crown-standard-card ${statusClass} ${periodClass}">
             <div class="crown-standard-header">
-                <div>
-                    <span class="crown-standard-distance">${escapeHTML(standard.Distance)}</span>
-                    <span class="crown-standard-period">${escapeHTML(standard.Period)}</span>
+                <div class="crown-standard-holder">
+                    <div class="crown-standard-holder-label">${escapeHTML(holderLabel)}</div>
+                    <div class="crown-standard-holder-name">${escapeHTML(holderName)}</div>
                 </div>
                 <span class="crown-standard-status">${escapeHTML(status)}${isHeld ? ' &#129351;' : ''}</span>
             </div>
+            <div class="crown-standard-award">
+                <span class="crown-standard-distance">${escapeHTML(standard.Distance)}</span>
+                <span class="crown-standard-period">${escapeHTML(standard.Period)}</span>
+            </div>
+            <div class="crown-standard-facts">
+                ${crownFacts.map(fact => `<span>${escapeHTML(fact)}</span>`).join('')}
+            </div>
             <div class="crown-standard-time">
                 ${escapeHTML(standard.RequiredTimeToTake)}
-                <span>${isHeld ? 'benchmark' : 'required to take crown'}</span>
+                <span>${isHeld ? 'benchmark to stay ahead' : 'required to take crown'}</span>
             </div>
-            ${crownMeta ? `<div class="crown-standard-meta">${crownMeta}</div>` : ''}
             ${pb}
             ${gap}
         </article>
@@ -457,6 +472,12 @@ function crownStandardStatusClass(status) {
     const value = clean(status).replace(/[^a-z0-9]+/g, '-');
 
     return value || 'chasing';
+}
+
+function crownStandardPeriodClass(period) {
+    const value = clean(period).replace(/[^a-z0-9]+/g, '-');
+
+    return value ? `period-${value}` : '';
 }
 
 function csvRowsToObjects(rows) {
