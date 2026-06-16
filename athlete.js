@@ -427,14 +427,31 @@ function renderCrownStandard(standard) {
     const holderLabel = isHeld
         ? `You hold the ${periodLabel} crown`
         : `${periodLabel} crown holder`;
-    const crownDistance = standard.CrownDistance || standard.CrownEvent || standard.Distance || '';
-    const showCrownDistance = crownDistance &&
-        (clean(standard.Distance) === 'overall' || clean(crownDistance) !== clean(standard.Distance));
+    const targetDistance = standard.CrownDistance || standard.CrownEvent || standard.Distance || '';
+    const timeCaption = targetDistance
+        ? `${isHeld ? 'benchmark' : 'required'} over ${targetDistance}${isHeld ? '' : ' to take crown'}`
+        : `${isHeld ? 'benchmark to stay ahead' : 'required to take crown'}`;
     const crownFacts = [
         `${standard.Distance} crown`,
-        showCrownDistance ? `Winning distance: ${crownDistance}` : '',
+        targetDistance ? `Crown won over: ${targetDistance}` : '',
         standard.CrownAgeGrade ? `Age grade: ${standard.CrownAgeGrade}` : ''
     ].filter(Boolean);
+    const overallTargets = parseOverallTargets(standard.OverallTargetsToTake);
+    const overallTargetsHTML = overallTargets.length
+        ? `
+            <div class="crown-standard-targets">
+                <div class="crown-standard-targets-title">Equivalent targets</div>
+                <div class="crown-standard-target-list">
+                    ${overallTargets.map(target => `
+                        <div class="crown-standard-target">
+                            <span>${escapeHTML(target.distance)}</span>
+                            <strong>${escapeHTML(target.time)}</strong>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `
+        : '';
     const gap = !isHeld && standard.GapToPB
         ? `<div class="crown-standard-gap">PB gap: ${escapeHTML(standard.GapToPB)}</div>`
         : '';
@@ -460,8 +477,9 @@ function renderCrownStandard(standard) {
             </div>
             <div class="crown-standard-time">
                 ${escapeHTML(standard.RequiredTimeToTake)}
-                <span>${isHeld ? 'benchmark to stay ahead' : 'required to take crown'}</span>
+                <span>${escapeHTML(timeCaption)}</span>
             </div>
+            ${overallTargetsHTML}
             ${pb}
             ${gap}
         </article>
@@ -478,6 +496,20 @@ function crownStandardPeriodClass(period) {
     const value = clean(period).replace(/[^a-z0-9]+/g, '-');
 
     return value ? `period-${value}` : '';
+}
+
+function parseOverallTargets(value) {
+    return String(value || '')
+        .split(';')
+        .map(part => {
+            const [distance, ...timeParts] = part.split('=');
+
+            return {
+                distance: distance.trim(),
+                time: timeParts.join('=').trim()
+            };
+        })
+        .filter(target => target.distance && target.time);
 }
 
 function csvRowsToObjects(rows) {
