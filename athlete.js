@@ -366,6 +366,99 @@ async function buildOfficialMedals() {
     `;
 }
 
+async function buildCrownStandards() {
+    const section = document.getElementById('crown-standards-section');
+    const container = document.getElementById('crown-standards');
+
+    if (!section || !container) return;
+
+    try {
+        const rows = await fetchCSV(`data/${site}/crown_standards.csv`);
+
+        if (!rows.length) {
+            hideCrownStandards(section, container);
+            return;
+        }
+
+        const standards = csvRowsToObjects(rows)
+            .filter(isRenderableCrownStandard)
+            .sort((a, b) => Number(a.SortOrder || 9999) - Number(b.SortOrder || 9999));
+
+        if (standards.length === 0) {
+            hideCrownStandards(section, container);
+            return;
+        }
+
+        section.classList.remove('hidden');
+        container.innerHTML = `
+            <div class="crown-standards-grid">
+                ${standards.map(renderCrownStandard).join('')}
+            </div>
+        `;
+    } catch (error) {
+        hideCrownStandards(section, container);
+    }
+}
+
+function hideCrownStandards(section, container) {
+    section.classList.add('hidden');
+    container.innerHTML = '';
+}
+
+function isRenderableCrownStandard(standard) {
+    const status = clean(standard.Status);
+
+    return clean(standard.AthleteId) === clean(athleteId) &&
+        status !== 'no standard' &&
+        Boolean(standard.Distance) &&
+        Boolean(standard.Period) &&
+        Boolean(standard.RequiredTimeToTake);
+}
+
+function renderCrownStandard(standard) {
+    const status = standard.Status || 'Chasing';
+    const statusClass = crownStandardStatusClass(status);
+    const isHeld = clean(status) === 'held';
+    const holder = standard.CrownHolderName
+        ? `Held by ${escapeHTML(standard.CrownHolderName)}`
+        : '';
+    const crownMeta = [
+        holder,
+        standard.CrownAgeGrade ? escapeHTML(standard.CrownAgeGrade) : ''
+    ].filter(Boolean).join(' &middot; ');
+    const gap = !isHeld && standard.GapToPB
+        ? `<div class="crown-standard-gap">PB gap: ${escapeHTML(standard.GapToPB)}</div>`
+        : '';
+    const pb = !isHeld && standard.AthletePB
+        ? `<div class="crown-standard-meta">PB: ${escapeHTML(standard.AthletePB)}</div>`
+        : '';
+
+    return `
+        <article class="crown-standard-card ${statusClass}">
+            <div class="crown-standard-header">
+                <div>
+                    <span class="crown-standard-distance">${escapeHTML(standard.Distance)}</span>
+                    <span class="crown-standard-period">${escapeHTML(standard.Period)}</span>
+                </div>
+                <span class="crown-standard-status">${escapeHTML(status)}${isHeld ? ' &#129351;' : ''}</span>
+            </div>
+            <div class="crown-standard-time">
+                ${escapeHTML(standard.RequiredTimeToTake)}
+                <span>${isHeld ? 'benchmark' : 'required to take crown'}</span>
+            </div>
+            ${crownMeta ? `<div class="crown-standard-meta">${crownMeta}</div>` : ''}
+            ${pb}
+            ${gap}
+        </article>
+    `;
+}
+
+function crownStandardStatusClass(status) {
+    const value = clean(status).replace(/[^a-z0-9]+/g, '-');
+
+    return value || 'chasing';
+}
+
 function csvRowsToObjects(rows) {
     const headers = rows[0].map(header => String(header).trim());
 
@@ -467,6 +560,8 @@ async function buildAthletePage() {
         document.getElementById('personal-bests').innerHTML = '';
         document.getElementById('official-medals-section').classList.add('hidden');
         document.getElementById('official-medals').innerHTML = '';
+        document.getElementById('crown-standards-section').classList.add('hidden');
+        document.getElementById('crown-standards').innerHTML = '';
         document.getElementById('recent-results').innerHTML = '';
         document.getElementById('all-results').innerHTML = '<p>No results found for this athlete.</p>';
         return;
@@ -476,6 +571,7 @@ async function buildAthletePage() {
 
     buildPersonalBests(athleteResults);
     await buildOfficialMedals();
+    await buildCrownStandards();
     buildRecentResults(athleteResults);
     document.getElementById('all-results').innerHTML = '<p>Loading full results...</p>';
 

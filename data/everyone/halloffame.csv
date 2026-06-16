@@ -1,11 +1,11 @@
-Award,Participant,Distance,Time,AgeGrade,Date,Event,Athlete ID,AgeGradedCategory
-Current Overall Official Champion,Jim Chambers,5 km,00:25:54,66.5%,13/09/2025,Derry City Parkrun,jim-chambers,Local Competitive
-All Time Overall Official Champion,Carolyn Kevan,10 km,00:46:54,78.4%,07/12/2019,Xmas Pudding 10k,carolyn-kevan,Regional Class
-Current Marathon Official Champion,Championship Vacant,,,,,,,
-All Time Marathon Official Champion,Matthew Johnson,Marathon,04:16:22,48.5%,03/10/2021,London Marathon,matthew-johnson,Recreational
-Current Half Marathon Official Champion,David Graham-Kevan,H. Mar,01:48:09,63.4%,13/09/2025,Worcester Half,david-graham-kevan,Local Competitive
-All Time Half Marathon Official Champion,David Graham-Kevan,H. Mar,01:48:09,63.4%,13/09/2025,Worcester Half,david-graham-kevan,Local Competitive
-Current 10k Official Champion,David Graham-Kevan,10 km,00:48:18,64.8%,17/05/2026,Worcester 10k,david-graham-kevan,Local Competitive
-All Time 10k Official Champion,Carolyn Kevan,10 km,00:46:54,78.4%,07/12/2019,Xmas Pudding 10k,carolyn-kevan,Regional Class
-Current 5k Official Champion,Jim Chambers,5 km,00:25:54,66.5%,13/09/2025,Derry City Parkrun,jim-chambers,Local Competitive
-All Time 5k Official Champion,David Graham-Kevan,5 km,00:19:53,69.6%,22/09/2012,Worcester Parkrun,david-graham-kevan,Local Competitive
+Award,Participant,Distance,Time,AgeGrade,Date,Event,Athlete ID
+Current Overall Official Champion,Jim Chambers,5 km,00:25:54,66.5%,13/09/2025,Derry City Parkrun,jim-chambers
+All Time Overall Official Champion,Carolyn Kevan,10 km,00:46:54,78.4%,07/12/2019,Xmas Pudding 10k,carolyn-kevan
+Current Marathon Official Champion,Championship Vacant,,,,,,
+All Time Marathon Official Champion,Kevin Reaney,Marathon,03:30:48,59.5%,20/10/2024,0,kevin-reaney
+Current Half Marathon Official Champion,David Graham-Kevan,H. Mar,01:48:09,63.4%,13/09/2025,Worcester Half,david-graham-kevan
+All Time Half Marathon Official Champion,David Graham-Kevan,H. Mar,01:48:09,63.4%,13/09/2025,Worcester Half,david-graham-kevan
+Current 10k Official Champion,David Graham-Kevan,10 km,00:48:18,64.8%,17/05/2026,Worcester 10k,david-graham-kevan
+All Time 10k Official Champion,Carolyn Kevan,10 km,00:46:54,78.4%,07/12/2019,Xmas Pudding 10k,carolyn-kevan
+Current 5k Official Champion,Jim Chambers,5 km,00:25:54,66.5%,13/09/2025,Derry City Parkrun,jim-chambers
+All Time 5k Official Champion,David Graham-Kevan,5 km,00:19:53,69.6%,22/09/2012,Worcester Parkrun,david-graham-kevan

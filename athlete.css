@@ -219,12 +219,111 @@ body {
     font-size: 0.88rem;
 }
 
+.crown-standards-section {
+    margin-bottom: 40px;
+}
+
+.crown-standards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.crown-standard-card {
+    background: white;
+    border-radius: 8px;
+    padding: 14px 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.13);
+    border-left: 7px solid #2b5c88;
+}
+
+.crown-standard-card.held {
+    border-left-color: #ffd700;
+    background: linear-gradient(135deg, #fff8dc 0%, #ffffff 70%);
+}
+
+.crown-standard-card.chasing {
+    border-left-color: #2b5c88;
+}
+
+.crown-standard-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.crown-standard-distance {
+    color: #1e3a5f;
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.crown-standard-period {
+    color: #555;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.crown-standard-distance::after {
+    content: " \00b7  ";
+    color: #777;
+    font-weight: 700;
+}
+
+.crown-standard-status {
+    flex: 0 0 auto;
+    background: #eef5ff;
+    border-radius: 999px;
+    color: #1e3a5f;
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1;
+    padding: 7px 9px;
+    text-transform: uppercase;
+}
+
+.crown-standard-card.held .crown-standard-status {
+    background: #fff0bd;
+}
+
+.crown-standard-time {
+    color: #0f2438;
+    font-size: 1.75rem;
+    font-weight: 900;
+    line-height: 1.05;
+    margin-bottom: 8px;
+}
+
+.crown-standard-time span {
+    display: block;
+    color: #555;
+    font-size: 0.88rem;
+    font-weight: 700;
+    margin-top: 3px;
+}
+
+.crown-standard-meta,
+.crown-standard-gap {
+    color: #555;
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.35;
+    margin-top: 4px;
+}
+
+.crown-standard-gap {
+    color: #0f2438;
+}
+
 @media (max-width: 950px) {
     .pb-card-grid {
         grid-template-columns: 1fr;
     }
 
-    .official-medal-grid {
+    .official-medal-grid,
+    .crown-standards-grid {
         grid-template-columns: 1fr;
     }
 }
