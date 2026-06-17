@@ -438,11 +438,14 @@ function renderCrownStandard(standard) {
         shouldShowCrownDistance ? `Won over: ${crownDistance}` : '',
         standard.CrownAgeGrade ? `Age grade: ${standard.CrownAgeGrade}` : ''
     ].filter(Boolean);
-    const overallTargets = parseOverallTargets(standard.OverallTargetsToTake);
+    const isOverallCrown = clean(standard.Distance) === 'overall';
+    const overallTargets = isOverallCrown
+        ? parseOverallTargets(standard.OverallTargetsToTake)
+        : [];
     const overallTargetsHTML = overallTargets.length
         ? `
             <div class="crown-standard-targets">
-                <div class="crown-standard-targets-title">Equivalent targets</div>
+                <div class="crown-standard-targets-title">${isHeld ? 'Benchmarks by distance' : 'Required by distance'}</div>
                 <div class="crown-standard-target-list">
                     ${overallTargets.map(target => `
                         <div class="crown-standard-target">

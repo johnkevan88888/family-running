@@ -1,181 +1,181 @@
-AthleteId,Distance,Period,CrownDistance,CrownHolderAthleteId,CrownHolderName,CrownAgeGrade,CrownTime,RequiredTimeToEqual,RequiredTimeToTake,AthletePB,GapToPB,Status,SortOrder
-john-kevan,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:16,00:21:15,00:24:39,+00:03:24,Chasing,1
-john-kevan,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:41,00:36:40,,,Chasing,2
-john-kevan,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-john-kevan,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:38:15,03:38:14,,,Chasing,4
-john-kevan,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:38:59,01:38:58,,,Chasing,5
-john-kevan,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:38:59,01:38:58,,,Chasing,6
-john-kevan,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:21,00:44:20,,,Chasing,7
-john-kevan,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:41,00:36:40,,,Chasing,8
-john-kevan,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:16,00:21:15,00:24:39,+00:03:24,Chasing,9
-john-kevan,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:20:21,00:20:20,00:24:39,+00:04:19,Chasing,10
-carolyn-kevan,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:30:06,00:30:05,00:25:46,+00:00:00,Chasing,1
-carolyn-kevan,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:51:29,00:51:28,00:46:54,+00:00:00,Held,2
-carolyn-kevan,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-carolyn-kevan,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,05:03:50,05:03:49,,,Chasing,4
-carolyn-kevan,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:21:53,02:21:52,,,Chasing,5
-carolyn-kevan,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:21:53,02:21:52,,,Chasing,6
-carolyn-kevan,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,01:02:15,01:02:14,00:46:54,+00:00:00,Chasing,7
-carolyn-kevan,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:51:29,00:51:28,00:46:54,+00:00:00,Held,8
-carolyn-kevan,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:30:06,00:30:05,00:25:46,+00:00:00,Chasing,9
-carolyn-kevan,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:28:47,00:28:46,00:25:46,+00:00:00,Chasing,10
-david-graham-kevan,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:23:03,00:23:02,00:19:53,+00:00:00,Chasing,1
-david-graham-kevan,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:56,00:39:55,00:48:18,+00:08:23,Chasing,2
-david-graham-kevan,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-david-graham-kevan,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:59:22,03:59:21,,,Chasing,4
-david-graham-kevan,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:48:09,01:48:08,01:48:09,+00:00:01,Held,5
-david-graham-kevan,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:48:09,01:48:08,01:48:09,+00:00:01,Held,6
-david-graham-kevan,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:48:18,00:48:17,00:48:18,+00:00:01,Held,7
-david-graham-kevan,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:56,00:39:55,00:48:18,+00:08:23,Chasing,8
-david-graham-kevan,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:23:03,00:23:02,00:19:53,+00:00:00,Chasing,9
-david-graham-kevan,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:22:03,00:22:02,00:19:53,+00:00:00,Held,10
-poppy-coleman,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:53,00:20:52,00:22:37,+00:01:45,Chasing,1
-poppy-coleman,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:42,,,Chasing,2
-poppy-coleman,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-poppy-coleman,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:39:35,03:39:34,,,Chasing,4
-poppy-coleman,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:12,01:42:56,+00:03:44,Chasing,5
-poppy-coleman,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:12,01:42:56,+00:03:44,Chasing,6
-poppy-coleman,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:24,00:44:23,,,Chasing,7
-poppy-coleman,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:42,,,Chasing,8
-poppy-coleman,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:53,00:20:52,00:22:37,+00:01:45,Chasing,9
-poppy-coleman,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:19:59,00:19:58,00:22:37,+00:02:39,Chasing,10
-laura-foster,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:53,00:20:52,,,Chasing,1
-laura-foster,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:42,,,Chasing,2
-laura-foster,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-laura-foster,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:38:29,03:38:28,,,Chasing,4
-laura-foster,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:12,01:57:04,+00:17:52,Chasing,5
-laura-foster,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:12,01:57:04,+00:17:52,Chasing,6
-laura-foster,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:24,00:44:23,,,Chasing,7
-laura-foster,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:42,,,Chasing,8
-laura-foster,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:53,00:20:52,,,Chasing,9
-laura-foster,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:19:59,00:19:58,,,Chasing,10
-caitlin-siostrom,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:22:10,00:22:09,00:25:19,+00:03:10,Chasing,1
-caitlin-siostrom,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:23,00:38:22,01:01:39,+00:23:17,Chasing,2
-caitlin-siostrom,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-caitlin-siostrom,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:46:55,03:46:54,,,Chasing,4
-caitlin-siostrom,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:44:02,01:44:01,,,Chasing,5
-caitlin-siostrom,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:44:02,01:44:01,,,Chasing,6
-caitlin-siostrom,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:46:26,00:46:25,01:01:39,+00:15:14,Chasing,7
-caitlin-siostrom,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:23,00:38:22,01:01:39,+00:23:17,Chasing,8
-caitlin-siostrom,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:22:10,00:22:09,00:25:19,+00:03:10,Chasing,9
-caitlin-siostrom,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:21:12,00:21:11,00:25:19,+00:04:08,Chasing,10
-debbie-martin,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:22:33,00:22:32,,,Chasing,1
-debbie-martin,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:56,00:38:55,00:54:56,+00:16:01,Chasing,2
-debbie-martin,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-debbie-martin,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:49:38,03:49:37,,,Chasing,4
-debbie-martin,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:45:36,01:45:35,,,Chasing,5
-debbie-martin,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:45:36,01:45:35,,,Chasing,6
-debbie-martin,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:47:05,00:47:04,00:54:56,+00:07:52,Chasing,7
-debbie-martin,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:56,00:38:55,00:54:56,+00:16:01,Chasing,8
-debbie-martin,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:22:33,00:22:32,,,Chasing,9
-debbie-martin,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:21:34,00:21:33,,,Chasing,10
-grace-chambers,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:20,00:21:19,00:25:36,+00:04:17,Chasing,1
-grace-chambers,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:37:15,00:37:14,,,Chasing,2
-grace-chambers,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-grace-chambers,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:41:10,03:41:09,,,Chasing,4
-grace-chambers,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:40:44,01:40:43,,,Chasing,5
-grace-chambers,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:40:44,01:40:43,,,Chasing,6
-grace-chambers,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:45:03,00:45:02,,,Chasing,7
-grace-chambers,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:37:15,00:37:14,,,Chasing,8
-grace-chambers,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:20,00:21:19,00:25:36,+00:04:17,Chasing,9
-grace-chambers,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:20:24,00:20:23,00:25:36,+00:05:13,Chasing,10
-jim-chambers,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:25:54,00:25:53,00:25:54,+00:00:01,Held,1
-jim-chambers,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:45:10,00:45:09,,,Chasing,2
-jim-chambers,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-jim-chambers,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,04:33:50,04:33:49,,,Chasing,4
-jim-chambers,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:02:58,02:02:57,,,Chasing,5
-jim-chambers,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:02:58,02:02:57,,,Chasing,6
-jim-chambers,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:54:37,00:54:36,,,Chasing,7
-jim-chambers,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:45:10,00:45:09,,,Chasing,8
-jim-chambers,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:25:54,00:25:53,00:25:54,+00:00:01,Held,9
-jim-chambers,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:24:46,00:24:45,00:25:54,+00:01:09,Chasing,10
-jack-graham-kevan,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:19:16,00:19:15,00:23:32,+00:04:17,Chasing,1
-jack-graham-kevan,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:41,,,Chasing,2
-jack-graham-kevan,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-jack-graham-kevan,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:22:46,03:22:45,,,Chasing,4
-jack-graham-kevan,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:38:13,+00:07:27,Chasing,5
-jack-graham-kevan,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:38:13,+00:07:27,Chasing,6
-jack-graham-kevan,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:40:45,00:40:44,,,Chasing,7
-jack-graham-kevan,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:41,,,Chasing,8
-jack-graham-kevan,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:19:16,00:19:15,00:23:32,+00:04:17,Chasing,9
-jack-graham-kevan,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:18:25,00:18:24,00:23:32,+00:05:08,Chasing,10
-blake-coleman,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:19:16,00:19:15,,,Chasing,1
-blake-coleman,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:41,,,Chasing,2
-blake-coleman,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-blake-coleman,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:22:46,03:22:45,,,Chasing,4
-blake-coleman,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:57:13,+00:26:28,Chasing,5
-blake-coleman,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:57:13,+00:26:28,Chasing,6
-blake-coleman,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:40:45,00:40:44,,,Chasing,7
-blake-coleman,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:41,,,Chasing,8
-blake-coleman,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:19:16,00:19:15,,,Chasing,9
-blake-coleman,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:18:25,00:18:24,,,Chasing,10
-matthew-johnson,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:16,00:21:15,,,Chasing,1
-matthew-johnson,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:41,00:36:40,,,Chasing,2
-matthew-johnson,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-matthew-johnson,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:38:15,03:38:14,04:16:22,+00:38:08,Chasing,4
-matthew-johnson,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:38:59,01:38:58,,,Chasing,5
-matthew-johnson,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:38:59,01:38:58,,,Chasing,6
-matthew-johnson,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:21,00:44:20,,,Chasing,7
-matthew-johnson,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:41,00:36:40,,,Chasing,8
-matthew-johnson,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:16,00:21:15,,,Chasing,9
-matthew-johnson,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:20:21,00:20:20,,,Chasing,10
-ben-graham-kevan,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:19:16,00:19:15,00:24:51,+00:05:36,Chasing,1
-ben-graham-kevan,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:41,,,Chasing,2
-ben-graham-kevan,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-ben-graham-kevan,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:23:10,03:23:09,,,Chasing,4
-ben-graham-kevan,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,,,Chasing,5
-ben-graham-kevan,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,,,Chasing,6
-ben-graham-kevan,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:40:45,00:40:44,,,Chasing,7
-ben-graham-kevan,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:41,,,Chasing,8
-ben-graham-kevan,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:19:16,00:19:15,00:24:51,+00:05:36,Chasing,9
-ben-graham-kevan,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:18:25,00:18:24,00:24:51,+00:06:27,Chasing,10
-louise-hamilton,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:23:01,00:23:00,00:34:31,+00:11:31,Chasing,1
-louise-hamilton,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:34,00:39:33,,,Chasing,2
-louise-hamilton,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-louise-hamilton,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:52:47,03:52:46,,,Chasing,4
-louise-hamilton,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:47:27,01:47:26,,,Chasing,5
-louise-hamilton,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:47:27,01:47:26,,,Chasing,6
-louise-hamilton,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:47:51,00:47:50,,,Chasing,7
-louise-hamilton,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:34,00:39:33,,,Chasing,8
-louise-hamilton,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:23:01,00:23:00,00:34:31,+00:11:31,Chasing,9
-louise-hamilton,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:22:00,00:21:59,00:34:31,+00:12:32,Chasing,10
-jess-graham-kevan,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:26:43,00:26:42,,,Chasing,1
-jess-graham-kevan,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:47:06,00:47:05,,,Chasing,2
-jess-graham-kevan,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-jess-graham-kevan,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,05:25:14,05:25:13,,,Chasing,4
-jess-graham-kevan,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:17:48,02:17:47,,,Chasing,5
-jess-graham-kevan,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:17:48,02:17:47,,,Chasing,6
-jess-graham-kevan,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:56:58,00:56:57,,,Chasing,7
-jess-graham-kevan,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:47:06,00:47:05,,,Chasing,8
-jess-graham-kevan,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:26:43,00:26:42,,,Chasing,9
-jess-graham-kevan,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:25:34,00:25:33,,,Chasing,10
-jashlay-balanon,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:53,00:20:52,,,Chasing,1
-jashlay-balanon,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:42,,,Chasing,2
-jashlay-balanon,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-jashlay-balanon,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:40:58,03:40:57,,,Chasing,4
-jashlay-balanon,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:12,,,Chasing,5
-jashlay-balanon,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:12,,,Chasing,6
-jashlay-balanon,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:24,00:44:23,,,Chasing,7
-jashlay-balanon,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:42,,,Chasing,8
-jashlay-balanon,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:53,00:20:52,,,Chasing,9
-jashlay-balanon,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:19:59,00:19:58,,,Chasing,10
-mariia-bulycheva,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:50,00:21:49,,,Chasing,1
-mariia-bulycheva,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:37:56,00:37:55,,,Chasing,2
-mariia-bulycheva,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-mariia-bulycheva,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:44:37,03:44:36,,,Chasing,4
-mariia-bulycheva,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:42:43,01:42:42,,,Chasing,5
-mariia-bulycheva,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:42:43,01:42:42,,,Chasing,6
-mariia-bulycheva,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:45:52,00:45:51,,,Chasing,7
-mariia-bulycheva,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:37:56,00:37:55,,,Chasing,8
-mariia-bulycheva,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:50,00:21:49,,,Chasing,9
-mariia-bulycheva,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:20:53,00:20:52,,,Chasing,10
-kevin-reaney,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:57,00:20:56,,,Chasing,1
-kevin-reaney,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:05,00:36:04,,,Chasing,2
-kevin-reaney,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3
-kevin-reaney,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:34:27,03:34:26,03:30:48,+00:00:00,Held,4
-kevin-reaney,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:37:19,01:37:18,,,Chasing,5
-kevin-reaney,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:37:19,01:37:18,,,Chasing,6
-kevin-reaney,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:43:39,00:43:38,,,Chasing,7
-kevin-reaney,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:05,00:36:04,,,Chasing,8
-kevin-reaney,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:57,00:20:56,,,Chasing,9
-kevin-reaney,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:20:02,00:20:01,,,Chasing,10
+AthleteId,Distance,Period,CrownDistance,CrownHolderAthleteId,CrownHolderName,CrownAgeGrade,CrownTime,RequiredTimeToEqual,RequiredTimeToTake,AthletePB,GapToPB,Status,SortOrder,OverallTargetsToTake
+john-kevan,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:16,00:21:15,00:24:39,+00:03:24,Chasing,1,5 km=00:21:15;10 km=00:43:10;Half Marathon=01:34:13;Marathon=03:15:00
+john-kevan,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:41,00:36:40,,,Chasing,2,5 km=00:18:03;10 km=00:36:40;Half Marathon=01:20:02;Marathon=02:45:38
+john-kevan,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+john-kevan,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:38:15,03:38:14,,,Chasing,4,
+john-kevan,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:38:59,01:38:58,,,Chasing,5,
+john-kevan,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:38:59,01:38:58,,,Chasing,6,
+john-kevan,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:21,00:44:20,,,Chasing,7,
+john-kevan,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:41,00:36:40,,,Chasing,8,
+john-kevan,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:16,00:21:15,00:24:39,+00:03:24,Chasing,9,
+john-kevan,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:20:21,00:20:20,00:24:39,+00:04:19,Chasing,10,
+carolyn-kevan,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:30:06,00:30:05,00:25:46,+00:00:00,Chasing,1,5 km=00:30:04;10 km=01:00:35;Half Marathon=02:15:04;Marathon=04:31:30
+carolyn-kevan,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:51:29,00:51:28,00:46:54,+00:00:00,Held,2,5 km=00:25:33;10 km=00:51:28;Half Marathon=01:54:43;Marathon=03:50:36
+carolyn-kevan,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+carolyn-kevan,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,05:03:50,05:03:49,,,Chasing,4,
+carolyn-kevan,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:21:53,02:21:52,,,Chasing,5,
+carolyn-kevan,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:21:53,02:21:52,,,Chasing,6,
+carolyn-kevan,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,01:02:15,01:02:14,00:46:54,+00:00:00,Chasing,7,
+carolyn-kevan,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:51:29,00:51:28,00:46:54,+00:00:00,Held,8,
+carolyn-kevan,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:30:06,00:30:05,00:25:46,+00:00:00,Chasing,9,
+carolyn-kevan,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:28:47,00:28:46,00:25:46,+00:00:00,Chasing,10,
+david-graham-kevan,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:23:03,00:23:02,00:19:53,+00:00:00,Chasing,1,5 km=00:23:02;10 km=00:47:00;Half Marathon=01:42:57;Marathon=03:33:53
+david-graham-kevan,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:56,00:39:55,00:48:18,+00:08:23,Chasing,2,5 km=00:19:34;10 km=00:39:56;Half Marathon=01:27:27;Marathon=03:01:40
+david-graham-kevan,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+david-graham-kevan,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:59:22,03:59:21,,,Chasing,4,
+david-graham-kevan,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:48:09,01:48:08,01:48:09,+00:00:01,Held,5,
+david-graham-kevan,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:48:09,01:48:08,01:48:09,+00:00:01,Held,6,
+david-graham-kevan,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:48:18,00:48:17,00:48:18,+00:00:01,Held,7,
+david-graham-kevan,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:56,00:39:55,00:48:18,+00:08:23,Chasing,8,
+david-graham-kevan,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:23:03,00:23:02,00:19:53,+00:00:00,Chasing,9,
+david-graham-kevan,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:22:03,00:22:02,00:19:53,+00:00:00,Held,10,
+poppy-coleman,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:53,00:20:52,00:22:37,+00:01:45,Chasing,1,5 km=00:20:52;10 km=00:43:13;Half Marathon=01:34:27;Marathon=03:16:12
+poppy-coleman,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:42,,,Chasing,2,5 km=00:17:43;10 km=00:36:42;Half Marathon=01:20:13;Marathon=02:46:39
+poppy-coleman,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+poppy-coleman,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:39:35,03:39:34,,,Chasing,4,
+poppy-coleman,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:12,01:42:56,+00:03:44,Chasing,5,
+poppy-coleman,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:12,01:42:56,+00:03:44,Chasing,6,
+poppy-coleman,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:24,00:44:23,,,Chasing,7,
+poppy-coleman,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:42,,,Chasing,8,
+poppy-coleman,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:53,00:20:52,00:22:37,+00:01:45,Chasing,9,
+poppy-coleman,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:19:59,00:19:58,00:22:37,+00:02:39,Chasing,10,
+laura-foster,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:53,00:20:52,,,Chasing,1,5 km=00:20:52;10 km=00:43:13;Half Marathon=01:34:27;Marathon=03:15:14
+laura-foster,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:42,,,Chasing,2,5 km=00:17:43;10 km=00:36:42;Half Marathon=01:20:13;Marathon=02:45:49
+laura-foster,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+laura-foster,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:38:29,03:38:28,,,Chasing,4,
+laura-foster,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:12,01:57:04,+00:17:52,Chasing,5,
+laura-foster,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:12,01:57:04,+00:17:52,Chasing,6,
+laura-foster,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:24,00:44:23,,,Chasing,7,
+laura-foster,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:42,,,Chasing,8,
+laura-foster,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:53,00:20:52,,,Chasing,9,
+laura-foster,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:19:59,00:19:58,,,Chasing,10,
+caitlin-siostrom,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:22:10,00:22:09,00:25:19,+00:03:10,Chasing,1,5 km=00:22:09;10 km=00:45:11;Half Marathon=01:39:02;Marathon=03:22:45
+caitlin-siostrom,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:23,00:38:22,01:01:39,+00:23:17,Chasing,2,5 km=00:18:48;10 km=00:38:23;Half Marathon=01:24:07;Marathon=02:52:13
+caitlin-siostrom,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+caitlin-siostrom,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:46:55,03:46:54,,,Chasing,4,
+caitlin-siostrom,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:44:02,01:44:01,,,Chasing,5,
+caitlin-siostrom,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:44:02,01:44:01,,,Chasing,6,
+caitlin-siostrom,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:46:26,00:46:25,01:01:39,+00:15:14,Chasing,7,
+caitlin-siostrom,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:23,00:38:22,01:01:39,+00:23:17,Chasing,8,
+caitlin-siostrom,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:22:10,00:22:09,00:25:19,+00:03:10,Chasing,9,
+caitlin-siostrom,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:21:12,00:21:11,00:25:19,+00:04:08,Chasing,10,
+debbie-martin,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:22:33,00:22:32,,,Chasing,1,5 km=00:22:32;10 km=00:45:50;Half Marathon=01:40:32;Marathon=03:25:11
+debbie-martin,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:56,00:38:55,00:54:56,+00:16:01,Chasing,2,5 km=00:19:08;10 km=00:38:55;Half Marathon=01:25:23;Marathon=02:54:16
+debbie-martin,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+debbie-martin,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:49:38,03:49:37,,,Chasing,4,
+debbie-martin,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:45:36,01:45:35,,,Chasing,5,
+debbie-martin,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:45:36,01:45:35,,,Chasing,6,
+debbie-martin,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:47:05,00:47:04,00:54:56,+00:07:52,Chasing,7,
+debbie-martin,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:56,00:38:55,00:54:56,+00:16:01,Chasing,8,
+debbie-martin,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:22:33,00:22:32,,,Chasing,9,
+debbie-martin,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:21:34,00:21:33,,,Chasing,10,
+grace-chambers,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:20,00:21:19,00:25:36,+00:04:17,Chasing,1,5 km=00:21:19;10 km=00:43:50;Half Marathon=01:35:54;Marathon=03:17:37
+grace-chambers,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:37:15,00:37:14,,,Chasing,2,5 km=00:18:06;10 km=00:37:14;Half Marathon=01:21:27;Marathon=02:47:51
+grace-chambers,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+grace-chambers,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:41:10,03:41:09,,,Chasing,4,
+grace-chambers,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:40:44,01:40:43,,,Chasing,5,
+grace-chambers,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:40:44,01:40:43,,,Chasing,6,
+grace-chambers,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:45:03,00:45:02,,,Chasing,7,
+grace-chambers,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:37:15,00:37:14,,,Chasing,8,
+grace-chambers,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:20,00:21:19,00:25:36,+00:04:17,Chasing,9,
+grace-chambers,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:20:24,00:20:23,00:25:36,+00:05:13,Chasing,10,
+jim-chambers,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:25:54,00:25:53,00:25:54,+00:00:01,Held,1,5 km=00:25:53;10 km=00:53:09;Half Marathon=01:57:04;Marathon=04:04:40
+jim-chambers,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:45:10,00:45:09,,,Chasing,2,5 km=00:21:59;10 km=00:45:09;Half Marathon=01:39:26;Marathon=03:27:49
+jim-chambers,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+jim-chambers,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,04:33:50,04:33:49,,,Chasing,4,
+jim-chambers,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:02:58,02:02:57,,,Chasing,5,
+jim-chambers,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:02:58,02:02:57,,,Chasing,6,
+jim-chambers,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:54:37,00:54:36,,,Chasing,7,
+jim-chambers,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:45:10,00:45:09,,,Chasing,8,
+jim-chambers,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:25:54,00:25:53,00:25:54,+00:00:01,Held,9,
+jim-chambers,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:24:46,00:24:45,00:25:54,+00:01:09,Chasing,10,
+jack-graham-kevan,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:19:16,00:19:15,00:23:32,+00:04:17,Chasing,1,5 km=00:19:15;10 km=00:39:39;Half Marathon=01:26:25;Marathon=03:01:11
+jack-graham-kevan,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:41,,,Chasing,2,5 km=00:16:20;10 km=00:33:41;Half Marathon=01:13:24;Marathon=02:33:53
+jack-graham-kevan,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+jack-graham-kevan,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:22:46,03:22:45,,,Chasing,4,
+jack-graham-kevan,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:38:13,+00:07:27,Chasing,5,
+jack-graham-kevan,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:38:13,+00:07:27,Chasing,6,
+jack-graham-kevan,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:40:45,00:40:44,,,Chasing,7,
+jack-graham-kevan,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:41,,,Chasing,8,
+jack-graham-kevan,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:19:16,00:19:15,00:23:32,+00:04:17,Chasing,9,
+jack-graham-kevan,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:18:25,00:18:24,00:23:32,+00:05:08,Chasing,10,
+blake-coleman,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:19:16,00:19:15,,,Chasing,1,5 km=00:19:15;10 km=00:39:39;Half Marathon=01:26:25;Marathon=03:01:11
+blake-coleman,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:41,,,Chasing,2,5 km=00:16:20;10 km=00:33:41;Half Marathon=01:13:24;Marathon=02:33:53
+blake-coleman,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+blake-coleman,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:22:46,03:22:45,,,Chasing,4,
+blake-coleman,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:57:13,+00:26:28,Chasing,5,
+blake-coleman,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:57:13,+00:26:28,Chasing,6,
+blake-coleman,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:40:45,00:40:44,,,Chasing,7,
+blake-coleman,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:41,,,Chasing,8,
+blake-coleman,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:19:16,00:19:15,,,Chasing,9,
+blake-coleman,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:18:25,00:18:24,,,Chasing,10,
+matthew-johnson,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:16,00:21:15,,,Chasing,1,5 km=00:21:15;10 km=00:43:10;Half Marathon=01:34:13;Marathon=03:15:00
+matthew-johnson,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:41,00:36:40,,,Chasing,2,5 km=00:18:03;10 km=00:36:40;Half Marathon=01:20:02;Marathon=02:45:38
+matthew-johnson,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+matthew-johnson,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:38:15,03:38:14,04:16:22,+00:38:08,Chasing,4,
+matthew-johnson,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:38:59,01:38:58,,,Chasing,5,
+matthew-johnson,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:38:59,01:38:58,,,Chasing,6,
+matthew-johnson,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:21,00:44:20,,,Chasing,7,
+matthew-johnson,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:41,00:36:40,,,Chasing,8,
+matthew-johnson,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:16,00:21:15,,,Chasing,9,
+matthew-johnson,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:20:21,00:20:20,,,Chasing,10,
+ben-graham-kevan,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:19:16,00:19:15,00:24:51,+00:05:36,Chasing,1,5 km=00:19:15;10 km=00:39:39;Half Marathon=01:26:25;Marathon=03:01:32
+ben-graham-kevan,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:41,,,Chasing,2,5 km=00:16:20;10 km=00:33:41;Half Marathon=01:13:24;Marathon=02:34:12
+ben-graham-kevan,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+ben-graham-kevan,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:23:10,03:23:09,,,Chasing,4,
+ben-graham-kevan,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,,,Chasing,5,
+ben-graham-kevan,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,,,Chasing,6,
+ben-graham-kevan,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:40:45,00:40:44,,,Chasing,7,
+ben-graham-kevan,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:41,,,Chasing,8,
+ben-graham-kevan,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:19:16,00:19:15,00:24:51,+00:05:36,Chasing,9,
+ben-graham-kevan,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:18:25,00:18:24,00:24:51,+00:06:27,Chasing,10,
+louise-hamilton,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:23:01,00:23:00,00:34:31,+00:11:31,Chasing,1,5 km=00:22:59;10 km=00:46:34;Half Marathon=01:42:17;Marathon=03:28:00
+louise-hamilton,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:34,00:39:33,,,Chasing,2,5 km=00:19:32;10 km=00:39:33;Half Marathon=01:26:53;Marathon=02:56:40
+louise-hamilton,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+louise-hamilton,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:52:47,03:52:46,,,Chasing,4,
+louise-hamilton,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:47:27,01:47:26,,,Chasing,5,
+louise-hamilton,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:47:27,01:47:26,,,Chasing,6,
+louise-hamilton,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:47:51,00:47:50,,,Chasing,7,
+louise-hamilton,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:34,00:39:33,,,Chasing,8,
+louise-hamilton,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:23:01,00:23:00,00:34:31,+00:11:31,Chasing,9,
+louise-hamilton,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:22:00,00:21:59,00:34:31,+00:12:32,Chasing,10,
+jess-graham-kevan,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:26:43,00:26:42,,,Chasing,1,5 km=00:26:42;10 km=00:55:27;Half Marathon=02:11:11;Marathon=04:50:36
+jess-graham-kevan,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:47:06,00:47:05,,,Chasing,2,5 km=00:22:41;10 km=00:47:05;Half Marathon=01:51:26;Marathon=04:06:50
+jess-graham-kevan,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+jess-graham-kevan,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,05:25:14,05:25:13,,,Chasing,4,
+jess-graham-kevan,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:17:48,02:17:47,,,Chasing,5,
+jess-graham-kevan,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:17:48,02:17:47,,,Chasing,6,
+jess-graham-kevan,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:56:58,00:56:57,,,Chasing,7,
+jess-graham-kevan,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:47:06,00:47:05,,,Chasing,8,
+jess-graham-kevan,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:26:43,00:26:42,,,Chasing,9,
+jess-graham-kevan,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:25:34,00:25:33,,,Chasing,10,
+jashlay-balanon,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:53,00:20:52,,,Chasing,1,5 km=00:20:52;10 km=00:43:13;Half Marathon=01:34:27;Marathon=03:17:26
+jashlay-balanon,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:42,,,Chasing,2,5 km=00:17:43;10 km=00:36:42;Half Marathon=01:20:13;Marathon=02:47:42
+jashlay-balanon,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+jashlay-balanon,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:40:58,03:40:57,,,Chasing,4,
+jashlay-balanon,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:12,,,Chasing,5,
+jashlay-balanon,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:12,,,Chasing,6,
+jashlay-balanon,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:24,00:44:23,,,Chasing,7,
+jashlay-balanon,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:42,,,Chasing,8,
+jashlay-balanon,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:53,00:20:52,,,Chasing,9,
+jashlay-balanon,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:19:59,00:19:58,,,Chasing,10,
+mariia-bulycheva,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:50,00:21:49,,,Chasing,1,5 km=00:21:49;10 km=00:44:39;Half Marathon=01:37:46;Marathon=03:20:42
+mariia-bulycheva,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:37:56,00:37:55,,,Chasing,2,5 km=00:18:32;10 km=00:37:55;Half Marathon=01:23:03;Marathon=02:50:28
+mariia-bulycheva,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+mariia-bulycheva,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:44:37,03:44:36,,,Chasing,4,
+mariia-bulycheva,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:42:43,01:42:42,,,Chasing,5,
+mariia-bulycheva,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:42:43,01:42:42,,,Chasing,6,
+mariia-bulycheva,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:45:52,00:45:51,,,Chasing,7,
+mariia-bulycheva,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:37:56,00:37:55,,,Chasing,8,
+mariia-bulycheva,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:21:50,00:21:49,,,Chasing,9,
+mariia-bulycheva,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:20:53,00:20:52,,,Chasing,10,
+kevin-reaney,Overall,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:57,00:20:56,,,Chasing,1,5 km=00:20:56;10 km=00:42:28;Half Marathon=01:32:39;Marathon=03:11:37
+kevin-reaney,Overall,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:05,00:36:04,,,Chasing,2,5 km=00:17:46;10 km=00:36:04;Half Marathon=01:18:41;Marathon=02:42:45
+kevin-reaney,Marathon,Current,,,Championship Vacant,,,,,,,No Standard,3,
+kevin-reaney,Marathon,All Time,Marathon,kevin-reaney,Kevin Reaney,59.47%,03:30:48,03:34:27,03:34:26,03:30:48,+00:00:00,Held,4,
+kevin-reaney,Half Marathon,Current,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:37:19,01:37:18,,,Chasing,5,
+kevin-reaney,Half Marathon,All Time,Half Marathon,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:37:19,01:37:18,,,Chasing,6,
+kevin-reaney,10 km,Current,10 km,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:43:39,00:43:38,,,Chasing,7,
+kevin-reaney,10 km,All Time,10 km,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:05,00:36:04,,,Chasing,8,
+kevin-reaney,5 km,Current,5 km,jim-chambers,Jim Chambers,66.55%,00:25:54,00:20:57,00:20:56,,,Chasing,9,
+kevin-reaney,5 km,All Time,5 km,david-graham-kevan,David Graham-Kevan,69.57%,00:19:53,00:20:02,00:20:01,,,Chasing,10,
