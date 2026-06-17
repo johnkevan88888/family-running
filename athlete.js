@@ -427,13 +427,15 @@ function renderCrownStandard(standard) {
     const holderLabel = isHeld
         ? `You hold the ${periodLabel} crown`
         : `${periodLabel} crown holder`;
-    const targetDistance = standard.CrownDistance || standard.CrownEvent || standard.Distance || '';
+    const crownDistance = standard.CrownDistance || standard.CrownEvent || '';
+    const targetDistance = crownDistance || standard.Distance || '';
+    const shouldShowCrownDistance = crownDistance &&
+        (clean(standard.Distance) === 'overall' || clean(crownDistance) !== clean(standard.Distance));
     const timeCaption = targetDistance
         ? `${isHeld ? 'benchmark' : 'required'} over ${targetDistance}${isHeld ? '' : ' to take crown'}`
         : `${isHeld ? 'benchmark to stay ahead' : 'required to take crown'}`;
     const crownFacts = [
-        `${standard.Distance} crown`,
-        targetDistance ? `Crown won over: ${targetDistance}` : '',
+        shouldShowCrownDistance ? `Won over: ${crownDistance}` : '',
         standard.CrownAgeGrade ? `Age grade: ${standard.CrownAgeGrade}` : ''
     ].filter(Boolean);
     const overallTargets = parseOverallTargets(standard.OverallTargetsToTake);
