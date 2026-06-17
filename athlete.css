@@ -223,8 +223,79 @@ body {
     margin-bottom: 40px;
 }
 
-.crown-standards-section h2 {
+.crown-standards-section h2,
+.age-grade-standards-section h2 {
     background: #1e3a5f;
+}
+
+.age-grade-standards-section {
+    margin-bottom: 40px;
+}
+
+.age-grade-standards-table-wrap {
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.age-grade-standards-table {
+    min-width: 980px;
+    margin: 0;
+    table-layout: fixed;
+}
+
+.age-grade-standards-table th,
+.age-grade-standards-table td {
+    border-bottom: 1px solid #d9e1e8;
+    padding: 11px 12px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.age-grade-standards-table th:first-child {
+    background: #1e3a5f;
+    left: 0;
+    position: sticky;
+    text-align: left;
+    width: 130px;
+    z-index: 2;
+}
+
+.age-grade-standards-table tbody th:first-child {
+    background: #eef3f7;
+    color: #0f2438;
+}
+
+.age-grade-standards-table thead th {
+    font-size: 0.82rem;
+    line-height: 1.2;
+    vertical-align: bottom;
+}
+
+.age-grade-standards-table thead th span {
+    display: block;
+    font-size: 0.74rem;
+    font-weight: 800;
+    margin-top: 3px;
+    opacity: 0.9;
+}
+
+.age-grade-standards-table thead th:nth-child(2) { background: #28a745; }
+.age-grade-standards-table thead th:nth-child(3) { background: #a86227; }
+.age-grade-standards-table thead th:nth-child(4) { background: #b9bec5; color: #111; }
+.age-grade-standards-table thead th:nth-child(5) { background: #ffd700; color: #111; }
+.age-grade-standards-table thead th:nth-child(6) { background: #6f42c1; }
+.age-grade-standards-table thead th:nth-child(7) { background: #c92f3d; }
+
+.age-grade-standards-table td {
+    color: #0f2438;
+    font-size: 0.94rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+}
+
+.age-grade-standards-table tbody tr:hover td,
+.age-grade-standards-table tbody tr:hover th {
+    background: #f7fafc;
 }
 
 .crown-standards-grid {

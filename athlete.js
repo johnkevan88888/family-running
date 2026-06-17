@@ -405,6 +405,70 @@ function hideCrownStandards(section, container) {
     container.innerHTML = '';
 }
 
+async function buildAgeGradeStandards() {
+    const section = document.getElementById('age-grade-standards-section');
+    const container = document.getElementById('age-grade-standards');
+
+    if (!section || !container) return;
+
+    try {
+        const rows = await fetchCSV(`data/${site}/age_grade_standards.csv`);
+        const athleteStandards = csvRowsToObjects(rows)
+            .filter(row => clean(row.AthleteId) === clean(athleteId) && row.RequiredTime)
+            .sort((a, b) => Number(a.SortOrder || 9999) - Number(b.SortOrder || 9999));
+
+        if (athleteStandards.length === 0) {
+            hideAgeGradeStandards(section, container);
+            return;
+        }
+
+        const standardNames = [...new Set(athleteStandards.map(row => row.Standard))];
+        const distances = [...new Set(athleteStandards.map(row => row.Distance))];
+        const values = new Map(
+            athleteStandards.map(row => [`${row.Distance}|${row.Standard}`, row.RequiredTime])
+        );
+        const ageGrades = new Map(
+            athleteStandards.map(row => [row.Standard, row.AgeGrade])
+        );
+
+        section.classList.remove('hidden');
+        container.innerHTML = `
+            <div class="age-grade-standards-table-wrap">
+                <table class="age-grade-standards-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Distance</th>
+                            ${standardNames.map(standard => `
+                                <th scope="col">
+                                    ${escapeHTML(standard)}
+                                    <span>${escapeHTML(ageGrades.get(standard) || '')}</span>
+                                </th>
+                            `).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${distances.map(distance => `
+                            <tr>
+                                <th scope="row">${escapeHTML(distance)}</th>
+                                ${standardNames.map(standard => `
+                                    <td>${escapeHTML(values.get(`${distance}|${standard}`) || '-')}</td>
+                                `).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } catch (error) {
+        hideAgeGradeStandards(section, container);
+    }
+}
+
+function hideAgeGradeStandards(section, container) {
+    section.classList.add('hidden');
+    container.innerHTML = '';
+}
+
 function isRenderableCrownStandard(standard) {
     const status = clean(standard.Status);
 
@@ -622,6 +686,8 @@ async function buildAthletePage() {
         document.getElementById('official-medals').innerHTML = '';
         document.getElementById('crown-standards-section').classList.add('hidden');
         document.getElementById('crown-standards').innerHTML = '';
+        document.getElementById('age-grade-standards-section').classList.add('hidden');
+        document.getElementById('age-grade-standards').innerHTML = '';
         document.getElementById('recent-results').innerHTML = '';
         document.getElementById('all-results').innerHTML = '<p>No results found for this athlete.</p>';
         return;
@@ -632,6 +698,7 @@ async function buildAthletePage() {
     buildPersonalBests(athleteResults);
     await buildOfficialMedals();
     await buildCrownStandards();
+    await buildAgeGradeStandards();
     buildRecentResults(athleteResults);
     document.getElementById('all-results').innerHTML = '<p>Loading full results...</p>';
 
