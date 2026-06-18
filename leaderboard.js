@@ -270,8 +270,12 @@ async function loadSiteInfo() {
              </div>
              <div class="site-meta-item">
                 <span class="site-meta-icon" aria-hidden="true">&#128205;</span>
-                <span><strong>Published from</strong> ${escapeHTML(publishedFrom)}${siteVersion ? ` <span class="site-version">${escapeHTML(siteVersion)}</span>` : ''}</span>
-             </div>`;
+                <span><strong>Published from</strong> ${escapeHTML(publishedFrom)}</span>
+             </div>
+             ${siteVersion ? `<div class="site-meta-item">
+                <span class="site-meta-icon" aria-hidden="true">&#9432;</span>
+                <span><strong>Website version</strong> <span class="site-version">${escapeHTML(siteVersion)}</span></span>
+             </div>` : ''}`;
     }
 }
 
