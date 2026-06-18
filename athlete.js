@@ -5,10 +5,17 @@ const site = params.get('site') || 'family';
 
 function updateBackLink() {
     const backLink = document.querySelector('.back-link');
+    const athleteContext = document.getElementById('athlete-context');
 
-    if (!backLink) return;
+    if (backLink) {
+        backLink.href = `index.html?site=${site}`;
+    }
 
-    backLink.href = `index.html?site=${site}`;
+    if (athleteContext) {
+        athleteContext.innerText = site === 'everyone'
+            ? 'Everyone Championships'
+            : 'Family Championships';
+    }
 }
 
 function parseDate(dateStr) {
@@ -699,6 +706,7 @@ async function buildAthletePage() {
     }
 
     document.getElementById('athlete-name').innerText = athleteResults[0].Participant;
+    document.title = `${athleteResults[0].Participant} | Athlete Profile`;
 
     buildPersonalBests(athleteResults);
     await buildOfficialMedals();
