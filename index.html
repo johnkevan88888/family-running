@@ -24,17 +24,67 @@
             color: #222;
         }
 
-        h1 {
-            text-align: center;
-            font-size: 2.2rem;
-            margin-bottom: 10px;
+        .site-header {
+            align-items: center;
+            background: #1e3a5f;
+            border-top: 6px solid #ffd700;
+            box-shadow: 0 5px 16px rgba(15,36,56,0.22);
+            color: white;
+            display: flex;
+            gap: 32px;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding: 26px 32px;
+        }
+
+        .site-brand {
+            min-width: 0;
+        }
+
+        #site-title {
+            font-size: 2.35rem;
+            letter-spacing: 0;
+            line-height: 1.08;
+            margin: 0;
         }
 
         .subtitle {
-            text-align: center;
-            font-size: 1rem;
-            color: #555;
-            margin-bottom: 40px;
+            color: #dce7f1;
+            font-size: 1.05rem;
+            font-weight: 500;
+            margin-top: 7px;
+        }
+
+        .site-meta {
+            border-left: 1px solid rgba(255,255,255,0.28);
+            display: grid;
+            flex: 0 0 auto;
+            gap: 8px;
+            padding-left: 26px;
+        }
+
+        .site-meta-item {
+            align-items: center;
+            color: #eef5fb;
+            display: flex;
+            font-size: 0.9rem;
+            gap: 9px;
+            line-height: 1.25;
+        }
+
+        .site-meta-item strong {
+            color: white;
+            font-weight: 800;
+        }
+
+        .site-meta-icon {
+            font-size: 1.05rem;
+            width: 20px;
+        }
+
+        .site-version {
+            color: #ffd700;
+            font-weight: 800;
         }
 
         h2 {
@@ -516,6 +566,33 @@
 }
 
 @media (max-width: 700px) {
+    body {
+        padding: 12px;
+    }
+
+    .site-header {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 18px;
+        margin-bottom: 24px;
+        padding: 22px 20px;
+    }
+
+    #site-title {
+        font-size: 1.85rem;
+    }
+
+    .subtitle {
+        font-size: 0.95rem;
+    }
+
+    .site-meta {
+        border-left: none;
+        border-top: 1px solid rgba(255,255,255,0.28);
+        padding-left: 0;
+        padding-top: 14px;
+    }
+
     .hall-of-fame {
         grid-template-columns: 1fr;
     }
@@ -564,15 +641,15 @@
 
 <body>
 
-<h1 id="site-title">Family Running Championships</h1>
-
-<div class="subtitle">
-    Age-Graded Rankings Across Generations
-</div>
-
-<div class="footer" id="last-updated">
-    Last Updated: loading...
-</div>
+<header class="site-header">
+    <div class="site-brand">
+        <h1 id="site-title">Family Running Championships</h1>
+        <div class="subtitle">Age-Graded Rankings Across Generations</div>
+    </div>
+    <div class="site-meta" id="last-updated" aria-live="polite">
+        <div class="site-meta-item">Loading championship data...</div>
+    </div>
+</header>
 
 <h2>Hall of Fame</h2>
 <div id="hall-of-fame"></div>

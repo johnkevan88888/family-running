@@ -261,11 +261,17 @@ async function loadSiteInfo() {
         });
 
         const publishedFrom = publishedFromRow ? publishedFromRow[1] : 'Unknown';
-        const siteVersion = siteVersionRow ? ` / ${siteVersionRow[1]}` : '';
+        const siteVersion = siteVersionRow ? siteVersionRow[1] : '';
 
         document.getElementById('last-updated').innerHTML =
-            `&#128197; Last Updated: ${localTime}<br>
-             Published from: ${publishedFrom}${siteVersion}`;
+            `<div class="site-meta-item">
+                <span class="site-meta-icon" aria-hidden="true">&#128197;</span>
+                <span><strong>Updated</strong> ${escapeHTML(localTime)}</span>
+             </div>
+             <div class="site-meta-item">
+                <span class="site-meta-icon" aria-hidden="true">&#128205;</span>
+                <span><strong>Published from</strong> ${escapeHTML(publishedFrom)}${siteVersion ? ` <span class="site-version">${escapeHTML(siteVersion)}</span>` : ''}</span>
+             </div>`;
     }
 }
 
