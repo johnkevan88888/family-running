@@ -138,7 +138,7 @@ function renderHallOfFameCard(row) {
         ? ` standard-${normalizeHeader(ageGradedCategory)}`
         : '';
     const details = [
-        row.distance,
+        row.ageclass,
         row.resulttype,
         row.race
     ].filter(Boolean).map(escapeHTML).join(' / ');
