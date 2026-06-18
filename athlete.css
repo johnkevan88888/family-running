@@ -400,12 +400,12 @@ body {
     padding: 7px 9px;
 }
 
-.period-current .crown-standard-facts span:first-child,
+.period-current .crown-standard-facts span,
 .period-current .crown-standard-status {
     background: #fff0bd;
 }
 
-.period-all-time .crown-standard-facts span:first-child,
+.period-all-time .crown-standard-facts span,
 .period-all-time .crown-standard-status {
     background: #dff0ff;
 }
