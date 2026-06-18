@@ -503,8 +503,8 @@ function renderCrownStandard(standard) {
         : `${isHeld ? 'benchmark to stay ahead' : 'required to take crown'}`;
     const crownFacts = [
         shouldShowCrownDistance ? `Won over: ${crownDistance}` : '',
-        isOverallCrown && standard.CrownTime ? `Winning time: ${standard.CrownTime}` : '',
-        isOverallCrown && standard.CrownAgeCategory ? `Age category: ${standard.CrownAgeCategory}` : '',
+        standard.CrownTime ? `Winning time: ${standard.CrownTime}` : '',
+        standard.CrownAgeCategory ? `Age category: ${standard.CrownAgeCategory}` : '',
         standard.CrownAgeGrade ? `Age grade: ${standard.CrownAgeGrade}` : ''
     ].filter(Boolean);
     const overallTargets = isOverallCrown
