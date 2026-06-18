@@ -1,1 +1,289 @@
-
+AthleteId,Distance,Standard,AgeGrade,RequiredTime,SortOrder
+john-kevan,5 km,Recreational,35%,00:40:26,101
+john-kevan,5 km,Club,50%,00:28:18,102
+john-kevan,5 km,Local Competitive,60%,00:23:35,103
+john-kevan,5 km,Regional Class,70%,00:20:13,104
+john-kevan,5 km,National Class,80%,00:17:41,105
+john-kevan,5 km,World Class,90%,00:15:43,106
+john-kevan,10 km,Recreational,35%,01:22:06,201
+john-kevan,10 km,Club,50%,00:57:28,202
+john-kevan,10 km,Local Competitive,60%,00:47:53,203
+john-kevan,10 km,Regional Class,70%,00:41:03,204
+john-kevan,10 km,National Class,80%,00:35:55,205
+john-kevan,10 km,World Class,90%,00:31:55,206
+john-kevan,Half Marathon,Recreational,35%,02:59:11,301
+john-kevan,Half Marathon,Club,50%,02:05:25,302
+john-kevan,Half Marathon,Local Competitive,60%,01:44:31,303
+john-kevan,Half Marathon,Regional Class,70%,01:29:35,304
+john-kevan,Half Marathon,National Class,80%,01:18:23,305
+john-kevan,Half Marathon,World Class,90%,01:09:41,306
+john-kevan,Marathon,Recreational,35%,06:10:48,401
+john-kevan,Marathon,Club,50%,04:19:34,402
+john-kevan,Marathon,Local Competitive,60%,03:36:18,403
+john-kevan,Marathon,Regional Class,70%,03:05:24,404
+john-kevan,Marathon,National Class,80%,02:42:13,405
+john-kevan,Marathon,World Class,90%,02:24:12,406
+carolyn-kevan,5 km,Recreational,35%,00:57:13,101
+carolyn-kevan,5 km,Club,50%,00:40:03,102
+carolyn-kevan,5 km,Local Competitive,60%,00:33:22,103
+carolyn-kevan,5 km,Regional Class,70%,00:28:36,104
+carolyn-kevan,5 km,National Class,80%,00:25:01,105
+carolyn-kevan,5 km,World Class,90%,00:22:15,106
+carolyn-kevan,10 km,Recreational,35%,01:55:14,201
+carolyn-kevan,10 km,Club,50%,01:20:40,202
+carolyn-kevan,10 km,Local Competitive,60%,01:07:13,203
+carolyn-kevan,10 km,Regional Class,70%,00:57:37,204
+carolyn-kevan,10 km,National Class,80%,00:50:25,205
+carolyn-kevan,10 km,World Class,90%,00:44:48,206
+carolyn-kevan,Half Marathon,Recreational,35%,04:16:51,301
+carolyn-kevan,Half Marathon,Club,50%,02:59:47,302
+carolyn-kevan,Half Marathon,Local Competitive,60%,02:29:49,303
+carolyn-kevan,Half Marathon,Regional Class,70%,02:08:25,304
+carolyn-kevan,Half Marathon,National Class,80%,01:52:22,305
+carolyn-kevan,Half Marathon,World Class,90%,01:39:53,306
+carolyn-kevan,Marathon,Recreational,35%,08:36:15,401
+carolyn-kevan,Marathon,Club,50%,06:01:22,402
+carolyn-kevan,Marathon,Local Competitive,60%,05:01:08,403
+carolyn-kevan,Marathon,Regional Class,70%,04:18:07,404
+carolyn-kevan,Marathon,National Class,80%,03:45:51,405
+carolyn-kevan,Marathon,World Class,90%,03:20:45,406
+david-graham-kevan,5 km,Recreational,35%,00:43:49,101
+david-graham-kevan,5 km,Club,50%,00:30:40,102
+david-graham-kevan,5 km,Local Competitive,60%,00:25:34,103
+david-graham-kevan,5 km,Regional Class,70%,00:21:54,104
+david-graham-kevan,5 km,National Class,80%,00:19:10,105
+david-graham-kevan,5 km,World Class,90%,00:17:02,106
+david-graham-kevan,10 km,Recreational,35%,01:29:24,201
+david-graham-kevan,10 km,Club,50%,01:02:35,202
+david-graham-kevan,10 km,Local Competitive,60%,00:52:09,203
+david-graham-kevan,10 km,Regional Class,70%,00:44:42,204
+david-graham-kevan,10 km,National Class,80%,00:39:07,205
+david-graham-kevan,10 km,World Class,90%,00:34:46,206
+david-graham-kevan,Half Marathon,Recreational,35%,03:15:47,301
+david-graham-kevan,Half Marathon,Club,50%,02:17:03,302
+david-graham-kevan,Half Marathon,Local Competitive,60%,01:54:12,303
+david-graham-kevan,Half Marathon,Regional Class,70%,01:37:53,304
+david-graham-kevan,Half Marathon,National Class,80%,01:25:39,305
+david-graham-kevan,Half Marathon,World Class,90%,01:16:08,306
+david-graham-kevan,Marathon,Recreational,35%,06:46:42,401
+david-graham-kevan,Marathon,Club,50%,04:44:41,402
+david-graham-kevan,Marathon,Local Competitive,60%,03:57:14,403
+david-graham-kevan,Marathon,Regional Class,70%,03:23:21,404
+david-graham-kevan,Marathon,National Class,80%,02:57:56,405
+david-graham-kevan,Marathon,World Class,90%,02:38:09,406
+poppy-coleman,5 km,Recreational,35%,00:39:42,101
+poppy-coleman,5 km,Club,50%,00:27:48,102
+poppy-coleman,5 km,Local Competitive,60%,00:23:10,103
+poppy-coleman,5 km,Regional Class,70%,00:19:51,104
+poppy-coleman,5 km,National Class,80%,00:17:22,105
+poppy-coleman,5 km,World Class,90%,00:15:26,106
+poppy-coleman,10 km,Recreational,35%,01:22:11,201
+poppy-coleman,10 km,Club,50%,00:57:32,202
+poppy-coleman,10 km,Local Competitive,60%,00:47:56,203
+poppy-coleman,10 km,Regional Class,70%,00:41:05,204
+poppy-coleman,10 km,National Class,80%,00:35:57,205
+poppy-coleman,10 km,World Class,90%,00:31:57,206
+poppy-coleman,Half Marathon,Recreational,35%,02:59:37,301
+poppy-coleman,Half Marathon,Club,50%,02:05:44,302
+poppy-coleman,Half Marathon,Local Competitive,60%,01:44:46,303
+poppy-coleman,Half Marathon,Regional Class,70%,01:29:48,304
+poppy-coleman,Half Marathon,National Class,80%,01:18:35,305
+poppy-coleman,Half Marathon,World Class,90%,01:09:51,306
+poppy-coleman,Marathon,Recreational,35%,06:13:06,401
+poppy-coleman,Marathon,Club,50%,04:21:10,402
+poppy-coleman,Marathon,Local Competitive,60%,03:37:38,403
+poppy-coleman,Marathon,Regional Class,70%,03:06:33,404
+poppy-coleman,Marathon,National Class,80%,02:43:13,405
+poppy-coleman,Marathon,World Class,90%,02:25:05,406
+laura-foster,5 km,Recreational,35%,00:39:42,101
+laura-foster,5 km,Club,50%,00:27:48,102
+laura-foster,5 km,Local Competitive,60%,00:23:10,103
+laura-foster,5 km,Regional Class,70%,00:19:51,104
+laura-foster,5 km,National Class,80%,00:17:22,105
+laura-foster,5 km,World Class,90%,00:15:26,106
+laura-foster,10 km,Recreational,35%,01:22:11,201
+laura-foster,10 km,Club,50%,00:57:32,202
+laura-foster,10 km,Local Competitive,60%,00:47:56,203
+laura-foster,10 km,Regional Class,70%,00:41:05,204
+laura-foster,10 km,National Class,80%,00:35:57,205
+laura-foster,10 km,World Class,90%,00:31:57,206
+laura-foster,Half Marathon,Recreational,35%,02:59:37,301
+laura-foster,Half Marathon,Club,50%,02:05:44,302
+laura-foster,Half Marathon,Local Competitive,60%,01:44:46,303
+laura-foster,Half Marathon,Regional Class,70%,01:29:48,304
+laura-foster,Half Marathon,National Class,80%,01:18:35,305
+laura-foster,Half Marathon,World Class,90%,01:09:51,306
+laura-foster,Marathon,Recreational,35%,06:11:14,401
+laura-foster,Marathon,Club,50%,04:19:52,402
+laura-foster,Marathon,Local Competitive,60%,03:36:33,403
+laura-foster,Marathon,Regional Class,70%,03:05:37,404
+laura-foster,Marathon,National Class,80%,02:42:25,405
+laura-foster,Marathon,World Class,90%,02:24:22,406
+caitlin-siostrom,5 km,Recreational,35%,00:42:08,101
+caitlin-siostrom,5 km,Club,50%,00:29:29,102
+caitlin-siostrom,5 km,Local Competitive,60%,00:24:34,103
+caitlin-siostrom,5 km,Regional Class,70%,00:21:04,104
+caitlin-siostrom,5 km,National Class,80%,00:18:26,105
+caitlin-siostrom,5 km,World Class,90%,00:16:23,106
+caitlin-siostrom,10 km,Recreational,35%,01:25:56,201
+caitlin-siostrom,10 km,Club,50%,01:00:09,202
+caitlin-siostrom,10 km,Local Competitive,60%,00:50:08,203
+caitlin-siostrom,10 km,Regional Class,70%,00:42:58,204
+caitlin-siostrom,10 km,National Class,80%,00:37:36,205
+caitlin-siostrom,10 km,World Class,90%,00:33:25,206
+caitlin-siostrom,Half Marathon,Recreational,35%,03:08:20,301
+caitlin-siostrom,Half Marathon,Club,50%,02:11:50,302
+caitlin-siostrom,Half Marathon,Local Competitive,60%,01:49:51,303
+caitlin-siostrom,Half Marathon,Regional Class,70%,01:34:10,304
+caitlin-siostrom,Half Marathon,National Class,80%,01:22:23,305
+caitlin-siostrom,Half Marathon,World Class,90%,01:13:14,306
+caitlin-siostrom,Marathon,Recreational,35%,06:25:32,401
+caitlin-siostrom,Marathon,Club,50%,04:29:52,402
+caitlin-siostrom,Marathon,Local Competitive,60%,03:44:53,403
+caitlin-siostrom,Marathon,Regional Class,70%,03:12:46,404
+caitlin-siostrom,Marathon,National Class,80%,02:48:40,405
+caitlin-siostrom,Marathon,World Class,90%,02:29:55,406
+debbie-martin,5 km,Recreational,35%,00:42:52,101
+debbie-martin,5 km,Club,50%,00:30:00,102
+debbie-martin,5 km,Local Competitive,60%,00:25:00,103
+debbie-martin,5 km,Regional Class,70%,00:21:26,104
+debbie-martin,5 km,National Class,80%,00:18:45,105
+debbie-martin,5 km,World Class,90%,00:16:40,106
+debbie-martin,10 km,Recreational,35%,01:27:10,201
+debbie-martin,10 km,Club,50%,01:01:01,202
+debbie-martin,10 km,Local Competitive,60%,00:50:50,203
+debbie-martin,10 km,Regional Class,70%,00:43:35,204
+debbie-martin,10 km,National Class,80%,00:38:08,205
+debbie-martin,10 km,World Class,90%,00:33:53,206
+debbie-martin,Half Marathon,Recreational,35%,03:11:11,301
+debbie-martin,Half Marathon,Club,50%,02:13:49,302
+debbie-martin,Half Marathon,Local Competitive,60%,01:51:31,303
+debbie-martin,Half Marathon,Regional Class,70%,01:35:35,304
+debbie-martin,Half Marathon,National Class,80%,01:23:38,305
+debbie-martin,Half Marathon,World Class,90%,01:14:21,306
+debbie-martin,Marathon,Recreational,35%,06:30:09,401
+debbie-martin,Marathon,Club,50%,04:33:06,402
+debbie-martin,Marathon,Local Competitive,60%,03:47:35,403
+debbie-martin,Marathon,Regional Class,70%,03:15:04,404
+debbie-martin,Marathon,National Class,80%,02:50:41,405
+debbie-martin,Marathon,World Class,90%,02:31:43,406
+jack-graham-kevan,5 km,Recreational,35%,00:36:37,101
+jack-graham-kevan,5 km,Club,50%,00:25:38,102
+jack-graham-kevan,5 km,Local Competitive,60%,00:21:21,103
+jack-graham-kevan,5 km,Regional Class,70%,00:18:18,104
+jack-graham-kevan,5 km,National Class,80%,00:16:01,105
+jack-graham-kevan,5 km,World Class,90%,00:14:14,106
+jack-graham-kevan,10 km,Recreational,35%,01:15:25,201
+jack-graham-kevan,10 km,Club,50%,00:52:48,202
+jack-graham-kevan,10 km,Local Competitive,60%,00:44:00,203
+jack-graham-kevan,10 km,Regional Class,70%,00:37:42,204
+jack-graham-kevan,10 km,National Class,80%,00:33:00,205
+jack-graham-kevan,10 km,World Class,90%,00:29:20,206
+jack-graham-kevan,Half Marathon,Recreational,35%,02:44:20,301
+jack-graham-kevan,Half Marathon,Club,50%,01:55:02,302
+jack-graham-kevan,Half Marathon,Local Competitive,60%,01:35:51,303
+jack-graham-kevan,Half Marathon,Regional Class,70%,01:22:10,304
+jack-graham-kevan,Half Marathon,National Class,80%,01:11:53,305
+jack-graham-kevan,Half Marathon,World Class,90%,01:03:54,306
+jack-graham-kevan,Marathon,Recreational,35%,05:44:31,401
+jack-graham-kevan,Marathon,Club,50%,04:01:10,402
+jack-graham-kevan,Marathon,Local Competitive,60%,03:20:58,403
+jack-graham-kevan,Marathon,Regional Class,70%,02:52:15,404
+jack-graham-kevan,Marathon,National Class,80%,02:30:43,405
+jack-graham-kevan,Marathon,World Class,90%,02:13:58,406
+blake-coleman,5 km,Recreational,35%,00:36:37,101
+blake-coleman,5 km,Club,50%,00:25:38,102
+blake-coleman,5 km,Local Competitive,60%,00:21:21,103
+blake-coleman,5 km,Regional Class,70%,00:18:18,104
+blake-coleman,5 km,National Class,80%,00:16:01,105
+blake-coleman,5 km,World Class,90%,00:14:14,106
+blake-coleman,10 km,Recreational,35%,01:15:25,201
+blake-coleman,10 km,Club,50%,00:52:48,202
+blake-coleman,10 km,Local Competitive,60%,00:44:00,203
+blake-coleman,10 km,Regional Class,70%,00:37:42,204
+blake-coleman,10 km,National Class,80%,00:33:00,205
+blake-coleman,10 km,World Class,90%,00:29:20,206
+blake-coleman,Half Marathon,Recreational,35%,02:44:20,301
+blake-coleman,Half Marathon,Club,50%,01:55:02,302
+blake-coleman,Half Marathon,Local Competitive,60%,01:35:51,303
+blake-coleman,Half Marathon,Regional Class,70%,01:22:10,304
+blake-coleman,Half Marathon,National Class,80%,01:11:53,305
+blake-coleman,Half Marathon,World Class,90%,01:03:54,306
+blake-coleman,Marathon,Recreational,35%,05:44:31,401
+blake-coleman,Marathon,Club,50%,04:01:10,402
+blake-coleman,Marathon,Local Competitive,60%,03:20:58,403
+blake-coleman,Marathon,Regional Class,70%,02:52:15,404
+blake-coleman,Marathon,National Class,80%,02:30:43,405
+blake-coleman,Marathon,World Class,90%,02:13:58,406
+ben-graham-kevan,5 km,Recreational,35%,00:36:37,101
+ben-graham-kevan,5 km,Club,50%,00:25:38,102
+ben-graham-kevan,5 km,Local Competitive,60%,00:21:21,103
+ben-graham-kevan,5 km,Regional Class,70%,00:18:18,104
+ben-graham-kevan,5 km,National Class,80%,00:16:01,105
+ben-graham-kevan,5 km,World Class,90%,00:14:14,106
+ben-graham-kevan,10 km,Recreational,35%,01:15:25,201
+ben-graham-kevan,10 km,Club,50%,00:52:48,202
+ben-graham-kevan,10 km,Local Competitive,60%,00:44:00,203
+ben-graham-kevan,10 km,Regional Class,70%,00:37:42,204
+ben-graham-kevan,10 km,National Class,80%,00:33:00,205
+ben-graham-kevan,10 km,World Class,90%,00:29:20,206
+ben-graham-kevan,Half Marathon,Recreational,35%,02:44:20,301
+ben-graham-kevan,Half Marathon,Club,50%,01:55:02,302
+ben-graham-kevan,Half Marathon,Local Competitive,60%,01:35:51,303
+ben-graham-kevan,Half Marathon,Regional Class,70%,01:22:10,304
+ben-graham-kevan,Half Marathon,National Class,80%,01:11:53,305
+ben-graham-kevan,Half Marathon,World Class,90%,01:03:54,306
+ben-graham-kevan,Marathon,Recreational,35%,05:45:12,401
+ben-graham-kevan,Marathon,Club,50%,04:01:38,402
+ben-graham-kevan,Marathon,Local Competitive,60%,03:21:22,403
+ben-graham-kevan,Marathon,Regional Class,70%,02:52:36,404
+ben-graham-kevan,Marathon,National Class,80%,02:31:01,405
+ben-graham-kevan,Marathon,World Class,90%,02:14:14,406
+louise-hamilton,5 km,Recreational,35%,00:43:44,101
+louise-hamilton,5 km,Club,50%,00:30:37,102
+louise-hamilton,5 km,Local Competitive,60%,00:25:31,103
+louise-hamilton,5 km,Regional Class,70%,00:21:52,104
+louise-hamilton,5 km,National Class,80%,00:19:08,105
+louise-hamilton,5 km,World Class,90%,00:17:00,106
+louise-hamilton,10 km,Recreational,35%,01:28:35,201
+louise-hamilton,10 km,Club,50%,01:02:00,202
+louise-hamilton,10 km,Local Competitive,60%,00:51:40,203
+louise-hamilton,10 km,Regional Class,70%,00:44:17,204
+louise-hamilton,10 km,National Class,80%,00:38:45,205
+louise-hamilton,10 km,World Class,90%,00:34:27,206
+louise-hamilton,Half Marathon,Recreational,35%,03:14:31,301
+louise-hamilton,Half Marathon,Club,50%,02:16:09,302
+louise-hamilton,Half Marathon,Local Competitive,60%,01:53:28,303
+louise-hamilton,Half Marathon,Regional Class,70%,01:37:15,304
+louise-hamilton,Half Marathon,National Class,80%,01:25:06,305
+louise-hamilton,Half Marathon,World Class,90%,01:15:38,306
+louise-hamilton,Marathon,Recreational,35%,06:35:31,401
+louise-hamilton,Marathon,Club,50%,04:36:51,402
+louise-hamilton,Marathon,Local Competitive,60%,03:50:43,403
+louise-hamilton,Marathon,Regional Class,70%,03:17:45,404
+louise-hamilton,Marathon,National Class,80%,02:53:02,405
+louise-hamilton,Marathon,World Class,90%,02:33:48,406
+jess-graham-kevan,5 km,Recreational,35%,00:50:48,101
+jess-graham-kevan,5 km,Club,50%,00:35:34,102
+jess-graham-kevan,5 km,Local Competitive,60%,00:29:38,103
+jess-graham-kevan,5 km,Regional Class,70%,00:25:24,104
+jess-graham-kevan,5 km,National Class,80%,00:22:13,105
+jess-graham-kevan,5 km,World Class,90%,00:19:45,106
+jess-graham-kevan,10 km,Recreational,35%,01:45:27,201
+jess-graham-kevan,10 km,Club,50%,01:13:49,202
+jess-graham-kevan,10 km,Local Competitive,60%,01:01:30,203
+jess-graham-kevan,10 km,Regional Class,70%,00:52:43,204
+jess-graham-kevan,10 km,National Class,80%,00:46:08,205
+jess-graham-kevan,10 km,World Class,90%,00:41:00,206
+jess-graham-kevan,Half Marathon,Recreational,35%,04:09:28,301
+jess-graham-kevan,Half Marathon,Club,50%,02:54:37,302
+jess-graham-kevan,Half Marathon,Local Competitive,60%,02:25:31,303
+jess-graham-kevan,Half Marathon,Regional Class,70%,02:04:44,304
+jess-graham-kevan,Half Marathon,National Class,80%,01:49:08,305
+jess-graham-kevan,Half Marathon,World Class,90%,01:37:00,306
+jess-graham-kevan,Marathon,Recreational,35%,09:12:36,401
+jess-graham-kevan,Marathon,Club,50%,06:26:49,402
+jess-graham-kevan,Marathon,Local Competitive,60%,05:22:21,403
+jess-graham-kevan,Marathon,Regional Class,70%,04:36:18,404
+jess-graham-kevan,Marathon,National Class,80%,04:01:45,405
+jess-graham-kevan,Marathon,World Class,90%,03:34:54,406
