@@ -138,7 +138,6 @@ function renderHallOfFameCard(row) {
         ? ` standard-${normalizeHeader(ageGradedCategory)}`
         : '';
     const details = [
-        row.ageclass,
         row.resulttype,
         row.race
     ].filter(Boolean).map(escapeHTML).join(' / ');
@@ -183,6 +182,12 @@ function renderHallOfFameCard(row) {
                 <div class="hof-secondary">
                     ${row.secondarymetriclabel ? `<span>${escapeHTML(row.secondarymetriclabel)}</span>` : ''}
                     ${escapeHTML(row.secondarymetric)}
+                </div>
+            ` : ''}
+            ${row.ageclass ? `
+                <div class="hof-age-class">
+                    <span>Age class</span>
+                    <strong>${escapeHTML(row.ageclass)}</strong>
                 </div>
             ` : ''}
             ${details ? `<div class="hof-detail">${details}</div>` : ''}
