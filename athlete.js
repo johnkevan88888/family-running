@@ -123,7 +123,7 @@ spanGaps: true
                             const row = sourceResults[context.dataIndex];
 
                             return [
-                                `Event: ${row.Event}`,
+                                `\u{1F4CD} ${row.Event}`,
                                 `Distance: ${row.Distance}`,
                                 `Time: ${row.Time}`,
                                 `Class: ${row.TimeClass}`
@@ -181,11 +181,11 @@ function renderTable(rows) {
     let html = '<table border="1" cellpadding="8" cellspacing="0">';
     html += `
         <tr>
-            <th>Date</th>
+            <th>&#128197; Date</th>
             <th>Distance</th>
             <th>Time</th>
             <th>Age Grade</th>
-            <th>Event</th>
+            <th>&#128205; Event</th>
             <th>Time Class</th>
         </tr>
     `;
@@ -193,11 +193,11 @@ function renderTable(rows) {
     rows.forEach(row => {
         html += `
             <tr>
-                <td>${row.Date}</td>
+                <td>${escapeHTML(row.Date)}</td>
                 <td>${row.Distance}</td>
                 <td>${row.Time}</td>
                 <td>${row.AgeGrade}</td>
-                <td>${row.Event}</td>
+                <td>${escapeHTML(row.Event)}</td>
                 <td>${row.TimeClass}</td>
             </tr>
         `;
@@ -322,6 +322,8 @@ function formatPBBlock(label, result, isAgeGrade) {
             <div class="pb-label">${label}</div>
             <div class="pb-value">${mainValue}</div>
             <div class="pb-sub">${secondaryValue}</div>
+            ${result.Event ? `<div class="pb-meta">&#128205; ${escapeHTML(result.Event)}</div>` : ''}
+            ${result.Date ? `<div class="pb-meta">&#128197; ${escapeHTML(result.Date)}</div>` : ''}
         </div>
     `;
 }
@@ -333,8 +335,8 @@ function formatPB(result) {
 
     return `
         <strong>${result.Time}</strong><br>
-        <span>${result.Event}</span><br>
-        <span>${result.Date}</span>
+        <span>&#128205; ${escapeHTML(result.Event)}</span><br>
+        <span>&#128197; ${escapeHTML(result.Date)}</span>
     `;
 }
 
@@ -603,7 +605,10 @@ function renderOfficialMedal(medal) {
     const medalName = medal.Medal || '';
     const medalClass = clean(medalName);
     const metric = [medal.Time, medal.AgeGrade].filter(Boolean).join(' · ');
-    const event = [medal.EventDate, medal.EventName].filter(Boolean).join(' · ');
+    const event = [
+        medal.EventName ? `&#128205; ${escapeHTML(medal.EventName)}` : '',
+        medal.EventDate ? `&#128197; ${escapeHTML(medal.EventDate)}` : ''
+    ].filter(Boolean).join(' &nbsp; ');
     const context = [medal.Distance, medal.Period].filter(Boolean).join(' · ');
 
     return `
@@ -613,7 +618,7 @@ function renderOfficialMedal(medal) {
                 <div class="official-medal-title">${escapeHTML(medal.AwardTitle)}</div>
                 <div class="official-medal-context">${escapeHTML(context)}</div>
                 ${metric ? `<div class="official-medal-metric">${escapeHTML(metric)}</div>` : ''}
-                ${event ? `<div class="official-medal-event">${escapeHTML(event)}</div>` : ''}
+                ${event ? `<div class="official-medal-event">${event}</div>` : ''}
             </div>
         </article>
     `;

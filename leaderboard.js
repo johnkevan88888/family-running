@@ -142,7 +142,10 @@ function renderHallOfFameCard(row) {
         row.resulttype,
         row.race
     ].filter(Boolean).map(escapeHTML).join(' / ');
-    const dateEvent = [row.event, row.date].filter(Boolean).map(escapeHTML).join(' / ');
+    const dateEvent = [
+        row.event ? `&#128205; ${escapeHTML(row.event)}` : '',
+        row.date ? `&#128197; ${escapeHTML(row.date)}` : ''
+    ].filter(Boolean).join(' &nbsp; ');
 
     if (isVacant) {
         return `
@@ -261,7 +264,7 @@ async function loadSiteInfo() {
         const siteVersion = siteVersionRow ? ` / ${siteVersionRow[1]}` : '';
 
         document.getElementById('last-updated').innerHTML =
-            `Last Updated: ${localTime}<br>
+            `&#128197; Last Updated: ${localTime}<br>
              Published from: ${publishedFrom}${siteVersion}`;
     }
 }
