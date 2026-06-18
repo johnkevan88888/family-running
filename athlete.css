@@ -57,7 +57,7 @@ body {
     align-items: center;
     color: #eef5fb;
     display: inline-flex;
-    font-size: 0.9rem;
+    font-size: 1.08rem;
     font-weight: 800;
     gap: 8px;
     text-decoration: none;
@@ -65,7 +65,7 @@ body {
 
 .back-link span {
     color: #ffd700;
-    font-size: 1.15rem;
+    font-size: 1.3rem;
 }
 
 .back-link:hover {
@@ -75,7 +75,7 @@ body {
 
 .athlete-context {
     color: #dce7f1;
-    font-size: 0.78rem;
+    font-size: 0.98rem;
     font-weight: 800;
     text-transform: uppercase;
 }
@@ -86,7 +86,7 @@ body {
 
 .athlete-header-label {
     color: #ffd700;
-    font-size: 0.75rem;
+    font-size: 0.98rem;
     font-weight: 900;
     margin-bottom: 6px;
     text-transform: uppercase;
