@@ -505,14 +505,13 @@ function renderCrownStandard(standard) {
     const targetDistance = crownDistance || standard.Distance || '';
     const shouldShowCrownDistance = crownDistance &&
         (isOverallCrown || clean(crownDistance) !== clean(standard.Distance));
-    const timeCaption = targetDistance
-        ? `${isHeld ? 'benchmark' : 'required'} over ${targetDistance}${isHeld ? '' : ' to take crown'}`
-        : `${isHeld ? 'benchmark to stay ahead' : 'required to take crown'}`;
+    const timeCaption = currentAgeTargetCaption(isHeld, targetDistance);
+    const statusLabel = isHeld ? 'Already held' : status;
     const crownFacts = [
-        shouldShowCrownDistance ? `Won over: ${crownDistance}` : '',
-        standard.CrownTime ? `Winning time: ${standard.CrownTime}` : '',
-        standard.CrownAgeCategory ? `Age category: ${standard.CrownAgeCategory}` : '',
-        standard.CrownAgeGrade ? `Age grade: ${standard.CrownAgeGrade}` : ''
+        shouldShowCrownDistance ? `Crown won over: ${crownDistance}` : '',
+        standard.CrownTime ? `Crown time: ${standard.CrownTime}` : '',
+        standard.CrownAgeCategory ? `Winning age class: ${standard.CrownAgeCategory}` : '',
+        standard.CrownAgeGrade ? `Crown age grade: ${standard.CrownAgeGrade}` : ''
     ].filter(Boolean);
     const overallTargets = isOverallCrown
         ? parseOverallTargets(standard.OverallTargetsToTake)
@@ -520,7 +519,7 @@ function renderCrownStandard(standard) {
     const overallTargetsHTML = overallTargets.length
         ? `
             <div class="crown-standard-targets">
-                <div class="crown-standard-targets-title">${isHeld ? 'Benchmarks by distance' : 'Required by distance'}</div>
+                <div class="crown-standard-targets-title">${isHeld ? 'Current-age targets to beat this crown score' : 'Current-age targets to take this crown'}</div>
                 <div class="crown-standard-target-list">
                     ${overallTargets.map(target => `
                         <div class="crown-standard-target">
@@ -533,10 +532,10 @@ function renderCrownStandard(standard) {
         `
         : '';
     const gap = !isHeld && standard.GapToPB
-        ? `<div class="crown-standard-gap">PB gap: ${escapeHTML(standard.GapToPB)}</div>`
+        ? `<div class="crown-standard-gap">Gap from your PB to the crown target: ${escapeHTML(standard.GapToPB)}</div>`
         : '';
     const pb = !isHeld && standard.AthletePB
-        ? `<div class="crown-standard-meta">PB: ${escapeHTML(standard.AthletePB)}</div>`
+        ? `<div class="crown-standard-meta">Your PB over ${escapeHTML(standard.Distance)}: ${escapeHTML(standard.AthletePB)}</div>`
         : '';
 
     return `
@@ -546,7 +545,7 @@ function renderCrownStandard(standard) {
                     <div class="crown-standard-holder-label">${escapeHTML(holderLabel)}</div>
                     <div class="crown-standard-holder-name">${escapeHTML(holderName)}</div>
                 </div>
-                <span class="crown-standard-status">${escapeHTML(status)}${isHeld ? ' &#129351;' : ''}</span>
+                <span class="crown-standard-status">${escapeHTML(statusLabel)}${isHeld ? ' &#129351;' : ''}</span>
             </div>
             <div class="crown-standard-award">
                 <span class="crown-standard-distance">${escapeHTML(standard.Distance)}</span>
@@ -564,6 +563,16 @@ function renderCrownStandard(standard) {
             ${gap}
         </article>
     `;
+}
+
+function currentAgeTargetCaption(isHeld, targetDistance) {
+    const distanceText = targetDistance
+        ? ` over ${targetDistance}`
+        : '';
+
+    return isHeld
+        ? `current-age time needed${distanceText} to beat your crown age grade`
+        : `current-age time needed${distanceText} to take the crown`;
 }
 
 function crownStandardStatusClass(status) {

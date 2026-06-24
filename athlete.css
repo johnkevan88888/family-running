@@ -270,6 +270,14 @@ body {
     margin-bottom: 40px;
 }
 
+.crown-standards-note {
+    color: #4b5a66;
+    font-size: 0.98rem;
+    font-weight: 700;
+    line-height: 1.35;
+    margin: -12px 0 18px;
+}
+
 .crown-standards-section h2,
 .age-grade-standards-section h2 {
     background: #1e3a5f;
@@ -480,8 +488,9 @@ body {
 .crown-standard-time span {
     display: block;
     color: #555;
-    font-size: 0.88rem;
+    font-size: 0.92rem;
     font-weight: 700;
+    line-height: 1.25;
     margin-top: 3px;
 }
 
@@ -495,7 +504,7 @@ body {
 
 .crown-standard-targets-title {
     color: #1e3a5f;
-    font-size: 0.72rem;
+    font-size: 0.76rem;
     font-weight: 900;
     letter-spacing: 0.06em;
     margin-bottom: 8px;
