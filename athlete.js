@@ -224,6 +224,7 @@ function buildPersonalBests(results) {
     const distances = [
         { label: 'Marathon', values: ['Marathon'] },
         { label: 'Half Marathon', values: ['Half Marathon', 'H. Mar', 'H Mar', 'HMar', 'Half Mar'] },
+        { label: '10 Mile', values: ['10 Mile', '10 mile', '10M', '10 M', '10 mi'] },
         { label: '10 km', values: ['10 km', '10km'] },
         { label: '5 km', values: ['5 km', '5km'] }
     ];
