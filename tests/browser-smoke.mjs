@@ -116,6 +116,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertVacantStatesRender(page, mode, viewport);
         await assertCollapsibleSections(page, mode, viewport);
         await assertAthleteNavigation(page, mode, viewport);
+        await assertAthleteOfficialMedals(page, mode, viewport);
 
         await page.setViewportSize(viewport);
         await page.goto(`${preview.baseUrl}/?site=${mode}`, { waitUntil: 'domcontentloaded' });
@@ -235,6 +236,86 @@ async function assertAthleteNavigation(page, mode, viewport) {
     await waitForRenderedChampionship(page, mode);
 }
 
+async function assertAthleteOfficialMedals(page, mode, viewport) {
+    const medalScenario = await findMedalledAthleteScenario(mode);
+
+    if (!medalScenario) {
+        return;
+    }
+
+    const requestUrls = [];
+    const captureRequest = request => {
+        if (isSameOrigin(request.url())) {
+            requestUrls.push(request.url());
+        }
+    };
+
+    page.on('request', captureRequest);
+
+    try {
+        await page.goto(`${preview.baseUrl}/athlete.html?id=${encodeURIComponent(medalScenario.athleteId)}&site=${mode}`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#athlete-name');
+        await page.waitForFunction(() => {
+            const name = document.querySelector('#athlete-name')?.textContent?.trim() || '';
+            return name && name !== 'Loading...' && name !== 'Athlete not found';
+        });
+        await page.locator('#official-medals-section:not(.hidden) .official-medal').first().waitFor({ state: 'visible' });
+        await waitForNetworkToSettle(page);
+    } finally {
+        page.off('request', captureRequest);
+    }
+
+    const requestedPaths = requestUrls
+        .map(sameOriginRequestPath)
+        .filter(Boolean);
+    const officialMedalsPath = `data/${mode}/official_medals.csv`;
+
+    if (!requestedPaths.includes(officialMedalsPath)) {
+        failures.push(`${mode}/${viewport.name}: athlete medal profile did not request ${officialMedalsPath}.`);
+    }
+
+    const leaderboardPaths = await athleteMedalForbiddenLeaderboardPaths(mode);
+    const requestedLeaderboardPaths = leaderboardPaths.filter(file => requestedPaths.includes(file));
+
+    if (requestedLeaderboardPaths.length) {
+        failures.push(`${mode}/${viewport.name}: athlete medal profile requested leaderboard data: ${requestedLeaderboardPaths.join(', ')}.`);
+    }
+
+    await assertDisplayedOfficialMedals(page, mode, viewport, medalScenario.medals);
+}
+
+async function assertDisplayedOfficialMedals(page, mode, viewport, expectedMedals) {
+    const cards = page.locator('#official-medals .official-medal');
+    const cardCount = await cards.count();
+
+    if (cardCount !== expectedMedals.length) {
+        failures.push(`${mode}/${viewport.name}: rendered ${cardCount} official medal cards, expected ${expectedMedals.length}.`);
+    }
+
+    const comparableCount = Math.min(cardCount, expectedMedals.length);
+
+    for (let index = 0; index < comparableCount; index += 1) {
+        const medal = expectedMedals[index];
+        const text = normalizeText(await cards.nth(index).textContent());
+        const expectedValues = [
+            medal.AwardTitle,
+            medal.Period,
+            medal.Distance,
+            medal.Time ? `Time: ${medal.Time}` : '',
+            medal.AgeGrade ? `Age grade: ${medal.AgeGrade}` : '',
+            medal.EventName,
+            medal.EventDate,
+            medal.Place ? `#${medal.Place}` : ''
+        ].filter(Boolean);
+
+        for (const expectedValue of expectedValues) {
+            if (!text.includes(normalizeText(expectedValue))) {
+                failures.push(`${mode}/${viewport.name}: official medal card ${index + 1} did not include exported value "${expectedValue}".`);
+            }
+        }
+    }
+}
+
 async function assertVacantStatesRender(page, mode, viewport) {
     const hallRows = await readCsvObjects(`data/${mode}/halloffame.csv`);
     const hasVacant = hallRows.some(row => String(row.Participant || '').toLowerCase().includes('vacant'));
@@ -276,6 +357,40 @@ async function hasAthleteData() {
     return rows.some(row => row.AthleteID);
 }
 
+async function findMedalledAthleteScenario(mode) {
+    const medalRows = await readCsvObjects(`data/${mode}/official_medals.csv`);
+    const athleteRows = await readCsvObjects('data/athlete_results.csv');
+    const athleteIds = new Set(athleteRows.map(row => row.AthleteID).filter(Boolean));
+    const medalsByAthlete = new Map();
+
+    for (const medal of sortRowsByExportedOrder(medalRows).filter(row => athleteIds.has(row.AthleteId))) {
+        if (!medalsByAthlete.has(medal.AthleteId)) {
+            medalsByAthlete.set(medal.AthleteId, []);
+        }
+
+        medalsByAthlete.get(medal.AthleteId).push(medal);
+    }
+
+    const [athleteId, medals] = medalsByAthlete.entries().next().value || [];
+
+    return athleteId
+        ? { athleteId, medals }
+        : null;
+}
+
+async function athleteMedalForbiddenLeaderboardPaths(mode) {
+    const webtables = await readCsvObjects(`data/${mode}/webtables.csv`);
+    const paths = new Set([`data/${mode}/webtables.csv`]);
+
+    for (const row of webtables) {
+        if (row.FileName) {
+            paths.add(`data/${mode}/${row.FileName}`);
+        }
+    }
+
+    return [...paths];
+}
+
 async function readCsvObjects(relativePath) {
     const text = await fs.readFile(path.join(repoRoot, relativePath), 'utf8');
     const rows = parseCsv(text);
@@ -284,6 +399,56 @@ async function readCsvObjects(relativePath) {
     return rows.slice(1)
         .filter(row => row.some(value => value !== ''))
         .map(row => Object.fromEntries(headers.map((header, index) => [header, row[index] || ''])));
+}
+
+function sortRowsByExportedOrder(rows) {
+    return rows
+        .map((row, index) => ({
+            ...row,
+            __csvIndex: index
+        }))
+        .sort(compareExportedRowOrder);
+}
+
+function compareExportedRowOrder(a, b) {
+    const sortA = exportedSortValue(a);
+    const sortB = exportedSortValue(b);
+
+    if (sortA !== null && sortB !== null && sortA !== sortB) {
+        return sortA - sortB;
+    }
+
+    return a.__csvIndex - b.__csvIndex;
+}
+
+function exportedSortValue(row) {
+    for (const field of ['SortOrder', 'DisplayOrder', 'Order']) {
+        if (!Object.prototype.hasOwnProperty.call(row, field)) {
+            continue;
+        }
+
+        const value = Number(row[field]);
+
+        if (Number.isFinite(value)) {
+            return value;
+        }
+    }
+
+    return null;
+}
+
+function sameOriginRequestPath(url) {
+    try {
+        return decodeURIComponent(new URL(url).pathname)
+            .replace(/^\/+/, '')
+            .replace(/\\/g, '/');
+    } catch {
+        return '';
+    }
+}
+
+function normalizeText(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
 function parseCsv(text) {
