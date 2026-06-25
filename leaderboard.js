@@ -137,6 +137,8 @@ function renderHallOfFameCard(row) {
     const standardClass = ageGradedCategory
         ? ` standard-${normalizeHeader(ageGradedCategory)}`
         : '';
+    const isOverallCrown = normalizeHeader(row.award).includes('overall');
+    const winningDistance = row.distance || row.displaydistance || '';
     const details = [
         row.resulttype,
         row.race
@@ -190,10 +192,20 @@ function renderHallOfFameCard(row) {
                     <strong>${escapeHTML(row.ageclass)}</strong>
                 </div>
             ` : ''}
+            ${isOverallCrown && winningDistance ? `
+                <div class="hof-winning-distance">
+                    <span>Won over</span>
+                    <strong>${escapeHTML(formatHallOfFameDistance(winningDistance))}</strong>
+                </div>
+            ` : ''}
             ${details ? `<div class="hof-detail">${details}</div>` : ''}
             ${dateEvent ? `<div class="hof-meta">${dateEvent}</div>` : ''}
         </article>
     `;
+}
+
+function formatHallOfFameDistance(distance) {
+    return String(distance || '').replace(/^H\. Mar$/i, 'Half Marathon');
 }
 
 function standardBadgeContent(category) {
