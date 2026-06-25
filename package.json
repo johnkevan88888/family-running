@@ -1,0 +1,19 @@
+{
+  "name": "family-running",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Static GitHub Pages site for the Family Running Championships.",
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "preview": "node scripts/serve-site.mjs",
+    "preview:build": "node scripts/build-preview-artifact.mjs",
+    "test": "node scripts/run-all-tests.mjs",
+    "validate:safety": "node scripts/validate-repository-safety.mjs",
+    "validate:csv": "node scripts/validate-csv.mjs",
+    "test:browser": "node tests/browser-smoke.mjs",
+    "screenshots:update": "node tests/browser-smoke.mjs --update-screenshots"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.0"
+  }
+}

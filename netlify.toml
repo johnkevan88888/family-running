@@ -1,0 +1,19 @@
+[build]
+  command = "pnpm run preview:build"
+  publish = "test-artifacts/preview-site"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+[context.deploy-preview]
+  command = "pnpm run preview:build"
+  publish = "test-artifacts/preview-site"
+
+[context.branch-deploy]
+  command = "pnpm run preview:build"
+  publish = "test-artifacts/preview-site"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "no-store"
