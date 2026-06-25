@@ -354,15 +354,23 @@ async function buildOfficialMedals() {
 
     if (!section || !container) return;
 
-    const rows = await fetchCSV(`data/${site}/official_medals.csv`);
+    const [medalRows, crownRows] = await Promise.all([
+        fetchCSV(`data/${site}/official_medals.csv`),
+        fetchCSV(`data/${site}/crown_standards.csv`)
+    ]);
 
-    if (!rows.length) return;
-
-    const medals = csvRowsToObjects(rows)
+    const medals = medalRows.length
+        ? csvRowsToObjects(medalRows)
         .filter(row => clean(row.AthleteId) === clean(athleteId))
-        .sort((a, b) => Number(a.SortOrder || 9999) - Number(b.SortOrder || 9999));
+            .sort((a, b) => Number(a.SortOrder || 9999) - Number(b.SortOrder || 9999))
+        : [];
+    const currentCrownsHeld = crownRows.length
+        ? csvRowsToObjects(crownRows)
+            .filter(isCurrentCrownHeldByAthlete)
+            .sort((a, b) => Number(a.SortOrder || 9999) - Number(b.SortOrder || 9999))
+        : [];
 
-    if (medals.length === 0) {
+    if (medals.length === 0 && currentCrownsHeld.length === 0) {
         section.classList.add('hidden');
         container.innerHTML = '';
         return;
@@ -370,9 +378,19 @@ async function buildOfficialMedals() {
 
     section.classList.remove('hidden');
     container.innerHTML = `
-        <div class="official-medal-grid">
-            ${medals.map(renderOfficialMedalHeld).join('')}
-        </div>
+        ${currentCrownsHeld.length ? `
+            <div class="official-crowns-held">
+                <div class="official-crowns-held-title">Current Official Crowns Held</div>
+                <div class="official-crowns-held-grid">
+                    ${currentCrownsHeld.map(renderOfficialCrownHeld).join('')}
+                </div>
+            </div>
+        ` : ''}
+        ${medals.length ? `
+            <div class="official-medal-grid">
+                ${medals.map(renderOfficialMedalHeld).join('')}
+            </div>
+        ` : ''}
     `;
 }
 
@@ -413,6 +431,14 @@ async function buildCrownStandards() {
 function hideCrownStandards(section, container) {
     section.classList.add('hidden');
     container.innerHTML = '';
+}
+
+function isCurrentCrownHeldByAthlete(standard) {
+    return clean(standard.AthleteId) === clean(athleteId) &&
+        clean(standard.Status) === 'held' &&
+        clean(standard.Period) === 'current' &&
+        clean(standard.Distance) !== '' &&
+        clean(standard.Distance) !== 'no standard';
 }
 
 async function buildAgeGradeStandards() {
@@ -646,6 +672,26 @@ function renderOfficialMedalHeld(medal) {
                 <div class="official-medal-context">${context}</div>
                 ${metric ? `<div class="official-medal-metric">${metric}</div>` : ''}
                 ${event ? `<div class="official-medal-event">${event}</div>` : ''}
+            </div>
+        </article>
+    `;
+}
+
+function renderOfficialCrownHeld(crown) {
+    const crownDistance = crown.CrownDistance || crown.Distance || '';
+    const facts = [
+        crown.CrownTime ? `Crown time: ${escapeHTML(crown.CrownTime)}` : '',
+        crown.CrownAgeGrade ? `Age grade: ${escapeHTML(crown.CrownAgeGrade)}` : '',
+        crown.CrownAgeCategory ? `Age class: ${escapeHTML(crown.CrownAgeCategory)}` : ''
+    ].filter(Boolean).join(' &middot; ');
+
+    return `
+        <article class="official-crown-held">
+            <div class="official-crown-held-icon">&#129351;</div>
+            <div>
+                <div class="official-crown-held-title">${escapeHTML(crown.Distance)} crown</div>
+                ${crownDistance ? `<div class="official-crown-held-context">Won over ${escapeHTML(crownDistance)}</div>` : ''}
+                ${facts ? `<div class="official-crown-held-facts">${facts}</div>` : ''}
             </div>
         </article>
     `;
