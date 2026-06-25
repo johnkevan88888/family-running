@@ -348,29 +348,15 @@ function formatPB(result) {
     `;
 }
 
-async function buildOfficialMedals() {
+async function buildOfficialMedals(athleteResults) {
     const section = document.getElementById('official-medals-section');
     const container = document.getElementById('official-medals');
 
     if (!section || !container) return;
 
-    const [medalRows, crownRows] = await Promise.all([
-        fetchCSV(`data/${site}/official_medals.csv`),
-        fetchCSV(`data/${site}/crown_standards.csv`)
-    ]);
+    const medals = await loadOfficialMedalsFromLeaderboards(athleteResults);
 
-    const medals = medalRows.length
-        ? csvRowsToObjects(medalRows)
-        .filter(row => clean(row.AthleteId) === clean(athleteId))
-            .sort((a, b) => Number(a.SortOrder || 9999) - Number(b.SortOrder || 9999))
-        : [];
-    const currentCrownsHeld = crownRows.length
-        ? csvRowsToObjects(crownRows)
-            .filter(isCurrentCrownHeldByAthlete)
-            .sort((a, b) => Number(a.SortOrder || 9999) - Number(b.SortOrder || 9999))
-        : [];
-
-    if (medals.length === 0 && currentCrownsHeld.length === 0) {
+    if (medals.length === 0) {
         section.classList.add('hidden');
         container.innerHTML = '';
         return;
@@ -378,20 +364,84 @@ async function buildOfficialMedals() {
 
     section.classList.remove('hidden');
     container.innerHTML = `
-        ${currentCrownsHeld.length ? `
-            <div class="official-crowns-held">
-                <div class="official-crowns-held-title">Current Official Crowns Held</div>
-                <div class="official-crowns-held-grid">
-                    ${currentCrownsHeld.map(renderOfficialCrownHeld).join('')}
-                </div>
-            </div>
-        ` : ''}
-        ${medals.length ? `
-            <div class="official-medal-grid">
-                ${medals.map(renderOfficialMedalHeld).join('')}
-            </div>
-        ` : ''}
+        <div class="official-medal-grid">
+            ${medals.map(renderOfficialMedalHeld).join('')}
+        </div>
     `;
+}
+
+async function loadOfficialMedalsFromLeaderboards(athleteResults) {
+    const metadataRows = await fetchCSV(`data/${site}/webtables.csv`);
+
+    if (!metadataRows.length) return [];
+
+    const officialTables = csvRowsToObjects(metadataRows)
+        .filter(row => clean(row.TimeClass) === 'official' && clean(row.Enabled) === 'true')
+        .sort((a, b) => Number(a.SortOrder || 9999) - Number(b.SortOrder || 9999));
+
+    const medalGroups = await Promise.all(officialTables.map(async table => {
+        const rows = await fetchCSV(`data/${site}/${table.FileName}`);
+
+        if (!rows.length) return [];
+
+        return csvRowsToObjects(rows)
+            .filter(row => clean(row['Athlete ID']) === clean(athleteId))
+            .filter(row => Number(row.Rank) >= 1 && Number(row.Rank) <= 3)
+            .map(row => leaderboardRowToMedal(row, table, athleteResults));
+    }));
+
+    return medalGroups
+        .flat()
+        .sort((a, b) => Number(a.SortOrder || 9999) - Number(b.SortOrder || 9999));
+}
+
+function leaderboardRowToMedal(row, table, athleteResults) {
+    const rank = Number(row.Rank);
+    const eventDistance = distanceFromSexAgeEvent(row.SexAgeEvent);
+    const result = findMedalResult(athleteResults, row, eventDistance);
+    const medal = rank === 1 ? 'Gold' : rank === 2 ? 'Silver' : 'Bronze';
+
+    return {
+        AthleteId: row['Athlete ID'],
+        Medal: medal,
+        Place: row.Rank,
+        Period: medalPeriodFromTitle(table.DisplayTitle),
+        Distance: displayMedalDistance(table.DisplayDistance),
+        EventDistance: eventDistance,
+        Time: row.Time,
+        AgeGrade: row['Age Graded Score'],
+        EventDate: result ? result.Date : '',
+        EventName: result ? result.Event : '',
+        SortOrder: Number(table.SortOrder || 9999) * 10 + rank
+    };
+}
+
+function medalPeriodFromTitle(title) {
+    return clean(title).startsWith('all time') ? 'All Time' : 'Current';
+}
+
+function displayMedalDistance(distance) {
+    const value = String(distance || '').trim();
+
+    if (value === '5km') return '5 km';
+    if (value === '10km') return '10 km';
+    if (/^H\. Mar$/i.test(value)) return 'Half Marathon';
+
+    return value;
+}
+
+function distanceFromSexAgeEvent(value) {
+    const parts = String(value || '').split('|');
+
+    return displayMedalDistance(parts.length > 1 ? parts[1] : '');
+}
+
+function findMedalResult(athleteResults, medalRow, eventDistance) {
+    return athleteResults.find(result =>
+        result.Time === medalRow.Time &&
+        ageGradeToNumber(result.AgeGrade) === ageGradeToNumber(medalRow['Age Graded Score']) &&
+        distanceMatches(result.Distance, [eventDistance])
+    ) || null;
 }
 
 async function buildCrownStandards() {
@@ -431,14 +481,6 @@ async function buildCrownStandards() {
 function hideCrownStandards(section, container) {
     section.classList.add('hidden');
     container.innerHTML = '';
-}
-
-function isCurrentCrownHeldByAthlete(standard) {
-    return clean(standard.AthleteId) === clean(athleteId) &&
-        clean(standard.Status) === 'held' &&
-        clean(standard.Period) === 'current' &&
-        clean(standard.Distance) !== '' &&
-        clean(standard.Distance) !== 'no standard';
 }
 
 async function buildAgeGradeStandards() {
@@ -656,7 +698,10 @@ function renderOfficialMedalHeld(medal) {
         medal.EventName ? `&#128205; ${escapeHTML(medal.EventName)}` : '',
         medal.EventDate ? `&#128197; ${escapeHTML(medal.EventDate)}` : ''
     ].filter(Boolean).join(' &nbsp; ');
-    const context = [medal.Period, medal.Distance, 'Official'].filter(Boolean)
+    const distanceLabel = clean(medal.Distance) === 'overall' && medal.EventDistance
+        ? `Overall (${medal.EventDistance})`
+        : medal.Distance;
+    const context = [medal.Period, distanceLabel, 'Official'].filter(Boolean)
         .map(escapeHTML)
         .join(' &middot; ');
     const place = medal.Place ? `#${medal.Place}` : medalName;
@@ -672,26 +717,6 @@ function renderOfficialMedalHeld(medal) {
                 <div class="official-medal-context">${context}</div>
                 ${metric ? `<div class="official-medal-metric">${metric}</div>` : ''}
                 ${event ? `<div class="official-medal-event">${event}</div>` : ''}
-            </div>
-        </article>
-    `;
-}
-
-function renderOfficialCrownHeld(crown) {
-    const crownDistance = crown.CrownDistance || crown.Distance || '';
-    const facts = [
-        crown.CrownTime ? `Crown time: ${escapeHTML(crown.CrownTime)}` : '',
-        crown.CrownAgeGrade ? `Age grade: ${escapeHTML(crown.CrownAgeGrade)}` : '',
-        crown.CrownAgeCategory ? `Age class: ${escapeHTML(crown.CrownAgeCategory)}` : ''
-    ].filter(Boolean).join(' &middot; ');
-
-    return `
-        <article class="official-crown-held">
-            <div class="official-crown-held-icon">&#129351;</div>
-            <div>
-                <div class="official-crown-held-title">${escapeHTML(crown.Distance)} crown</div>
-                ${crownDistance ? `<div class="official-crown-held-context">Won over ${escapeHTML(crownDistance)}</div>` : ''}
-                ${facts ? `<div class="official-crown-held-facts">${facts}</div>` : ''}
             </div>
         </article>
     `;
@@ -798,7 +823,7 @@ async function buildAthletePage() {
     document.title = `${athleteResults[0].Participant} | Athlete Profile`;
 
     buildPersonalBests(athleteResults);
-    await buildOfficialMedals();
+    await buildOfficialMedals(athleteResults);
     await buildCrownStandards();
     await buildAgeGradeStandards();
     buildRecentResults(athleteResults);

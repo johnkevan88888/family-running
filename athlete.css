@@ -205,66 +205,6 @@ body {
     margin-bottom: 40px;
 }
 
-.official-crowns-held {
-    margin-bottom: 18px;
-}
-
-.official-crowns-held-title {
-    color: #1e3a5f;
-    font-size: 0.82rem;
-    font-weight: 900;
-    letter-spacing: 0.06em;
-    margin-bottom: 10px;
-    text-transform: uppercase;
-}
-
-.official-crowns-held-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-}
-
-.official-crown-held {
-    align-items: center;
-    background: linear-gradient(135deg, #fff8dc 0%, #ffffff 68%);
-    border-left: 7px solid #ffd700;
-    border-radius: 10px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.11);
-    display: grid;
-    gap: 12px;
-    grid-template-columns: 44px 1fr;
-    padding: 12px 14px;
-}
-
-.official-crown-held-icon {
-    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.16));
-    font-size: 2rem;
-    line-height: 1;
-    text-align: center;
-}
-
-.official-crown-held-title {
-    color: #0f2438;
-    font-size: 1rem;
-    font-weight: 900;
-    line-height: 1.15;
-}
-
-.official-crown-held-context {
-    color: #1e3a5f;
-    font-size: 0.86rem;
-    font-weight: 800;
-    margin-top: 3px;
-}
-
-.official-crown-held-facts {
-    color: #555;
-    font-size: 0.84rem;
-    font-weight: 700;
-    line-height: 1.3;
-    margin-top: 5px;
-}
-
 .official-medal {
     display: grid;
     grid-template-columns: 58px 1fr;
@@ -631,7 +571,6 @@ body {
     }
 
     .official-medal-grid,
-    .official-crowns-held-grid,
     .crown-standards-grid {
         grid-template-columns: 1fr;
     }
