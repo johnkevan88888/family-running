@@ -1,0 +1,16 @@
+node_modules/
+test-artifacts/
+test-results/
+playwright-report/
+
+*.log
+
+*.xls
+*.xlsx
+*.xlsm
+*.xlsb
+~$*
+
+.env
+.env.*
+!.env.example
