@@ -371,7 +371,7 @@ async function buildOfficialMedals() {
     section.classList.remove('hidden');
     container.innerHTML = `
         <div class="official-medal-grid">
-            ${medals.map(renderOfficialMedal).join('')}
+            ${medals.map(renderOfficialMedalHeld).join('')}
         </div>
     `;
 }
@@ -616,6 +616,39 @@ function csvRowsToObjects(rows) {
 
             return obj;
         });
+}
+
+function renderOfficialMedalHeld(medal) {
+    const medalName = medal.Medal || '';
+    const medalClass = clean(medalName);
+    const medalTitle = `${medalName || 'Official'} medal held`;
+    const metric = [
+        medal.Time ? `Time: ${escapeHTML(medal.Time)}` : '',
+        medal.AgeGrade ? `Age grade: ${escapeHTML(medal.AgeGrade)}` : ''
+    ].filter(Boolean).join(' &middot; ');
+    const event = [
+        medal.EventName ? `&#128205; ${escapeHTML(medal.EventName)}` : '',
+        medal.EventDate ? `&#128197; ${escapeHTML(medal.EventDate)}` : ''
+    ].filter(Boolean).join(' &nbsp; ');
+    const context = [medal.Period, medal.Distance, 'Official'].filter(Boolean)
+        .map(escapeHTML)
+        .join(' &middot; ');
+    const place = medal.Place ? `#${medal.Place}` : medalName;
+
+    return `
+        <article class="official-medal ${medalClass}">
+            <div class="official-medal-icon">
+                ${medalIcon(medalName)}
+                <span>${escapeHTML(place)}</span>
+            </div>
+            <div class="official-medal-content">
+                <div class="official-medal-title">${escapeHTML(medalTitle)}</div>
+                <div class="official-medal-context">${context}</div>
+                ${metric ? `<div class="official-medal-metric">${metric}</div>` : ''}
+                ${event ? `<div class="official-medal-event">${event}</div>` : ''}
+            </div>
+        </article>
+    `;
 }
 
 function renderOfficialMedal(medal) {
