@@ -107,6 +107,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await expectText(page, '#site-title', siteName, `${mode} site title`);
         await expectCountAtLeast(page, '#hall-of-fame .hof-card', 1, `${mode} Hall of Fame cards`);
         await expectCountAtLeast(page, '#leaderboards table tr', 2, `${mode} leaderboard rows`);
+        await assertHallOfFameDisplayLabels(page, mode, viewport);
 
         const athleteLinkCount = await page.locator('a[href^="athlete.html?id="]').count();
         if ((await hasAthleteData()) && athleteLinkCount < 1) {
@@ -115,6 +116,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
 
         await assertVacantStatesRender(page, mode, viewport);
         await assertCollapsibleSections(page, mode, viewport);
+        await assertLeaderboardDisplayLabels(page, mode, viewport);
         await assertAthleteNavigation(page, mode, viewport);
         await assertAthleteOfficialMedals(page, mode, viewport);
 
@@ -199,6 +201,34 @@ async function assertCollapsibleSections(page, mode, viewport) {
         element => element.style.display === 'none',
         await content.elementHandle()
     );
+}
+
+async function assertLeaderboardDisplayLabels(page, mode, viewport) {
+    const labels = await page.$$eval('.distance-toggle', nodes =>
+        nodes.map(node => node.textContent.trim().replace(/\s+/g, ' '))
+    );
+
+    if (!labels.some(label => label.includes('10 Mile'))) {
+        failures.push(`${mode}/${viewport.name}: expected a visible 10 Mile leaderboard section.`);
+    }
+
+    if (labels.some(label => label.includes('10mile'))) {
+        failures.push(`${mode}/${viewport.name}: 10 Mile leaderboard section is displayed as "10mile".`);
+    }
+}
+
+async function assertHallOfFameDisplayLabels(page, mode, viewport) {
+    const awards = await page.$$eval('#hall-of-fame .hof-award', nodes =>
+        nodes.map(node => node.textContent.trim().replace(/\s+/g, ' '))
+    );
+
+    if (!awards.some(award => award.includes('10 Mile'))) {
+        failures.push(`${mode}/${viewport.name}: expected visible 10 Mile Hall of Fame cards.`);
+    }
+
+    if (awards.some(award => award.includes('10mile'))) {
+        failures.push(`${mode}/${viewport.name}: Hall of Fame card is displayed as "10mile".`);
+    }
 }
 
 async function assertAthleteNavigation(page, mode, viewport) {
