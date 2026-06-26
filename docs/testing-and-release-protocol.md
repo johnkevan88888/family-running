@@ -65,7 +65,7 @@ Local preview URLs:
 
 Repository safety validation checks tracked files and fails if a private workbook, Excel temporary file, obvious credential file, or private workbook backup-like file is tracked.
 
-CSV validation checks `data/family/`, `data/everyone/`, and shared `data/athlete_results.csv`. It verifies required files, required headers, parseable CSV structure, matching row lengths, referenced leaderboard files, athlete IDs used by links, official medal exports, parseable dates, parseable numeric fields, parseable times, non-empty Hall of Fame data, and non-empty enabled championship files. Vacant states such as "Championship Vacant" and "No eligible results" are accepted.
+CSV validation checks `data/family/`, `data/everyone/`, and shared `data/athlete_results.csv`. It verifies required files, required headers, parseable CSV structure, matching row lengths, leaderboard files referenced by `webtables.csv`, athlete IDs used by links, official medal exports, parseable dates, parseable numeric fields, parseable times, non-empty Hall of Fame data, and non-empty enabled championship files. Athlete medals remain Excel-owned exports and are rendered directly from `official_medals.csv`; validation also checks that those exported medal rows match the current exported official leaderboard CSVs. Vacant states such as "Championship Vacant" and "No eligible results" are accepted.
 
 Browser smoke tests run the site through a local static server for:
 

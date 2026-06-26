@@ -109,8 +109,9 @@ function validateSite(siteMode) {
         validateIsoDate(siteInfoMap.get('LastUpdatedUTC').Value, `${siteDir}/siteinfo.csv`, siteInfoMap.get('LastUpdatedUTC').__rowNumber, 'Value');
     }
 
+    validateLeaderboardIndex(siteDir, siteMode, webtables);
     validateHallOfFame(siteDir);
-    validateOfficialMedals(siteDir);
+    validateOfficialMedals(siteDir, siteMode, webtables);
     validateCrownStandards(siteDir);
     validateAgeGradeStandards(siteDir);
 
@@ -162,7 +163,7 @@ function validateHallOfFame(siteDir) {
     }
 }
 
-function validateOfficialMedals(siteDir) {
+function validateOfficialMedals(siteDir, siteMode, webtables) {
     const file = `${siteDir}/official_medals.csv`;
     const rows = readCsvRequired(file, [
         'AthleteId',
@@ -178,13 +179,304 @@ function validateOfficialMedals(siteDir) {
         'SortOrder'
     ]);
 
-    for (const row of toObjects(rows, file)) {
+    const medalRows = toObjects(rows, file);
+
+    for (const row of medalRows) {
         validateAthleteId(row.AthleteId, file, row.__rowNumber, 'AthleteId', { required: true });
         validateNumber(row.Place, file, row.__rowNumber, 'Place', { required: true });
         validateNumber(row.SortOrder, file, row.__rowNumber, 'SortOrder', { required: true });
         validateDate(row.EventDate, file, row.__rowNumber, 'EventDate');
         validateTime(row.Time, file, row.__rowNumber, 'Time');
         validatePercent(row.AgeGrade, file, row.__rowNumber, 'AgeGrade');
+    }
+
+    validateOfficialMedalsAgainstLeaderboardExports(siteDir, siteMode, webtables, medalRows);
+}
+
+function validateLeaderboardIndex(siteDir, siteMode, webtables) {
+    const referencedFiles = new Set(
+        webtables
+            .map(row => String(row.FileName || '').trim())
+            .filter(Boolean)
+    );
+    const absoluteDir = path.join(repoRoot, siteDir);
+    const leaderboardFiles = fs.readdirSync(absoluteDir)
+        .filter(fileName => Boolean(parseLeaderboardExportFileName(fileName, siteMode)));
+
+    for (const fileName of leaderboardFiles) {
+        if (!referencedFiles.has(fileName)) {
+            addError(`${siteDir}/webtables.csv`, 1, `Leaderboard export "${fileName}" exists but is not referenced by webtables.csv.`);
+        }
+    }
+}
+
+function validateOfficialMedalsAgainstLeaderboardExports(siteDir, siteMode, webtables, medalRows) {
+    const file = `${siteDir}/official_medals.csv`;
+    const actualMedalsByKey = new Map();
+    const expectedMedalsByKey = new Map();
+
+    for (const row of medalRows) {
+        const key = officialMedalKey(row.Period, row.Distance, row.Place);
+
+        if (actualMedalsByKey.has(key)) {
+            addError(file, row.__rowNumber, `Duplicate official medal row for ${medalContext(row)}.`);
+            continue;
+        }
+
+        actualMedalsByKey.set(key, row);
+    }
+
+    for (const expected of expectedOfficialMedals(siteDir, siteMode, webtables)) {
+        expectedMedalsByKey.set(expected.key, expected);
+        const actual = actualMedalsByKey.get(expected.key);
+
+        if (!actual) {
+            addError(file, 1, `Missing official medal row for ${expected.context}.`);
+            continue;
+        }
+
+        compareExportedValue(actual.AthleteId, expected.AthleteId, file, actual.__rowNumber, 'AthleteId', expected.context);
+        compareExportedValue(actual.Medal, expected.Medal, file, actual.__rowNumber, 'Medal', expected.context);
+        compareExportedValue(Number(actual.Place), expected.Place, file, actual.__rowNumber, 'Place', expected.context);
+        compareExportedValue(canonicalPeriodLabel(actual.Period), expected.Period, file, actual.__rowNumber, 'Period', expected.context);
+        compareExportedValue(canonicalDistanceLabel(actual.Distance), expected.Distance, file, actual.__rowNumber, 'Distance', expected.context);
+        compareExportedValue(actual.AwardTitle, expected.AwardTitle, file, actual.__rowNumber, 'AwardTitle', expected.context);
+        compareExportedValue(actual.Time, expected.Time, file, actual.__rowNumber, 'Time', expected.context);
+        compareExportedValue(actual.AgeGrade, expected.AgeGrade, file, actual.__rowNumber, 'AgeGrade', expected.context);
+        compareExportedValue(Number(actual.SortOrder), expected.SortOrder, file, actual.__rowNumber, 'SortOrder', expected.context);
+
+        if (expected.EventDate) {
+            compareExportedValue(actual.EventDate, expected.EventDate, file, actual.__rowNumber, 'EventDate', expected.context);
+        }
+
+        if (expected.EventName) {
+            compareExportedValue(actual.EventName, expected.EventName, file, actual.__rowNumber, 'EventName', expected.context);
+        }
+    }
+
+    for (const [key, actual] of actualMedalsByKey) {
+        if (!expectedMedalsByKey.has(key)) {
+            addError(file, actual.__rowNumber, `Unexpected official medal row for ${medalContext(actual)}.`);
+        }
+    }
+}
+
+function expectedOfficialMedals(siteDir, siteMode, webtables) {
+    const webtableByFile = new Map(
+        webtables.map(row => [String(row.FileName || '').trim(), row])
+    );
+    const sourceFiles = discoverOfficialLeaderboardExports(siteDir, siteMode, webtables);
+    const expected = [];
+
+    for (const sourceFile of sourceFiles) {
+        const sourcePath = `${siteDir}/${sourceFile}`;
+        const metadata = leaderboardMedalMetadata(sourceFile, webtableByFile.get(sourceFile), siteMode);
+        const rows = readCsvRequired(sourcePath, [
+            'Rank',
+            'Participant',
+            'Race Year',
+            'Time Class',
+            'SexAgeEvent',
+            'Time',
+            'Age Graded Score',
+            'Age Graded Category',
+            'Athlete ID'
+        ]);
+
+        for (const row of toObjects(rows, sourcePath)) {
+            const place = Number(row.Rank);
+
+            if (![1, 2, 3].includes(place) || isNoEligibleRow(row) || isVacantParticipant(row.Participant)) {
+                continue;
+            }
+
+            const medal = medalNameForPlace(place);
+            const result = findMatchingAthleteResult(row);
+            const context = `${metadata.Period} ${metadata.Distance} place ${place} from ${sourceFile}`;
+
+            if (!result) {
+                addError(sourcePath, row.__rowNumber, `Could not find a matching athlete result for ${context}.`);
+            }
+
+            expected.push({
+                key: officialMedalKey(metadata.Period, metadata.Distance, place),
+                context,
+                AthleteId: String(row['Athlete ID'] || '').trim(),
+                Medal: medal,
+                Place: place,
+                Period: metadata.Period,
+                Distance: metadata.Distance,
+                AwardTitle: `${metadata.Period} ${metadata.Distance} Official ${medal}`,
+                Time: String(row.Time || '').trim(),
+                AgeGrade: String(row['Age Graded Score'] || '').trim(),
+                EventDate: result ? result.Date : '',
+                EventName: result ? result.Event : '',
+                SortOrder: (metadata.SortOrder * 10) + place
+            });
+        }
+    }
+
+    return expected;
+}
+
+function discoverOfficialLeaderboardExports(siteDir, siteMode, webtables) {
+    const sourceFiles = new Set();
+
+    for (const row of webtables) {
+        const fileName = String(row.FileName || '').trim();
+        const parsed = parseLeaderboardExportFileName(fileName, siteMode);
+
+        if (parsed && parsed.timeClass === 'official') {
+            sourceFiles.add(fileName);
+        }
+    }
+
+    const absoluteDir = path.join(repoRoot, siteDir);
+
+    for (const fileName of fs.readdirSync(absoluteDir)) {
+        const parsed = parseLeaderboardExportFileName(fileName, siteMode);
+
+        if (parsed && parsed.timeClass === 'official') {
+            sourceFiles.add(fileName);
+        }
+    }
+
+    return [...sourceFiles].sort((a, b) =>
+        leaderboardMedalMetadata(a, null, siteMode).SortOrder - leaderboardMedalMetadata(b, null, siteMode).SortOrder
+    );
+}
+
+function leaderboardMedalMetadata(fileName, webtableRow, siteMode) {
+    const parsed = parseLeaderboardExportFileName(fileName, siteMode);
+    const period = canonicalPeriodLabel(webtableRow?.DisplayTitle) || periodLabelFromSlug(parsed?.period);
+    const distance = canonicalDistanceLabel(webtableRow?.DisplayDistance || parsed?.distance);
+    const sortOrder = Number(webtableRow?.SortOrder);
+
+    return {
+        Period: period,
+        Distance: distance,
+        SortOrder: Number.isFinite(sortOrder) ? sortOrder : fallbackLeaderboardSortOrder(parsed)
+    };
+}
+
+function parseLeaderboardExportFileName(fileName, siteMode) {
+    const match = /^(overall|5km|10km|10mile|halfmarathon|marathon)-(current|alltime)-(all|official)-([a-z]+)\.csv$/i.exec(String(fileName || '').trim());
+
+    if (!match || match[4].toLowerCase() !== siteMode) {
+        return null;
+    }
+
+    return {
+        distance: match[1].toLowerCase(),
+        period: match[2].toLowerCase(),
+        timeClass: match[3].toLowerCase()
+    };
+}
+
+function fallbackLeaderboardSortOrder(parsed) {
+    if (!parsed) {
+        return 9999;
+    }
+
+    const distanceSort = {
+        overall: 10,
+        marathon: 20,
+        halfmarathon: 30,
+        '10mile': 40,
+        '10km': 50,
+        '5km': 60
+    };
+    const base = distanceSort[parsed.distance] ?? 999;
+
+    return parsed.period === 'alltime' ? base + 1 : base;
+}
+
+function findMatchingAthleteResult(leaderboardRow) {
+    const athleteId = String(leaderboardRow['Athlete ID'] || '').trim();
+    const resultDistance = distanceFromSexAgeEvent(leaderboardRow.SexAgeEvent);
+
+    return athleteObjects.find(row =>
+        row.AthleteID === athleteId &&
+        clean(row.TimeClass) === clean(leaderboardRow['Time Class']) &&
+        String(row.Time || '').trim() === String(leaderboardRow.Time || '').trim() &&
+        String(row.AgeGrade || '').trim() === String(leaderboardRow['Age Graded Score'] || '').trim() &&
+        canonicalDistanceKey(row.Distance) === canonicalDistanceKey(resultDistance)
+    );
+}
+
+function distanceFromSexAgeEvent(value) {
+    const [, distance = value] = String(value || '').split('|');
+    return distance;
+}
+
+function officialMedalKey(period, distance, place) {
+    return `${canonicalPeriodLabel(period)}|${canonicalDistanceLabel(distance)}|${Number(place)}`;
+}
+
+function medalContext(row) {
+    return `${row.Period || 'Unknown period'} ${row.Distance || 'Unknown distance'} place ${row.Place || '?'}`;
+}
+
+function medalNameForPlace(place) {
+    return {
+        1: 'Gold',
+        2: 'Silver',
+        3: 'Bronze'
+    }[place] || '';
+}
+
+function canonicalPeriodLabel(value) {
+    const text = clean(value).replace(/\s+/g, ' ');
+
+    if (text.includes('all time') || text === 'alltime') {
+        return 'All Time';
+    }
+
+    if (text.includes('current')) {
+        return 'Current';
+    }
+
+    return '';
+}
+
+function periodLabelFromSlug(value) {
+    return value === 'alltime' ? 'All Time' : 'Current';
+}
+
+function canonicalDistanceLabel(value) {
+    const key = canonicalDistanceKey(value);
+
+    return {
+        overall: 'Overall',
+        marathon: 'Marathon',
+        halfmarathon: 'Half Marathon',
+        '10mile': '10 Mile',
+        '10km': '10 km',
+        '5km': '5 km'
+    }[key] || String(value || '').trim();
+}
+
+function canonicalDistanceKey(value) {
+    const key = String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\./g, '')
+        .replace(/\s+/g, '');
+
+    if (['hmar', 'halfmar', 'halfmarathon'].includes(key)) {
+        return 'halfmarathon';
+    }
+
+    if (['10m', '10mi', '10mile'].includes(key)) {
+        return '10mile';
+    }
+
+    return key;
+}
+
+function compareExportedValue(actual, expected, file, rowNumber, column, context) {
+    if (String(actual ?? '').trim() !== String(expected ?? '').trim()) {
+        addError(file, rowNumber, `${column} "${actual}" does not match ${context} value "${expected}".`);
     }
 }
 
@@ -590,6 +882,12 @@ function requireValue(value, file, rowNumber, column) {
     if (!String(value || '').trim()) {
         addError(file, rowNumber, `${column} is required.`);
     }
+}
+
+function clean(value) {
+    return String(value || '')
+        .trim()
+        .toLowerCase();
 }
 
 function isVacantParticipant(value) {
