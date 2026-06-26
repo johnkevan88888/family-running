@@ -65,14 +65,14 @@ Local preview URLs:
 
 Repository safety validation checks tracked files and fails if a private workbook, Excel temporary file, obvious credential file, or private workbook backup-like file is tracked.
 
-CSV validation checks `data/family/`, `data/everyone/`, and shared `data/athlete_results.csv`. It verifies required files, required headers, parseable CSV structure, matching row lengths, referenced leaderboard files, athlete IDs used by links, parseable dates, parseable numeric fields, parseable times, non-empty Hall of Fame data, and non-empty enabled championship files. Vacant states such as "Championship Vacant" and "No eligible results" are accepted.
+CSV validation checks `data/family/`, `data/everyone/`, and shared `data/athlete_results.csv`. It verifies required files, required headers, parseable CSV structure, matching row lengths, referenced leaderboard files, athlete IDs used by links, official medal exports, parseable dates, parseable numeric fields, parseable times, non-empty Hall of Fame data, and non-empty enabled championship files. Vacant states such as "Championship Vacant" and "No eligible results" are accepted.
 
 Browser smoke tests run the site through a local static server for:
 
 - `/?site=family`
 - `/?site=everyone`
 
-They check that each mode loads, uses the expected site title, renders Hall of Fame cards and leaderboards, exposes athlete links where athlete data exists, opens an athlete profile, preserves the original `site` parameter in the back link, handles collapsible sections, renders vacant Hall of Fame states, has no JavaScript exceptions, and has no failed same-origin network requests.
+They check that each mode loads, uses the expected site title, renders Hall of Fame cards and leaderboards, exposes athlete links where athlete data exists, opens an athlete profile, preserves the original `site` parameter in the back link, renders athlete medals exported by Excel directly from `data/<site>/official_medals.csv` without requesting leaderboard CSVs for those medal cards, handles collapsible sections, renders vacant Hall of Fame states, has no JavaScript exceptions, and has no failed same-origin network requests.
 
 Screenshots are saved to `test-artifacts/screenshots/` for:
 
