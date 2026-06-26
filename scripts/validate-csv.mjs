@@ -92,6 +92,7 @@ function validateSite(siteMode) {
         validateAllowed(row.TimeClass, ['All', 'Official'], `${siteDir}/webtables.csv`, row.__rowNumber, 'TimeClass');
         validateBoolean(row.Enabled, `${siteDir}/webtables.csv`, row.__rowNumber, 'Enabled');
         requireValue(row.FileName, `${siteDir}/webtables.csv`, row.__rowNumber, 'FileName');
+        validateLeaderboardDisplayLabels(row, siteMode, `${siteDir}/webtables.csv`);
     }
 
     const siteInfoRows = readCsvRequired(`${siteDir}/siteinfo.csv`, ['Label', 'Value']);
@@ -110,7 +111,7 @@ function validateSite(siteMode) {
     }
 
     validateLeaderboardIndex(siteDir, siteMode, webtables);
-    validateHallOfFame(siteDir);
+    validateHallOfFame(siteDir, siteMode, webtables);
     validateOfficialMedals(siteDir, siteMode, webtables);
     validateCrownStandards(siteDir);
     validateAgeGradeStandards(siteDir);
@@ -128,7 +129,7 @@ function validateSite(siteMode) {
     validateEveryCsvInFolder(siteDir);
 }
 
-function validateHallOfFame(siteDir) {
+function validateHallOfFame(siteDir, siteMode, webtables) {
     const file = `${siteDir}/halloffame.csv`;
     const rows = readCsvRequired(file, [
         'Award',
@@ -161,6 +162,117 @@ function validateHallOfFame(siteDir) {
         validatePercent(row.AgeGrade, file, row.__rowNumber, 'AgeGrade');
         validateAthleteId(row['Athlete ID'], file, row.__rowNumber, 'Athlete ID', { required: true });
     }
+
+    validateHallOfFameAgainstOfficialLeaderboards(siteDir, siteMode, webtables, objects);
+}
+
+function validateHallOfFameAgainstOfficialLeaderboards(siteDir, siteMode, webtables, hallRows) {
+    const file = `${siteDir}/halloffame.csv`;
+    const rowsByAward = new Map();
+
+    for (const row of hallRows) {
+        const award = String(row.Award || '').trim();
+
+        if (rowsByAward.has(award)) {
+            addError(file, row.__rowNumber, `Duplicate Hall of Fame award "${award}".`);
+            continue;
+        }
+
+        rowsByAward.set(award, row);
+    }
+
+    for (const expected of expectedHallOfFameRows(siteDir, siteMode, webtables)) {
+        const actual = rowsByAward.get(expected.Award);
+
+        if (!actual) {
+            addError(file, 1, `Missing Hall of Fame row for "${expected.Award}".`);
+            continue;
+        }
+
+        compareExportedValue(actual.Participant, expected.Participant, file, actual.__rowNumber, 'Participant', expected.Award);
+
+        if (expected.Vacant) {
+            continue;
+        }
+
+        compareExportedValue(canonicalDistanceLabel(actual.Distance), expected.Distance, file, actual.__rowNumber, 'Distance', expected.Award);
+        compareExportedValue(actual.Time, expected.Time, file, actual.__rowNumber, 'Time', expected.Award);
+        compareExportedValue(actual.AgeGrade, expected.AgeGrade, file, actual.__rowNumber, 'AgeGrade', expected.Award);
+        compareExportedValue(actual.Date, expected.Date, file, actual.__rowNumber, 'Date', expected.Award);
+        compareExportedValue(actual['Athlete ID'], expected.AthleteId, file, actual.__rowNumber, 'Athlete ID', expected.Award);
+        compareExportedValue(actual.AgeClass, expected.AgeClass, file, actual.__rowNumber, 'AgeClass', expected.Award);
+    }
+}
+
+function expectedHallOfFameRows(siteDir, siteMode, webtables) {
+    const webtableByFile = new Map(
+        webtables.map(row => [String(row.FileName || '').trim(), row])
+    );
+    const expected = [];
+
+    for (const sourceFile of discoverOfficialLeaderboardExports(siteDir, siteMode, webtables)) {
+        const sourcePath = `${siteDir}/${sourceFile}`;
+        const metadata = leaderboardMedalMetadata(sourceFile, webtableByFile.get(sourceFile), siteMode);
+        const rows = toObjects(readCsvRequired(sourcePath, [
+            'Rank',
+            'Participant',
+            'Race Year',
+            'Time Class',
+            'SexAgeEvent',
+            'Time',
+            'Age Graded Score',
+            'Age Graded Category',
+            'Athlete ID'
+        ]));
+        const award = `${metadata.Period} ${hallOfFameAwardDistance(metadata.Distance)} Official Champion`;
+        const champion = rows.find(row => Number(row.Rank) === 1 && !isNoEligibleRow(row) && !isVacantParticipant(row.Participant));
+
+        if (!champion) {
+            expected.push({
+                Award: award,
+                Participant: 'Championship Vacant',
+                Vacant: true
+            });
+            continue;
+        }
+
+        const result = findMatchingAthleteResult(champion);
+        const ageClass = String(champion.SexAgeEvent || '').split('|')[0] || '';
+
+        if (!result) {
+            addError(sourcePath, champion.__rowNumber, `Could not find a matching athlete result for Hall of Fame award "${award}".`);
+        }
+
+        expected.push({
+            Award: award,
+            Participant: String(champion.Participant || '').trim(),
+            Distance: metadata.Distance === 'Overall'
+                ? canonicalDistanceLabel(distanceFromSexAgeEvent(champion.SexAgeEvent))
+                : canonicalDistanceLabel(metadata.Distance),
+            Time: String(champion.Time || '').trim(),
+            AgeGrade: String(champion['Age Graded Score'] || '').trim(),
+            Date: result ? result.Date : '',
+            AthleteId: String(champion['Athlete ID'] || '').trim(),
+            AgeClass: ageClass,
+            Vacant: false
+        });
+    }
+
+    return expected;
+}
+
+function hallOfFameAwardDistance(distance) {
+    const label = canonicalDistanceLabel(distance);
+
+    if (label === '5 km') {
+        return '5k';
+    }
+
+    if (label === '10 km') {
+        return '10k';
+    }
+
+    return label;
 }
 
 function validateOfficialMedals(siteDir, siteMode, webtables) {
@@ -206,6 +318,22 @@ function validateLeaderboardIndex(siteDir, siteMode, webtables) {
     for (const fileName of leaderboardFiles) {
         if (!referencedFiles.has(fileName)) {
             addError(`${siteDir}/webtables.csv`, 1, `Leaderboard export "${fileName}" exists but is not referenced by webtables.csv.`);
+        }
+    }
+}
+
+function validateLeaderboardDisplayLabels(row, siteMode, file) {
+    const parsed = parseLeaderboardExportFileName(row.FileName, siteMode);
+
+    if (parsed?.distance !== '10mile') {
+        return;
+    }
+
+    for (const field of ['DisplayDistance', 'DisplayTitle', 'DisplayDescription']) {
+        const value = String(row[field] || '');
+
+        if (value.includes('10mile') || !value.includes('10 Mile')) {
+            addError(file, row.__rowNumber, `${field} must display "10 Mile" for 10 Mile leaderboards.`);
         }
     }
 }
