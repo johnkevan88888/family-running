@@ -612,6 +612,180 @@
     border-top-color: #596176;
 }
 
+.crown-history-section {
+    margin: 42px 0 72px;
+}
+
+.crown-history-intro {
+    background: #ffffff;
+    border-left: 5px solid #ffd700;
+    border-radius: 8px;
+    box-shadow: 0 3px 10px rgba(15,36,56,0.1);
+    color: #445363;
+    line-height: 1.55;
+    margin: -8px 0 22px;
+    padding: 16px 18px;
+}
+
+.crown-history-groups {
+    display: grid;
+    gap: 14px;
+}
+
+.crown-history-toggle {
+    align-items: center;
+    background: #2b5c88;
+    border: 0;
+    border-radius: 8px;
+    color: #ffffff;
+    cursor: pointer;
+    display: flex;
+    font-size: 1.2rem;
+    font-weight: 800;
+    gap: 10px;
+    justify-content: space-between;
+    padding: 14px 18px;
+    text-align: left;
+    width: 100%;
+}
+
+.crown-history-toggle:hover,
+.crown-history-toggle:focus-visible {
+    background: #1e3a5f;
+}
+
+.crown-history-toggle:focus-visible {
+    outline: 3px solid #ffd700;
+    outline-offset: 2px;
+}
+
+.crown-history-toggle-label {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+}
+
+.crown-history-count {
+    color: #dce7f1;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.crown-history-content {
+    background: #ffffff;
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 4px 12px rgba(15,36,56,0.12);
+}
+
+.crown-history-timeline {
+    list-style: none;
+    margin: 0;
+    padding: 24px 24px 8px;
+    position: relative;
+}
+
+.crown-history-timeline::before {
+    background: #b8cadb;
+    bottom: 38px;
+    content: "";
+    left: 166px;
+    position: absolute;
+    top: 38px;
+    width: 3px;
+}
+
+.crown-history-item {
+    display: grid;
+    gap: 28px;
+    grid-template-columns: 120px minmax(0, 1fr);
+    padding: 0 0 24px;
+    position: relative;
+}
+
+.crown-history-item::before {
+    background: #ffd700;
+    border: 4px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px #2b5c88;
+    content: "";
+    height: 13px;
+    left: 136px;
+    position: absolute;
+    top: 10px;
+    width: 13px;
+    z-index: 1;
+}
+
+.crown-history-date {
+    color: #1e3a5f;
+    font-size: 0.95rem;
+    font-weight: 800;
+    padding-top: 7px;
+    text-align: right;
+}
+
+.crown-history-card {
+    background: #f8fafc;
+    border: 1px solid #d7e1ea;
+    border-radius: 9px;
+    min-width: 0;
+    padding: 16px 18px;
+}
+
+.crown-history-holder {
+    color: #0f2438;
+    font-size: 1.25rem;
+    font-weight: 800;
+    line-height: 1.25;
+    margin: 0;
+}
+
+.crown-history-performance {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    margin-top: 10px;
+}
+
+.crown-history-performance span {
+    color: #394b5c;
+    font-weight: 700;
+}
+
+.crown-history-event {
+    color: #566779;
+    margin-top: 9px;
+}
+
+.crown-history-previous {
+    background: #eef3f7;
+    border-left: 4px solid #8ea4b8;
+    border-radius: 4px;
+    color: #445363;
+    margin-top: 13px;
+    padding: 9px 11px;
+}
+
+.crown-history-previous strong {
+    color: #1e3a5f;
+}
+
+.crown-history-reason {
+    color: #5a6875;
+    font-size: 0.9rem;
+    font-style: italic;
+    margin-top: 12px;
+}
+
+.crown-history-empty {
+    background: #ffffff;
+    border: 1px solid #d7e1ea;
+    border-radius: 9px;
+    box-shadow: 0 3px 10px rgba(15,36,56,0.08);
+    color: #566779;
+    padding: 22px;
+}
+
 @media (max-width: 700px) {
     body {
         padding: 12px;
@@ -638,6 +812,26 @@
         border-top: 1px solid rgba(255,255,255,0.28);
         padding-left: 0;
         padding-top: 14px;
+    }
+
+    table {
+        font-size: 0.68rem;
+        table-layout: fixed;
+    }
+
+    th,
+    td {
+        overflow-wrap: anywhere;
+        padding: 7px 4px;
+    }
+
+    table td:first-child,
+    table th:first-child {
+        width: 34px;
+    }
+
+    .medal {
+        font-size: 1.45em;
     }
 
     .hall-of-fame {
@@ -680,6 +874,45 @@
     .hof-award {
         max-width: 100%;
     }
+
+    .crown-history-section {
+        margin-bottom: 52px;
+    }
+
+    .crown-history-toggle {
+        font-size: 1.05rem;
+        padding: 13px 14px;
+    }
+
+    .crown-history-timeline {
+        padding: 22px 14px 4px 34px;
+    }
+
+    .crown-history-timeline::before {
+        bottom: 34px;
+        left: 17px;
+        top: 34px;
+    }
+
+    .crown-history-item {
+        gap: 8px;
+        grid-template-columns: minmax(0, 1fr);
+        padding-bottom: 20px;
+    }
+
+    .crown-history-item::before {
+        left: -25px;
+        top: 7px;
+    }
+
+    .crown-history-date {
+        padding-top: 0;
+        text-align: left;
+    }
+
+    .crown-history-card {
+        padding: 14px;
+    }
 }
 
     </style>
@@ -700,6 +933,18 @@
 
 <h2>Hall of Fame</h2>
 <div id="hall-of-fame"></div>
+
+<section class="crown-history-section" aria-labelledby="crown-history-title">
+    <h2 id="crown-history-title">All-Time Official Crown Progression</h2>
+    <p class="crown-history-intro">
+        First awards and later transfers of All-Time Official crowns only.
+        Current/12-Month, unofficial, and all-results crown changes are not included,
+        and an existing holder improving their own result does not create another entry.
+    </p>
+    <div id="crown-history" aria-live="polite">
+        <p class="crown-history-empty">Loading All-Time Official crown progression...</p>
+    </div>
+</section>
 
 <div id="leaderboards"></div>
 

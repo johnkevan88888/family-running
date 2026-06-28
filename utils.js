@@ -37,7 +37,10 @@ function parseCSVRow(row) {
     for (let i = 0; i < row.length; i++) {
         const char = row[i];
 
-        if (char === '"') {
+        if (char === '"' && insideQuotes && row[i + 1] === '"') {
+            current += '"';
+            i += 1;
+        } else if (char === '"') {
             insideQuotes = !insideQuotes;
         } else if (char === ',' && !insideQuotes) {
             result.push(current.trim());
