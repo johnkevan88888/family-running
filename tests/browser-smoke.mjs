@@ -36,6 +36,8 @@ try {
             await runModeViewportTest(browser, mode, viewport);
         }
     }
+
+    await runCrownHistoryEdgeCaseTests(browser);
 } finally {
     if (browser) {
         await browser.close();
@@ -60,6 +62,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
     const sameOriginFailures = [];
     const consoleErrors = [];
     const pageErrors = [];
+    const requestedPaths = [];
 
     page.setDefaultTimeout(10000);
     page.setDefaultNavigationTimeout(10000);
@@ -92,6 +95,12 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         }
     });
 
+    page.on('request', request => {
+        if (isSameOrigin(request.url())) {
+            requestedPaths.push(sameOriginRequestPath(request.url()));
+        }
+    });
+
     page.on('response', response => {
         if (isSameOrigin(response.url()) && response.status() >= 400) {
             sameOriginFailures.push(`${response.url()} returned HTTP ${response.status()}`);
@@ -108,6 +117,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await expectCountAtLeast(page, '#hall-of-fame .hof-card', 1, `${mode} Hall of Fame cards`);
         await expectCountAtLeast(page, '#leaderboards table tr', 2, `${mode} leaderboard rows`);
         await assertHallOfFameDisplayLabels(page, mode, viewport);
+        await assertCrownHistory(page, mode, viewport, requestedPaths);
 
         const athleteLinkCount = await page.locator('a[href^="athlete.html?id="]').count();
         if ((await hasAthleteData()) && athleteLinkCount < 1) {
@@ -155,6 +165,7 @@ async function waitForRenderedChampionship(page, mode) {
     await page.waitForSelector('#site-title', { state: 'visible' });
     await page.waitForSelector('#hall-of-fame .hof-card', { state: 'visible' });
     await page.waitForSelector('#leaderboards table', { state: 'visible' });
+    await page.waitForSelector('#crown-history[data-rendered="true"]');
     await page.waitForFunction(expectedMode => {
         const title = document.querySelector('#site-title')?.textContent?.trim() || '';
         const expected = expectedMode === 'everyone'
@@ -163,6 +174,267 @@ async function waitForRenderedChampionship(page, mode) {
 
         return title === expected;
     }, mode);
+}
+
+async function assertCrownHistory(page, mode, viewport, requestedPaths) {
+    const file = `data/${mode}/crown_history.csv`;
+    const otherMode = mode === 'family' ? 'everyone' : 'family';
+    const otherFile = `data/${otherMode}/crown_history.csv`;
+    const rows = await readCsvObjects(file);
+    const crownOrder = ['Overall', 'Marathon', 'Half Marathon', '10 Mile', '10 km', '5 km'];
+    const expectedGroups = crownOrder.filter(distance => rows.some(row => row.Distance === distance));
+    const context = `${mode}/${viewport.name}`;
+
+    if (!requestedPaths.includes(file)) {
+        failures.push(`${context}: timeline did not request ${file}.`);
+    }
+
+    if (requestedPaths.includes(otherFile)) {
+        failures.push(`${context}: timeline requested the other site mode's ${otherFile}.`);
+    }
+
+    const intro = normalizeText(await page.locator('.crown-history-intro').textContent());
+    for (const requiredText of ['All-Time Official', 'Current/12-Month', 'unofficial', 'all-results']) {
+        if (!intro.includes(requiredText)) {
+            failures.push(`${context}: crown history scope explanation omitted "${requiredText}".`);
+        }
+    }
+
+    if (!rows.length) {
+        await expectText(
+            page,
+            '#crown-history .crown-history-empty',
+            'No All-Time Official crown progression has been exported.',
+            `${context} crown history empty state`
+        );
+        return;
+    }
+
+    const actualGroups = await page.$$eval('.crown-history-distance', nodes =>
+        nodes.map(node => node.textContent.trim())
+    );
+    if (JSON.stringify(actualGroups) !== JSON.stringify(expectedGroups)) {
+        failures.push(`${context}: crown groups were ${actualGroups.join(', ')}, expected ${expectedGroups.join(', ')}.`);
+    }
+
+    const entries = page.locator('.crown-history-item');
+    const entryCount = await entries.count();
+    if (entryCount !== rows.length) {
+        failures.push(`${context}: rendered ${entryCount} crown transitions, expected ${rows.length}.`);
+    }
+
+    const comparableCount = Math.min(entryCount, rows.length);
+    for (let index = 0; index < comparableCount; index += 1) {
+        const row = rows[index];
+        const entry = entries.nth(index);
+        const text = normalizeText(await entry.textContent());
+        const requiredValues = [
+            row.EffectiveDate,
+            row.AthleteName,
+            row.Time,
+            row.AgeGrade,
+            row.Event,
+            row.PreviousAthleteName,
+            row.PreviousTime,
+            row.PreviousAgeGrade,
+            row.ChangeReason
+        ].filter(Boolean);
+
+        for (const value of requiredValues) {
+            if (!text.includes(normalizeText(value))) {
+                failures.push(`${context}: transition ${index + 1} omitted exported value "${value}".`);
+            }
+        }
+
+        await assertTimelineAthleteLink(
+            entry.locator('.crown-history-holder'),
+            row.AthleteID,
+            mode,
+            `${context} transition ${index + 1} holder`
+        );
+
+        const hasPreviousValues = [
+            row.PreviousAthleteID,
+            row.PreviousAthleteName,
+            row.PreviousTime,
+            row.PreviousAgeGrade
+        ].some(Boolean);
+        const previous = entry.locator('.crown-history-previous');
+
+        if (hasPreviousValues) {
+            if (await previous.count() !== 1) {
+                failures.push(`${context}: transition ${index + 1} omitted previous-holder details.`);
+            } else {
+                await assertTimelineAthleteLink(
+                    previous,
+                    row.PreviousAthleteID,
+                    mode,
+                    `${context} transition ${index + 1} previous holder`
+                );
+            }
+        } else if (await previous.count() !== 0) {
+            failures.push(`${context}: transition ${index + 1} rendered unavailable previous-holder details.`);
+        }
+
+        const eventCount = await entry.locator('.crown-history-event').count();
+        if (Boolean(row.Event) !== Boolean(eventCount)) {
+            failures.push(`${context}: transition ${index + 1} did not preserve Event availability.`);
+        }
+    }
+
+    const toggles = page.locator('.crown-history-toggle');
+    const defaultDistance = expectedGroups.includes('Overall') ? 'Overall' : expectedGroups[0];
+    const firstToggleText = normalizeText(await toggles.first().textContent());
+    const firstExpanded = await toggles.first().getAttribute('aria-expanded');
+
+    if (!firstToggleText.includes(defaultDistance) || firstExpanded !== 'true') {
+        failures.push(`${context}: expected ${defaultDistance} to be the default expanded crown group.`);
+    }
+
+    if (await toggles.count() > 1) {
+        const closedToggle = toggles.nth(1);
+        const contentId = await closedToggle.getAttribute('aria-controls');
+        const content = page.locator(`#${contentId}`);
+
+        if (await closedToggle.getAttribute('aria-expanded') !== 'false' || !await content.isHidden()) {
+            failures.push(`${context}: non-default crown group was not initially collapsed.`);
+        }
+
+        await closedToggle.click();
+        if (await closedToggle.getAttribute('aria-expanded') !== 'true' || !await content.isVisible()) {
+            failures.push(`${context}: crown group did not expand.`);
+        }
+
+        await closedToggle.click();
+        if (await closedToggle.getAttribute('aria-expanded') !== 'false' || !await content.isHidden()) {
+            failures.push(`${context}: crown group did not collapse.`);
+        }
+    }
+
+    const overflow = await page.evaluate(() => {
+        const clientWidth = document.documentElement.clientWidth;
+        const scrollWidth = document.documentElement.scrollWidth;
+        const contributors = [...document.querySelectorAll('body *')]
+            .map(element => {
+                const bounds = element.getBoundingClientRect();
+                return {
+                    element: `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${element.classList.length ? `.${[...element.classList].join('.')}` : ''}`,
+                    right: Math.round(bounds.right),
+                    width: Math.round(bounds.width)
+                };
+            })
+            .filter(item => item.right > clientWidth + 1)
+            .sort((a, b) => b.right - a.right)
+            .slice(0, 4);
+
+        return { clientWidth, scrollWidth, contributors };
+    });
+    if (overflow.scrollWidth > overflow.clientWidth + 1) {
+        failures.push(
+            `${context}: page has horizontal overflow (${overflow.scrollWidth}px > ${overflow.clientWidth}px); ` +
+            `contributors: ${overflow.contributors.map(item => `${item.element} right=${item.right} width=${item.width}`).join(', ')}.`
+        );
+    }
+}
+
+async function assertTimelineAthleteLink(locator, athleteId, mode, label) {
+    const links = locator.locator('a[href^="athlete.html?id="]');
+    const linkCount = await links.count();
+
+    if (!athleteId) {
+        if (linkCount > 0) {
+            failures.push(`${label}: rendered a profile link without an exported athlete ID.`);
+        }
+        return;
+    }
+
+    if (linkCount !== 1) {
+        failures.push(`${label}: expected one profile link for exported athlete ID "${athleteId}".`);
+        return;
+    }
+
+    const href = await links.first().getAttribute('href');
+    const params = new URL(href, preview.baseUrl).searchParams;
+
+    if (params.get('id') !== athleteId || params.get('site') !== mode) {
+        failures.push(`${label}: profile link "${href}" did not preserve athlete ID and site mode.`);
+    }
+}
+
+async function runCrownHistoryEdgeCaseTests(browserInstance) {
+    const header = 'Distance,CrownScope,EffectiveDate,AthleteID,AthleteName,Time,AgeGrade,Event,PreviousAthleteID,PreviousAthleteName,PreviousTime,PreviousAgeGrade,ChangeReason';
+
+    await withSyntheticCrownHistory(browserInstance, `${header}\r\n`, async page => {
+        await expectText(
+            page,
+            '#crown-history .crown-history-empty',
+            'No All-Time Official crown progression has been exported.',
+            'header-only crown history empty state'
+        );
+        if (await page.locator('.crown-history-group').count() !== 0) {
+            failures.push('crown-history edge case: header-only export rendered a timeline group.');
+        }
+    });
+
+    const syntheticRows = [
+        header,
+        'Overall,All-Time Official,01/01/2020,,Legacy Runner,00:20:00,70.0%,"Legacy ""Road"", Series",,,,,Initial qualifying holder',
+        'Overall,All-Time Official,02/01/2021,current-runner,Current Runner,00:19:00,72.0%,,,Legacy Runner,,69.0%,Transferred from Legacy Runner; previous-holder data incomplete'
+    ].join('\r\n');
+
+    await withSyntheticCrownHistory(browserInstance, syntheticRows, async page => {
+        const entries = page.locator('.crown-history-item');
+        if (await entries.count() !== 2) {
+            failures.push('crown-history edge case: partial legacy export did not render two transitions.');
+            return;
+        }
+
+        if (await entries.nth(0).locator('.crown-history-holder a').count() !== 0) {
+            failures.push('crown-history edge case: missing new-holder ID rendered a profile link.');
+        }
+
+        const firstEvent = normalizeText(await entries.nth(0).locator('.crown-history-event').textContent());
+        if (!firstEvent.includes('Legacy "Road", Series')) {
+            failures.push('crown-history edge case: quoted Event text was not preserved.');
+        }
+
+        const previous = entries.nth(1).locator('.crown-history-previous');
+        if (await previous.locator('a').count() !== 0) {
+            failures.push('crown-history edge case: missing previous-holder ID rendered a profile link.');
+        }
+
+        const previousText = normalizeText(await previous.textContent());
+        if (!previousText.includes('Legacy Runner') || !previousText.includes('69.0%') || previousText.includes('Time:')) {
+            failures.push('crown-history edge case: partial previous-holder fields were not rendered selectively.');
+        }
+
+        if (await entries.nth(1).locator('.crown-history-event').count() !== 0) {
+            failures.push('crown-history edge case: unavailable Event rendered an empty field.');
+        }
+    });
+}
+
+async function withSyntheticCrownHistory(browserInstance, csvText, assertion) {
+    const context = await browserInstance.newContext({ viewport: { width: 390, height: 844 } });
+    const page = await context.newPage();
+
+    await page.route('**/data/family/crown_history.csv', route =>
+        route.fulfill({
+            status: 200,
+            contentType: 'text/csv',
+            body: csvText
+        })
+    );
+
+    try {
+        await page.goto(`${preview.baseUrl}/?site=family`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#crown-history[data-rendered="true"]');
+        await assertion(page);
+    } catch (error) {
+        failures.push(`crown-history edge case: ${error.message}`);
+    } finally {
+        await context.close();
+    }
 }
 
 async function waitForNetworkToSettle(page) {

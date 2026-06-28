@@ -65,14 +65,14 @@ Local preview URLs:
 
 Repository safety validation checks tracked files and fails if a private workbook, Excel temporary file, obvious credential file, or private workbook backup-like file is tracked.
 
-CSV validation checks `data/family/`, `data/everyone/`, and shared `data/athlete_results.csv`. It verifies required files, required headers, parseable CSV structure, matching row lengths, leaderboard files referenced by `webtables.csv`, athlete IDs used by links, official medal exports, parseable dates, parseable numeric fields, parseable times, non-empty Hall of Fame data, and non-empty enabled championship files. Athlete medals remain Excel-owned exports and are rendered directly from `official_medals.csv`; validation also checks that those exported medal rows match the current exported official leaderboard CSVs. Vacant states such as "Championship Vacant" and "No eligible results" are accepted.
+CSV validation checks `data/family/`, `data/everyone/`, and shared `data/athlete_results.csv`. It verifies required files, required headers, parseable CSV structure, matching row lengths, leaderboard files referenced by `webtables.csv`, athlete IDs used by links, official medal exports, parseable dates, parseable numeric fields, parseable times, non-empty Hall of Fame data, and non-empty enabled championship files. It also validates the exact `crown_history.csv` contract, crown order and chronology, transition and previous-holder rules, and final-holder agreement with the All-Time Official Hall of Fame without deriving history in JavaScript. Athlete medals remain Excel-owned exports and are rendered directly from `official_medals.csv`; validation also checks that those exported medal rows match the current exported official leaderboard CSVs. Vacant states such as "Championship Vacant" and "No eligible results" are accepted.
 
 Browser smoke tests run the site through a local static server for:
 
 - `/?site=family`
 - `/?site=everyone`
 
-They check that each mode loads, uses the expected site title, renders Hall of Fame cards and leaderboards, exposes athlete links where athlete data exists, opens an athlete profile, preserves the original `site` parameter in the back link, renders athlete medals exported by Excel directly from `data/<site>/official_medals.csv` without requesting leaderboard CSVs for those medal cards, handles collapsible sections, renders vacant Hall of Fame states, has no JavaScript exceptions, and has no failed same-origin network requests.
+They check that each mode loads, uses the expected site title, renders Hall of Fame cards and leaderboards, requests only the selected mode's crown history, preserves the exported crown order and values, handles timeline expansion, empty exports and incomplete legacy identities, preserves the selected site in holder links, exposes athlete links where athlete data exists, opens an athlete profile, preserves the original `site` parameter in the back link, renders athlete medals exported by Excel directly from `data/<site>/official_medals.csv` without requesting leaderboard CSVs for those medal cards, handles collapsible sections, renders vacant Hall of Fame states, has no horizontal page overflow, has no JavaScript exceptions, and has no failed same-origin network requests.
 
 Screenshots are saved to `test-artifacts/screenshots/` for:
 
@@ -96,7 +96,7 @@ Before approving a Pull Request:
   - `?site=family`
   - `?site=everyone`
 - Review desktop and mobile screenshots.
-- Manually check Hall of Fame, leaderboards, collapsible sections, athlete links, athlete profile pages, and back links.
+- Manually check Hall of Fame, All-Time Official Crown Progression, leaderboards, collapsible sections, athlete links, athlete profile pages, and back links.
 - Confirm known limitations and rollback approach are documented.
 
 ## Release Gate

@@ -256,6 +256,151 @@ function escapeHTML(value) {
         .replace(/'/g, '&#039;');
 }
 
+async function buildCrownHistory() {
+    const container = document.getElementById('crown-history');
+    const rows = await fetchCSV(`${dataPath}/crown_history.csv`);
+    const headers = rows[0] || [];
+    const normalizedHeaders = headers.map(normalizeHeader);
+    const exportedRows = rows
+        .slice(1)
+        .filter(row => row.some(cell => cell !== ''))
+        .map(row => crownHistoryRowToObject(normalizedHeaders, row));
+    const crownOrder = ['Overall', 'Marathon', 'Half Marathon', '10 Mile', '10 km', '5 km'];
+    const groups = crownOrder
+        .map(distance => ({
+            distance,
+            rows: exportedRows.filter(row => row.distance === distance)
+        }))
+        .filter(group => group.rows.length);
+
+    if (!groups.length) {
+        container.innerHTML =
+            '<p class="crown-history-empty">No All-Time Official crown progression has been exported.</p>';
+        container.dataset.rendered = 'true';
+        return;
+    }
+
+    const defaultGroupIndex = Math.max(0, groups.findIndex(group => group.distance === 'Overall'));
+
+    container.innerHTML = `
+        <div class="crown-history-groups">
+            ${groups.map((group, index) =>
+                renderCrownHistoryGroup(group, index, index === defaultGroupIndex)
+            ).join('')}
+        </div>
+    `;
+    container.dataset.rendered = 'true';
+}
+
+function crownHistoryRowToObject(normalizedHeaders, row) {
+    const result = {};
+
+    normalizedHeaders.forEach((header, index) => {
+        result[header] = row[index] || '';
+    });
+
+    return result;
+}
+
+function renderCrownHistoryGroup(group, index, expanded) {
+    const contentId = `crown-history-content-${index}`;
+    const transitionLabel = group.rows.length === 1 ? '1 transition' : `${group.rows.length} transitions`;
+
+    return `
+        <section class="crown-history-group" data-distance="${escapeHTML(group.distance)}">
+            <button
+                class="crown-history-toggle"
+                type="button"
+                aria-expanded="${expanded}"
+                aria-controls="${contentId}"
+                onclick="toggleCrownHistory(this)">
+                <span class="crown-history-toggle-label">
+                    <span class="crown-history-symbol" aria-hidden="true">${expanded ? '[-]' : '[+]'}</span>
+                    <span class="crown-history-distance">${escapeHTML(group.distance)}</span>
+                </span>
+                <span class="crown-history-count">${transitionLabel}</span>
+            </button>
+            <div
+                class="crown-history-content"
+                id="${contentId}"
+                ${expanded ? '' : 'hidden'}>
+                <ol class="crown-history-timeline">
+                    ${group.rows.map(renderCrownHistoryEntry).join('')}
+                </ol>
+            </div>
+        </section>
+    `;
+}
+
+function renderCrownHistoryEntry(row) {
+    const holder = crownHistoryAthlete(row.athleteid, row.athletename);
+    const performance = [
+        row.time ? `<span><strong>Time:</strong> ${escapeHTML(row.time)}</span>` : '',
+        row.agegrade ? `<span><strong>Age grade:</strong> ${escapeHTML(row.agegrade)}</span>` : ''
+    ].filter(Boolean).join('');
+    const previousDetails = crownHistoryPreviousHolder(row);
+
+    return `
+        <li
+            class="crown-history-item"
+            data-effective-date="${escapeHTML(row.effectivedate)}"
+            data-athlete-id="${escapeHTML(row.athleteid)}">
+            <div class="crown-history-date">${escapeHTML(row.effectivedate)}</div>
+            <article class="crown-history-card">
+                <h4 class="crown-history-holder">${holder}</h4>
+                ${performance ? `<div class="crown-history-performance">${performance}</div>` : ''}
+                ${row.event ? `<div class="crown-history-event"><strong>Event:</strong> ${escapeHTML(row.event)}</div>` : ''}
+                ${previousDetails}
+                <div class="crown-history-reason">${escapeHTML(row.changereason)}</div>
+            </article>
+        </li>
+    `;
+}
+
+function crownHistoryPreviousHolder(row) {
+    const details = [];
+
+    if (row.previousathletename) {
+        details.push(
+            `<strong>Previous holder:</strong> ${crownHistoryAthlete(row.previousathleteid, row.previousathletename)}`
+        );
+    } else if (row.previousathleteid) {
+        details.push(
+            `<strong>Previous holder ID:</strong> ${crownHistoryAthlete(row.previousathleteid, row.previousathleteid)}`
+        );
+    }
+
+    if (row.previoustime) {
+        details.push(`<strong>Time:</strong> ${escapeHTML(row.previoustime)}`);
+    }
+
+    if (row.previousagegrade) {
+        details.push(`<strong>Age grade:</strong> ${escapeHTML(row.previousagegrade)}`);
+    }
+
+    return details.length
+        ? `<div class="crown-history-previous">${details.join(' &nbsp; ')}</div>`
+        : '';
+}
+
+function crownHistoryAthlete(athleteId, athleteName) {
+    const name = escapeHTML(athleteName);
+
+    return athleteId
+        ? athleteLink(athleteId, name)
+        : name;
+}
+
+function toggleCrownHistory(button) {
+    const contentId = button.getAttribute('aria-controls');
+    const content = document.getElementById(contentId);
+    const expanded = button.getAttribute('aria-expanded') === 'true';
+
+    button.setAttribute('aria-expanded', String(!expanded));
+    content.hidden = expanded;
+    button.querySelector('.crown-history-symbol').textContent = expanded ? '[+]' : '[-]';
+}
+
 async function loadSiteInfo() {
     const rows = await fetchCSV(`${dataPath}/siteinfo.csv`);
 
@@ -500,5 +645,6 @@ async function buildLeaderboards() {
 }
 
 buildHallOfFame();
+buildCrownHistory();
 buildLeaderboards();
 loadSiteInfo();
