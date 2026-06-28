@@ -112,6 +112,7 @@ function validateSite(siteMode) {
 
     validateLeaderboardIndex(siteDir, siteMode, webtables);
     validateHallOfFame(siteDir, siteMode, webtables);
+    validateCrownHistory(siteDir);
     validateOfficialMedals(siteDir, siteMode, webtables);
     validateCrownStandards(siteDir);
     validateAgeGradeStandards(siteDir);
@@ -202,6 +203,225 @@ function validateHallOfFameAgainstOfficialLeaderboards(siteDir, siteMode, webtab
         compareExportedValue(actual['Athlete ID'], expected.AthleteId, file, actual.__rowNumber, 'Athlete ID', expected.Award);
         compareExportedValue(actual.AgeClass, expected.AgeClass, file, actual.__rowNumber, 'AgeClass', expected.Award);
     }
+}
+
+function validateCrownHistory(siteDir) {
+    const file = `${siteDir}/crown_history.csv`;
+    const expectedHeaders = [
+        'Distance',
+        'CrownScope',
+        'EffectiveDate',
+        'AthleteID',
+        'AthleteName',
+        'Time',
+        'AgeGrade',
+        'Event',
+        'PreviousAthleteID',
+        'PreviousAthleteName',
+        'PreviousTime',
+        'PreviousAgeGrade',
+        'ChangeReason'
+    ];
+    const rows = readCsvRequired(file, expectedHeaders);
+    const actualHeaders = rows[0] || [];
+
+    if (
+        actualHeaders.length !== expectedHeaders.length ||
+        actualHeaders.some((header, index) => header !== expectedHeaders[index])
+    ) {
+        addError(file, 1, `Header must exactly match: ${expectedHeaders.join(',')}.`);
+    }
+
+    const objects = toObjects(rows, file);
+    const crownOrder = ['Overall', 'Marathon', 'Half Marathon', '10 Mile', '10 km', '5 km'];
+    const histories = new Map(crownOrder.map(distance => [distance, []]));
+    const seenTransitions = new Set();
+    let previousCrownIndex = -1;
+
+    for (const row of objects) {
+        const crownIndex = crownOrder.indexOf(String(row.Distance || '').trim());
+
+        if (crownIndex < 0) {
+            addError(file, row.__rowNumber, `Distance "${row.Distance}" must be one of: ${crownOrder.join(', ')}.`);
+        } else {
+            if (crownIndex < previousCrownIndex) {
+                addError(file, row.__rowNumber, 'Crown groups are not in the required stable order.');
+            }
+            previousCrownIndex = Math.max(previousCrownIndex, crownIndex);
+            histories.get(crownOrder[crownIndex]).push(row);
+        }
+
+        compareExportedValue(
+            row.CrownScope,
+            'All-Time Official',
+            file,
+            row.__rowNumber,
+            'CrownScope',
+            'the crown history contract'
+        );
+        validateStrictUkDate(row.EffectiveDate, file, row.__rowNumber, 'EffectiveDate', { required: true });
+        requireValue(row.AthleteName, file, row.__rowNumber, 'AthleteName');
+        validateTime(row.Time, file, row.__rowNumber, 'Time', { required: true });
+        validatePercent(row.AgeGrade, file, row.__rowNumber, 'AgeGrade', { required: true });
+        requireValue(row.ChangeReason, file, row.__rowNumber, 'ChangeReason');
+        validateAthleteId(row.AthleteID, file, row.__rowNumber, 'AthleteID');
+        validateAthleteId(row.PreviousAthleteID, file, row.__rowNumber, 'PreviousAthleteID');
+        validateTime(row.PreviousTime, file, row.__rowNumber, 'PreviousTime');
+        validatePercent(row.PreviousAgeGrade, file, row.__rowNumber, 'PreviousAgeGrade');
+
+        if (isVacantParticipant(row.AthleteName) || isNoEligibleParticipant(row.AthleteName)) {
+            addError(file, row.__rowNumber, 'Crown history must not contain a vacant or no-eligible-results athlete.');
+        }
+        if (isVacantParticipant(row.PreviousAthleteName) || isNoEligibleParticipant(row.PreviousAthleteName)) {
+            addError(file, row.__rowNumber, 'Previous-holder fields must not contain a synthetic vacancy.');
+        }
+
+        const transitionKey = [
+            row.Distance,
+            row.EffectiveDate,
+            row.AthleteID || clean(row.AthleteName)
+        ].join('|');
+        if (seenTransitions.has(transitionKey)) {
+            addError(file, row.__rowNumber, 'Duplicate crown transition row.');
+        }
+        seenTransitions.add(transitionKey);
+    }
+
+    for (const crownName of crownOrder) {
+        validateCrownChronology(file, crownName, histories.get(crownName));
+    }
+
+    validateCrownHistoryAgainstHallOfFame(siteDir, file, histories, crownOrder);
+}
+
+function validateCrownChronology(file, crownName, rows) {
+    let previousDate = null;
+    let previousTransition = null;
+
+    rows.forEach((row, index) => {
+        const effectiveDate = parseUkDate(String(row.EffectiveDate || '').trim());
+        if (effectiveDate && previousDate && effectiveDate < previousDate) {
+            addError(file, row.__rowNumber, `${crownName} transitions are not in ascending effective chronology.`);
+        }
+        if (effectiveDate) {
+            previousDate = effectiveDate;
+        }
+
+        const previousFields = [
+            row.PreviousAthleteID,
+            row.PreviousAthleteName,
+            row.PreviousTime,
+            row.PreviousAgeGrade
+        ].map(value => String(value || '').trim());
+
+        if (index === 0) {
+            if (previousFields.some(Boolean)) {
+                addError(file, row.__rowNumber, `${crownName} initial award must have blank Previous* fields.`);
+            }
+            if (!/\b(initial|first)\b/i.test(String(row.ChangeReason || ''))) {
+                addError(file, row.__rowNumber, `${crownName} initial award ChangeReason must identify it as the first or initial award.`);
+            }
+        } else {
+            if (/\b(initial|first)\b/i.test(String(row.ChangeReason || ''))) {
+                addError(file, row.__rowNumber, `${crownName} transfer ChangeReason must not describe an initial award.`);
+            }
+            if (!/\b(transfer|retak|changed|from)\b/i.test(String(row.ChangeReason || ''))) {
+                addError(file, row.__rowNumber, `${crownName} transfer ChangeReason must identify the holder change.`);
+            }
+
+            const incompletePreviousHolder = previousFields.some(value => !value);
+            if (
+                incompletePreviousHolder &&
+                !/\b(incomplete|unavailable|missing)\b/i.test(String(row.ChangeReason || ''))
+            ) {
+                addError(file, row.__rowNumber, `${crownName} incomplete Previous* fields must be explained by ChangeReason.`);
+            }
+
+            if (previousTransition && !sameExportedAthlete(
+                row.PreviousAthleteID,
+                row.PreviousAthleteName,
+                previousTransition.AthleteID,
+                previousTransition.AthleteName
+            )) {
+                addError(file, row.__rowNumber, `${crownName} previous-holder identity does not match the preceding transition holder.`);
+            }
+        }
+
+        if (previousTransition && sameExportedAthlete(
+            row.AthleteID,
+            row.AthleteName,
+            previousTransition.AthleteID,
+            previousTransition.AthleteName
+        )) {
+            addError(file, row.__rowNumber, `${crownName} contains consecutive transitions to the same holder.`);
+        }
+
+        previousTransition = row;
+    });
+}
+
+function validateCrownHistoryAgainstHallOfFame(siteDir, file, histories, crownOrder) {
+    const hallFile = `${siteDir}/halloffame.csv`;
+    const hallRows = toObjects(readCsvRequired(hallFile, [
+        'Award',
+        'Participant',
+        'Distance',
+        'Time',
+        'AgeGrade',
+        'Date',
+        'Event',
+        'Athlete ID',
+        'AgeClass'
+    ]));
+    const hallByAward = new Map(hallRows.map(row => [String(row.Award || '').trim(), row]));
+
+    for (const crownName of crownOrder) {
+        const award = `All Time ${hallOfFameAwardDistance(crownName)} Official Champion`;
+        const hallHolder = hallByAward.get(award);
+        const crownRows = histories.get(crownName);
+        const finalTransition = crownRows[crownRows.length - 1];
+
+        if (!hallHolder) {
+            addError(file, 1, `Cannot reconcile ${crownName}: Hall of Fame row "${award}" is missing.`);
+            continue;
+        }
+
+        if (isVacantParticipant(hallHolder.Participant)) {
+            if (crownRows.length > 0) {
+                addError(file, finalTransition.__rowNumber, `${crownName} has history but its All-Time Official Hall of Fame crown is vacant.`);
+            }
+            continue;
+        }
+
+        if (!finalTransition) {
+            addError(file, 1, `${crownName} has a current All-Time Official holder but no crown history transition.`);
+            continue;
+        }
+
+        if (!sameExportedAthlete(
+            finalTransition.AthleteID,
+            finalTransition.AthleteName,
+            hallHolder['Athlete ID'],
+            hallHolder.Participant
+        )) {
+            addError(
+                file,
+                finalTransition.__rowNumber,
+                `${crownName} final transition holder does not match the current All-Time Official Hall of Fame holder.`
+            );
+        }
+    }
+}
+
+function sameExportedAthlete(firstId, firstName, secondId, secondName) {
+    const leftId = clean(firstId);
+    const rightId = clean(secondId);
+
+    if (leftId && rightId) {
+        return leftId === rightId;
+    }
+
+    return clean(firstName) === clean(secondName);
 }
 
 function expectedHallOfFameRows(siteDir, siteMode, webtables) {
@@ -887,6 +1107,21 @@ function validateDate(value, file, rowNumber, column, options = {}) {
     }
 }
 
+function validateStrictUkDate(value, file, rowNumber, column, options = {}) {
+    const text = String(value || '').trim();
+
+    if (!text) {
+        if (options.required) {
+            addError(file, rowNumber, `${column} is required.`);
+        }
+        return;
+    }
+
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(text) || !parseUkDate(text)) {
+        addError(file, rowNumber, `${column} "${text}" must use DD/MM/YYYY.`);
+    }
+}
+
 function validateIsoDate(value, file, rowNumber, column) {
     const text = String(value || '').trim();
 
@@ -1024,6 +1259,10 @@ function isVacantParticipant(value) {
 
 function isNoEligibleRow(row) {
     return String(row.Participant || '').toLowerCase().includes('no eligible');
+}
+
+function isNoEligibleParticipant(value) {
+    return String(value || '').toLowerCase().includes('no eligible');
 }
 
 function addError(file, rowNumber, message) {

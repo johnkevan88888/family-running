@@ -1,0 +1,12 @@
+Distance,CrownScope,EffectiveDate,AthleteID,AthleteName,Time,AgeGrade,Event,PreviousAthleteID,PreviousAthleteName,PreviousTime,PreviousAgeGrade,ChangeReason
+Overall,All-Time Official,15/09/2012,david-graham-kevan,David Graham-Kevan,00:27:45,49.9%,Worcester Parkrun,,,,,Initial qualifying holder
+Overall,All-Time Official,26/08/2017,carolyn-kevan,Carolyn Kevan,00:24:36,72.3%,3-1-5 Lancaster 5k Series,david-graham-kevan,David Graham-Kevan,00:19:53,69.6%,Transferred from David Graham-Kevan
+Marathon,All-Time Official,03/10/2021,matthew-johnson,Matthew Johnson,04:16:22,48.5%,London Marathon,,,,,Initial qualifying holder
+Marathon,All-Time Official,20/10/2024,kevin-reaney,Kevin Reaney,03:30:48,59.5%,,matthew-johnson,Matthew Johnson,04:16:22,48.5%,Transferred from Matthew Johnson
+Half Marathon,All-Time Official,13/09/2025,david-graham-kevan,David Graham-Kevan,01:48:09,63.4%,Worcester Half,,,,,Initial qualifying holder
+10 Mile,All-Time Official,14/04/2026,jim-chambers,Jim Chambers,01:34:11,62.0%,Derry 10 Mile,,,,,Initial qualifying holder
+10 km,All-Time Official,01/09/2013,caitlin-siostrom,Caitlin Siostrom,01:01:39,46.7%,Bridge to Brisbane,,,,,Initial qualifying holder
+10 km,All-Time Official,21/06/2017,debbie-martin,Debbie Martin,00:54:56,52.9%,Offerton 10k,caitlin-siostrom,Caitlin Siostrom,01:01:39,46.7%,Transferred from Caitlin Siostrom
+10 km,All-Time Official,03/12/2017,carolyn-kevan,Carolyn Kevan,00:48:40,73.6%,Hoad Hill Christmas Pudding 10k,debbie-martin,Debbie Martin,00:54:56,52.9%,Transferred from Debbie Martin
+5 km,All-Time Official,15/09/2012,david-graham-kevan,David Graham-Kevan,00:27:45,49.9%,Worcester Parkrun,,,,,Initial qualifying holder
+5 km,All-Time Official,26/08/2017,carolyn-kevan,Carolyn Kevan,00:24:36,72.3%,3-1-5 Lancaster 5k Series,david-graham-kevan,David Graham-Kevan,00:19:53,69.6%,Transferred from David Graham-Kevan
