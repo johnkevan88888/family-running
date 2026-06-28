@@ -1,0 +1,137 @@
+name: PR Preview Review Links
+
+on:
+  pull_request_target:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number targeting main
+        required: true
+        type: number
+
+permissions:
+  pull-requests: write
+
+env:
+  NETLIFY_PREVIEW_HOST: thunderous-moxie-c5aac5.netlify.app
+  PREVIEW_COMMENT_MARKER: "<!-- family-running-preview-review-links -->"
+  REVIEW_BASE_BRANCH: main
+
+concurrency:
+  group: pr-preview-review-links-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  maintain-preview-review-links:
+    name: Maintain preview review links
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Create or update preview review links comment
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          MANUAL_PR_NUMBER: ${{ inputs.pr_number }}
+        with:
+          script: |
+            const rawPrNumber =
+              context.eventName === "workflow_dispatch"
+                ? process.env.MANUAL_PR_NUMBER
+                : context.payload.pull_request?.number;
+            const prNumber = Number(rawPrNumber);
+
+            if (!Number.isSafeInteger(prNumber) || prNumber < 1) {
+              core.setFailed("A positive integer pull request number is required.");
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const pullRequest = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: prNumber,
+            });
+
+            if (pullRequest.data.base.ref !== process.env.REVIEW_BASE_BRANCH) {
+              core.setFailed(`Pull request #${prNumber} does not target main.`);
+              return;
+            }
+
+            const headSha = pullRequest.data.head.sha;
+            if (!/^[0-9a-f]{40}$/i.test(headSha)) {
+              core.setFailed(`Pull request #${prNumber} returned an invalid head commit SHA.`);
+              return;
+            }
+
+            const previewRoot =
+              `https://deploy-preview-${prNumber}--${process.env.NETLIFY_PREVIEW_HOST}/`;
+            const familyPreview = `${previewRoot}?site=family`;
+            const everyonePreview = `${previewRoot}?site=everyone`;
+            const commentBody = [
+              process.env.PREVIEW_COMMENT_MARKER,
+              "## Family Running preview review links",
+              "",
+              `- [Family preview](${familyPreview})`,
+              `- [Everyone preview](${everyonePreview})`,
+              `- [Preview root](${previewRoot})`,
+              "",
+              `Head commit: \`${headSha.slice(0, 7)}\``,
+              "",
+              "Netlify's Deploy Preview check must be successful before these links are ready for review.",
+              "Check both Family and Everyone modes before approval.",
+            ].join("\n");
+
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner,
+                repo,
+                issue_number: prNumber,
+                per_page: 100,
+              },
+            );
+            const maintainedComments = comments
+              .filter(
+                (comment) =>
+                  comment.user?.login === "github-actions[bot]" &&
+                  comment.body?.includes(process.env.PREVIEW_COMMENT_MARKER),
+              )
+              .sort((left, right) => left.id - right.id);
+
+            let maintainedCommentId;
+            if (maintainedComments.length === 0) {
+              const createdComment = await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body: commentBody,
+              });
+              maintainedCommentId = createdComment.data.id;
+            } else {
+              maintainedCommentId = maintainedComments[0].id;
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: maintainedCommentId,
+                body: commentBody,
+              });
+
+              for (const duplicate of maintainedComments.slice(1)) {
+                await github.rest.issues.deleteComment({
+                  owner,
+                  repo,
+                  comment_id: duplicate.id,
+                });
+              }
+            }
+
+            core.notice(
+              `Maintained preview review links in comment ${maintainedCommentId} for PR #${prNumber}.`,
+            );

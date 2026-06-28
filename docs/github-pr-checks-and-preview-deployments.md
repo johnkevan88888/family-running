@@ -23,6 +23,20 @@ Recommended required GitHub status check:
 
 - `Pull Request Checks / Test static site`
 
+## Automated Preview Review Links
+
+Workflow file:
+
+- `.github/workflows/pr-preview-review-links.yml`
+
+For Pull Requests targeting `main`, the workflow creates or updates exactly one bot-maintained comment headed `Family Running preview review links`. That comment is the authoritative entry point for preview review and includes the Family link, Everyone link, preview root, and current short head commit SHA.
+
+The workflow uses the verified Netlify hostname stored in its source-controlled configuration. It runs from trusted `main` with `pull_request_target`, does not check out repository code, and does not run Pull Request code.
+
+Netlify's Deploy Preview status must be successful before the deterministic links are treated as ready. Both `?site=family` and `?site=everyone` must be checked before approval.
+
+For a manual test, open `PR Preview Review Links` in GitHub Actions, choose **Run workflow**, select the branch containing the workflow version to test, enter the target Pull Request number, and run it. The manual route obtains the Pull Request details through the GitHub API and uses the same comment-generation path. Run it again to confirm that the marked comment is updated rather than duplicated.
+
 ## Preview Deployment Provider
 
 Use Netlify Deploy Previews for Pull Request preview URLs. This keeps preview hosting separate from the live GitHub Pages production site.
@@ -41,12 +55,12 @@ The preview build copies only the static runtime site files and `data/` exports 
 
 ## Expected Preview URLs
 
-For Pull Request `123`, Netlify will use this preview URL pattern:
+For Pull Request `123`, Netlify will use these preview URLs:
 
-- Family: `https://deploy-preview-123--NETLIFY_SITE_NAME.netlify.app/?site=family`
-- Everyone: `https://deploy-preview-123--NETLIFY_SITE_NAME.netlify.app/?site=everyone`
+- Family: `https://deploy-preview-123--thunderous-moxie-c5aac5.netlify.app/?site=family`
+- Everyone: `https://deploy-preview-123--thunderous-moxie-c5aac5.netlify.app/?site=everyone`
 
-Replace `NETLIFY_SITE_NAME` with the Netlify site subdomain John chooses when connecting the repository.
+The verified Netlify preview hostname is `thunderous-moxie-c5aac5.netlify.app`.
 
 ## John Setup Required In GitHub And Netlify
 
@@ -71,6 +85,6 @@ GitHub Pages deployment actions publish artifacts to the GitHub Pages site. This
 
 No passing automated tests, no release.
 
-No Family and Everyone preview URLs, no release.
+No successful Netlify Deploy Preview status and no review of both automated Family and Everyone links, no release.
 
 No explicit John approval, no release.
