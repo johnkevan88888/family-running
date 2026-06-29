@@ -458,7 +458,7 @@ function renderTable(rows) {
         html += '<tr>';
 
         headers.forEach((header, cellIndex) => {
-            if (cellIndex === athleteIdIndex) {
+            if (cellIndex === athleteIdIndex || header === 'ExportBundleID') {
                 return;
             }
 
