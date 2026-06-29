@@ -22,13 +22,9 @@
 - [ ] Browser smoke tests passed for `?site=family`.
 - [ ] Browser smoke tests passed for `?site=everyone`.
 
-# Preview Links
+# Preview Review Links
 
-- Family preview: <!-- https://deploy-preview-PR_NUMBER--NETLIFY_SITE_NAME.netlify.app/?site=family -->
-- Everyone preview: <!-- https://deploy-preview-PR_NUMBER--NETLIFY_SITE_NAME.netlify.app/?site=everyone -->
-
-<!-- Netlify entry path for the automatic PR preview comment/status: -->
-@netlify /?site=family
+Use the bot-maintained `Family Running preview review links` PR comment as the authoritative review entry point. Wait for Netlify's Deploy Preview check to succeed before treating its links as ready, then inspect both `?site=family` and `?site=everyone`.
 
 # Manual Test Steps For John
 

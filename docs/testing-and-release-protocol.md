@@ -92,7 +92,9 @@ Before approving a Pull Request:
 - Confirm any CSV schema impact is intentional.
 - Confirm any Excel/VBA impact is intentional.
 - Check automated test results.
-- Open both preview URLs:
+- Confirm Netlify's Deploy Preview status is successful.
+- Use the bot-maintained `Family Running preview review links` PR comment as the authoritative review entry point.
+- Open both review links:
   - `?site=family`
   - `?site=everyone`
 - Review desktop and mobile screenshots.
@@ -112,7 +114,7 @@ No explicit John approval, no release.
 1. Create a feature branch.
 2. Make the smallest safe change.
 3. Run all local checks.
-4. Open a Pull Request and wait for GitHub checks plus Netlify Deploy Preview URLs.
+4. Open a Pull Request and wait for GitHub checks, a successful Netlify Deploy Preview status, and the automated preview-review-links comment.
 5. John reviews the preview, screenshots, manual test steps, limitations, and rollback plan.
 6. Merge to `main` only after John explicitly approves production.
 7. Verify production after GitHub Pages updates.
@@ -121,10 +123,14 @@ No explicit John approval, no release.
 
 GitHub Actions runs `.github/workflows/pr-checks.yml` for Pull Requests targeting `main`.
 
-Netlify Deploy Previews should be connected by John to produce public PR preview URLs:
+`.github/workflows/pr-preview-review-links.yml` creates or updates one bot-maintained PR comment containing the authoritative review links:
 
-- Family: `https://deploy-preview-PR_NUMBER--NETLIFY_SITE_NAME.netlify.app/?site=family`
-- Everyone: `https://deploy-preview-PR_NUMBER--NETLIFY_SITE_NAME.netlify.app/?site=everyone`
+- Family: `https://deploy-preview-PR_NUMBER--thunderous-moxie-c5aac5.netlify.app/?site=family`
+- Everyone: `https://deploy-preview-PR_NUMBER--thunderous-moxie-c5aac5.netlify.app/?site=everyone`
+
+The deterministic URLs are available immediately, but they are not ready for review until Netlify's Deploy Preview status succeeds. Review both site modes before approval.
+
+Once the workflow exists on `main`, test it manually by opening `PR Preview Review Links` in GitHub Actions, choosing **Run workflow**, selecting the implementation branch, entering the Pull Request number, and running it. Re-running it updates the same marked comment rather than adding another. GitHub does not expose `workflow_dispatch` for the first Pull Request that introduces a workflow because the workflow file is not yet on the default branch.
 
 The Netlify build uses `netlify.toml`, runs `pnpm run preview:build`, and publishes `test-artifacts/preview-site`.
 
