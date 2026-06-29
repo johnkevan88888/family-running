@@ -35,7 +35,9 @@ The workflow uses the verified Netlify hostname stored in its source-controlled 
 
 Netlify's Deploy Preview status must be successful before the deterministic links are treated as ready. Both `?site=family` and `?site=everyone` must be checked before approval.
 
-For a manual test, open `PR Preview Review Links` in GitHub Actions, choose **Run workflow**, select the branch containing the workflow version to test, enter the target Pull Request number, and run it. The manual route obtains the Pull Request details through the GitHub API and uses the same comment-generation path. Run it again to confirm that the marked comment is updated rather than duplicated.
+Once the workflow exists on `main`, test an implementation update by opening `PR Preview Review Links` in GitHub Actions, choosing **Run workflow**, selecting the branch containing the workflow version to test, entering the target Pull Request number, and running it. The manual route obtains the Pull Request details through the GitHub API and uses the same comment-generation path. Run it again to confirm that the marked comment is updated rather than duplicated.
+
+GitHub only exposes `workflow_dispatch` after the workflow file exists on the default branch. The first Pull Request that introduces this workflow therefore cannot use the manual route or receive an automatic `pull_request_target` run; verify those live paths on the first subsequent Pull Request after this workflow reaches `main`.
 
 ## Preview Deployment Provider
 

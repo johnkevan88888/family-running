@@ -130,7 +130,7 @@ GitHub Actions runs `.github/workflows/pr-checks.yml` for Pull Requests targetin
 
 The deterministic URLs are available immediately, but they are not ready for review until Netlify's Deploy Preview status succeeds. Review both site modes before approval.
 
-To test the comment workflow manually, open `PR Preview Review Links` in GitHub Actions, choose **Run workflow**, enter the Pull Request number, and run it. Re-running it updates the same marked comment rather than adding another.
+Once the workflow exists on `main`, test it manually by opening `PR Preview Review Links` in GitHub Actions, choosing **Run workflow**, selecting the implementation branch, entering the Pull Request number, and running it. Re-running it updates the same marked comment rather than adding another. GitHub does not expose `workflow_dispatch` for the first Pull Request that introduces a workflow because the workflow file is not yet on the default branch.
 
 The Netlify build uses `netlify.toml`, runs `pnpm run preview:build`, and publishes `test-artifacts/preview-site`.
 
