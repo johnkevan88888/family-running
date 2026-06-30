@@ -2,6 +2,12 @@
 
 This repository is a static GitHub Pages website for the Family Running Championships.
 
+## Shared Work Context
+
+- Before substantial implementation, read `docs/active-work.md`, the relevant architecture or product documentation, and `docs/testing-and-release-protocol.md`.
+- At completion, update `docs/active-work.md` with validation results and concise handoff notes.
+- Add major durable architectural decisions to `docs/decision-log.md`.
+
 ## Source Of Truth
 
 - Excel is the private source of truth for championship data and calculations.
