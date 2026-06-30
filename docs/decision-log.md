@@ -66,20 +66,23 @@ Unknown historical details are labelled rather than inferred.
 
 ## Main is PR-gated, with Netlify previews
 
-- **Status:** Accepted policy; repository automation is implemented, but hosted
-  enforcement is pending. GitHub's API reported no active branch-protection
-  rule for `main` on 30 June 2026.
+- **Status:** Accepted policy; repository automation and an active default-branch
+  ruleset are implemented. The ruleset was verified through GitHub's API on
+  30 June 2026.
 - **Date:** Release protocol established 25 June 2026; automated Netlify preview
-  review links added 28-29 June 2026.
+  review links added 28-29 June 2026; hosted ruleset verified 30 June 2026.
 - **Decision:** Substantial changes use a feature branch and Pull Request.
   Automated checks and a successful Netlify Deploy Preview for both site modes
   precede review, and `main` is intended to be the protected production branch.
 - **Rationale:** Reviewable previews and checks reduce the chance that an
   incorrect export or display change reaches GitHub Pages.
 - **Consequences:** Do not commit or merge directly to `main`. No merge or
-  production release occurs without explicit John approval. Hosted branch
-  protection and required-check settings still need to be enabled and verified
-  in GitHub.
+  production release occurs without explicit John approval. The active ruleset
+  requires a Pull Request, resolved review threads, and the strict
+  `Test static site` check, and blocks deletion and non-fast-forward updates.
+  It currently requires zero approving reviews and does not list Netlify's
+  Deploy Preview status as a required check, so those documented safeguards
+  still rely on process rather than hosted enforcement.
 
 ## Crown history is exported, not reconstructed in the browser
 

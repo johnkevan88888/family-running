@@ -6,96 +6,107 @@ running multiple active scopes here.
 
 ## Task title
 
-Repository shared handoff operating layer
+Post-merge baseline and release-governance verification
 
-## Objective
+## Task classification
 
-Make the repository the durable handoff point for product planning, Codex
-implementation, validation, Pull Request review, and release work.
+Documentation-only verification. No product task is approved.
 
-## Baseline at task start
+## Verified baseline
 
-- `main` was clean at `b9c5d7f` on 30 June 2026. `a8442b7` is the earlier merge
-  commit that released the All-Time Official Crown Progression MVP; it is not
-  the current `main` commit.
-- The All-Time Official Crown Progression MVP is complete and released.
-- Family (`?site=family`) and Everyone (`?site=everyone`) modes are live.
-- `data/family/crown_history.csv` and
-  `data/everyone/crown_history.csv` both exist.
-- The next product task is intentionally **not approved** and awaits product
-  direction from John.
+- PR [#11](https://github.com/johnkevan88888/family-running/pull/11)
+  merged into `main` on 30 June 2026.
+- The actual post-merge `main` commit is
+  `fa46c14988bc9f7dede21baa823b0e963766d765`.
+- After fetching from `origin`, local `main` was fast-forwarded to that commit
+  and confirmed clean and exactly aligned with `origin/main`.
+- The shared operating layer is present on `main`:
+  - `AGENTS.md`
+  - `docs/active-work.md`
+  - `docs/decision-log.md`
+  - `docs/roadmap.md`
+- Excel/VBA remains the private source of truth, JavaScript remains
+  display-only, and both `?site=family` and `?site=everyone` remain required.
+
+## Documentation-system status
+
+- The shared operating layer introduced by PR #11 is merged and available from
+  the default branch.
+- This record replaces PR #11's pre-merge handoff state with the verified
+  post-merge baseline.
+- `docs/decision-log.md` receives only the factual release-governance status
+  correction discovered by this verification.
+- `docs/roadmap.md` is unchanged and remains proposal-only.
+
+## Release-governance verification
+
+- GitHub's REST API reported repository ruleset `main` (ID `18119142`) as
+  active and targeting the default branch on 30 June 2026.
+- The active ruleset:
+  - requires changes to reach `main` through a Pull Request;
+  - requires review threads to be resolved;
+  - permits merge commits as the only merge method;
+  - blocks branch deletion and non-fast-forward updates; and
+  - requires the strict `Test static site` status check.
+- The ruleset currently requires zero approving reviews and does not require a
+  code-owner or last-push approval.
+- Netlify's Deploy Preview status is not listed as a required status check.
+- The classic branch-protection endpoint required authentication, but the
+  applicable ruleset endpoints were available and confirmed active protection.
+- No GitHub repository setting was changed by this task.
 
 ## Scope
 
-- Add a reusable active-task handoff template and populate it with the current
-  baseline.
-- Record established architectural decisions.
-- Record a prioritised, proposal-only roadmap grounded in repository evidence.
-- Add the minimum agent instructions needed to keep those documents current.
+- Verify the fetched post-merge baseline and exact `main` commit.
+- Verify the presence of the shared operating documents.
+- Verify and record the live release-governance safeguards.
+- Deliver this handoff update through a focused documentation-only Pull Request.
 
 ## Explicitly out of scope
 
-- Website behaviour or presentation.
+- Product behaviour, presentation, or implementation.
 - CSV schemas or production data.
 - Excel/VBA workbooks, macros, exports, or backups.
-- GitHub Actions, Netlify configuration, dependencies, or release settings.
-- Selection or implementation of the next product feature.
-
-## Relevant files
-
-- `AGENTS.md`
-- `docs/active-work.md`
-- `docs/decision-log.md`
-- `docs/roadmap.md`
-- `docs/crown-history-mvp.md`
-- `docs/testing-and-release-protocol.md`
-- `docs/github-pr-checks-and-preview-deployments.md`
-
-## Acceptance criteria
-
-- The three operating documents are concise, evidence-based, and agree with the
-  current repository state.
-- `AGENTS.md` points substantial work to the active task, architecture context,
-  release protocol, and decision log without duplicating them.
-- No application, data, workflow, dependency, workbook, or generated artifact
-  is intentionally changed.
-- The work is delivered through a focused Pull Request with validation evidence.
+- JavaScript calculations or browser-derived championship outcomes.
+- GitHub, Netlify, GitHub Pages, workflow, dependency, or release-setting
+  changes.
+- Approval or implementation of a roadmap proposal.
 
 ## Validation required
 
-- [x] `pnpm run validate:safety` — passed; 94 tracked files checked after
-  staging the operating documents.
-- [x] `pnpm run validate:csv` — passed for Family and Everyone.
-- [x] `pnpm test` — passed repository safety, CSV validation, export-bundle
-  regression tests, and browser smoke tests for both modes; responsive
-  screenshots remained ignored test artifacts.
-- [x] Final tracked-file audit — only `AGENTS.md` and the three operating
-  documents changed; no application, data, workflow, dependency, workbook, or
-  generated artifact is included.
+- [x] `pnpm test` — passed repository safety validation (94 tracked files), CSV
+  validation for Family and Everyone, export-bundle regression tests, and
+  browser smoke tests for both site modes.
+- [x] Responsive screenshots were generated only under the ignored
+  `test-artifacts/screenshots/` path.
+- [x] Final tracked-file audit — only `docs/active-work.md` and the factual
+  release-governance correction in `docs/decision-log.md` changed; no
+  application, CSV, workflow, dependency, workbook, screenshot, or
+  configuration file changed.
 
 ## PR and release status
 
-- Branch: `docs/shared-handoff-system`
-- Pull Request: [#11](https://github.com/johnkevan88888/family-running/pull/11)
-  is open and awaiting checks and review.
-- Release: not requested; merge and production release require explicit John
-  approval.
+- Branch: `docs/post-merge-baseline-verification`
+- Pull Request: to be opened from this branch after commit and push.
+- Release: not requested. Merge and production release still require explicit
+  John approval.
 
-## Implementation notes
+## Product status
 
-- Documentation-only operating layer.
-- Historical dates use Git history where available and are marked approximate
-  where the exact original decision date is unknown.
-- GitHub's API reported no active branch-protection rule for `main` on 30 June
-  2026. This task did not change repository settings.
+- No product task is approved.
+- Recommended next product discussion only:
+  “Crown History Phase 2: Excel/VBA-exported same-holder All-Time Official crown
+  improvements, excluding Current/12-Month history and browser-side
+  calculations.”
+- This recommendation is not an active task and does not authorise product,
+  workbook, CSV, JavaScript, presentation, or release work.
 
 ## Codex handoff notes
 
-- Do not start a roadmap proposal until John approves it and this file is
-  replaced with that task's exact scope and acceptance criteria.
+- Do not begin Crown History Phase 2 unless John explicitly approves it and
+  this file is replaced with its exact scope and acceptance criteria.
 - Preserve Excel/VBA ownership of calculations and JavaScript's display-only
   role.
-- Treat `main` branch-protection enforcement as an outstanding release-process
-  setup item; the policy exists, but GitHub reported no active rule at handoff.
-- At task completion, record commands and results here, then leave PR/release
-  state explicit for the next handoff.
+- Keep both site modes in every future product and release gate.
+- Treat approving-review and required-Netlify-check enforcement as visible
+  governance gaps, not as permission to bypass the documented review process.
