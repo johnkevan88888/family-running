@@ -76,7 +76,8 @@ implementation, validation, Pull Request review, and release work.
 ## PR and release status
 
 - Branch: `docs/shared-handoff-system`
-- Pull Request: pending
+- Pull Request: [#11](https://github.com/johnkevan88888/family-running/pull/11)
+  is open and awaiting checks and review.
 - Release: not requested; merge and production release require explicit John
   approval.
 
@@ -85,8 +86,8 @@ implementation, validation, Pull Request review, and release work.
 - Documentation-only operating layer.
 - Historical dates use Git history where available and are marked approximate
   where the exact original decision date is unknown.
-- GitHub-hosted branch-protection enforcement cannot be established from
-  tracked files alone and is recorded as an external verification point.
+- GitHub's API reported no active branch-protection rule for `main` on 30 June
+  2026. This task did not change repository settings.
 
 ## Codex handoff notes
 
@@ -94,5 +95,7 @@ implementation, validation, Pull Request review, and release work.
   replaced with that task's exact scope and acceptance criteria.
 - Preserve Excel/VBA ownership of calculations and JavaScript's display-only
   role.
+- Treat `main` branch-protection enforcement as an outstanding release-process
+  setup item; the policy exists, but GitHub reported no active rule at handoff.
 - At task completion, record commands and results here, then leave PR/release
   state explicit for the next handoff.

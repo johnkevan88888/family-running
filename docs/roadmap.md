@@ -28,10 +28,10 @@ repository history. An item becomes active only when John approves it and
    rendering before choosing optimisations, with particular attention to the
    growing number of CSV requests and athlete-page sections. Any workbook macro
    performance work remains private and outside this repository.
-3. **Release-process refinement.** Verify hosted `main` branch protection and
-   required checks, then close any remaining gaps in preview review, production
-   verification, and handoff recording. Existing automation should be refined,
-   not replaced without evidence.
+3. **Release-process refinement.** Enable and verify hosted `main` branch
+   protection and required checks, then close any remaining gaps in preview
+   review, production verification, and handoff recording. Existing automation
+   should be refined, not replaced without evidence.
 
 ## Explicitly deferred ideas
 
