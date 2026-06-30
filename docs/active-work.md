@@ -87,7 +87,8 @@ Documentation-only verification. No product task is approved.
 ## PR and release status
 
 - Branch: `docs/post-merge-baseline-verification`
-- Pull Request: to be opened from this branch after commit and push.
+- Pull Request: [#12](https://github.com/johnkevan88888/family-running/pull/12)
+  is open for review.
 - Release: not requested. Merge and production release still require explicit
   John approval.
 
