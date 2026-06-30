@@ -28,6 +28,18 @@ Preserve the selected `site` parameter when navigating between championship page
 - `data/family/` contains CSV exports for the Family mode.
 - `data/everyone/` contains CSV exports for the Everyone mode.
 - `data/athlete_results.csv` is shared profile result data used by athlete pages.
+- `data/export_manifest.csv` is the completion and consistency contract for one full website-data export.
+
+## Export Bundle Contract
+
+- Excel/VBA generates one URL-safe `ExportBundleID` at the start of each full website-data export.
+- Every public CSV except `data/export_manifest.csv` carries that ID in an additive `ExportBundleID` column.
+- VBA writes `data/export_manifest.csv` only after all planned public CSVs have been created and post-export validation has passed.
+- The manifest schema is exactly:
+  `ExportBundleID,ExportedAtUTC,SchemaVersion,Scope,RelativePath,DataRowCount`.
+- `Scope` is `family`, `everyone`, or `shared`; paths are repository-relative; row counts exclude the CSV header.
+- Repository validation rejects partial, stale, mixed, missing, unlisted, or wrongly counted exports.
+- The private macro-enabled workbook and every dated backup remain outside Git and must never be staged or committed.
 
 ## Behaviour Boundaries
 

@@ -3,11 +3,26 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const dataRoot = path.join(repoRoot, 'data');
+const validationRoot = process.env.CSV_VALIDATION_ROOT
+    ? path.resolve(process.env.CSV_VALIDATION_ROOT)
+    : repoRoot;
+const dataRoot = path.join(validationRoot, 'data');
 const siteModes = ['family', 'everyone'];
+const manifestFile = 'data/export_manifest.csv';
+const manifestHeaders = [
+    'ExportBundleID',
+    'ExportedAtUTC',
+    'SchemaVersion',
+    'Scope',
+    'RelativePath',
+    'DataRowCount'
+];
+const manifestSchemaVersion = '1.0';
 const errors = [];
 const warnings = [];
 const csvCache = new Map();
+
+validateExportBundleIntegrity();
 
 const athleteRows = readCsvRequired('data/athlete_results.csv', [
     'AthleteID',
@@ -64,10 +79,340 @@ if (errors.length) {
 
 console.log(`CSV validation passed for ${siteModes.map(mode => `data/${mode}/`).join(' and ')}.`);
 
+function validateExportBundleIntegrity() {
+    const manifestPath = path.join(validationRoot, manifestFile);
+
+    if (!fs.existsSync(manifestPath)) {
+        addError(manifestFile, 1, 'Required export manifest is missing.');
+        return;
+    }
+
+    const manifestRows = parseCsvFile(manifestFile);
+    if (manifestRows.length === 0) {
+        addError(manifestFile, 1, 'Export manifest is empty.');
+        return;
+    }
+
+    const actualHeaders = manifestRows[0] || [];
+    if (
+        actualHeaders.length !== manifestHeaders.length ||
+        actualHeaders.some((header, index) => header !== manifestHeaders[index])
+    ) {
+        addError(
+            manifestFile,
+            1,
+            `Manifest schema must exactly match: ${manifestHeaders.join(',')}.`
+        );
+        return;
+    }
+
+    const manifestObjects = toObjects(manifestRows, manifestFile);
+    if (manifestObjects.length === 0) {
+        addError(manifestFile, 1, 'Export manifest must contain at least one file row.');
+        return;
+    }
+
+    const canonical = {
+        bundleId: String(manifestObjects[0].ExportBundleID || '').trim(),
+        exportedAt: String(manifestObjects[0].ExportedAtUTC || '').trim(),
+        schemaVersion: String(manifestObjects[0].SchemaVersion || '').trim()
+    };
+    const manifestByPath = new Map();
+    const scopeBundles = new Map(['family', 'everyone', 'shared'].map(scope => [scope, new Set()]));
+
+    for (const row of manifestObjects) {
+        const rowNumber = row.__rowNumber;
+        const bundleId = String(row.ExportBundleID || '').trim();
+        const exportedAt = String(row.ExportedAtUTC || '').trim();
+        const schemaVersion = String(row.SchemaVersion || '').trim();
+        const scope = String(row.Scope || '').trim();
+        const relativePath = String(row.RelativePath || '').trim();
+        const rowCountText = String(row.DataRowCount || '').trim();
+
+        requireValue(bundleId, manifestFile, rowNumber, 'ExportBundleID');
+        requireValue(exportedAt, manifestFile, rowNumber, 'ExportedAtUTC');
+        requireValue(schemaVersion, manifestFile, rowNumber, 'SchemaVersion');
+        validateManifestBundleId(bundleId, rowNumber);
+        validateManifestTimestamp(exportedAt, rowNumber);
+
+        if (schemaVersion && schemaVersion !== manifestSchemaVersion) {
+            addError(
+                manifestFile,
+                rowNumber,
+                `SchemaVersion "${schemaVersion}" must be "${manifestSchemaVersion}".`
+            );
+        }
+
+        if (bundleId !== canonical.bundleId) {
+            addError(
+                manifestFile,
+                rowNumber,
+                `ExportBundleID "${bundleId}" disagrees with row 2 value "${canonical.bundleId}".`
+            );
+        }
+        if (exportedAt !== canonical.exportedAt) {
+            addError(
+                manifestFile,
+                rowNumber,
+                `ExportedAtUTC "${exportedAt}" disagrees with row 2 value "${canonical.exportedAt}".`
+            );
+        }
+        if (schemaVersion !== canonical.schemaVersion) {
+            addError(
+                manifestFile,
+                rowNumber,
+                `SchemaVersion "${schemaVersion}" disagrees with row 2 value "${canonical.schemaVersion}".`
+            );
+        }
+
+        if (!['family', 'everyone', 'shared'].includes(scope)) {
+            addError(
+                manifestFile,
+                rowNumber,
+                `Scope "${scope}" must be one of: family, everyone, shared.`
+            );
+        } else if (bundleId) {
+            scopeBundles.get(scope).add(bundleId);
+        }
+
+        const validPath = validateManifestRelativePath(relativePath, scope, rowNumber);
+        if (relativePath) {
+            if (manifestByPath.has(relativePath)) {
+                addError(
+                    manifestFile,
+                    rowNumber,
+                    `RelativePath "${relativePath}" appears more than once in the manifest.`
+                );
+            } else {
+                manifestByPath.set(relativePath, row);
+            }
+        }
+
+        if (!/^(0|[1-9]\d*)$/.test(rowCountText)) {
+            addError(
+                manifestFile,
+                rowNumber,
+                `DataRowCount "${row.DataRowCount}" must be a non-negative integer.`
+            );
+        }
+
+        if (validPath) {
+            validateManifestFileEntry(row, canonical.bundleId);
+        }
+    }
+
+    for (const scope of ['family', 'everyone', 'shared']) {
+        if (scopeBundles.get(scope).size === 0) {
+            addError(manifestFile, 1, `Manifest has no "${scope}" scope rows.`);
+        }
+    }
+
+    const allScopeBundleIds = new Set(
+        [...scopeBundles.values()].flatMap(bundleIds => [...bundleIds])
+    );
+    if (allScopeBundleIds.size !== 1) {
+        addError(
+            manifestFile,
+            1,
+            `Family, Everyone, and shared rows do not belong to one export bundle (${[...allScopeBundleIds].join(', ') || 'none'}).`
+        );
+    }
+
+    for (const relativePath of discoverPublicCsvFiles()) {
+        if (!manifestByPath.has(relativePath)) {
+            addError(
+                relativePath,
+                1,
+                `Public CSV exists but is absent from ${manifestFile}.`
+            );
+        }
+    }
+}
+
+function validateManifestBundleId(bundleId, rowNumber) {
+    if (!bundleId) {
+        return;
+    }
+
+    if (!/^\d{8}T\d{9}Z-[A-F0-9]{8}$/.test(bundleId)) {
+        addError(
+            manifestFile,
+            rowNumber,
+            `ExportBundleID "${bundleId}" is not the required URL-safe UTC timestamp and uniqueness format.`
+        );
+    }
+}
+
+function validateManifestTimestamp(value, rowNumber) {
+    if (!value) {
+        return;
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) || Number.isNaN(Date.parse(value))) {
+        addError(
+            manifestFile,
+            rowNumber,
+            `ExportedAtUTC "${value}" must be an ISO UTC timestamp with milliseconds.`
+        );
+    }
+}
+
+function validateManifestRelativePath(relativePath, scope, rowNumber) {
+    if (!relativePath) {
+        addError(manifestFile, rowNumber, 'RelativePath is required.');
+        return false;
+    }
+
+    const normalized = path.posix.normalize(relativePath);
+    const structurallyValid =
+        !path.posix.isAbsolute(relativePath) &&
+        !relativePath.includes('\\') &&
+        normalized === relativePath &&
+        relativePath.startsWith('data/') &&
+        relativePath.toLowerCase().endsWith('.csv') &&
+        relativePath !== manifestFile;
+
+    if (!structurallyValid) {
+        addError(
+            manifestFile,
+            rowNumber,
+            `RelativePath "${relativePath}" is not a safe repository-relative public CSV path.`
+        );
+        return false;
+    }
+
+    const scopeMatches =
+        (scope === 'family' && /^data\/family\/[^/]+\.csv$/i.test(relativePath)) ||
+        (scope === 'everyone' && /^data\/everyone\/[^/]+\.csv$/i.test(relativePath)) ||
+        (scope === 'shared' && /^data\/(?!family\/|everyone\/)[^/]+\.csv$/i.test(relativePath));
+
+    if (!scopeMatches) {
+        addError(
+            manifestFile,
+            rowNumber,
+            `RelativePath "${relativePath}" is invalid for scope "${scope}".`
+        );
+        return false;
+    }
+
+    return true;
+}
+
+function validateManifestFileEntry(manifestRow, canonicalBundleId) {
+    const relativePath = String(manifestRow.RelativePath || '').trim();
+    const absolutePath = path.join(validationRoot, relativePath);
+
+    if (!fs.existsSync(absolutePath)) {
+        addError(
+            manifestFile,
+            manifestRow.__rowNumber,
+            `RelativePath "${relativePath}" references a missing CSV.`
+        );
+        return;
+    }
+
+    const rows = parseCsvFile(relativePath);
+    if (rows.length === 0) {
+        return;
+    }
+
+    const headers = rows[0] || [];
+    const bundleIndexes = headers
+        .map((header, index) => header === 'ExportBundleID' ? index : -1)
+        .filter(index => index >= 0);
+
+    if (bundleIndexes.length === 0) {
+        addError(relativePath, 1, 'Missing required header "ExportBundleID".');
+    } else if (bundleIndexes.length > 1) {
+        addError(relativePath, 1, 'Header "ExportBundleID" appears more than once.');
+    }
+
+    const dataRows = rows
+        .slice(1)
+        .map((row, index) => ({ row, rowNumber: index + 2 }))
+        .filter(({ row }) => row.some(value => value !== ''));
+    const expectedRowCount = Number(manifestRow.DataRowCount);
+
+    if (Number.isInteger(expectedRowCount) && dataRows.length !== expectedRowCount) {
+        addError(
+            manifestFile,
+            manifestRow.__rowNumber,
+            `DataRowCount for "${relativePath}" is ${manifestRow.DataRowCount}, but the CSV contains ${dataRows.length} data rows.`
+        );
+    }
+
+    if (bundleIndexes.length !== 1 || dataRows.length === 0) {
+        return;
+    }
+
+    const bundleIndex = bundleIndexes[0];
+    const fileBundleIds = new Set();
+
+    for (const { row, rowNumber } of dataRows) {
+        const bundleId = String(row[bundleIndex] || '').trim();
+
+        if (!bundleId) {
+            addError(relativePath, rowNumber, 'ExportBundleID is blank.');
+            continue;
+        }
+
+        fileBundleIds.add(bundleId);
+
+        if (bundleId !== String(manifestRow.ExportBundleID || '').trim()) {
+            addError(
+                relativePath,
+                rowNumber,
+                `ExportBundleID "${bundleId}" does not match manifest value "${manifestRow.ExportBundleID}".`
+            );
+        }
+        if (bundleId !== canonicalBundleId) {
+            addError(
+                relativePath,
+                rowNumber,
+                `ExportBundleID "${bundleId}" does not match the export bundle "${canonicalBundleId}".`
+            );
+        }
+    }
+
+    if (fileBundleIds.size > 1) {
+        addError(
+            relativePath,
+            1,
+            `CSV contains mixed ExportBundleID values: ${[...fileBundleIds].join(', ')}.`
+        );
+    }
+}
+
+function discoverPublicCsvFiles() {
+    if (!fs.existsSync(dataRoot)) {
+        return [];
+    }
+
+    const files = [];
+    visit(dataRoot);
+    return files.sort();
+
+    function visit(directory) {
+        for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+            const absolutePath = path.join(directory, entry.name);
+
+            if (entry.isDirectory()) {
+                visit(absolutePath);
+            } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.csv')) {
+                const relativePath = path.relative(validationRoot, absolutePath).replace(/\\/g, '/');
+
+                if (relativePath !== manifestFile) {
+                    files.push(relativePath);
+                }
+            }
+        }
+    }
+}
+
 function validateSite(siteMode) {
     const siteDir = `data/${siteMode}`;
 
-    if (!fs.existsSync(path.join(repoRoot, siteDir))) {
+    if (!fs.existsSync(path.join(validationRoot, siteDir))) {
         addError(siteDir, 1, 'Required site data directory is missing.');
         return;
     }
@@ -220,7 +565,8 @@ function validateCrownHistory(siteDir) {
         'PreviousAthleteName',
         'PreviousTime',
         'PreviousAgeGrade',
-        'ChangeReason'
+        'ChangeReason',
+        'ExportBundleID'
     ];
     const rows = readCsvRequired(file, expectedHeaders);
     const actualHeaders = rows[0] || [];
@@ -531,7 +877,7 @@ function validateLeaderboardIndex(siteDir, siteMode, webtables) {
             .map(row => String(row.FileName || '').trim())
             .filter(Boolean)
     );
-    const absoluteDir = path.join(repoRoot, siteDir);
+    const absoluteDir = path.join(validationRoot, siteDir);
     const leaderboardFiles = fs.readdirSync(absoluteDir)
         .filter(fileName => Boolean(parseLeaderboardExportFileName(fileName, siteMode)));
 
@@ -679,7 +1025,7 @@ function discoverOfficialLeaderboardExports(siteDir, siteMode, webtables) {
         }
     }
 
-    const absoluteDir = path.join(repoRoot, siteDir);
+    const absoluteDir = path.join(validationRoot, siteDir);
 
     for (const fileName of fs.readdirSync(absoluteDir)) {
         const parsed = parseLeaderboardExportFileName(fileName, siteMode);
@@ -924,7 +1270,7 @@ function validateLeaderboardFile(siteDir, fileName, webtableRowNumber) {
 }
 
 function validateEveryCsvInFolder(siteDir) {
-    const absoluteDir = path.join(repoRoot, siteDir);
+    const absoluteDir = path.join(validationRoot, siteDir);
     const csvFiles = fs.readdirSync(absoluteDir)
         .filter(file => file.toLowerCase().endsWith('.csv'))
         .map(file => `${siteDir}/${file}`);
@@ -958,7 +1304,7 @@ function parseCsvFile(relativePath) {
         return csvCache.get(relativePath);
     }
 
-    const absolutePath = path.join(repoRoot, relativePath);
+    const absolutePath = path.join(validationRoot, relativePath);
 
     if (!fs.existsSync(absolutePath)) {
         addError(relativePath, 1, 'Required CSV file is missing.');

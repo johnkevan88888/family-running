@@ -7,6 +7,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const checks = [
     ['Repository safety validation', ['scripts/validate-repository-safety.mjs']],
     ['CSV validation', ['scripts/validate-csv.mjs']],
+    ['Export bundle validation regression tests', ['tests/export-bundle-validation.mjs']],
     ['Browser smoke tests', ['tests/browser-smoke.mjs']]
 ];
 

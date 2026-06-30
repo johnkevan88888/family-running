@@ -118,6 +118,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await expectCountAtLeast(page, '#leaderboards table tr', 2, `${mode} leaderboard rows`);
         await assertHallOfFameDisplayLabels(page, mode, viewport);
         await assertCrownHistory(page, mode, viewport, requestedPaths);
+        await assertBundleMetadataHidden(page, `${mode}/${viewport.name} championship page`);
 
         const athleteLinkCount = await page.locator('a[href^="athlete.html?id="]').count();
         if ((await hasAthleteData()) && athleteLinkCount < 1) {
@@ -523,6 +524,7 @@ async function assertAthleteNavigation(page, mode, viewport) {
         return name && name !== 'Loading...';
     });
     await waitForNetworkToSettle(page);
+    await assertBundleMetadataHidden(page, `${mode}/${viewport.name} athlete page`);
 
     const backHref = await page.locator('.back-link').getAttribute('href');
     if (backHref !== `index.html?site=${mode}`) {
@@ -536,6 +538,20 @@ async function assertAthleteNavigation(page, mode, viewport) {
     }
 
     await waitForRenderedChampionship(page, mode);
+}
+
+async function assertBundleMetadataHidden(page, context) {
+    const manifestRows = await readCsvObjects('data/export_manifest.csv');
+    const bundleId = manifestRows[0]?.ExportBundleID || '';
+    const bodyText = normalizeText(await page.locator('body').textContent());
+
+    if (bodyText.includes('ExportBundleID')) {
+        failures.push(`${context}: rendered the ExportBundleID metadata column name.`);
+    }
+
+    if (bundleId && bodyText.includes(bundleId)) {
+        failures.push(`${context}: rendered export bundle metadata value "${bundleId}".`);
+    }
 }
 
 async function assertAthleteOfficialMedals(page, mode, viewport) {

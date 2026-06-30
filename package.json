@@ -10,6 +10,7 @@
     "test": "node scripts/run-all-tests.mjs",
     "validate:safety": "node scripts/validate-repository-safety.mjs",
     "validate:csv": "node scripts/validate-csv.mjs",
+    "test:export-bundle": "node tests/export-bundle-validation.mjs",
     "test:browser": "node tests/browser-smoke.mjs",
     "screenshots:update": "node tests/browser-smoke.mjs --update-screenshots"
   },
