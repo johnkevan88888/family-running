@@ -302,6 +302,72 @@ body {
     margin-bottom: 40px;
 }
 
+.age-grade-standards-intro {
+    align-items: center;
+    display: flex;
+    gap: 14px 20px;
+    justify-content: space-between;
+    margin: -8px 0 16px;
+}
+
+.age-grade-standards-intro p {
+    color: #4b5a66;
+    font-size: 0.94rem;
+    font-weight: 700;
+    line-height: 1.35;
+    margin: 0;
+}
+
+.pace-unit-control {
+    align-items: center;
+    display: flex;
+    flex: 0 0 auto;
+    gap: 8px;
+}
+
+.pace-unit-label {
+    color: #33495d;
+    font-size: 0.88rem;
+    font-weight: 900;
+}
+
+.pace-unit-options {
+    border: 1px solid #2b5c88;
+    border-radius: 7px;
+    display: inline-flex;
+    overflow: hidden;
+}
+
+.pace-unit-options button {
+    appearance: none;
+    background: white;
+    border: 0;
+    color: #1e3a5f;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 900;
+    line-height: 1;
+    min-height: 34px;
+    min-width: 46px;
+    padding: 8px 10px;
+}
+
+.pace-unit-options button + button {
+    border-left: 1px solid #2b5c88;
+}
+
+.pace-unit-options button[aria-pressed="true"] {
+    background: #1e3a5f;
+    color: white;
+}
+
+.pace-unit-options button:focus-visible {
+    box-shadow: inset 0 0 0 3px #ffd700;
+    outline: 2px solid #1e3a5f;
+    outline-offset: 2px;
+}
+
 .age-grade-standards-table-wrap {
     overflow-x: auto;
     padding-bottom: 4px;
@@ -358,9 +424,28 @@ body {
 
 .age-grade-standards-table td {
     color: #0f2438;
-    font-size: 0.94rem;
     font-variant-numeric: tabular-nums;
-    font-weight: 800;
+}
+
+.age-grade-target-time,
+.age-grade-pace {
+    display: block;
+}
+
+.age-grade-target-time {
+    font-size: 0.98rem;
+    font-weight: 900;
+}
+
+.age-grade-pace {
+    color: #526779;
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-top: 3px;
+}
+
+.age-grade-pace[hidden] {
+    display: none;
 }
 
 .age-grade-standards-table tbody tr:hover td,
@@ -579,6 +664,11 @@ body {
 @media (max-width: 600px) {
     .pb-columns {
         grid-template-columns: 1fr;
+    }
+
+    .age-grade-standards-intro {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .crown-standard-target-list {

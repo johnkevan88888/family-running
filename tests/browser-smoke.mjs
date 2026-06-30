@@ -130,6 +130,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertLeaderboardDisplayLabels(page, mode, viewport);
         await assertAthleteNavigation(page, mode, viewport);
         await assertAthleteOfficialMedals(page, mode, viewport);
+        await assertAgeGradeStandards(page, mode, viewport);
 
         await page.setViewportSize(viewport);
         await page.goto(`${preview.baseUrl}/?site=${mode}`, { waitUntil: 'domcontentloaded' });
@@ -602,6 +603,139 @@ async function assertAthleteOfficialMedals(page, mode, viewport) {
     await assertDisplayedOfficialMedals(page, mode, viewport, medalScenario.medals);
 }
 
+async function assertAgeGradeStandards(page, mode, viewport) {
+    const paceScenario = await findAgeGradePaceScenario(mode);
+
+    if (!paceScenario) {
+        failures.push(`${mode}/${viewport.name}: no athlete has all required age-grade pace examples.`);
+        return;
+    }
+
+    await page.goto(
+        `${preview.baseUrl}/athlete.html?id=${encodeURIComponent(paceScenario.athleteId)}&site=${mode}`,
+        { waitUntil: 'domcontentloaded' }
+    );
+    await page.locator('#age-grade-standards-section:not(.hidden)').waitFor({ state: 'visible' });
+    await waitForNetworkToSettle(page);
+
+    const section = page.locator('#age-grade-standards-section');
+    const control = section.getByRole('group', { name: 'Pace display unit' });
+    const perKm = control.getByRole('button', { name: 'Show pace per kilometre' });
+    const perMile = control.getByRole('button', { name: 'Show pace per mile' });
+    const context = `${mode}/${viewport.name}`;
+
+    await expectText(
+        page,
+        '.age-grade-standards-intro p',
+        'Target times and required pace. Pace is rounded to the nearest second.',
+        `${context} age-grade pace helper`
+    );
+
+    if (await perKm.getAttribute('aria-pressed') !== 'true') {
+        failures.push(`${context}: /km was not selected for a first-time visitor.`);
+    }
+    if (await perMile.getAttribute('aria-pressed') !== 'false') {
+        failures.push(`${context}: /mi was selected before the user changed pace unit.`);
+    }
+
+    await assertRenderedAgeGradePaces(section, paceScenario.examples, 'km', context);
+    await section.screenshot({
+        path: path.join(artifactsDir, `${mode}-age-grade-standards-${viewport.name}-km.png`)
+    });
+
+    await perMile.focus();
+    await page.keyboard.press('Enter');
+
+    if (await perMile.getAttribute('aria-pressed') !== 'true') {
+        failures.push(`${context}: keyboard selection did not activate /mi.`);
+    }
+    if (await perKm.getAttribute('aria-pressed') !== 'false') {
+        failures.push(`${context}: /km remained pressed after selecting /mi.`);
+    }
+
+    await assertRenderedAgeGradePaces(section, paceScenario.examples, 'mi', context);
+    await section.screenshot({
+        path: path.join(artifactsDir, `${mode}-age-grade-standards-${viewport.name}-mi.png`)
+    });
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('#age-grade-standards-section:not(.hidden)').waitFor({ state: 'visible' });
+
+    const reloadedSection = page.locator('#age-grade-standards-section');
+    const reloadedPerMile = reloadedSection.getByRole('button', { name: 'Show pace per mile' });
+    if (await reloadedPerMile.getAttribute('aria-pressed') !== 'true') {
+        failures.push(`${context}: /mi selection did not persist after reload.`);
+    }
+    await assertRenderedAgeGradePaces(reloadedSection, paceScenario.examples, 'mi', `${context} after reload`);
+}
+
+async function assertRenderedAgeGradePaces(section, examples, unit, context) {
+    for (const example of examples) {
+        const rows = section.locator('tbody tr');
+        const rowIndex = await rows.evaluateAll(
+            (elements, distance) => elements.findIndex(element =>
+                element.querySelector('th')?.textContent?.trim() === distance
+            ),
+            example.distance
+        );
+
+        if (rowIndex < 0) {
+            failures.push(`${context}: no age-grade standards row was rendered for ${example.distance}.`);
+            continue;
+        }
+
+        const row = rows.nth(rowIndex);
+        const cells = row.locator('td');
+        const cellIndex = await cells.evaluateAll(
+            (elements, targetTime) => elements.findIndex(element =>
+                element.querySelector('.age-grade-target-time')?.textContent?.trim() === targetTime
+            ),
+            example.targetTime
+        );
+
+        if (cellIndex < 0) {
+            failures.push(
+                `${context}: ${example.distance} did not render target time ${example.targetTime}.`
+            );
+            continue;
+        }
+
+        const cell = cells.nth(cellIndex);
+        const targetTime = normalizeText(await cell.locator('.age-grade-target-time').textContent());
+        const paces = cell.locator('.age-grade-pace');
+        const visiblePaces = [];
+
+        for (let index = 0; index < await paces.count(); index += 1) {
+            const pace = paces.nth(index);
+            if (await pace.isVisible()) {
+                visiblePaces.push(pace);
+            }
+        }
+
+        const visiblePaceCount = visiblePaces.length;
+        const expectedPace = `${example[unit]} /${unit}`;
+
+        if (targetTime !== example.targetTime) {
+            failures.push(
+                `${context}: ${example.distance} target time was "${targetTime}", expected "${example.targetTime}".`
+            );
+        }
+        if (visiblePaceCount !== 1) {
+            failures.push(
+                `${context}: ${example.distance} showed ${visiblePaceCount} pace values, expected exactly one.`
+            );
+            continue;
+        }
+
+        const actualPace = normalizeText(await visiblePaces[0].textContent());
+        if (actualPace !== expectedPace) {
+            failures.push(
+                `${context}: ${example.distance} pace was "${actualPace}", expected "${expectedPace}".`
+            );
+        }
+    }
+}
+
 async function assertDisplayedOfficialMedals(page, mode, viewport, expectedMedals) {
     const cards = page.locator('#official-medals .official-medal');
     const cardCount = await cards.count();
@@ -694,6 +828,28 @@ async function findMedalledAthleteScenario(mode) {
     return athleteId
         ? { athleteId, medals }
         : null;
+}
+
+async function findAgeGradePaceScenario(mode) {
+    const rows = await readCsvObjects(`data/${mode}/age_grade_standards.csv`);
+    const examples = [
+        { distance: '5 km', targetTime: '00:20:13', km: '4:03', mi: '6:30' },
+        { distance: '10 Mile', targetTime: '01:07:20', km: '4:11', mi: '6:44' },
+        { distance: 'Half Marathon', targetTime: '01:29:35', km: '4:15', mi: '6:50' },
+        { distance: 'Marathon', targetTime: '02:24:12', km: '3:25', mi: '5:30' }
+    ];
+    const athleteIds = [...new Set(rows.map(row => row.AthleteId).filter(Boolean))];
+    const athleteId = athleteIds.find(candidate => examples.every(example =>
+        rows.some(row =>
+            row.AthleteId === candidate &&
+            row.Distance === example.distance &&
+            row.RequiredTime === example.targetTime &&
+            row.pace_per_km === example.km &&
+            row.pace_per_mile === example.mi
+        )
+    ));
+
+    return athleteId ? { athleteId, examples } : null;
 }
 
 async function athleteMedalForbiddenLeaderboardPaths(mode) {

@@ -1216,6 +1216,8 @@ function validateAgeGradeStandards(siteDir) {
         'Standard',
         'AgeGrade',
         'RequiredTime',
+        'pace_per_km',
+        'pace_per_mile',
         'SortOrder'
     ]);
 
@@ -1223,8 +1225,90 @@ function validateAgeGradeStandards(siteDir) {
         validateAthleteId(row.AthleteId, file, row.__rowNumber, 'AthleteId', { required: true, severity: 'warning' });
         validatePercent(row.AgeGrade, file, row.__rowNumber, 'AgeGrade', { required: true });
         validateTime(row.RequiredTime, file, row.__rowNumber, 'RequiredTime', { required: true });
+        validateAgeGradePaces(row, file);
         validateNumber(row.SortOrder, file, row.__rowNumber, 'SortOrder', { required: true });
     }
+}
+
+function validateAgeGradePaces(row, file) {
+    const distance = ageGradeStandardDistance(row.Distance);
+    const targetSeconds = parseTimeToSeconds(row.RequiredTime);
+    const paces = [
+        ['pace_per_km', distance?.kilometres],
+        ['pace_per_mile', distance?.miles]
+    ];
+
+    if (!distance) {
+        addError(file, row.__rowNumber, `Distance "${row.Distance}" has no pace-validation distance.`);
+    }
+
+    for (const [column, raceDistance] of paces) {
+        const value = String(row[column] || '').trim();
+
+        if (!/^\d+:[0-5]\d$/.test(value)) {
+            addError(file, row.__rowNumber, `${column} "${value}" must use m:ss.`);
+            continue;
+        }
+
+        if (targetSeconds === null || !raceDistance) {
+            continue;
+        }
+
+        const expected = formatPace(Math.round(targetSeconds / raceDistance));
+        if (value !== expected) {
+            addError(
+                file,
+                row.__rowNumber,
+                `${column} "${value}" does not match RequiredTime "${row.RequiredTime}" at ${row.Distance}; expected "${expected}".`
+            );
+        }
+    }
+}
+
+function ageGradeStandardDistance(value) {
+    const kilometresPerMile = 1.609344;
+    const distances = {
+        '5 km': 5,
+        '10 km': 10,
+        '10 Mile': 16.09344,
+        'Half Marathon': 21.0975,
+        'Marathon': 42.195
+    };
+    const kilometres = distances[String(value || '').trim()];
+
+    if (!kilometres) {
+        return null;
+    }
+
+    return {
+        kilometres,
+        miles: String(value || '').trim() === '10 Mile'
+            ? 10
+            : kilometres / kilometresPerMile
+    };
+}
+
+function parseTimeToSeconds(value) {
+    const parts = String(value || '').trim().split(':').map(Number);
+
+    if (
+        ![2, 3].includes(parts.length) ||
+        parts.some(part => !Number.isInteger(part) || part < 0) ||
+        parts.at(-1) > 59 ||
+        (parts.length === 3 && parts[1] > 59)
+    ) {
+        return null;
+    }
+
+    return parts.length === 3
+        ? (parts[0] * 3600) + (parts[1] * 60) + parts[2]
+        : (parts[0] * 60) + parts[1];
+}
+
+function formatPace(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
+    return `${minutes}:${seconds}`;
 }
 
 function validateLeaderboardFile(siteDir, fileName, webtableRowNumber) {

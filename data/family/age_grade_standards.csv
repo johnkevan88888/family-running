@@ -1,361 +1,361 @@
-AthleteId,Distance,Standard,AgeGrade,RequiredTime,SortOrder,ExportBundleID
-john-kevan,5 km,Recreational,35%,00:40:26,101,20260629T223030374Z-2160E180
-john-kevan,5 km,Club,50%,00:28:18,102,20260629T223030374Z-2160E180
-john-kevan,5 km,Local Competitive,60%,00:23:35,103,20260629T223030374Z-2160E180
-john-kevan,5 km,Regional Class,70%,00:20:13,104,20260629T223030374Z-2160E180
-john-kevan,5 km,National Class,80%,00:17:41,105,20260629T223030374Z-2160E180
-john-kevan,5 km,World Class,90%,00:15:43,106,20260629T223030374Z-2160E180
-john-kevan,10 km,Recreational,35%,01:22:06,201,20260629T223030374Z-2160E180
-john-kevan,10 km,Club,50%,00:57:28,202,20260629T223030374Z-2160E180
-john-kevan,10 km,Local Competitive,60%,00:47:53,203,20260629T223030374Z-2160E180
-john-kevan,10 km,Regional Class,70%,00:41:03,204,20260629T223030374Z-2160E180
-john-kevan,10 km,National Class,80%,00:35:55,205,20260629T223030374Z-2160E180
-john-kevan,10 km,World Class,90%,00:31:55,206,20260629T223030374Z-2160E180
-john-kevan,10 Mile,Recreational,35%,02:14:40,301,20260629T223030374Z-2160E180
-john-kevan,10 Mile,Club,50%,01:34:16,302,20260629T223030374Z-2160E180
-john-kevan,10 Mile,Local Competitive,60%,01:18:33,303,20260629T223030374Z-2160E180
-john-kevan,10 Mile,Regional Class,70%,01:07:20,304,20260629T223030374Z-2160E180
-john-kevan,10 Mile,National Class,80%,00:58:55,305,20260629T223030374Z-2160E180
-john-kevan,10 Mile,World Class,90%,00:52:22,306,20260629T223030374Z-2160E180
-john-kevan,Half Marathon,Recreational,35%,02:59:11,401,20260629T223030374Z-2160E180
-john-kevan,Half Marathon,Club,50%,02:05:25,402,20260629T223030374Z-2160E180
-john-kevan,Half Marathon,Local Competitive,60%,01:44:31,403,20260629T223030374Z-2160E180
-john-kevan,Half Marathon,Regional Class,70%,01:29:35,404,20260629T223030374Z-2160E180
-john-kevan,Half Marathon,National Class,80%,01:18:23,405,20260629T223030374Z-2160E180
-john-kevan,Half Marathon,World Class,90%,01:09:41,406,20260629T223030374Z-2160E180
-john-kevan,Marathon,Recreational,35%,06:10:48,501,20260629T223030374Z-2160E180
-john-kevan,Marathon,Club,50%,04:19:34,502,20260629T223030374Z-2160E180
-john-kevan,Marathon,Local Competitive,60%,03:36:18,503,20260629T223030374Z-2160E180
-john-kevan,Marathon,Regional Class,70%,03:05:24,504,20260629T223030374Z-2160E180
-john-kevan,Marathon,National Class,80%,02:42:13,505,20260629T223030374Z-2160E180
-john-kevan,Marathon,World Class,90%,02:24:12,506,20260629T223030374Z-2160E180
-carolyn-kevan,5 km,Recreational,35%,00:57:13,101,20260629T223030374Z-2160E180
-carolyn-kevan,5 km,Club,50%,00:40:03,102,20260629T223030374Z-2160E180
-carolyn-kevan,5 km,Local Competitive,60%,00:33:22,103,20260629T223030374Z-2160E180
-carolyn-kevan,5 km,Regional Class,70%,00:28:36,104,20260629T223030374Z-2160E180
-carolyn-kevan,5 km,National Class,80%,00:25:01,105,20260629T223030374Z-2160E180
-carolyn-kevan,5 km,World Class,90%,00:22:15,106,20260629T223030374Z-2160E180
-carolyn-kevan,10 km,Recreational,35%,01:55:14,201,20260629T223030374Z-2160E180
-carolyn-kevan,10 km,Club,50%,01:20:40,202,20260629T223030374Z-2160E180
-carolyn-kevan,10 km,Local Competitive,60%,01:07:13,203,20260629T223030374Z-2160E180
-carolyn-kevan,10 km,Regional Class,70%,00:57:37,204,20260629T223030374Z-2160E180
-carolyn-kevan,10 km,National Class,80%,00:50:25,205,20260629T223030374Z-2160E180
-carolyn-kevan,10 km,World Class,90%,00:44:48,206,20260629T223030374Z-2160E180
-carolyn-kevan,10 Mile,Recreational,35%,03:11:28,301,20260629T223030374Z-2160E180
-carolyn-kevan,10 Mile,Club,50%,02:14:02,302,20260629T223030374Z-2160E180
-carolyn-kevan,10 Mile,Local Competitive,60%,01:51:41,303,20260629T223030374Z-2160E180
-carolyn-kevan,10 Mile,Regional Class,70%,01:35:44,304,20260629T223030374Z-2160E180
-carolyn-kevan,10 Mile,National Class,80%,01:23:46,305,20260629T223030374Z-2160E180
-carolyn-kevan,10 Mile,World Class,90%,01:14:27,306,20260629T223030374Z-2160E180
-carolyn-kevan,Half Marathon,Recreational,35%,04:16:51,401,20260629T223030374Z-2160E180
-carolyn-kevan,Half Marathon,Club,50%,02:59:47,402,20260629T223030374Z-2160E180
-carolyn-kevan,Half Marathon,Local Competitive,60%,02:29:49,403,20260629T223030374Z-2160E180
-carolyn-kevan,Half Marathon,Regional Class,70%,02:08:25,404,20260629T223030374Z-2160E180
-carolyn-kevan,Half Marathon,National Class,80%,01:52:22,405,20260629T223030374Z-2160E180
-carolyn-kevan,Half Marathon,World Class,90%,01:39:53,406,20260629T223030374Z-2160E180
-carolyn-kevan,Marathon,Recreational,35%,08:36:15,501,20260629T223030374Z-2160E180
-carolyn-kevan,Marathon,Club,50%,06:01:22,502,20260629T223030374Z-2160E180
-carolyn-kevan,Marathon,Local Competitive,60%,05:01:08,503,20260629T223030374Z-2160E180
-carolyn-kevan,Marathon,Regional Class,70%,04:18:07,504,20260629T223030374Z-2160E180
-carolyn-kevan,Marathon,National Class,80%,03:45:51,505,20260629T223030374Z-2160E180
-carolyn-kevan,Marathon,World Class,90%,03:20:45,506,20260629T223030374Z-2160E180
-david-graham-kevan,5 km,Recreational,35%,00:43:49,101,20260629T223030374Z-2160E180
-david-graham-kevan,5 km,Club,50%,00:30:40,102,20260629T223030374Z-2160E180
-david-graham-kevan,5 km,Local Competitive,60%,00:25:34,103,20260629T223030374Z-2160E180
-david-graham-kevan,5 km,Regional Class,70%,00:21:54,104,20260629T223030374Z-2160E180
-david-graham-kevan,5 km,National Class,80%,00:19:10,105,20260629T223030374Z-2160E180
-david-graham-kevan,5 km,World Class,90%,00:17:02,106,20260629T223030374Z-2160E180
-david-graham-kevan,10 km,Recreational,35%,01:29:24,201,20260629T223030374Z-2160E180
-david-graham-kevan,10 km,Club,50%,01:02:35,202,20260629T223030374Z-2160E180
-david-graham-kevan,10 km,Local Competitive,60%,00:52:09,203,20260629T223030374Z-2160E180
-david-graham-kevan,10 km,Regional Class,70%,00:44:42,204,20260629T223030374Z-2160E180
-david-graham-kevan,10 km,National Class,80%,00:39:07,205,20260629T223030374Z-2160E180
-david-graham-kevan,10 km,World Class,90%,00:34:46,206,20260629T223030374Z-2160E180
-david-graham-kevan,10 Mile,Recreational,35%,02:26:57,301,20260629T223030374Z-2160E180
-david-graham-kevan,10 Mile,Club,50%,01:42:51,302,20260629T223030374Z-2160E180
-david-graham-kevan,10 Mile,Local Competitive,60%,01:25:43,303,20260629T223030374Z-2160E180
-david-graham-kevan,10 Mile,Regional Class,70%,01:13:28,304,20260629T223030374Z-2160E180
-david-graham-kevan,10 Mile,National Class,80%,01:04:17,305,20260629T223030374Z-2160E180
-david-graham-kevan,10 Mile,World Class,90%,00:57:08,306,20260629T223030374Z-2160E180
-david-graham-kevan,Half Marathon,Recreational,35%,03:15:47,401,20260629T223030374Z-2160E180
-david-graham-kevan,Half Marathon,Club,50%,02:17:03,402,20260629T223030374Z-2160E180
-david-graham-kevan,Half Marathon,Local Competitive,60%,01:54:12,403,20260629T223030374Z-2160E180
-david-graham-kevan,Half Marathon,Regional Class,70%,01:37:53,404,20260629T223030374Z-2160E180
-david-graham-kevan,Half Marathon,National Class,80%,01:25:39,405,20260629T223030374Z-2160E180
-david-graham-kevan,Half Marathon,World Class,90%,01:16:08,406,20260629T223030374Z-2160E180
-david-graham-kevan,Marathon,Recreational,35%,06:46:42,501,20260629T223030374Z-2160E180
-david-graham-kevan,Marathon,Club,50%,04:44:41,502,20260629T223030374Z-2160E180
-david-graham-kevan,Marathon,Local Competitive,60%,03:57:14,503,20260629T223030374Z-2160E180
-david-graham-kevan,Marathon,Regional Class,70%,03:23:21,504,20260629T223030374Z-2160E180
-david-graham-kevan,Marathon,National Class,80%,02:57:56,505,20260629T223030374Z-2160E180
-david-graham-kevan,Marathon,World Class,90%,02:38:09,506,20260629T223030374Z-2160E180
-poppy-coleman,5 km,Recreational,35%,00:39:42,101,20260629T223030374Z-2160E180
-poppy-coleman,5 km,Club,50%,00:27:48,102,20260629T223030374Z-2160E180
-poppy-coleman,5 km,Local Competitive,60%,00:23:10,103,20260629T223030374Z-2160E180
-poppy-coleman,5 km,Regional Class,70%,00:19:51,104,20260629T223030374Z-2160E180
-poppy-coleman,5 km,National Class,80%,00:17:22,105,20260629T223030374Z-2160E180
-poppy-coleman,5 km,World Class,90%,00:15:26,106,20260629T223030374Z-2160E180
-poppy-coleman,10 km,Recreational,35%,01:22:11,201,20260629T223030374Z-2160E180
-poppy-coleman,10 km,Club,50%,00:57:32,202,20260629T223030374Z-2160E180
-poppy-coleman,10 km,Local Competitive,60%,00:47:56,203,20260629T223030374Z-2160E180
-poppy-coleman,10 km,Regional Class,70%,00:41:05,204,20260629T223030374Z-2160E180
-poppy-coleman,10 km,National Class,80%,00:35:57,205,20260629T223030374Z-2160E180
-poppy-coleman,10 km,World Class,90%,00:31:57,206,20260629T223030374Z-2160E180
-poppy-coleman,10 Mile,Recreational,35%,02:14:51,301,20260629T223030374Z-2160E180
-poppy-coleman,10 Mile,Club,50%,01:34:24,302,20260629T223030374Z-2160E180
-poppy-coleman,10 Mile,Local Competitive,60%,01:18:40,303,20260629T223030374Z-2160E180
-poppy-coleman,10 Mile,Regional Class,70%,01:07:25,304,20260629T223030374Z-2160E180
-poppy-coleman,10 Mile,National Class,80%,00:59:00,305,20260629T223030374Z-2160E180
-poppy-coleman,10 Mile,World Class,90%,00:52:26,306,20260629T223030374Z-2160E180
-poppy-coleman,Half Marathon,Recreational,35%,02:59:37,401,20260629T223030374Z-2160E180
-poppy-coleman,Half Marathon,Club,50%,02:05:44,402,20260629T223030374Z-2160E180
-poppy-coleman,Half Marathon,Local Competitive,60%,01:44:46,403,20260629T223030374Z-2160E180
-poppy-coleman,Half Marathon,Regional Class,70%,01:29:48,404,20260629T223030374Z-2160E180
-poppy-coleman,Half Marathon,National Class,80%,01:18:35,405,20260629T223030374Z-2160E180
-poppy-coleman,Half Marathon,World Class,90%,01:09:51,406,20260629T223030374Z-2160E180
-poppy-coleman,Marathon,Recreational,35%,06:13:06,501,20260629T223030374Z-2160E180
-poppy-coleman,Marathon,Club,50%,04:21:10,502,20260629T223030374Z-2160E180
-poppy-coleman,Marathon,Local Competitive,60%,03:37:38,503,20260629T223030374Z-2160E180
-poppy-coleman,Marathon,Regional Class,70%,03:06:33,504,20260629T223030374Z-2160E180
-poppy-coleman,Marathon,National Class,80%,02:43:13,505,20260629T223030374Z-2160E180
-poppy-coleman,Marathon,World Class,90%,02:25:05,506,20260629T223030374Z-2160E180
-laura-foster,5 km,Recreational,35%,00:39:42,101,20260629T223030374Z-2160E180
-laura-foster,5 km,Club,50%,00:27:48,102,20260629T223030374Z-2160E180
-laura-foster,5 km,Local Competitive,60%,00:23:10,103,20260629T223030374Z-2160E180
-laura-foster,5 km,Regional Class,70%,00:19:51,104,20260629T223030374Z-2160E180
-laura-foster,5 km,National Class,80%,00:17:22,105,20260629T223030374Z-2160E180
-laura-foster,5 km,World Class,90%,00:15:26,106,20260629T223030374Z-2160E180
-laura-foster,10 km,Recreational,35%,01:22:11,201,20260629T223030374Z-2160E180
-laura-foster,10 km,Club,50%,00:57:32,202,20260629T223030374Z-2160E180
-laura-foster,10 km,Local Competitive,60%,00:47:56,203,20260629T223030374Z-2160E180
-laura-foster,10 km,Regional Class,70%,00:41:05,204,20260629T223030374Z-2160E180
-laura-foster,10 km,National Class,80%,00:35:57,205,20260629T223030374Z-2160E180
-laura-foster,10 km,World Class,90%,00:31:57,206,20260629T223030374Z-2160E180
-laura-foster,10 Mile,Recreational,35%,02:14:51,301,20260629T223030374Z-2160E180
-laura-foster,10 Mile,Club,50%,01:34:24,302,20260629T223030374Z-2160E180
-laura-foster,10 Mile,Local Competitive,60%,01:18:40,303,20260629T223030374Z-2160E180
-laura-foster,10 Mile,Regional Class,70%,01:07:25,304,20260629T223030374Z-2160E180
-laura-foster,10 Mile,National Class,80%,00:59:00,305,20260629T223030374Z-2160E180
-laura-foster,10 Mile,World Class,90%,00:52:26,306,20260629T223030374Z-2160E180
-laura-foster,Half Marathon,Recreational,35%,02:59:37,401,20260629T223030374Z-2160E180
-laura-foster,Half Marathon,Club,50%,02:05:44,402,20260629T223030374Z-2160E180
-laura-foster,Half Marathon,Local Competitive,60%,01:44:46,403,20260629T223030374Z-2160E180
-laura-foster,Half Marathon,Regional Class,70%,01:29:48,404,20260629T223030374Z-2160E180
-laura-foster,Half Marathon,National Class,80%,01:18:35,405,20260629T223030374Z-2160E180
-laura-foster,Half Marathon,World Class,90%,01:09:51,406,20260629T223030374Z-2160E180
-laura-foster,Marathon,Recreational,35%,06:11:14,501,20260629T223030374Z-2160E180
-laura-foster,Marathon,Club,50%,04:19:52,502,20260629T223030374Z-2160E180
-laura-foster,Marathon,Local Competitive,60%,03:36:33,503,20260629T223030374Z-2160E180
-laura-foster,Marathon,Regional Class,70%,03:05:37,504,20260629T223030374Z-2160E180
-laura-foster,Marathon,National Class,80%,02:42:25,505,20260629T223030374Z-2160E180
-laura-foster,Marathon,World Class,90%,02:24:22,506,20260629T223030374Z-2160E180
-caitlin-siostrom,5 km,Recreational,35%,00:42:08,101,20260629T223030374Z-2160E180
-caitlin-siostrom,5 km,Club,50%,00:29:29,102,20260629T223030374Z-2160E180
-caitlin-siostrom,5 km,Local Competitive,60%,00:24:34,103,20260629T223030374Z-2160E180
-caitlin-siostrom,5 km,Regional Class,70%,00:21:04,104,20260629T223030374Z-2160E180
-caitlin-siostrom,5 km,National Class,80%,00:18:26,105,20260629T223030374Z-2160E180
-caitlin-siostrom,5 km,World Class,90%,00:16:23,106,20260629T223030374Z-2160E180
-caitlin-siostrom,10 km,Recreational,35%,01:25:56,201,20260629T223030374Z-2160E180
-caitlin-siostrom,10 km,Club,50%,01:00:09,202,20260629T223030374Z-2160E180
-caitlin-siostrom,10 km,Local Competitive,60%,00:50:08,203,20260629T223030374Z-2160E180
-caitlin-siostrom,10 km,Regional Class,70%,00:42:58,204,20260629T223030374Z-2160E180
-caitlin-siostrom,10 km,National Class,80%,00:37:36,205,20260629T223030374Z-2160E180
-caitlin-siostrom,10 km,World Class,90%,00:33:25,206,20260629T223030374Z-2160E180
-caitlin-siostrom,10 Mile,Recreational,35%,02:21:16,301,20260629T223030374Z-2160E180
-caitlin-siostrom,10 Mile,Club,50%,01:38:53,302,20260629T223030374Z-2160E180
-caitlin-siostrom,10 Mile,Local Competitive,60%,01:22:24,303,20260629T223030374Z-2160E180
-caitlin-siostrom,10 Mile,Regional Class,70%,01:10:38,304,20260629T223030374Z-2160E180
-caitlin-siostrom,10 Mile,National Class,80%,01:01:48,305,20260629T223030374Z-2160E180
-caitlin-siostrom,10 Mile,World Class,90%,00:54:56,306,20260629T223030374Z-2160E180
-caitlin-siostrom,Half Marathon,Recreational,35%,03:08:20,401,20260629T223030374Z-2160E180
-caitlin-siostrom,Half Marathon,Club,50%,02:11:50,402,20260629T223030374Z-2160E180
-caitlin-siostrom,Half Marathon,Local Competitive,60%,01:49:51,403,20260629T223030374Z-2160E180
-caitlin-siostrom,Half Marathon,Regional Class,70%,01:34:10,404,20260629T223030374Z-2160E180
-caitlin-siostrom,Half Marathon,National Class,80%,01:22:23,405,20260629T223030374Z-2160E180
-caitlin-siostrom,Half Marathon,World Class,90%,01:13:14,406,20260629T223030374Z-2160E180
-caitlin-siostrom,Marathon,Recreational,35%,06:25:32,501,20260629T223030374Z-2160E180
-caitlin-siostrom,Marathon,Club,50%,04:29:52,502,20260629T223030374Z-2160E180
-caitlin-siostrom,Marathon,Local Competitive,60%,03:44:53,503,20260629T223030374Z-2160E180
-caitlin-siostrom,Marathon,Regional Class,70%,03:12:46,504,20260629T223030374Z-2160E180
-caitlin-siostrom,Marathon,National Class,80%,02:48:40,505,20260629T223030374Z-2160E180
-caitlin-siostrom,Marathon,World Class,90%,02:29:55,506,20260629T223030374Z-2160E180
-debbie-martin,5 km,Recreational,35%,00:42:52,101,20260629T223030374Z-2160E180
-debbie-martin,5 km,Club,50%,00:30:00,102,20260629T223030374Z-2160E180
-debbie-martin,5 km,Local Competitive,60%,00:25:00,103,20260629T223030374Z-2160E180
-debbie-martin,5 km,Regional Class,70%,00:21:26,104,20260629T223030374Z-2160E180
-debbie-martin,5 km,National Class,80%,00:18:45,105,20260629T223030374Z-2160E180
-debbie-martin,5 km,World Class,90%,00:16:40,106,20260629T223030374Z-2160E180
-debbie-martin,10 km,Recreational,35%,01:27:10,201,20260629T223030374Z-2160E180
-debbie-martin,10 km,Club,50%,01:01:01,202,20260629T223030374Z-2160E180
-debbie-martin,10 km,Local Competitive,60%,00:50:50,203,20260629T223030374Z-2160E180
-debbie-martin,10 km,Regional Class,70%,00:43:35,204,20260629T223030374Z-2160E180
-debbie-martin,10 km,National Class,80%,00:38:08,205,20260629T223030374Z-2160E180
-debbie-martin,10 km,World Class,90%,00:33:53,206,20260629T223030374Z-2160E180
-debbie-martin,10 Mile,Recreational,35%,02:23:21,301,20260629T223030374Z-2160E180
-debbie-martin,10 Mile,Club,50%,01:40:21,302,20260629T223030374Z-2160E180
-debbie-martin,10 Mile,Local Competitive,60%,01:23:37,303,20260629T223030374Z-2160E180
-debbie-martin,10 Mile,Regional Class,70%,01:11:40,304,20260629T223030374Z-2160E180
-debbie-martin,10 Mile,National Class,80%,01:02:43,305,20260629T223030374Z-2160E180
-debbie-martin,10 Mile,World Class,90%,00:55:45,306,20260629T223030374Z-2160E180
-debbie-martin,Half Marathon,Recreational,35%,03:11:11,401,20260629T223030374Z-2160E180
-debbie-martin,Half Marathon,Club,50%,02:13:49,402,20260629T223030374Z-2160E180
-debbie-martin,Half Marathon,Local Competitive,60%,01:51:31,403,20260629T223030374Z-2160E180
-debbie-martin,Half Marathon,Regional Class,70%,01:35:35,404,20260629T223030374Z-2160E180
-debbie-martin,Half Marathon,National Class,80%,01:23:38,405,20260629T223030374Z-2160E180
-debbie-martin,Half Marathon,World Class,90%,01:14:21,406,20260629T223030374Z-2160E180
-debbie-martin,Marathon,Recreational,35%,06:30:09,501,20260629T223030374Z-2160E180
-debbie-martin,Marathon,Club,50%,04:33:06,502,20260629T223030374Z-2160E180
-debbie-martin,Marathon,Local Competitive,60%,03:47:35,503,20260629T223030374Z-2160E180
-debbie-martin,Marathon,Regional Class,70%,03:15:04,504,20260629T223030374Z-2160E180
-debbie-martin,Marathon,National Class,80%,02:50:41,505,20260629T223030374Z-2160E180
-debbie-martin,Marathon,World Class,90%,02:31:43,506,20260629T223030374Z-2160E180
-jack-graham-kevan,5 km,Recreational,35%,00:36:37,101,20260629T223030374Z-2160E180
-jack-graham-kevan,5 km,Club,50%,00:25:38,102,20260629T223030374Z-2160E180
-jack-graham-kevan,5 km,Local Competitive,60%,00:21:21,103,20260629T223030374Z-2160E180
-jack-graham-kevan,5 km,Regional Class,70%,00:18:18,104,20260629T223030374Z-2160E180
-jack-graham-kevan,5 km,National Class,80%,00:16:01,105,20260629T223030374Z-2160E180
-jack-graham-kevan,5 km,World Class,90%,00:14:14,106,20260629T223030374Z-2160E180
-jack-graham-kevan,10 km,Recreational,35%,01:15:25,201,20260629T223030374Z-2160E180
-jack-graham-kevan,10 km,Club,50%,00:52:48,202,20260629T223030374Z-2160E180
-jack-graham-kevan,10 km,Local Competitive,60%,00:44:00,203,20260629T223030374Z-2160E180
-jack-graham-kevan,10 km,Regional Class,70%,00:37:42,204,20260629T223030374Z-2160E180
-jack-graham-kevan,10 km,National Class,80%,00:33:00,205,20260629T223030374Z-2160E180
-jack-graham-kevan,10 km,World Class,90%,00:29:20,206,20260629T223030374Z-2160E180
-jack-graham-kevan,10 Mile,Recreational,35%,02:03:34,301,20260629T223030374Z-2160E180
-jack-graham-kevan,10 Mile,Club,50%,01:26:30,302,20260629T223030374Z-2160E180
-jack-graham-kevan,10 Mile,Local Competitive,60%,01:12:05,303,20260629T223030374Z-2160E180
-jack-graham-kevan,10 Mile,Regional Class,70%,01:01:47,304,20260629T223030374Z-2160E180
-jack-graham-kevan,10 Mile,National Class,80%,00:54:03,305,20260629T223030374Z-2160E180
-jack-graham-kevan,10 Mile,World Class,90%,00:48:03,306,20260629T223030374Z-2160E180
-jack-graham-kevan,Half Marathon,Recreational,35%,02:44:20,401,20260629T223030374Z-2160E180
-jack-graham-kevan,Half Marathon,Club,50%,01:55:02,402,20260629T223030374Z-2160E180
-jack-graham-kevan,Half Marathon,Local Competitive,60%,01:35:51,403,20260629T223030374Z-2160E180
-jack-graham-kevan,Half Marathon,Regional Class,70%,01:22:10,404,20260629T223030374Z-2160E180
-jack-graham-kevan,Half Marathon,National Class,80%,01:11:53,405,20260629T223030374Z-2160E180
-jack-graham-kevan,Half Marathon,World Class,90%,01:03:54,406,20260629T223030374Z-2160E180
-jack-graham-kevan,Marathon,Recreational,35%,05:44:31,501,20260629T223030374Z-2160E180
-jack-graham-kevan,Marathon,Club,50%,04:01:10,502,20260629T223030374Z-2160E180
-jack-graham-kevan,Marathon,Local Competitive,60%,03:20:58,503,20260629T223030374Z-2160E180
-jack-graham-kevan,Marathon,Regional Class,70%,02:52:15,504,20260629T223030374Z-2160E180
-jack-graham-kevan,Marathon,National Class,80%,02:30:43,505,20260629T223030374Z-2160E180
-jack-graham-kevan,Marathon,World Class,90%,02:13:58,506,20260629T223030374Z-2160E180
-blake-coleman,5 km,Recreational,35%,00:36:37,101,20260629T223030374Z-2160E180
-blake-coleman,5 km,Club,50%,00:25:38,102,20260629T223030374Z-2160E180
-blake-coleman,5 km,Local Competitive,60%,00:21:21,103,20260629T223030374Z-2160E180
-blake-coleman,5 km,Regional Class,70%,00:18:18,104,20260629T223030374Z-2160E180
-blake-coleman,5 km,National Class,80%,00:16:01,105,20260629T223030374Z-2160E180
-blake-coleman,5 km,World Class,90%,00:14:14,106,20260629T223030374Z-2160E180
-blake-coleman,10 km,Recreational,35%,01:15:25,201,20260629T223030374Z-2160E180
-blake-coleman,10 km,Club,50%,00:52:48,202,20260629T223030374Z-2160E180
-blake-coleman,10 km,Local Competitive,60%,00:44:00,203,20260629T223030374Z-2160E180
-blake-coleman,10 km,Regional Class,70%,00:37:42,204,20260629T223030374Z-2160E180
-blake-coleman,10 km,National Class,80%,00:33:00,205,20260629T223030374Z-2160E180
-blake-coleman,10 km,World Class,90%,00:29:20,206,20260629T223030374Z-2160E180
-blake-coleman,10 Mile,Recreational,35%,02:03:34,301,20260629T223030374Z-2160E180
-blake-coleman,10 Mile,Club,50%,01:26:30,302,20260629T223030374Z-2160E180
-blake-coleman,10 Mile,Local Competitive,60%,01:12:05,303,20260629T223030374Z-2160E180
-blake-coleman,10 Mile,Regional Class,70%,01:01:47,304,20260629T223030374Z-2160E180
-blake-coleman,10 Mile,National Class,80%,00:54:03,305,20260629T223030374Z-2160E180
-blake-coleman,10 Mile,World Class,90%,00:48:03,306,20260629T223030374Z-2160E180
-blake-coleman,Half Marathon,Recreational,35%,02:44:20,401,20260629T223030374Z-2160E180
-blake-coleman,Half Marathon,Club,50%,01:55:02,402,20260629T223030374Z-2160E180
-blake-coleman,Half Marathon,Local Competitive,60%,01:35:51,403,20260629T223030374Z-2160E180
-blake-coleman,Half Marathon,Regional Class,70%,01:22:10,404,20260629T223030374Z-2160E180
-blake-coleman,Half Marathon,National Class,80%,01:11:53,405,20260629T223030374Z-2160E180
-blake-coleman,Half Marathon,World Class,90%,01:03:54,406,20260629T223030374Z-2160E180
-blake-coleman,Marathon,Recreational,35%,05:44:31,501,20260629T223030374Z-2160E180
-blake-coleman,Marathon,Club,50%,04:01:10,502,20260629T223030374Z-2160E180
-blake-coleman,Marathon,Local Competitive,60%,03:20:58,503,20260629T223030374Z-2160E180
-blake-coleman,Marathon,Regional Class,70%,02:52:15,504,20260629T223030374Z-2160E180
-blake-coleman,Marathon,National Class,80%,02:30:43,505,20260629T223030374Z-2160E180
-blake-coleman,Marathon,World Class,90%,02:13:58,506,20260629T223030374Z-2160E180
-ben-graham-kevan,5 km,Recreational,35%,00:36:37,101,20260629T223030374Z-2160E180
-ben-graham-kevan,5 km,Club,50%,00:25:38,102,20260629T223030374Z-2160E180
-ben-graham-kevan,5 km,Local Competitive,60%,00:21:21,103,20260629T223030374Z-2160E180
-ben-graham-kevan,5 km,Regional Class,70%,00:18:18,104,20260629T223030374Z-2160E180
-ben-graham-kevan,5 km,National Class,80%,00:16:01,105,20260629T223030374Z-2160E180
-ben-graham-kevan,5 km,World Class,90%,00:14:14,106,20260629T223030374Z-2160E180
-ben-graham-kevan,10 km,Recreational,35%,01:15:25,201,20260629T223030374Z-2160E180
-ben-graham-kevan,10 km,Club,50%,00:52:48,202,20260629T223030374Z-2160E180
-ben-graham-kevan,10 km,Local Competitive,60%,00:44:00,203,20260629T223030374Z-2160E180
-ben-graham-kevan,10 km,Regional Class,70%,00:37:42,204,20260629T223030374Z-2160E180
-ben-graham-kevan,10 km,National Class,80%,00:33:00,205,20260629T223030374Z-2160E180
-ben-graham-kevan,10 km,World Class,90%,00:29:20,206,20260629T223030374Z-2160E180
-ben-graham-kevan,10 Mile,Recreational,35%,02:03:34,301,20260629T223030374Z-2160E180
-ben-graham-kevan,10 Mile,Club,50%,01:26:30,302,20260629T223030374Z-2160E180
-ben-graham-kevan,10 Mile,Local Competitive,60%,01:12:05,303,20260629T223030374Z-2160E180
-ben-graham-kevan,10 Mile,Regional Class,70%,01:01:47,304,20260629T223030374Z-2160E180
-ben-graham-kevan,10 Mile,National Class,80%,00:54:03,305,20260629T223030374Z-2160E180
-ben-graham-kevan,10 Mile,World Class,90%,00:48:03,306,20260629T223030374Z-2160E180
-ben-graham-kevan,Half Marathon,Recreational,35%,02:44:20,401,20260629T223030374Z-2160E180
-ben-graham-kevan,Half Marathon,Club,50%,01:55:02,402,20260629T223030374Z-2160E180
-ben-graham-kevan,Half Marathon,Local Competitive,60%,01:35:51,403,20260629T223030374Z-2160E180
-ben-graham-kevan,Half Marathon,Regional Class,70%,01:22:10,404,20260629T223030374Z-2160E180
-ben-graham-kevan,Half Marathon,National Class,80%,01:11:53,405,20260629T223030374Z-2160E180
-ben-graham-kevan,Half Marathon,World Class,90%,01:03:54,406,20260629T223030374Z-2160E180
-ben-graham-kevan,Marathon,Recreational,35%,05:45:12,501,20260629T223030374Z-2160E180
-ben-graham-kevan,Marathon,Club,50%,04:01:38,502,20260629T223030374Z-2160E180
-ben-graham-kevan,Marathon,Local Competitive,60%,03:21:22,503,20260629T223030374Z-2160E180
-ben-graham-kevan,Marathon,Regional Class,70%,02:52:36,504,20260629T223030374Z-2160E180
-ben-graham-kevan,Marathon,National Class,80%,02:31:01,505,20260629T223030374Z-2160E180
-ben-graham-kevan,Marathon,World Class,90%,02:14:14,506,20260629T223030374Z-2160E180
-louise-hamilton,5 km,Recreational,35%,00:43:44,101,20260629T223030374Z-2160E180
-louise-hamilton,5 km,Club,50%,00:30:37,102,20260629T223030374Z-2160E180
-louise-hamilton,5 km,Local Competitive,60%,00:25:31,103,20260629T223030374Z-2160E180
-louise-hamilton,5 km,Regional Class,70%,00:21:52,104,20260629T223030374Z-2160E180
-louise-hamilton,5 km,National Class,80%,00:19:08,105,20260629T223030374Z-2160E180
-louise-hamilton,5 km,World Class,90%,00:17:00,106,20260629T223030374Z-2160E180
-louise-hamilton,10 km,Recreational,35%,01:28:35,201,20260629T223030374Z-2160E180
-louise-hamilton,10 km,Club,50%,01:02:00,202,20260629T223030374Z-2160E180
-louise-hamilton,10 km,Local Competitive,60%,00:51:40,203,20260629T223030374Z-2160E180
-louise-hamilton,10 km,Regional Class,70%,00:44:17,204,20260629T223030374Z-2160E180
-louise-hamilton,10 km,National Class,80%,00:38:45,205,20260629T223030374Z-2160E180
-louise-hamilton,10 km,World Class,90%,00:34:27,206,20260629T223030374Z-2160E180
-louise-hamilton,10 Mile,Recreational,35%,02:25:47,301,20260629T223030374Z-2160E180
-louise-hamilton,10 Mile,Club,50%,01:42:03,302,20260629T223030374Z-2160E180
-louise-hamilton,10 Mile,Local Competitive,60%,01:25:02,303,20260629T223030374Z-2160E180
-louise-hamilton,10 Mile,Regional Class,70%,01:12:53,304,20260629T223030374Z-2160E180
-louise-hamilton,10 Mile,National Class,80%,01:03:47,305,20260629T223030374Z-2160E180
-louise-hamilton,10 Mile,World Class,90%,00:56:41,306,20260629T223030374Z-2160E180
-louise-hamilton,Half Marathon,Recreational,35%,03:14:31,401,20260629T223030374Z-2160E180
-louise-hamilton,Half Marathon,Club,50%,02:16:09,402,20260629T223030374Z-2160E180
-louise-hamilton,Half Marathon,Local Competitive,60%,01:53:28,403,20260629T223030374Z-2160E180
-louise-hamilton,Half Marathon,Regional Class,70%,01:37:15,404,20260629T223030374Z-2160E180
-louise-hamilton,Half Marathon,National Class,80%,01:25:06,405,20260629T223030374Z-2160E180
-louise-hamilton,Half Marathon,World Class,90%,01:15:38,406,20260629T223030374Z-2160E180
-louise-hamilton,Marathon,Recreational,35%,06:35:31,501,20260629T223030374Z-2160E180
-louise-hamilton,Marathon,Club,50%,04:36:51,502,20260629T223030374Z-2160E180
-louise-hamilton,Marathon,Local Competitive,60%,03:50:43,503,20260629T223030374Z-2160E180
-louise-hamilton,Marathon,Regional Class,70%,03:17:45,504,20260629T223030374Z-2160E180
-louise-hamilton,Marathon,National Class,80%,02:53:02,505,20260629T223030374Z-2160E180
-louise-hamilton,Marathon,World Class,90%,02:33:48,506,20260629T223030374Z-2160E180
-jess-graham-kevan,5 km,Recreational,35%,00:50:48,101,20260629T223030374Z-2160E180
-jess-graham-kevan,5 km,Club,50%,00:35:34,102,20260629T223030374Z-2160E180
-jess-graham-kevan,5 km,Local Competitive,60%,00:29:38,103,20260629T223030374Z-2160E180
-jess-graham-kevan,5 km,Regional Class,70%,00:25:24,104,20260629T223030374Z-2160E180
-jess-graham-kevan,5 km,National Class,80%,00:22:13,105,20260629T223030374Z-2160E180
-jess-graham-kevan,5 km,World Class,90%,00:19:45,106,20260629T223030374Z-2160E180
-jess-graham-kevan,10 km,Recreational,35%,01:45:27,201,20260629T223030374Z-2160E180
-jess-graham-kevan,10 km,Club,50%,01:13:49,202,20260629T223030374Z-2160E180
-jess-graham-kevan,10 km,Local Competitive,60%,01:01:30,203,20260629T223030374Z-2160E180
-jess-graham-kevan,10 km,Regional Class,70%,00:52:43,204,20260629T223030374Z-2160E180
-jess-graham-kevan,10 km,National Class,80%,00:46:08,205,20260629T223030374Z-2160E180
-jess-graham-kevan,10 km,World Class,90%,00:41:00,206,20260629T223030374Z-2160E180
-jess-graham-kevan,10 Mile,Recreational,35%,03:01:52,301,20260629T223030374Z-2160E180
-jess-graham-kevan,10 Mile,Club,50%,02:07:18,302,20260629T223030374Z-2160E180
-jess-graham-kevan,10 Mile,Local Competitive,60%,01:46:05,303,20260629T223030374Z-2160E180
-jess-graham-kevan,10 Mile,Regional Class,70%,01:30:56,304,20260629T223030374Z-2160E180
-jess-graham-kevan,10 Mile,National Class,80%,01:19:34,305,20260629T223030374Z-2160E180
-jess-graham-kevan,10 Mile,World Class,90%,01:10:43,306,20260629T223030374Z-2160E180
-jess-graham-kevan,Half Marathon,Recreational,35%,04:09:28,401,20260629T223030374Z-2160E180
-jess-graham-kevan,Half Marathon,Club,50%,02:54:37,402,20260629T223030374Z-2160E180
-jess-graham-kevan,Half Marathon,Local Competitive,60%,02:25:31,403,20260629T223030374Z-2160E180
-jess-graham-kevan,Half Marathon,Regional Class,70%,02:04:44,404,20260629T223030374Z-2160E180
-jess-graham-kevan,Half Marathon,National Class,80%,01:49:08,405,20260629T223030374Z-2160E180
-jess-graham-kevan,Half Marathon,World Class,90%,01:37:00,406,20260629T223030374Z-2160E180
-jess-graham-kevan,Marathon,Recreational,35%,09:12:36,501,20260629T223030374Z-2160E180
-jess-graham-kevan,Marathon,Club,50%,06:26:49,502,20260629T223030374Z-2160E180
-jess-graham-kevan,Marathon,Local Competitive,60%,05:22:21,503,20260629T223030374Z-2160E180
-jess-graham-kevan,Marathon,Regional Class,70%,04:36:18,504,20260629T223030374Z-2160E180
-jess-graham-kevan,Marathon,National Class,80%,04:01:45,505,20260629T223030374Z-2160E180
-jess-graham-kevan,Marathon,World Class,90%,03:34:54,506,20260629T223030374Z-2160E180
+AthleteId,Distance,Standard,AgeGrade,RequiredTime,pace_per_km,pace_per_mile,SortOrder,ExportBundleID
+john-kevan,5 km,Recreational,35%,00:40:26,8:05,13:01,101,20260629T223030374Z-2160E180
+john-kevan,5 km,Club,50%,00:28:18,5:40,9:07,102,20260629T223030374Z-2160E180
+john-kevan,5 km,Local Competitive,60%,00:23:35,4:43,7:35,103,20260629T223030374Z-2160E180
+john-kevan,5 km,Regional Class,70%,00:20:13,4:03,6:30,104,20260629T223030374Z-2160E180
+john-kevan,5 km,National Class,80%,00:17:41,3:32,5:42,105,20260629T223030374Z-2160E180
+john-kevan,5 km,World Class,90%,00:15:43,3:09,5:04,106,20260629T223030374Z-2160E180
+john-kevan,10 km,Recreational,35%,01:22:06,8:13,13:13,201,20260629T223030374Z-2160E180
+john-kevan,10 km,Club,50%,00:57:28,5:45,9:15,202,20260629T223030374Z-2160E180
+john-kevan,10 km,Local Competitive,60%,00:47:53,4:47,7:42,203,20260629T223030374Z-2160E180
+john-kevan,10 km,Regional Class,70%,00:41:03,4:06,6:36,204,20260629T223030374Z-2160E180
+john-kevan,10 km,National Class,80%,00:35:55,3:36,5:47,205,20260629T223030374Z-2160E180
+john-kevan,10 km,World Class,90%,00:31:55,3:12,5:08,206,20260629T223030374Z-2160E180
+john-kevan,10 Mile,Recreational,35%,02:14:40,8:22,13:28,301,20260629T223030374Z-2160E180
+john-kevan,10 Mile,Club,50%,01:34:16,5:51,9:26,302,20260629T223030374Z-2160E180
+john-kevan,10 Mile,Local Competitive,60%,01:18:33,4:53,7:51,303,20260629T223030374Z-2160E180
+john-kevan,10 Mile,Regional Class,70%,01:07:20,4:11,6:44,304,20260629T223030374Z-2160E180
+john-kevan,10 Mile,National Class,80%,00:58:55,3:40,5:54,305,20260629T223030374Z-2160E180
+john-kevan,10 Mile,World Class,90%,00:52:22,3:15,5:14,306,20260629T223030374Z-2160E180
+john-kevan,Half Marathon,Recreational,35%,02:59:11,8:30,13:40,401,20260629T223030374Z-2160E180
+john-kevan,Half Marathon,Club,50%,02:05:25,5:57,9:34,402,20260629T223030374Z-2160E180
+john-kevan,Half Marathon,Local Competitive,60%,01:44:31,4:57,7:58,403,20260629T223030374Z-2160E180
+john-kevan,Half Marathon,Regional Class,70%,01:29:35,4:15,6:50,404,20260629T223030374Z-2160E180
+john-kevan,Half Marathon,National Class,80%,01:18:23,3:43,5:59,405,20260629T223030374Z-2160E180
+john-kevan,Half Marathon,World Class,90%,01:09:41,3:18,5:19,406,20260629T223030374Z-2160E180
+john-kevan,Marathon,Recreational,35%,06:10:48,8:47,14:09,501,20260629T223030374Z-2160E180
+john-kevan,Marathon,Club,50%,04:19:34,6:09,9:54,502,20260629T223030374Z-2160E180
+john-kevan,Marathon,Local Competitive,60%,03:36:18,5:08,8:15,503,20260629T223030374Z-2160E180
+john-kevan,Marathon,Regional Class,70%,03:05:24,4:24,7:04,504,20260629T223030374Z-2160E180
+john-kevan,Marathon,National Class,80%,02:42:13,3:51,6:11,505,20260629T223030374Z-2160E180
+john-kevan,Marathon,World Class,90%,02:24:12,3:25,5:30,506,20260629T223030374Z-2160E180
+carolyn-kevan,5 km,Recreational,35%,00:57:13,11:27,18:25,101,20260629T223030374Z-2160E180
+carolyn-kevan,5 km,Club,50%,00:40:03,8:01,12:53,102,20260629T223030374Z-2160E180
+carolyn-kevan,5 km,Local Competitive,60%,00:33:22,6:40,10:44,103,20260629T223030374Z-2160E180
+carolyn-kevan,5 km,Regional Class,70%,00:28:36,5:43,9:12,104,20260629T223030374Z-2160E180
+carolyn-kevan,5 km,National Class,80%,00:25:01,5:00,8:03,105,20260629T223030374Z-2160E180
+carolyn-kevan,5 km,World Class,90%,00:22:15,4:27,7:10,106,20260629T223030374Z-2160E180
+carolyn-kevan,10 km,Recreational,35%,01:55:14,11:31,18:33,201,20260629T223030374Z-2160E180
+carolyn-kevan,10 km,Club,50%,01:20:40,8:04,12:59,202,20260629T223030374Z-2160E180
+carolyn-kevan,10 km,Local Competitive,60%,01:07:13,6:43,10:49,203,20260629T223030374Z-2160E180
+carolyn-kevan,10 km,Regional Class,70%,00:57:37,5:46,9:16,204,20260629T223030374Z-2160E180
+carolyn-kevan,10 km,National Class,80%,00:50:25,5:03,8:07,205,20260629T223030374Z-2160E180
+carolyn-kevan,10 km,World Class,90%,00:44:48,4:29,7:13,206,20260629T223030374Z-2160E180
+carolyn-kevan,10 Mile,Recreational,35%,03:11:28,11:54,19:09,301,20260629T223030374Z-2160E180
+carolyn-kevan,10 Mile,Club,50%,02:14:02,8:20,13:24,302,20260629T223030374Z-2160E180
+carolyn-kevan,10 Mile,Local Competitive,60%,01:51:41,6:56,11:10,303,20260629T223030374Z-2160E180
+carolyn-kevan,10 Mile,Regional Class,70%,01:35:44,5:57,9:34,304,20260629T223030374Z-2160E180
+carolyn-kevan,10 Mile,National Class,80%,01:23:46,5:12,8:23,305,20260629T223030374Z-2160E180
+carolyn-kevan,10 Mile,World Class,90%,01:14:27,4:38,7:27,306,20260629T223030374Z-2160E180
+carolyn-kevan,Half Marathon,Recreational,35%,04:16:51,12:10,19:36,401,20260629T223030374Z-2160E180
+carolyn-kevan,Half Marathon,Club,50%,02:59:47,8:31,13:43,402,20260629T223030374Z-2160E180
+carolyn-kevan,Half Marathon,Local Competitive,60%,02:29:49,7:06,11:26,403,20260629T223030374Z-2160E180
+carolyn-kevan,Half Marathon,Regional Class,70%,02:08:25,6:05,9:48,404,20260629T223030374Z-2160E180
+carolyn-kevan,Half Marathon,National Class,80%,01:52:22,5:20,8:34,405,20260629T223030374Z-2160E180
+carolyn-kevan,Half Marathon,World Class,90%,01:39:53,4:44,7:37,406,20260629T223030374Z-2160E180
+carolyn-kevan,Marathon,Recreational,35%,08:36:15,12:14,19:41,501,20260629T223030374Z-2160E180
+carolyn-kevan,Marathon,Club,50%,06:01:22,8:34,13:47,502,20260629T223030374Z-2160E180
+carolyn-kevan,Marathon,Local Competitive,60%,05:01:08,7:08,11:29,503,20260629T223030374Z-2160E180
+carolyn-kevan,Marathon,Regional Class,70%,04:18:07,6:07,9:51,504,20260629T223030374Z-2160E180
+carolyn-kevan,Marathon,National Class,80%,03:45:51,5:21,8:37,505,20260629T223030374Z-2160E180
+carolyn-kevan,Marathon,World Class,90%,03:20:45,4:45,7:39,506,20260629T223030374Z-2160E180
+david-graham-kevan,5 km,Recreational,35%,00:43:49,8:46,14:06,101,20260629T223030374Z-2160E180
+david-graham-kevan,5 km,Club,50%,00:30:40,6:08,9:52,102,20260629T223030374Z-2160E180
+david-graham-kevan,5 km,Local Competitive,60%,00:25:34,5:07,8:14,103,20260629T223030374Z-2160E180
+david-graham-kevan,5 km,Regional Class,70%,00:21:54,4:23,7:03,104,20260629T223030374Z-2160E180
+david-graham-kevan,5 km,National Class,80%,00:19:10,3:50,6:10,105,20260629T223030374Z-2160E180
+david-graham-kevan,5 km,World Class,90%,00:17:02,3:24,5:29,106,20260629T223030374Z-2160E180
+david-graham-kevan,10 km,Recreational,35%,01:29:24,8:56,14:23,201,20260629T223030374Z-2160E180
+david-graham-kevan,10 km,Club,50%,01:02:35,6:16,10:04,202,20260629T223030374Z-2160E180
+david-graham-kevan,10 km,Local Competitive,60%,00:52:09,5:13,8:24,203,20260629T223030374Z-2160E180
+david-graham-kevan,10 km,Regional Class,70%,00:44:42,4:28,7:12,204,20260629T223030374Z-2160E180
+david-graham-kevan,10 km,National Class,80%,00:39:07,3:55,6:18,205,20260629T223030374Z-2160E180
+david-graham-kevan,10 km,World Class,90%,00:34:46,3:29,5:36,206,20260629T223030374Z-2160E180
+david-graham-kevan,10 Mile,Recreational,35%,02:26:57,9:08,14:42,301,20260629T223030374Z-2160E180
+david-graham-kevan,10 Mile,Club,50%,01:42:51,6:23,10:17,302,20260629T223030374Z-2160E180
+david-graham-kevan,10 Mile,Local Competitive,60%,01:25:43,5:20,8:34,303,20260629T223030374Z-2160E180
+david-graham-kevan,10 Mile,Regional Class,70%,01:13:28,4:34,7:21,304,20260629T223030374Z-2160E180
+david-graham-kevan,10 Mile,National Class,80%,01:04:17,4:00,6:26,305,20260629T223030374Z-2160E180
+david-graham-kevan,10 Mile,World Class,90%,00:57:08,3:33,5:43,306,20260629T223030374Z-2160E180
+david-graham-kevan,Half Marathon,Recreational,35%,03:15:47,9:17,14:56,401,20260629T223030374Z-2160E180
+david-graham-kevan,Half Marathon,Club,50%,02:17:03,6:30,10:27,402,20260629T223030374Z-2160E180
+david-graham-kevan,Half Marathon,Local Competitive,60%,01:54:12,5:25,8:43,403,20260629T223030374Z-2160E180
+david-graham-kevan,Half Marathon,Regional Class,70%,01:37:53,4:38,7:28,404,20260629T223030374Z-2160E180
+david-graham-kevan,Half Marathon,National Class,80%,01:25:39,4:04,6:32,405,20260629T223030374Z-2160E180
+david-graham-kevan,Half Marathon,World Class,90%,01:16:08,3:37,5:48,406,20260629T223030374Z-2160E180
+david-graham-kevan,Marathon,Recreational,35%,06:46:42,9:38,15:31,501,20260629T223030374Z-2160E180
+david-graham-kevan,Marathon,Club,50%,04:44:41,6:45,10:51,502,20260629T223030374Z-2160E180
+david-graham-kevan,Marathon,Local Competitive,60%,03:57:14,5:37,9:03,503,20260629T223030374Z-2160E180
+david-graham-kevan,Marathon,Regional Class,70%,03:23:21,4:49,7:45,504,20260629T223030374Z-2160E180
+david-graham-kevan,Marathon,National Class,80%,02:57:56,4:13,6:47,505,20260629T223030374Z-2160E180
+david-graham-kevan,Marathon,World Class,90%,02:38:09,3:45,6:02,506,20260629T223030374Z-2160E180
+poppy-coleman,5 km,Recreational,35%,00:39:42,7:56,12:47,101,20260629T223030374Z-2160E180
+poppy-coleman,5 km,Club,50%,00:27:48,5:34,8:57,102,20260629T223030374Z-2160E180
+poppy-coleman,5 km,Local Competitive,60%,00:23:10,4:38,7:27,103,20260629T223030374Z-2160E180
+poppy-coleman,5 km,Regional Class,70%,00:19:51,3:58,6:23,104,20260629T223030374Z-2160E180
+poppy-coleman,5 km,National Class,80%,00:17:22,3:28,5:35,105,20260629T223030374Z-2160E180
+poppy-coleman,5 km,World Class,90%,00:15:26,3:05,4:58,106,20260629T223030374Z-2160E180
+poppy-coleman,10 km,Recreational,35%,01:22:11,8:13,13:14,201,20260629T223030374Z-2160E180
+poppy-coleman,10 km,Club,50%,00:57:32,5:45,9:16,202,20260629T223030374Z-2160E180
+poppy-coleman,10 km,Local Competitive,60%,00:47:56,4:48,7:43,203,20260629T223030374Z-2160E180
+poppy-coleman,10 km,Regional Class,70%,00:41:05,4:07,6:37,204,20260629T223030374Z-2160E180
+poppy-coleman,10 km,National Class,80%,00:35:57,3:36,5:47,205,20260629T223030374Z-2160E180
+poppy-coleman,10 km,World Class,90%,00:31:57,3:12,5:09,206,20260629T223030374Z-2160E180
+poppy-coleman,10 Mile,Recreational,35%,02:14:51,8:23,13:29,301,20260629T223030374Z-2160E180
+poppy-coleman,10 Mile,Club,50%,01:34:24,5:52,9:26,302,20260629T223030374Z-2160E180
+poppy-coleman,10 Mile,Local Competitive,60%,01:18:40,4:53,7:52,303,20260629T223030374Z-2160E180
+poppy-coleman,10 Mile,Regional Class,70%,01:07:25,4:11,6:45,304,20260629T223030374Z-2160E180
+poppy-coleman,10 Mile,National Class,80%,00:59:00,3:40,5:54,305,20260629T223030374Z-2160E180
+poppy-coleman,10 Mile,World Class,90%,00:52:26,3:15,5:15,306,20260629T223030374Z-2160E180
+poppy-coleman,Half Marathon,Recreational,35%,02:59:37,8:31,13:42,401,20260629T223030374Z-2160E180
+poppy-coleman,Half Marathon,Club,50%,02:05:44,5:58,9:35,402,20260629T223030374Z-2160E180
+poppy-coleman,Half Marathon,Local Competitive,60%,01:44:46,4:58,8:00,403,20260629T223030374Z-2160E180
+poppy-coleman,Half Marathon,Regional Class,70%,01:29:48,4:15,6:51,404,20260629T223030374Z-2160E180
+poppy-coleman,Half Marathon,National Class,80%,01:18:35,3:43,6:00,405,20260629T223030374Z-2160E180
+poppy-coleman,Half Marathon,World Class,90%,01:09:51,3:19,5:20,406,20260629T223030374Z-2160E180
+poppy-coleman,Marathon,Recreational,35%,06:13:06,8:51,14:14,501,20260629T223030374Z-2160E180
+poppy-coleman,Marathon,Club,50%,04:21:10,6:11,9:58,502,20260629T223030374Z-2160E180
+poppy-coleman,Marathon,Local Competitive,60%,03:37:38,5:09,8:18,503,20260629T223030374Z-2160E180
+poppy-coleman,Marathon,Regional Class,70%,03:06:33,4:25,7:07,504,20260629T223030374Z-2160E180
+poppy-coleman,Marathon,National Class,80%,02:43:13,3:52,6:14,505,20260629T223030374Z-2160E180
+poppy-coleman,Marathon,World Class,90%,02:25:05,3:26,5:32,506,20260629T223030374Z-2160E180
+laura-foster,5 km,Recreational,35%,00:39:42,7:56,12:47,101,20260629T223030374Z-2160E180
+laura-foster,5 km,Club,50%,00:27:48,5:34,8:57,102,20260629T223030374Z-2160E180
+laura-foster,5 km,Local Competitive,60%,00:23:10,4:38,7:27,103,20260629T223030374Z-2160E180
+laura-foster,5 km,Regional Class,70%,00:19:51,3:58,6:23,104,20260629T223030374Z-2160E180
+laura-foster,5 km,National Class,80%,00:17:22,3:28,5:35,105,20260629T223030374Z-2160E180
+laura-foster,5 km,World Class,90%,00:15:26,3:05,4:58,106,20260629T223030374Z-2160E180
+laura-foster,10 km,Recreational,35%,01:22:11,8:13,13:14,201,20260629T223030374Z-2160E180
+laura-foster,10 km,Club,50%,00:57:32,5:45,9:16,202,20260629T223030374Z-2160E180
+laura-foster,10 km,Local Competitive,60%,00:47:56,4:48,7:43,203,20260629T223030374Z-2160E180
+laura-foster,10 km,Regional Class,70%,00:41:05,4:07,6:37,204,20260629T223030374Z-2160E180
+laura-foster,10 km,National Class,80%,00:35:57,3:36,5:47,205,20260629T223030374Z-2160E180
+laura-foster,10 km,World Class,90%,00:31:57,3:12,5:09,206,20260629T223030374Z-2160E180
+laura-foster,10 Mile,Recreational,35%,02:14:51,8:23,13:29,301,20260629T223030374Z-2160E180
+laura-foster,10 Mile,Club,50%,01:34:24,5:52,9:26,302,20260629T223030374Z-2160E180
+laura-foster,10 Mile,Local Competitive,60%,01:18:40,4:53,7:52,303,20260629T223030374Z-2160E180
+laura-foster,10 Mile,Regional Class,70%,01:07:25,4:11,6:45,304,20260629T223030374Z-2160E180
+laura-foster,10 Mile,National Class,80%,00:59:00,3:40,5:54,305,20260629T223030374Z-2160E180
+laura-foster,10 Mile,World Class,90%,00:52:26,3:15,5:15,306,20260629T223030374Z-2160E180
+laura-foster,Half Marathon,Recreational,35%,02:59:37,8:31,13:42,401,20260629T223030374Z-2160E180
+laura-foster,Half Marathon,Club,50%,02:05:44,5:58,9:35,402,20260629T223030374Z-2160E180
+laura-foster,Half Marathon,Local Competitive,60%,01:44:46,4:58,8:00,403,20260629T223030374Z-2160E180
+laura-foster,Half Marathon,Regional Class,70%,01:29:48,4:15,6:51,404,20260629T223030374Z-2160E180
+laura-foster,Half Marathon,National Class,80%,01:18:35,3:43,6:00,405,20260629T223030374Z-2160E180
+laura-foster,Half Marathon,World Class,90%,01:09:51,3:19,5:20,406,20260629T223030374Z-2160E180
+laura-foster,Marathon,Recreational,35%,06:11:14,8:48,14:10,501,20260629T223030374Z-2160E180
+laura-foster,Marathon,Club,50%,04:19:52,6:10,9:55,502,20260629T223030374Z-2160E180
+laura-foster,Marathon,Local Competitive,60%,03:36:33,5:08,8:16,503,20260629T223030374Z-2160E180
+laura-foster,Marathon,Regional Class,70%,03:05:37,4:24,7:05,504,20260629T223030374Z-2160E180
+laura-foster,Marathon,National Class,80%,02:42:25,3:51,6:12,505,20260629T223030374Z-2160E180
+laura-foster,Marathon,World Class,90%,02:24:22,3:25,5:30,506,20260629T223030374Z-2160E180
+caitlin-siostrom,5 km,Recreational,35%,00:42:08,8:26,13:34,101,20260629T223030374Z-2160E180
+caitlin-siostrom,5 km,Club,50%,00:29:29,5:54,9:29,102,20260629T223030374Z-2160E180
+caitlin-siostrom,5 km,Local Competitive,60%,00:24:34,4:55,7:54,103,20260629T223030374Z-2160E180
+caitlin-siostrom,5 km,Regional Class,70%,00:21:04,4:13,6:47,104,20260629T223030374Z-2160E180
+caitlin-siostrom,5 km,National Class,80%,00:18:26,3:41,5:56,105,20260629T223030374Z-2160E180
+caitlin-siostrom,5 km,World Class,90%,00:16:23,3:17,5:16,106,20260629T223030374Z-2160E180
+caitlin-siostrom,10 km,Recreational,35%,01:25:56,8:36,13:50,201,20260629T223030374Z-2160E180
+caitlin-siostrom,10 km,Club,50%,01:00:09,6:01,9:41,202,20260629T223030374Z-2160E180
+caitlin-siostrom,10 km,Local Competitive,60%,00:50:08,5:01,8:04,203,20260629T223030374Z-2160E180
+caitlin-siostrom,10 km,Regional Class,70%,00:42:58,4:18,6:55,204,20260629T223030374Z-2160E180
+caitlin-siostrom,10 km,National Class,80%,00:37:36,3:46,6:03,205,20260629T223030374Z-2160E180
+caitlin-siostrom,10 km,World Class,90%,00:33:25,3:21,5:23,206,20260629T223030374Z-2160E180
+caitlin-siostrom,10 Mile,Recreational,35%,02:21:16,8:47,14:08,301,20260629T223030374Z-2160E180
+caitlin-siostrom,10 Mile,Club,50%,01:38:53,6:09,9:53,302,20260629T223030374Z-2160E180
+caitlin-siostrom,10 Mile,Local Competitive,60%,01:22:24,5:07,8:14,303,20260629T223030374Z-2160E180
+caitlin-siostrom,10 Mile,Regional Class,70%,01:10:38,4:23,7:04,304,20260629T223030374Z-2160E180
+caitlin-siostrom,10 Mile,National Class,80%,01:01:48,3:50,6:11,305,20260629T223030374Z-2160E180
+caitlin-siostrom,10 Mile,World Class,90%,00:54:56,3:25,5:30,306,20260629T223030374Z-2160E180
+caitlin-siostrom,Half Marathon,Recreational,35%,03:08:20,8:56,14:22,401,20260629T223030374Z-2160E180
+caitlin-siostrom,Half Marathon,Club,50%,02:11:50,6:15,10:03,402,20260629T223030374Z-2160E180
+caitlin-siostrom,Half Marathon,Local Competitive,60%,01:49:51,5:12,8:23,403,20260629T223030374Z-2160E180
+caitlin-siostrom,Half Marathon,Regional Class,70%,01:34:10,4:28,7:11,404,20260629T223030374Z-2160E180
+caitlin-siostrom,Half Marathon,National Class,80%,01:22:23,3:54,6:17,405,20260629T223030374Z-2160E180
+caitlin-siostrom,Half Marathon,World Class,90%,01:13:14,3:28,5:35,406,20260629T223030374Z-2160E180
+caitlin-siostrom,Marathon,Recreational,35%,06:25:32,9:08,14:42,501,20260629T223030374Z-2160E180
+caitlin-siostrom,Marathon,Club,50%,04:29:52,6:24,10:18,502,20260629T223030374Z-2160E180
+caitlin-siostrom,Marathon,Local Competitive,60%,03:44:53,5:20,8:35,503,20260629T223030374Z-2160E180
+caitlin-siostrom,Marathon,Regional Class,70%,03:12:46,4:34,7:21,504,20260629T223030374Z-2160E180
+caitlin-siostrom,Marathon,National Class,80%,02:48:40,4:00,6:26,505,20260629T223030374Z-2160E180
+caitlin-siostrom,Marathon,World Class,90%,02:29:55,3:33,5:43,506,20260629T223030374Z-2160E180
+debbie-martin,5 km,Recreational,35%,00:42:52,8:34,13:48,101,20260629T223030374Z-2160E180
+debbie-martin,5 km,Club,50%,00:30:00,6:00,9:39,102,20260629T223030374Z-2160E180
+debbie-martin,5 km,Local Competitive,60%,00:25:00,5:00,8:03,103,20260629T223030374Z-2160E180
+debbie-martin,5 km,Regional Class,70%,00:21:26,4:17,6:54,104,20260629T223030374Z-2160E180
+debbie-martin,5 km,National Class,80%,00:18:45,3:45,6:02,105,20260629T223030374Z-2160E180
+debbie-martin,5 km,World Class,90%,00:16:40,3:20,5:22,106,20260629T223030374Z-2160E180
+debbie-martin,10 km,Recreational,35%,01:27:10,8:43,14:02,201,20260629T223030374Z-2160E180
+debbie-martin,10 km,Club,50%,01:01:01,6:06,9:49,202,20260629T223030374Z-2160E180
+debbie-martin,10 km,Local Competitive,60%,00:50:50,5:05,8:11,203,20260629T223030374Z-2160E180
+debbie-martin,10 km,Regional Class,70%,00:43:35,4:22,7:01,204,20260629T223030374Z-2160E180
+debbie-martin,10 km,National Class,80%,00:38:08,3:49,6:08,205,20260629T223030374Z-2160E180
+debbie-martin,10 km,World Class,90%,00:33:53,3:23,5:27,206,20260629T223030374Z-2160E180
+debbie-martin,10 Mile,Recreational,35%,02:23:21,8:54,14:20,301,20260629T223030374Z-2160E180
+debbie-martin,10 Mile,Club,50%,01:40:21,6:14,10:02,302,20260629T223030374Z-2160E180
+debbie-martin,10 Mile,Local Competitive,60%,01:23:37,5:12,8:22,303,20260629T223030374Z-2160E180
+debbie-martin,10 Mile,Regional Class,70%,01:11:40,4:27,7:10,304,20260629T223030374Z-2160E180
+debbie-martin,10 Mile,National Class,80%,01:02:43,3:54,6:16,305,20260629T223030374Z-2160E180
+debbie-martin,10 Mile,World Class,90%,00:55:45,3:28,5:35,306,20260629T223030374Z-2160E180
+debbie-martin,Half Marathon,Recreational,35%,03:11:11,9:04,14:35,401,20260629T223030374Z-2160E180
+debbie-martin,Half Marathon,Club,50%,02:13:49,6:21,10:12,402,20260629T223030374Z-2160E180
+debbie-martin,Half Marathon,Local Competitive,60%,01:51:31,5:17,8:30,403,20260629T223030374Z-2160E180
+debbie-martin,Half Marathon,Regional Class,70%,01:35:35,4:32,7:17,404,20260629T223030374Z-2160E180
+debbie-martin,Half Marathon,National Class,80%,01:23:38,3:58,6:23,405,20260629T223030374Z-2160E180
+debbie-martin,Half Marathon,World Class,90%,01:14:21,3:31,5:40,406,20260629T223030374Z-2160E180
+debbie-martin,Marathon,Recreational,35%,06:30:09,9:15,14:53,501,20260629T223030374Z-2160E180
+debbie-martin,Marathon,Club,50%,04:33:06,6:28,10:25,502,20260629T223030374Z-2160E180
+debbie-martin,Marathon,Local Competitive,60%,03:47:35,5:24,8:41,503,20260629T223030374Z-2160E180
+debbie-martin,Marathon,Regional Class,70%,03:15:04,4:37,7:26,504,20260629T223030374Z-2160E180
+debbie-martin,Marathon,National Class,80%,02:50:41,4:03,6:31,505,20260629T223030374Z-2160E180
+debbie-martin,Marathon,World Class,90%,02:31:43,3:36,5:47,506,20260629T223030374Z-2160E180
+jack-graham-kevan,5 km,Recreational,35%,00:36:37,7:19,11:47,101,20260629T223030374Z-2160E180
+jack-graham-kevan,5 km,Club,50%,00:25:38,5:08,8:15,102,20260629T223030374Z-2160E180
+jack-graham-kevan,5 km,Local Competitive,60%,00:21:21,4:16,6:52,103,20260629T223030374Z-2160E180
+jack-graham-kevan,5 km,Regional Class,70%,00:18:18,3:40,5:53,104,20260629T223030374Z-2160E180
+jack-graham-kevan,5 km,National Class,80%,00:16:01,3:12,5:09,105,20260629T223030374Z-2160E180
+jack-graham-kevan,5 km,World Class,90%,00:14:14,2:51,4:35,106,20260629T223030374Z-2160E180
+jack-graham-kevan,10 km,Recreational,35%,01:15:25,7:33,12:08,201,20260629T223030374Z-2160E180
+jack-graham-kevan,10 km,Club,50%,00:52:48,5:17,8:30,202,20260629T223030374Z-2160E180
+jack-graham-kevan,10 km,Local Competitive,60%,00:44:00,4:24,7:05,203,20260629T223030374Z-2160E180
+jack-graham-kevan,10 km,Regional Class,70%,00:37:42,3:46,6:04,204,20260629T223030374Z-2160E180
+jack-graham-kevan,10 km,National Class,80%,00:33:00,3:18,5:19,205,20260629T223030374Z-2160E180
+jack-graham-kevan,10 km,World Class,90%,00:29:20,2:56,4:43,206,20260629T223030374Z-2160E180
+jack-graham-kevan,10 Mile,Recreational,35%,02:03:34,7:41,12:21,301,20260629T223030374Z-2160E180
+jack-graham-kevan,10 Mile,Club,50%,01:26:30,5:22,8:39,302,20260629T223030374Z-2160E180
+jack-graham-kevan,10 Mile,Local Competitive,60%,01:12:05,4:29,7:13,303,20260629T223030374Z-2160E180
+jack-graham-kevan,10 Mile,Regional Class,70%,01:01:47,3:50,6:11,304,20260629T223030374Z-2160E180
+jack-graham-kevan,10 Mile,National Class,80%,00:54:03,3:22,5:24,305,20260629T223030374Z-2160E180
+jack-graham-kevan,10 Mile,World Class,90%,00:48:03,2:59,4:48,306,20260629T223030374Z-2160E180
+jack-graham-kevan,Half Marathon,Recreational,35%,02:44:20,7:47,12:32,401,20260629T223030374Z-2160E180
+jack-graham-kevan,Half Marathon,Club,50%,01:55:02,5:27,8:46,402,20260629T223030374Z-2160E180
+jack-graham-kevan,Half Marathon,Local Competitive,60%,01:35:51,4:33,7:19,403,20260629T223030374Z-2160E180
+jack-graham-kevan,Half Marathon,Regional Class,70%,01:22:10,3:54,6:16,404,20260629T223030374Z-2160E180
+jack-graham-kevan,Half Marathon,National Class,80%,01:11:53,3:24,5:29,405,20260629T223030374Z-2160E180
+jack-graham-kevan,Half Marathon,World Class,90%,01:03:54,3:02,4:52,406,20260629T223030374Z-2160E180
+jack-graham-kevan,Marathon,Recreational,35%,05:44:31,8:10,13:08,501,20260629T223030374Z-2160E180
+jack-graham-kevan,Marathon,Club,50%,04:01:10,5:43,9:12,502,20260629T223030374Z-2160E180
+jack-graham-kevan,Marathon,Local Competitive,60%,03:20:58,4:46,7:40,503,20260629T223030374Z-2160E180
+jack-graham-kevan,Marathon,Regional Class,70%,02:52:15,4:05,6:34,504,20260629T223030374Z-2160E180
+jack-graham-kevan,Marathon,National Class,80%,02:30:43,3:34,5:45,505,20260629T223030374Z-2160E180
+jack-graham-kevan,Marathon,World Class,90%,02:13:58,3:10,5:07,506,20260629T223030374Z-2160E180
+blake-coleman,5 km,Recreational,35%,00:36:37,7:19,11:47,101,20260629T223030374Z-2160E180
+blake-coleman,5 km,Club,50%,00:25:38,5:08,8:15,102,20260629T223030374Z-2160E180
+blake-coleman,5 km,Local Competitive,60%,00:21:21,4:16,6:52,103,20260629T223030374Z-2160E180
+blake-coleman,5 km,Regional Class,70%,00:18:18,3:40,5:53,104,20260629T223030374Z-2160E180
+blake-coleman,5 km,National Class,80%,00:16:01,3:12,5:09,105,20260629T223030374Z-2160E180
+blake-coleman,5 km,World Class,90%,00:14:14,2:51,4:35,106,20260629T223030374Z-2160E180
+blake-coleman,10 km,Recreational,35%,01:15:25,7:33,12:08,201,20260629T223030374Z-2160E180
+blake-coleman,10 km,Club,50%,00:52:48,5:17,8:30,202,20260629T223030374Z-2160E180
+blake-coleman,10 km,Local Competitive,60%,00:44:00,4:24,7:05,203,20260629T223030374Z-2160E180
+blake-coleman,10 km,Regional Class,70%,00:37:42,3:46,6:04,204,20260629T223030374Z-2160E180
+blake-coleman,10 km,National Class,80%,00:33:00,3:18,5:19,205,20260629T223030374Z-2160E180
+blake-coleman,10 km,World Class,90%,00:29:20,2:56,4:43,206,20260629T223030374Z-2160E180
+blake-coleman,10 Mile,Recreational,35%,02:03:34,7:41,12:21,301,20260629T223030374Z-2160E180
+blake-coleman,10 Mile,Club,50%,01:26:30,5:22,8:39,302,20260629T223030374Z-2160E180
+blake-coleman,10 Mile,Local Competitive,60%,01:12:05,4:29,7:13,303,20260629T223030374Z-2160E180
+blake-coleman,10 Mile,Regional Class,70%,01:01:47,3:50,6:11,304,20260629T223030374Z-2160E180
+blake-coleman,10 Mile,National Class,80%,00:54:03,3:22,5:24,305,20260629T223030374Z-2160E180
+blake-coleman,10 Mile,World Class,90%,00:48:03,2:59,4:48,306,20260629T223030374Z-2160E180
+blake-coleman,Half Marathon,Recreational,35%,02:44:20,7:47,12:32,401,20260629T223030374Z-2160E180
+blake-coleman,Half Marathon,Club,50%,01:55:02,5:27,8:46,402,20260629T223030374Z-2160E180
+blake-coleman,Half Marathon,Local Competitive,60%,01:35:51,4:33,7:19,403,20260629T223030374Z-2160E180
+blake-coleman,Half Marathon,Regional Class,70%,01:22:10,3:54,6:16,404,20260629T223030374Z-2160E180
+blake-coleman,Half Marathon,National Class,80%,01:11:53,3:24,5:29,405,20260629T223030374Z-2160E180
+blake-coleman,Half Marathon,World Class,90%,01:03:54,3:02,4:52,406,20260629T223030374Z-2160E180
+blake-coleman,Marathon,Recreational,35%,05:44:31,8:10,13:08,501,20260629T223030374Z-2160E180
+blake-coleman,Marathon,Club,50%,04:01:10,5:43,9:12,502,20260629T223030374Z-2160E180
+blake-coleman,Marathon,Local Competitive,60%,03:20:58,4:46,7:40,503,20260629T223030374Z-2160E180
+blake-coleman,Marathon,Regional Class,70%,02:52:15,4:05,6:34,504,20260629T223030374Z-2160E180
+blake-coleman,Marathon,National Class,80%,02:30:43,3:34,5:45,505,20260629T223030374Z-2160E180
+blake-coleman,Marathon,World Class,90%,02:13:58,3:10,5:07,506,20260629T223030374Z-2160E180
+ben-graham-kevan,5 km,Recreational,35%,00:36:37,7:19,11:47,101,20260629T223030374Z-2160E180
+ben-graham-kevan,5 km,Club,50%,00:25:38,5:08,8:15,102,20260629T223030374Z-2160E180
+ben-graham-kevan,5 km,Local Competitive,60%,00:21:21,4:16,6:52,103,20260629T223030374Z-2160E180
+ben-graham-kevan,5 km,Regional Class,70%,00:18:18,3:40,5:53,104,20260629T223030374Z-2160E180
+ben-graham-kevan,5 km,National Class,80%,00:16:01,3:12,5:09,105,20260629T223030374Z-2160E180
+ben-graham-kevan,5 km,World Class,90%,00:14:14,2:51,4:35,106,20260629T223030374Z-2160E180
+ben-graham-kevan,10 km,Recreational,35%,01:15:25,7:33,12:08,201,20260629T223030374Z-2160E180
+ben-graham-kevan,10 km,Club,50%,00:52:48,5:17,8:30,202,20260629T223030374Z-2160E180
+ben-graham-kevan,10 km,Local Competitive,60%,00:44:00,4:24,7:05,203,20260629T223030374Z-2160E180
+ben-graham-kevan,10 km,Regional Class,70%,00:37:42,3:46,6:04,204,20260629T223030374Z-2160E180
+ben-graham-kevan,10 km,National Class,80%,00:33:00,3:18,5:19,205,20260629T223030374Z-2160E180
+ben-graham-kevan,10 km,World Class,90%,00:29:20,2:56,4:43,206,20260629T223030374Z-2160E180
+ben-graham-kevan,10 Mile,Recreational,35%,02:03:34,7:41,12:21,301,20260629T223030374Z-2160E180
+ben-graham-kevan,10 Mile,Club,50%,01:26:30,5:22,8:39,302,20260629T223030374Z-2160E180
+ben-graham-kevan,10 Mile,Local Competitive,60%,01:12:05,4:29,7:13,303,20260629T223030374Z-2160E180
+ben-graham-kevan,10 Mile,Regional Class,70%,01:01:47,3:50,6:11,304,20260629T223030374Z-2160E180
+ben-graham-kevan,10 Mile,National Class,80%,00:54:03,3:22,5:24,305,20260629T223030374Z-2160E180
+ben-graham-kevan,10 Mile,World Class,90%,00:48:03,2:59,4:48,306,20260629T223030374Z-2160E180
+ben-graham-kevan,Half Marathon,Recreational,35%,02:44:20,7:47,12:32,401,20260629T223030374Z-2160E180
+ben-graham-kevan,Half Marathon,Club,50%,01:55:02,5:27,8:46,402,20260629T223030374Z-2160E180
+ben-graham-kevan,Half Marathon,Local Competitive,60%,01:35:51,4:33,7:19,403,20260629T223030374Z-2160E180
+ben-graham-kevan,Half Marathon,Regional Class,70%,01:22:10,3:54,6:16,404,20260629T223030374Z-2160E180
+ben-graham-kevan,Half Marathon,National Class,80%,01:11:53,3:24,5:29,405,20260629T223030374Z-2160E180
+ben-graham-kevan,Half Marathon,World Class,90%,01:03:54,3:02,4:52,406,20260629T223030374Z-2160E180
+ben-graham-kevan,Marathon,Recreational,35%,05:45:12,8:11,13:10,501,20260629T223030374Z-2160E180
+ben-graham-kevan,Marathon,Club,50%,04:01:38,5:44,9:13,502,20260629T223030374Z-2160E180
+ben-graham-kevan,Marathon,Local Competitive,60%,03:21:22,4:46,7:41,503,20260629T223030374Z-2160E180
+ben-graham-kevan,Marathon,Regional Class,70%,02:52:36,4:05,6:35,504,20260629T223030374Z-2160E180
+ben-graham-kevan,Marathon,National Class,80%,02:31:01,3:35,5:46,505,20260629T223030374Z-2160E180
+ben-graham-kevan,Marathon,World Class,90%,02:14:14,3:11,5:07,506,20260629T223030374Z-2160E180
+louise-hamilton,5 km,Recreational,35%,00:43:44,8:45,14:05,101,20260629T223030374Z-2160E180
+louise-hamilton,5 km,Club,50%,00:30:37,6:07,9:51,102,20260629T223030374Z-2160E180
+louise-hamilton,5 km,Local Competitive,60%,00:25:31,5:06,8:13,103,20260629T223030374Z-2160E180
+louise-hamilton,5 km,Regional Class,70%,00:21:52,4:22,7:02,104,20260629T223030374Z-2160E180
+louise-hamilton,5 km,National Class,80%,00:19:08,3:50,6:10,105,20260629T223030374Z-2160E180
+louise-hamilton,5 km,World Class,90%,00:17:00,3:24,5:28,106,20260629T223030374Z-2160E180
+louise-hamilton,10 km,Recreational,35%,01:28:35,8:52,14:15,201,20260629T223030374Z-2160E180
+louise-hamilton,10 km,Club,50%,01:02:00,6:12,9:59,202,20260629T223030374Z-2160E180
+louise-hamilton,10 km,Local Competitive,60%,00:51:40,5:10,8:19,203,20260629T223030374Z-2160E180
+louise-hamilton,10 km,Regional Class,70%,00:44:17,4:26,7:08,204,20260629T223030374Z-2160E180
+louise-hamilton,10 km,National Class,80%,00:38:45,3:53,6:14,205,20260629T223030374Z-2160E180
+louise-hamilton,10 km,World Class,90%,00:34:27,3:27,5:33,206,20260629T223030374Z-2160E180
+louise-hamilton,10 Mile,Recreational,35%,02:25:47,9:04,14:35,301,20260629T223030374Z-2160E180
+louise-hamilton,10 Mile,Club,50%,01:42:03,6:20,10:12,302,20260629T223030374Z-2160E180
+louise-hamilton,10 Mile,Local Competitive,60%,01:25:02,5:17,8:30,303,20260629T223030374Z-2160E180
+louise-hamilton,10 Mile,Regional Class,70%,01:12:53,4:32,7:17,304,20260629T223030374Z-2160E180
+louise-hamilton,10 Mile,National Class,80%,01:03:47,3:58,6:23,305,20260629T223030374Z-2160E180
+louise-hamilton,10 Mile,World Class,90%,00:56:41,3:31,5:40,306,20260629T223030374Z-2160E180
+louise-hamilton,Half Marathon,Recreational,35%,03:14:31,9:13,14:50,401,20260629T223030374Z-2160E180
+louise-hamilton,Half Marathon,Club,50%,02:16:09,6:27,10:23,402,20260629T223030374Z-2160E180
+louise-hamilton,Half Marathon,Local Competitive,60%,01:53:28,5:23,8:39,403,20260629T223030374Z-2160E180
+louise-hamilton,Half Marathon,Regional Class,70%,01:37:15,4:37,7:25,404,20260629T223030374Z-2160E180
+louise-hamilton,Half Marathon,National Class,80%,01:25:06,4:02,6:29,405,20260629T223030374Z-2160E180
+louise-hamilton,Half Marathon,World Class,90%,01:15:38,3:35,5:46,406,20260629T223030374Z-2160E180
+louise-hamilton,Marathon,Recreational,35%,06:35:31,9:22,15:05,501,20260629T223030374Z-2160E180
+louise-hamilton,Marathon,Club,50%,04:36:51,6:34,10:34,502,20260629T223030374Z-2160E180
+louise-hamilton,Marathon,Local Competitive,60%,03:50:43,5:28,8:48,503,20260629T223030374Z-2160E180
+louise-hamilton,Marathon,Regional Class,70%,03:17:45,4:41,7:33,504,20260629T223030374Z-2160E180
+louise-hamilton,Marathon,National Class,80%,02:53:02,4:06,6:36,505,20260629T223030374Z-2160E180
+louise-hamilton,Marathon,World Class,90%,02:33:48,3:39,5:52,506,20260629T223030374Z-2160E180
+jess-graham-kevan,5 km,Recreational,35%,00:50:48,10:10,16:21,101,20260629T223030374Z-2160E180
+jess-graham-kevan,5 km,Club,50%,00:35:34,7:07,11:27,102,20260629T223030374Z-2160E180
+jess-graham-kevan,5 km,Local Competitive,60%,00:29:38,5:56,9:32,103,20260629T223030374Z-2160E180
+jess-graham-kevan,5 km,Regional Class,70%,00:25:24,5:05,8:11,104,20260629T223030374Z-2160E180
+jess-graham-kevan,5 km,National Class,80%,00:22:13,4:27,7:09,105,20260629T223030374Z-2160E180
+jess-graham-kevan,5 km,World Class,90%,00:19:45,3:57,6:21,106,20260629T223030374Z-2160E180
+jess-graham-kevan,10 km,Recreational,35%,01:45:27,10:33,16:58,201,20260629T223030374Z-2160E180
+jess-graham-kevan,10 km,Club,50%,01:13:49,7:23,11:53,202,20260629T223030374Z-2160E180
+jess-graham-kevan,10 km,Local Competitive,60%,01:01:30,6:09,9:54,203,20260629T223030374Z-2160E180
+jess-graham-kevan,10 km,Regional Class,70%,00:52:43,5:16,8:29,204,20260629T223030374Z-2160E180
+jess-graham-kevan,10 km,National Class,80%,00:46:08,4:37,7:25,205,20260629T223030374Z-2160E180
+jess-graham-kevan,10 km,World Class,90%,00:41:00,4:06,6:36,206,20260629T223030374Z-2160E180
+jess-graham-kevan,10 Mile,Recreational,35%,03:01:52,11:18,18:11,301,20260629T223030374Z-2160E180
+jess-graham-kevan,10 Mile,Club,50%,02:07:18,7:55,12:44,302,20260629T223030374Z-2160E180
+jess-graham-kevan,10 Mile,Local Competitive,60%,01:46:05,6:36,10:37,303,20260629T223030374Z-2160E180
+jess-graham-kevan,10 Mile,Regional Class,70%,01:30:56,5:39,9:06,304,20260629T223030374Z-2160E180
+jess-graham-kevan,10 Mile,National Class,80%,01:19:34,4:57,7:57,305,20260629T223030374Z-2160E180
+jess-graham-kevan,10 Mile,World Class,90%,01:10:43,4:24,7:04,306,20260629T223030374Z-2160E180
+jess-graham-kevan,Half Marathon,Recreational,35%,04:09:28,11:49,19:02,401,20260629T223030374Z-2160E180
+jess-graham-kevan,Half Marathon,Club,50%,02:54:37,8:17,13:19,402,20260629T223030374Z-2160E180
+jess-graham-kevan,Half Marathon,Local Competitive,60%,02:25:31,6:54,11:06,403,20260629T223030374Z-2160E180
+jess-graham-kevan,Half Marathon,Regional Class,70%,02:04:44,5:55,9:31,404,20260629T223030374Z-2160E180
+jess-graham-kevan,Half Marathon,National Class,80%,01:49:08,5:10,8:19,405,20260629T223030374Z-2160E180
+jess-graham-kevan,Half Marathon,World Class,90%,01:37:00,4:36,7:24,406,20260629T223030374Z-2160E180
+jess-graham-kevan,Marathon,Recreational,35%,09:12:36,13:06,21:05,501,20260629T223030374Z-2160E180
+jess-graham-kevan,Marathon,Club,50%,06:26:49,9:10,14:45,502,20260629T223030374Z-2160E180
+jess-graham-kevan,Marathon,Local Competitive,60%,05:22:21,7:38,12:18,503,20260629T223030374Z-2160E180
+jess-graham-kevan,Marathon,Regional Class,70%,04:36:18,6:33,10:32,504,20260629T223030374Z-2160E180
+jess-graham-kevan,Marathon,National Class,80%,04:01:45,5:44,9:13,505,20260629T223030374Z-2160E180
+jess-graham-kevan,Marathon,World Class,90%,03:34:54,5:06,8:12,506,20260629T223030374Z-2160E180
