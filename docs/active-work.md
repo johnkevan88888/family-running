@@ -1,18 +1,27 @@
 # Active Work
 
-This file holds the single task John has currently approved. Roadmap entries are
+This file holds the single task John has currently approved. When no task is
+active, it records the most recently completed handoff. Roadmap entries are
 proposals only. Replace this content when a new task is approved rather than
 running multiple active scopes here.
 
 ## Task title
 
-Post-merge baseline and release-governance verification
+No active task
 
 ## Task classification
 
-Documentation-only verification. No product task is approved.
+No product or documentation work is currently active or approved.
 
-## Verified baseline
+## Most recently completed task
+
+- Task: Post-merge baseline and release-governance verification.
+- Status: complete.
+- PR [#12](https://github.com/johnkevan88888/family-running/pull/12)
+  merged into `main` on 30 June 2026 as commit
+  `3d8b7b7f8ebcfc2263cbae6d0304d3992c3f82f9`.
+
+## Baseline verified by the completed task
 
 - PR [#11](https://github.com/johnkevan88888/family-running/pull/11)
   merged into `main` on 30 June 2026.
@@ -34,7 +43,8 @@ Documentation-only verification. No product task is approved.
   the default branch.
 - This record replaces PR #11's pre-merge handoff state with the verified
   post-merge baseline.
-- `docs/decision-log.md` receives only the factual release-governance status
+- The post-merge governance verification delivered by PR #12 is complete.
+- `docs/decision-log.md` received only the factual release-governance status
   correction discovered by this verification.
 - `docs/roadmap.md` is unchanged and remains proposal-only.
 
@@ -48,14 +58,15 @@ Documentation-only verification. No product task is approved.
   - permits merge commits as the only merge method;
   - blocks branch deletion and non-fast-forward updates; and
   - requires the strict `Test static site` status check.
-- The ruleset currently requires zero approving reviews and does not require a
-  code-owner or last-push approval.
-- Netlify's Deploy Preview status is not listed as a required status check.
+- Governance gaps remain visible:
+  - no approving review is required; and
+  - Netlify's Deploy Preview is not a required GitHub status check.
+- The ruleset also does not require a code-owner or last-push approval.
 - The classic branch-protection endpoint required authentication, but the
   applicable ruleset endpoints were available and confirmed active protection.
 - No GitHub repository setting was changed by this task.
 
-## Scope
+## Completed scope
 
 - Verify the fetched post-merge baseline and exact `main` commit.
 - Verify the presence of the shared operating documents.
@@ -72,7 +83,7 @@ Documentation-only verification. No product task is approved.
   changes.
 - Approval or implementation of a roadmap proposal.
 
-## Validation required
+## Validation completed
 
 - [x] `pnpm test` — passed repository safety validation (94 tracked files), CSV
   validation for Family and Everyone, export-bundle regression tests, and
@@ -84,17 +95,16 @@ Documentation-only verification. No product task is approved.
   application, CSV, workflow, dependency, workbook, screenshot, or
   configuration file changed.
 
-## PR and release status
+## Completed PR and release status
 
-- Branch: `docs/post-merge-baseline-verification`
 - Pull Request: [#12](https://github.com/johnkevan88888/family-running/pull/12)
-  is open for review.
-- Release: not requested. Merge and production release still require explicit
-  John approval.
+  merged as `3d8b7b7f8ebcfc2263cbae6d0304d3992c3f82f9`.
+- Post-merge governance verification: complete.
+- Product release: not requested.
 
 ## Product status
 
-- No product task is approved.
+- No product work is active or approved.
 - Recommended next product discussion only:
   “Crown History Phase 2: Excel/VBA-exported same-holder All-Time Official crown
   improvements, excluding Current/12-Month history and browser-side
