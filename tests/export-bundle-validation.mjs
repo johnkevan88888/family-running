@@ -51,7 +51,18 @@ const cases = [
         mutate: async root => {
             const file = path.join(root, 'data', 'family', 'age_grade_standards.csv');
             const lines = splitLines(await fs.readFile(file, 'utf8'));
-            lines[0] = lines[0].replace(',pace_per_mile', '');
+            const paceColumnIndex = lines[0].split(',').indexOf('pace_per_mile');
+
+            if (paceColumnIndex < 0) {
+                throw new Error('Could not find pace_per_mile in the age-grade standards fixture.');
+            }
+
+            for (let index = 0; index < lines.length; index += 1) {
+                const fields = lines[index].split(',');
+                fields.splice(paceColumnIndex, 1);
+                lines[index] = fields.join(',');
+            }
+
             await fs.writeFile(file, `${lines.join('\r\n')}\r\n`);
         }
     },
