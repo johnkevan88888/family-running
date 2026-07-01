@@ -38,6 +38,8 @@ limitation recorded below.
 - [x] `pnpm test`: repository safety (94 tracked files), CSV validation,
   export/CSV regressions, and browser smoke tests all passed.
 - [x] `pnpm run screenshots:update`: responsive review images refreshed.
+- [x] With explicit owner approval, the ignored private workbook was updated
+  in place and its `CrownStandards` sheet was rebuilt and verified in Excel.
 
 ## Screenshot output
 
@@ -47,16 +49,20 @@ images for both `km` and `mi`, named:
 
 `<mode>-age-grade-standards-<viewport>-<unit>.png`
 
-## Source/export limitation
+## Workbook/export status
 
-The only workbook in the working directory is private and ignored, and no VBA
-source file exists in the repository or its Git history. In accordance with
-`AGENTS.md`, the private workbook was not opened, inspected, modified, copied,
-or committed. The public CSV export contract and current exported rows are
-updated, but the workbook's embedded export macro could not be changed here.
-Before a future workbook export, its owner must add the two fields using the
-same distance and downward tenth-of-a-second rounding rules or the public pace
-fields will be overwritten.
+After explicit owner approval to access the private workbook, its embedded
+`CrownStandardsExport` module was updated to build `pace_per_km` and
+`pace_per_mile` with Excel-owned `ROUNDDOWN(..., 1)` formulas using the exact
+race distances and 1.609344 km per mile. The workbook stores the pace values as
+numeric times formatted `[m]:ss.0`; the refresh-only macro rebuilt both Family
+and Everyone blocks without writing public files. The workbook and its local
+backup remain ignored and uncommitted.
+
+The workbook's broader website exporter predates the repository-wide
+`ExportBundleID` and manifest contract. It was therefore not run against
+`data/`. Before this workbook is used for a full website export, that separate
+legacy exporter must be upgraded to the current bundle contract.
 
 ## Release status
 
