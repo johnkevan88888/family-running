@@ -1216,6 +1216,8 @@ function validateAgeGradeStandards(siteDir) {
         'Standard',
         'AgeGrade',
         'RequiredTime',
+        'pace_per_km',
+        'pace_per_mile',
         'SortOrder'
     ]);
 
@@ -1223,8 +1225,96 @@ function validateAgeGradeStandards(siteDir) {
         validateAthleteId(row.AthleteId, file, row.__rowNumber, 'AthleteId', { required: true, severity: 'warning' });
         validatePercent(row.AgeGrade, file, row.__rowNumber, 'AgeGrade', { required: true });
         validateTime(row.RequiredTime, file, row.__rowNumber, 'RequiredTime', { required: true });
+        validateAgeGradePaces(row, file);
         validateNumber(row.SortOrder, file, row.__rowNumber, 'SortOrder', { required: true });
     }
+}
+
+function validateAgeGradePaces(row, file) {
+    const distance = ageGradeStandardDistance(row.Distance);
+    const targetSeconds = parseTimeToSeconds(row.RequiredTime);
+    const paces = [
+        ['pace_per_km', 1_000_000],
+        ['pace_per_mile', 1_609_344]
+    ];
+
+    if (!distance) {
+        addError(file, row.__rowNumber, `Distance "${row.Distance}" has no pace-validation distance.`);
+    }
+
+    for (const [column, unitInScaledKilometres] of paces) {
+        const value = String(row[column] || '').trim();
+
+        if (!/^\d+:[0-5]\d\.\d$/.test(value)) {
+            addError(file, row.__rowNumber, `${column} "${value}" must use m:ss.s.`);
+            continue;
+        }
+
+        if (targetSeconds === null || !distance) {
+            continue;
+        }
+
+        const expected = formatPace(
+            roundPaceDownToTenths(
+                targetSeconds,
+                distance.scaledKilometres,
+                unitInScaledKilometres
+            )
+        );
+        if (value !== expected) {
+            addError(
+                file,
+                row.__rowNumber,
+                `${column} "${value}" does not match RequiredTime "${row.RequiredTime}" at ${row.Distance}; expected "${expected}".`
+            );
+        }
+    }
+}
+
+function ageGradeStandardDistance(value) {
+    const distances = {
+        '5 km': 5_000_000,
+        '10 km': 10_000_000,
+        '10 Mile': 16_093_440,
+        'Half Marathon': 21_097_500,
+        'Marathon': 42_195_000
+    };
+    const scaledKilometres = distances[String(value || '').trim()];
+
+    if (!scaledKilometres) {
+        return null;
+    }
+
+    return { scaledKilometres };
+}
+
+function parseTimeToSeconds(value) {
+    const parts = String(value || '').trim().split(':').map(Number);
+
+    if (
+        ![2, 3].includes(parts.length) ||
+        parts.some(part => !Number.isInteger(part) || part < 0) ||
+        parts.at(-1) > 59 ||
+        (parts.length === 3 && parts[1] > 59)
+    ) {
+        return null;
+    }
+
+    return parts.length === 3
+        ? (parts[0] * 3600) + (parts[1] * 60) + parts[2]
+        : (parts[0] * 60) + parts[1];
+}
+
+function roundPaceDownToTenths(targetSeconds, scaledDistance, scaledUnit) {
+    return Math.floor((targetSeconds * 10 * scaledUnit) / scaledDistance);
+}
+
+function formatPace(totalTenths) {
+    const minutes = Math.floor(totalTenths / 600);
+    const remainingTenths = totalTenths % 600;
+    const seconds = String(Math.floor(remainingTenths / 10)).padStart(2, '0');
+    const tenths = remainingTenths % 10;
+    return `${minutes}:${seconds}.${tenths}`;
 }
 
 function validateLeaderboardFile(siteDir, fileName, webtableRowNumber) {

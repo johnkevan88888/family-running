@@ -44,6 +44,36 @@ const cases = [
             lines[rowIndex] = lines[rowIndex].replace(/(\d+)$/, value => String(Number(value) + 1));
             await fs.writeFile(file, `${lines.join('\r\n')}\r\n`);
         }
+    },
+    {
+        name: 'missing age-grade pace field',
+        expected: 'data/family/age_grade_standards.csv:1: Missing required header "pace_per_mile"',
+        mutate: async root => {
+            const file = path.join(root, 'data', 'family', 'age_grade_standards.csv');
+            const lines = splitLines(await fs.readFile(file, 'utf8'));
+            lines[0] = lines[0].replace(',pace_per_mile', '');
+            await fs.writeFile(file, `${lines.join('\r\n')}\r\n`);
+        }
+    },
+    {
+        name: 'malformed age-grade pace',
+        expected: 'pace_per_km "4:03" must use m:ss.s',
+        mutate: async root => {
+            const file = path.join(root, 'data', 'everyone', 'age_grade_standards.csv');
+            const lines = splitLines(await fs.readFile(file, 'utf8'));
+            lines[1] = replaceCsvField(lines[1], 5, '4:03');
+            await fs.writeFile(file, `${lines.join('\r\n')}\r\n`);
+        }
+    },
+    {
+        name: 'incorrect age-grade pace',
+        expected: 'pace_per_mile "9:19.0" does not match RequiredTime',
+        mutate: async root => {
+            const file = path.join(root, 'data', 'family', 'age_grade_standards.csv');
+            const lines = splitLines(await fs.readFile(file, 'utf8'));
+            lines[1] = replaceCsvField(lines[1], 6, '9:19.0');
+            await fs.writeFile(file, `${lines.join('\r\n')}\r\n`);
+        }
     }
 ];
 
@@ -75,6 +105,12 @@ console.log('Export bundle validation regression tests passed.');
 
 function splitLines(text) {
     return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trimEnd().split('\n');
+}
+
+function replaceCsvField(line, index, value) {
+    const fields = line.split(',');
+    fields[index] = value;
+    return fields.join(',');
 }
 
 function runValidator(validationRoot) {

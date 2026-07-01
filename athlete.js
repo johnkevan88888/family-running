@@ -2,6 +2,9 @@ const params = new URLSearchParams(window.location.search);
 const athleteId = params.get('id');
 
 const site = params.get('site') || 'family';
+const paceUnitStorageKey = 'family-running.age-grade-pace-unit';
+const defaultPaceUnit = 'km';
+const validPaceUnits = new Set(['km', 'mi']);
 
 function updateBackLink() {
     const backLink = document.querySelector('.back-link');
@@ -471,8 +474,14 @@ async function buildAgeGradeStandards() {
 
     try {
         const rows = await fetchCSV(`data/${site}/age_grade_standards.csv`);
-        const athleteStandards = csvRowsToObjects(rows)
-            .filter(row => clean(row.AthleteId) === clean(athleteId) && row.RequiredTime)
+        const athleteRows = csvRowsToObjects(rows)
+            .filter(row => clean(row.AthleteId) === clean(athleteId));
+
+        if (athleteRows.some(row => !row.RequiredTime || !row.pace_per_km || !row.pace_per_mile)) {
+            throw new Error('Age grade standards export is missing target-time pace data.');
+        }
+
+        const athleteStandards = athleteRows
             .sort((a, b) => Number(a.SortOrder || 9999) - Number(b.SortOrder || 9999));
 
         if (athleteStandards.length === 0) {
@@ -483,7 +492,7 @@ async function buildAgeGradeStandards() {
         const standardNames = [...new Set(athleteStandards.map(row => row.Standard))];
         const distances = [...new Set(athleteStandards.map(row => row.Distance))];
         const values = new Map(
-            athleteStandards.map(row => [`${row.Distance}|${row.Standard}`, row.RequiredTime])
+            athleteStandards.map(row => [`${row.Distance}|${row.Standard}`, row])
         );
         const ageGrades = new Map(
             athleteStandards.map(row => [row.Standard, row.AgeGrade])
@@ -509,7 +518,7 @@ async function buildAgeGradeStandards() {
                             <tr>
                                 <th scope="row">${escapeHTML(distance)}</th>
                                 ${standardNames.map(standard => `
-                                    <td>${escapeHTML(values.get(`${distance}|${standard}`) || '-')}</td>
+                                    ${renderAgeGradeStandardCell(values.get(`${distance}|${standard}`))}
                                 `).join('')}
                             </tr>
                         `).join('')}
@@ -517,8 +526,65 @@ async function buildAgeGradeStandards() {
                 </table>
             </div>
         `;
+        initializePaceUnitControl(section);
     } catch (error) {
         hideAgeGradeStandards(section, container);
+    }
+}
+
+function renderAgeGradeStandardCell(standard) {
+    if (!standard) {
+        return '<td>-</td>';
+    }
+
+    return `
+        <td>
+            <span class="age-grade-target-time">${escapeHTML(standard.RequiredTime)}</span>
+            <span class="age-grade-pace" data-pace-unit="km">${escapeHTML(standard.pace_per_km)} /km</span>
+            <span class="age-grade-pace" data-pace-unit="mi" hidden>${escapeHTML(standard.pace_per_mile)} /mi</span>
+        </td>
+    `;
+}
+
+function initializePaceUnitControl(section) {
+    if (!section.dataset.paceControlBound) {
+        section.querySelectorAll('.pace-unit-options button').forEach(button => {
+            button.addEventListener('click', () => {
+                setPaceUnit(section, button.dataset.paceUnit, true);
+            });
+        });
+        section.dataset.paceControlBound = 'true';
+    }
+
+    setPaceUnit(section, readStoredPaceUnit(), false);
+}
+
+function setPaceUnit(section, unit, persist) {
+    const selectedUnit = validPaceUnits.has(unit) ? unit : defaultPaceUnit;
+
+    section.dataset.paceUnit = selectedUnit;
+    section.querySelectorAll('.pace-unit-options button').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.paceUnit === selectedUnit));
+    });
+    section.querySelectorAll('.age-grade-pace').forEach(pace => {
+        pace.hidden = pace.dataset.paceUnit !== selectedUnit;
+    });
+
+    if (persist) {
+        try {
+            window.localStorage.setItem(paceUnitStorageKey, selectedUnit);
+        } catch (error) {
+            // The selected unit still applies for this page when storage is unavailable.
+        }
+    }
+}
+
+function readStoredPaceUnit() {
+    try {
+        const storedUnit = window.localStorage.getItem(paceUnitStorageKey);
+        return validPaceUnits.has(storedUnit) ? storedUnit : defaultPaceUnit;
+    } catch (error) {
+        return defaultPaceUnit;
     }
 }
 
