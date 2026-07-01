@@ -1234,27 +1234,33 @@ function validateAgeGradePaces(row, file) {
     const distance = ageGradeStandardDistance(row.Distance);
     const targetSeconds = parseTimeToSeconds(row.RequiredTime);
     const paces = [
-        ['pace_per_km', distance?.kilometres],
-        ['pace_per_mile', distance?.miles]
+        ['pace_per_km', 1_000_000],
+        ['pace_per_mile', 1_609_344]
     ];
 
     if (!distance) {
         addError(file, row.__rowNumber, `Distance "${row.Distance}" has no pace-validation distance.`);
     }
 
-    for (const [column, raceDistance] of paces) {
+    for (const [column, unitInScaledKilometres] of paces) {
         const value = String(row[column] || '').trim();
 
-        if (!/^\d+:[0-5]\d$/.test(value)) {
-            addError(file, row.__rowNumber, `${column} "${value}" must use m:ss.`);
+        if (!/^\d+:[0-5]\d\.\d$/.test(value)) {
+            addError(file, row.__rowNumber, `${column} "${value}" must use m:ss.s.`);
             continue;
         }
 
-        if (targetSeconds === null || !raceDistance) {
+        if (targetSeconds === null || !distance) {
             continue;
         }
 
-        const expected = formatPace(Math.round(targetSeconds / raceDistance));
+        const expected = formatPace(
+            roundPaceDownToTenths(
+                targetSeconds,
+                distance.scaledKilometres,
+                unitInScaledKilometres
+            )
+        );
         if (value !== expected) {
             addError(
                 file,
@@ -1266,26 +1272,20 @@ function validateAgeGradePaces(row, file) {
 }
 
 function ageGradeStandardDistance(value) {
-    const kilometresPerMile = 1.609344;
     const distances = {
-        '5 km': 5,
-        '10 km': 10,
-        '10 Mile': 16.09344,
-        'Half Marathon': 21.0975,
-        'Marathon': 42.195
+        '5 km': 5_000_000,
+        '10 km': 10_000_000,
+        '10 Mile': 16_093_440,
+        'Half Marathon': 21_097_500,
+        'Marathon': 42_195_000
     };
-    const kilometres = distances[String(value || '').trim()];
+    const scaledKilometres = distances[String(value || '').trim()];
 
-    if (!kilometres) {
+    if (!scaledKilometres) {
         return null;
     }
 
-    return {
-        kilometres,
-        miles: String(value || '').trim() === '10 Mile'
-            ? 10
-            : kilometres / kilometresPerMile
-    };
+    return { scaledKilometres };
 }
 
 function parseTimeToSeconds(value) {
@@ -1305,10 +1305,16 @@ function parseTimeToSeconds(value) {
         : (parts[0] * 60) + parts[1];
 }
 
-function formatPace(totalSeconds) {
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = String(totalSeconds % 60).padStart(2, '0');
-    return `${minutes}:${seconds}`;
+function roundPaceDownToTenths(targetSeconds, scaledDistance, scaledUnit) {
+    return Math.floor((targetSeconds * 10 * scaledUnit) / scaledDistance);
+}
+
+function formatPace(totalTenths) {
+    const minutes = Math.floor(totalTenths / 600);
+    const remainingTenths = totalTenths % 600;
+    const seconds = String(Math.floor(remainingTenths / 10)).padStart(2, '0');
+    const tenths = remainingTenths % 10;
+    return `${minutes}:${seconds}.${tenths}`;
 }
 
 function validateLeaderboardFile(siteDir, fileName, webtableRowNumber) {

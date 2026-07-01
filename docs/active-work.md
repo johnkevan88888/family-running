@@ -21,7 +21,7 @@ limitation recorded below.
 - Kept browser JavaScript display-only: it selects between two exported pace
   strings and performs no pace or standards calculations.
 - Added exact pace validation using the full target time, specified race
-  distances, 1.609344 km per mile, and nearest-second rounding.
+  distances, 1.609344 km per mile, and downward rounding to one decimal place.
 - Added failure regressions for missing, malformed, and mathematically
   incorrect pace exports.
 - Added browser coverage for both site modes, both responsive viewports,
@@ -55,7 +55,8 @@ source file exists in the repository or its Git history. In accordance with
 or committed. The public CSV export contract and current exported rows are
 updated, but the workbook's embedded export macro could not be changed here.
 Before a future workbook export, its owner must add the two fields using the
-same distance and rounding rules or the public pace fields will be overwritten.
+same distance and downward tenth-of-a-second rounding rules or the public pace
+fields will be overwritten.
 
 ## Release status
 

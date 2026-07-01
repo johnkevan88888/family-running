@@ -627,7 +627,7 @@ async function assertAgeGradeStandards(page, mode, viewport) {
     await expectText(
         page,
         '.age-grade-standards-intro p',
-        'Target times and required pace. Pace is rounded to the nearest second.',
+        'Target times and required pace. Pace is rounded down to the nearest tenth of a second.',
         `${context} age-grade pace helper`
     );
 
@@ -833,10 +833,10 @@ async function findMedalledAthleteScenario(mode) {
 async function findAgeGradePaceScenario(mode) {
     const rows = await readCsvObjects(`data/${mode}/age_grade_standards.csv`);
     const examples = [
-        { distance: '5 km', targetTime: '00:20:13', km: '4:03', mi: '6:30' },
-        { distance: '10 Mile', targetTime: '01:07:20', km: '4:11', mi: '6:44' },
-        { distance: 'Half Marathon', targetTime: '01:29:35', km: '4:15', mi: '6:50' },
-        { distance: 'Marathon', targetTime: '02:24:12', km: '3:25', mi: '5:30' }
+        { distance: '5 km', targetTime: '00:20:13', km: '4:02.6', mi: '6:30.4' },
+        { distance: '10 Mile', targetTime: '01:07:20', km: '4:11.0', mi: '6:44.0' },
+        { distance: 'Half Marathon', targetTime: '01:29:35', km: '4:14.7', mi: '6:50.0' },
+        { distance: 'Marathon', targetTime: '02:24:12', km: '3:25.0', mi: '5:29.9' }
     ];
     const athleteIds = [...new Set(rows.map(row => row.AthleteId).filter(Boolean))];
     const athleteId = athleteIds.find(candidate => examples.every(example =>

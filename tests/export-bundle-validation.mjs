@@ -57,21 +57,21 @@ const cases = [
     },
     {
         name: 'malformed age-grade pace',
-        expected: 'pace_per_km "4:3" must use m:ss',
+        expected: 'pace_per_km "4:03" must use m:ss.s',
         mutate: async root => {
             const file = path.join(root, 'data', 'everyone', 'age_grade_standards.csv');
             const lines = splitLines(await fs.readFile(file, 'utf8'));
-            lines[1] = replaceCsvField(lines[1], 5, '4:3');
+            lines[1] = replaceCsvField(lines[1], 5, '4:03');
             await fs.writeFile(file, `${lines.join('\r\n')}\r\n`);
         }
     },
     {
         name: 'incorrect age-grade pace',
-        expected: 'pace_per_mile "9:19" does not match RequiredTime',
+        expected: 'pace_per_mile "9:19.0" does not match RequiredTime',
         mutate: async root => {
             const file = path.join(root, 'data', 'family', 'age_grade_standards.csv');
             const lines = splitLines(await fs.readFile(file, 'utf8'));
-            lines[1] = replaceCsvField(lines[1], 6, '9:19');
+            lines[1] = replaceCsvField(lines[1], 6, '9:19.0');
             await fs.writeFile(file, `${lines.join('\r\n')}\r\n`);
         }
     }
