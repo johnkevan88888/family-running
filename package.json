@@ -11,8 +11,13 @@
     "validate:safety": "node scripts/validate-repository-safety.mjs",
     "validate:csv": "node scripts/validate-csv.mjs",
     "test:export-bundle": "node tests/export-bundle-validation.mjs",
+    "test:staged-export": "node tests/staged-export-workflow.mjs",
     "test:browser": "node tests/browser-smoke.mjs",
-    "screenshots:update": "node tests/browser-smoke.mjs --update-screenshots"
+    "screenshots:update": "node tests/browser-smoke.mjs --update-screenshots",
+    "workbook:export:staged": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-workbook-staged-export.ps1",
+    "workbook:validate:staged": "node scripts/export-bundle-validation.mjs",
+    "workbook:compare:staged": "node scripts/compare-export-bundle.mjs",
+    "workbook:promote:staged": "node scripts/promote-staged-export.mjs"
   },
   "devDependencies": {
     "playwright": "^1.61.0"

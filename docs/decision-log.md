@@ -64,6 +64,22 @@ Unknown historical details are labelled rather than inferred.
 - **Consequences:** Age grades, rankings, championship status, crowns, target
   times, and medal positions must arrive from Excel/VBA-owned exports.
 
+## Workbook exports are staged before public-data promotion
+
+- **Status:** Accepted
+- **Date:** 2 July 2026
+- **Decision:** The private workbook writes one complete website-data bundle to
+  a fresh ignored staging folder. Repository tooling validates and reconciles
+  that bundle before a separate explicitly approved promotion can replace
+  tracked `data/`.
+- **Rationale:** A staged manifest-last export proves completeness and internal
+  consistency without risking partial, stale, mixed, or selectively copied
+  public data.
+- **Consequences:** The official broad workbook exporter no longer writes
+  directly to tracked `data/`. Failed exports delete their incomplete staging
+  folder. Promotion requires a clean tracked data tree, successful validation,
+  human review of meaningful differences, and explicit approval.
+
 ## Main is PR-gated, with Netlify previews
 
 - **Status:** Accepted policy; repository automation and an active default-branch

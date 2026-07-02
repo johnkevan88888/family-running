@@ -41,11 +41,13 @@ Preserve the selected `site` parameter when navigating between championship page
 - Excel/VBA generates one URL-safe `ExportBundleID` at the start of each full website-data export.
 - Every public CSV except `data/export_manifest.csv` carries that ID in an additive `ExportBundleID` column.
 - VBA writes `data/export_manifest.csv` only after all planned public CSVs have been created and post-export validation has passed.
+- The workbook exports first to a fresh ignored staging folder; tracked `data/` is promoted only as a separate explicitly approved step after validation and reconciliation.
 - The manifest schema is exactly:
   `ExportBundleID,ExportedAtUTC,SchemaVersion,Scope,RelativePath,DataRowCount`.
 - `Scope` is `family`, `everyone`, or `shared`; paths are repository-relative; row counts exclude the CSV header.
 - Repository validation rejects partial, stale, mixed, missing, unlisted, or wrongly counted exports.
 - The private macro-enabled workbook and every dated backup remain outside Git and must never be staged or committed.
+- Follow `docs/workbook-export-workflow.md`; do not selectively copy individual CSVs from a workbook export.
 
 ## Behaviour Boundaries
 
