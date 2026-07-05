@@ -44,6 +44,12 @@ Run focused export-bundle failure regression tests:
 pnpm run test:export-bundle
 ```
 
+Run staged-export workflow regression tests:
+
+```bash
+pnpm run test:staged-export
+```
+
 Run browser smoke tests and capture screenshots:
 
 ```bash
@@ -62,6 +68,19 @@ Refresh responsive screenshots:
 pnpm run screenshots:update
 ```
 
+Generate, validate, and reconcile a private-workbook export without changing
+tracked data:
+
+```powershell
+pnpm run workbook:export:staged
+pnpm run workbook:validate:staged -- --staged "<STAGED_EXPORT_ROOT>"
+pnpm run workbook:compare:staged -- --staged "<STAGED_EXPORT_ROOT>"
+```
+
+See [Workbook website export workflow](workbook-export-workflow.md). Promotion
+is a separate explicitly approved command and is never part of automated
+export or validation.
+
 Local preview URLs:
 
 - Family: `http://127.0.0.1:4173/?site=family`
@@ -76,6 +95,11 @@ CSV validation checks `data/family/`, `data/everyone/`, and shared `data/athlete
 The existing content checks remain in force: required files and headers, parseable CSV structure, matching row lengths, leaderboard files referenced by `webtables.csv`, athlete IDs used by links, official medal exports, parseable dates, numeric fields and times, non-empty Hall of Fame data, and non-empty enabled championship files. Validation also enforces the exact `crown_history.csv` contract, crown order and chronology, transition and previous-holder rules, and final-holder agreement with the All-Time Official Hall of Fame without deriving history in JavaScript. Athlete medals remain Excel-owned exports and are rendered directly from `official_medals.csv`; their rows must match the current exported official leaderboards. Vacant states such as "Championship Vacant" and "No eligible results" are accepted.
 
 Focused regression tests copy `data/` to temporary directories and prove validation rejects a changed CSV bundle ID, a CSV omitted from the manifest, and an incorrect manifest row count. Production CSVs are not mutated by these tests.
+
+Staged-export regression tests also prove that a complete copied bundle
+validates, volatile bundle metadata is ignored during reconciliation,
+meaningful content changes are reported, and an incomplete staged file set is
+rejected.
 
 Browser smoke tests run the site through a local static server for:
 

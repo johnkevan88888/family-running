@@ -2,69 +2,99 @@
 
 ## Task title
 
-Age Grade Standards pace-display enhancement
+Private workbook staged export-bundle modernization
 
 ## Status
 
-Implementation complete and locally validated on
-`feat/age-grade-pace-toggle`. Ready for review, with the private VBA source
-limitation recorded below.
+Implementation complete on `feat/workbook-export-bundle-contract`. Two clean
+private-workbook exports independently passed the repository contract. No
+staged bundle has been promoted to tracked `data/`.
 
 ## Completed scope
 
-- Added exported `pace_per_km` and `pace_per_mile` fields to every Family and
-  Everyone age-grade standards row.
-- Kept target times and all existing headings, distance labels, class bands,
-  ordering, and site modes unchanged.
-- Added one accessible, persisted `/km` and `/mi` pace control to the existing
-  table; `/km` remains the first-visit default.
-- Kept browser JavaScript display-only: it selects between two exported pace
-  strings and performs no pace or standards calculations.
-- Added exact pace validation using the full target time, specified race
-  distances, 1.609344 km per mile, and downward rounding to one decimal place.
-- Added failure regressions for missing, malformed, and mathematically
-  incorrect pace exports.
-- Added browser coverage for both site modes, both responsive viewports,
-  keyboard selection, reload persistence, and the four required examples.
+- Replaced direct-to-`data/` VBA paths with one official staged exporter.
+- Added a fresh-folder gate under ignored
+  `test-artifacts/workbook-export-staging/`.
+- Preserved Excel/VBA ownership of all calculations and exported values.
+- Exported all Family, Everyone, and shared public CSVs with one bundle ID.
+- Preserved the exact manifest schema and bundle-ID format enforced by
+  `scripts/validate-csv.mjs`.
+- Added manifest-last completion, planned/actual file reconciliation, duplicate
+  path detection, formula-error checks, UTF-8 output, and deletion of failed
+  partial staging folders.
+- Reconciled the private source workbook with the age-grade
+  `pace_per_km`/`pace_per_mile` VBA change.
+- Corrected the WebExport no-result fallback from an eight-column array to the
+  required nine-column row, replacing an unintended `#N/A` Athlete-ID formula
+  error with blank in no-result rows.
+- Added repository commands for staged validation, reconciliation, and
+  separately approved complete-bundle promotion.
+- Added staged-workflow regression tests and a durable runbook.
 
-## Validation completed
+## Private workbook changes
 
-- [x] CSV validation for Family and Everyone.
-- [x] Export/CSV failure regression tests.
-- [x] Browser tests for Family and Everyone at desktop and mobile widths.
-- [x] Interactive browser verification of semantics, switching, persistence,
-  and representative values.
-- [x] Desktop and mobile pace screenshots for `/km` and `/mi`.
-- [x] `pnpm test`: repository safety (94 tracked files), CSV validation,
-  export/CSV regressions, and browser smoke tests all passed.
-- [x] `pnpm run screenshots:update`: responsive review images refreshed.
-- [x] With explicit owner approval, the ignored private workbook was updated
-  in place and its `CrownStandards` sheet was rebuilt and verified in Excel.
+Private source:
 
-## Screenshot output
+`C:\Users\johnk\OneDrive\GitHub\_private_workbooks\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX WORKING COPY.xlsm`
 
-Generated review images are under the ignored
-`test-artifacts/screenshots/` directory. Each site mode has desktop and mobile
-images for both `km` and `mi`, named:
+Changed VBA modules:
 
-`<mode>-age-grade-standards-<viewport>-<unit>.png`
+- `ExportBundleIntegrity`
+- `WebsiteDataExport`
+- `WebsiteExportValidation`
+- `CrownStandardsExport`
+- `CrownHistoryExport`
 
-## Workbook/export status
+The 48 WebExport leaderboard spill formulas also received the corrected
+no-result fallback width. No calculation, ranking, medal, crown, standards, or
+athlete business logic was moved to JavaScript.
 
-After explicit owner approval to access the private workbook, its embedded
-`CrownStandardsExport` module was updated to build `pace_per_km` and
-`pace_per_mile` with Excel-owned `ROUNDDOWN(..., 1)` formulas using the exact
-race distances and 1.609344 km per mile. The workbook stores the pace values as
-numeric times formatted `[m]:ss.0`; the refresh-only macro rebuilt both Family
-and Everyone blocks without writing public files. The workbook and its local
-backup remain ignored and uncommitted.
+Private backup:
 
-The workbook's broader website exporter predates the repository-wide
-`ExportBundleID` and manifest contract. It was therefore not run against
-`data/`. Before this workbook is used for a full website export, that separate
-legacy exporter must be upgraded to the current bundle contract.
+`C:\Users\johnk\OneDrive\GitHub\_private_workbooks\backups\Family Age Grading Table before export-contract modernization 20260702-102546.xlsm`
+
+The workbook, VBA working sources, backups, and QA artefacts remain outside Git
+or in ignored local folders.
+
+## Clean staged export results
+
+Export 1:
+
+`test-artifacts/workbook-export-staging/run-20260702-201456-695`
+
+Export 2:
+
+`test-artifacts/workbook-export-staging/run-20260702-201738-294`
+
+Both exports:
+
+- contain 64 CSVs: 63 manifest entries plus the manifest;
+- independently pass the full CSV and export-bundle validation;
+- contain required Family, Everyone, and shared scopes;
+- include age-grade pace fields and values; and
+- are content-identical to each other after normalizing only bundle IDs and
+  timestamps.
+
+## Reconciliation against tracked data
+
+After ignoring only documented volatile metadata:
+
+- 57 files are content-identical.
+- Seven no-result leaderboard files differ only because the staged export has
+  a blank Athlete ID where tracked data contains the formula-error sentinel
+  `#N/A`:
+  - `data/everyone/marathon-current-all-everyone.csv`
+  - `data/everyone/marathon-current-official-everyone.csv`
+  - `data/family/10mile-alltime-official-family.csv`
+  - `data/family/10mile-current-official-family.csv`
+  - `data/family/marathon-alltime-official-family.csv`
+  - `data/family/marathon-current-all-family.csv`
+  - `data/family/marathon-current-official-family.csv`
+
+This is an expected export-integrity correction, not a changed result or
+championship outcome. It has not been promoted.
 
 ## Release status
 
-- No push, Pull Request, merge, preview deployment, production deployment, or
-  GitHub setting change was requested or performed.
+- No tracked public data overwrite or promotion.
+- No push, Pull Request, merge, deployment, or GitHub setting change.
