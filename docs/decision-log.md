@@ -71,14 +71,19 @@ Unknown historical details are labelled rather than inferred.
 - **Decision:** The private workbook writes one complete website-data bundle to
   a fresh ignored staging folder. Repository tooling validates and reconciles
   that bundle before a separate explicitly approved promotion can replace
-  tracked `data/`.
+  tracked `data/`. The approved staging parent is a clearly named value in the
+  workbook's existing `Settings!tbSettings` configuration table, not an
+  absolute repository path embedded in VBA.
 - **Rationale:** A staged manifest-last export proves completeness and internal
   consistency without risking partial, stale, mixed, or selectively copied
   public data.
 - **Consequences:** The official broad workbook exporter no longer writes
   directly to tracked `data/`. Failed exports delete their incomplete staging
   folder. Promotion requires a clean tracked data tree, successful validation,
-  human review of meaningful differences, and explicit approval.
+  human review of meaningful differences, and explicit approval. Staging-root
+  validation is fail-closed: it accepts only a canonical fresh immediate child
+  of the configured parent and rejects the repository root, tracked `data/`,
+  its descendants, and relative or ambiguous paths.
 
 ## Main is PR-gated, with Netlify previews
 

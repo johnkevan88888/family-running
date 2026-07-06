@@ -73,8 +73,8 @@ tracked data:
 
 ```powershell
 pnpm run workbook:export:staged
-pnpm run workbook:validate:staged -- --staged "<STAGED_EXPORT_ROOT>"
-pnpm run workbook:compare:staged -- --staged "<STAGED_EXPORT_ROOT>"
+pnpm run workbook:validate:staged --staged "<STAGED_EXPORT_ROOT>"
+pnpm run workbook:compare:staged --staged "<STAGED_EXPORT_ROOT>"
 ```
 
 See [Workbook website export workflow](workbook-export-workflow.md). Promotion
@@ -99,7 +99,11 @@ Focused regression tests copy `data/` to temporary directories and prove validat
 Staged-export regression tests also prove that a complete copied bundle
 validates, volatile bundle metadata is ignored during reconciliation,
 meaningful content changes are reported, and an incomplete staged file set is
-rejected.
+rejected. They also enforce the fail-closed staging-root rules: only an
+absolute, canonical, immediate child of the repository's ignored
+`test-artifacts/workbook-export-staging/` parent is accepted; repository root,
+tracked `data/`, descendants of `data/`, relative paths, nested staging paths,
+and ambiguous paths are rejected.
 
 Browser smoke tests run the site through a local static server for:
 

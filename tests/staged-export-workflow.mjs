@@ -4,7 +4,9 @@ import {
     assertExactTrackedCsvSet,
     compareBundles,
     listPublicCsvFiles,
+    normalizePnpmPathArgument,
     repoRoot,
+    resolveStagedRoot,
     runCsvValidator,
     stagingParent
 } from '../scripts/export-bundle-tools.mjs';
@@ -27,6 +29,77 @@ try {
 
     assert(validation.status === 0, validation.stderr || validation.stdout);
     assert(files.length === listPublicCsvFiles(path.join(repoRoot, 'data')).length);
+    assert(resolveStagedRoot(stagedRoot) === stagedRoot);
+    assert(
+        resolveStagedRoot(`${stagedRoot}${path.sep}`) === stagedRoot,
+        'Canonical normalization should accept one trailing separator.'
+    );
+
+    if (process.platform === 'win32' && process.env.npm_lifecycle_event) {
+        const pnpmTransportPath = stagedRoot.replaceAll('\\', '\\\\');
+        const transportedDoubleSeparatorPath = stagedRoot.replaceAll(
+            '\\',
+            '\\\\\\\\'
+        );
+
+        assert(
+            normalizePnpmPathArgument(pnpmTransportPath) === stagedRoot,
+            'pnpm Windows path transport should decode to the canonical user input.'
+        );
+        assertRejectedStagedRoot(
+            normalizePnpmPathArgument(transportedDoubleSeparatorPath),
+            'empty path segment'
+        );
+    }
+
+    const rejectedRoots = [
+        {
+            value: repoRoot,
+            expected: 'repository root cannot be used'
+        },
+        {
+            value: path.join(repoRoot, 'data'),
+            expected: 'Tracked data and its descendants'
+        },
+        {
+            value: path.join(repoRoot, 'data', 'family'),
+            expected: 'Tracked data and its descendants'
+        },
+        {
+            value: stagingParent,
+            expected: 'fresh immediate child folders'
+        },
+        {
+            value: path.join(stagedRoot, 'nested'),
+            expected: 'fresh immediate child folders'
+        },
+        {
+            value: path.join(
+                repoRoot,
+                'test-artifacts',
+                'workbook-export-staging-other',
+                'run-unsafe'
+            ),
+            expected: 'fresh immediate child folders'
+        },
+        {
+            value: path.relative(repoRoot, stagedRoot),
+            expected: 'must be a nonblank absolute path'
+        },
+        {
+            value: `${stagingParent}${path.sep}.${path.sep}${path.basename(stagedRoot)}`,
+            expected: 'ambiguous path segment'
+        },
+        {
+            value: ` ${stagedRoot}`,
+            expected: 'without surrounding whitespace'
+        }
+    ];
+
+    for (const testCase of rejectedRoots) {
+        assertRejectedStagedRoot(testCase.value, testCase.expected);
+    }
+    console.log('PASS - strict staged-root safety gate');
 
     const metadataOnlyComparison = compareBundles(stagedRoot);
     assert(
@@ -119,4 +192,19 @@ function assert(condition, message = 'Assertion failed.') {
     if (!condition) {
         throw new Error(message);
     }
+}
+
+function assertRejectedStagedRoot(value, expectedMessage) {
+    let errorMessage = '';
+
+    try {
+        resolveStagedRoot(value);
+    } catch (error) {
+        errorMessage = error.message;
+    }
+
+    assert(
+        errorMessage.includes(expectedMessage),
+        `Expected staged root "${value}" to fail with "${expectedMessage}", got "${errorMessage}".`
+    );
 }

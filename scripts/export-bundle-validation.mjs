@@ -1,5 +1,6 @@
 import {
     assertExactTrackedCsvSet,
+    normalizePnpmPathArgument,
     parseCliArguments,
     resolveStagedRoot,
     runCsvValidator
@@ -7,7 +8,9 @@ import {
 
 try {
     const options = parseCliArguments(process.argv.slice(2));
-    const stagedRoot = resolveStagedRoot(options.get('staged'));
+    const stagedRoot = resolveStagedRoot(
+        normalizePnpmPathArgument(options.get('staged'))
+    );
     const files = assertExactTrackedCsvSet(stagedRoot);
     const result = runCsvValidator(stagedRoot, { inherit: true });
 

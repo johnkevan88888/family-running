@@ -4,6 +4,7 @@ import path from 'node:path';
 import {
     assertExactTrackedCsvSet,
     compareBundles,
+    normalizePnpmPathArgument,
     parseCliArguments,
     repoRoot,
     resolveStagedRoot,
@@ -12,7 +13,9 @@ import {
 
 try {
     const options = parseCliArguments(process.argv.slice(2));
-    const stagedRoot = resolveStagedRoot(options.get('staged'));
+    const stagedRoot = resolveStagedRoot(
+        normalizePnpmPathArgument(options.get('staged'))
+    );
 
     if (!options.has('approve')) {
         throw new Error(
