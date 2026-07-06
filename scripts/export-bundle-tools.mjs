@@ -39,21 +39,46 @@ export function parseCliArguments(argv) {
     return options;
 }
 
+export function normalizePnpmPathArgument(value) {
+    if (
+        process.platform !== 'win32' ||
+        !process.env.npm_lifecycle_event ||
+        typeof value !== 'string'
+    ) {
+        return value;
+    }
+
+    const unmatchedSeparators = value.replace(/\\\\/g, '');
+
+    if (unmatchedSeparators.includes('\\')) {
+        return value;
+    }
+
+    return value.replace(/\\\\/g, '\\');
+}
+
 export function resolveStagedRoot(value) {
     if (!value || value === true) {
         throw new Error('A staged export root is required via --staged <path>.');
     }
 
-    const stagedRoot = path.resolve(String(value));
-    const relative = path.relative(stagingParent, stagedRoot);
+    const stagedRoot = resolveCanonicalAbsolutePath(
+        String(value),
+        'staged export root'
+    );
+    const trackedDataRoot = path.join(repoRoot, 'data');
 
-    if (
-        relative === '' ||
-        relative.startsWith('..') ||
-        path.isAbsolute(relative)
-    ) {
+    if (samePath(stagedRoot, repoRoot)) {
+        throw new Error('The repository root cannot be used as a staged export root.');
+    }
+    if (sameOrDescendantPath(stagedRoot, trackedDataRoot)) {
         throw new Error(
-            `Staged exports must be fresh child folders of ${stagingParent}.`
+            'Tracked data and its descendants cannot be used as staged export roots.'
+        );
+    }
+    if (!samePath(path.dirname(stagedRoot), stagingParent)) {
+        throw new Error(
+            `Staged exports must be fresh immediate child folders of ${stagingParent}.`
         );
     }
 
@@ -68,6 +93,95 @@ export function resolveStagedRoot(value) {
     }
 
     return stagedRoot;
+}
+
+function resolveCanonicalAbsolutePath(value, description) {
+    if (!value || value !== value.trim() || !path.isAbsolute(value)) {
+        throw new Error(
+            `The ${description} must be a nonblank absolute path without surrounding whitespace.`
+        );
+    }
+    if (value.includes('\0')) {
+        throw new Error(`The ${description} contains a control character.`);
+    }
+    if (
+        process.platform === 'win32' &&
+        (
+            value.includes('/') ||
+            /["<>|?*%~]/.test(value) ||
+            value.slice(2).includes(':')
+        )
+    ) {
+        throw new Error(
+            `The ${description} contains invalid or ambiguous path characters.`
+        );
+    }
+
+    const root = path.parse(value).root;
+    const tail = value.slice(root.length);
+    const segments = tail.split(path.sep);
+
+    for (const [index, segment] of segments.entries()) {
+        if (!segment) {
+            if (index !== segments.length - 1) {
+                throw new Error(
+                    `The ${description} contains an empty path segment.`
+                );
+            }
+        } else if (
+            segment === '.' ||
+            segment === '..' ||
+            segment.endsWith('.') ||
+            segment.endsWith(' ')
+        ) {
+            throw new Error(
+                `The ${description} contains an ambiguous path segment.`
+            );
+        }
+    }
+
+    const resolved = path.resolve(value);
+    const comparableInput = stripTrailingSeparators(value);
+    const comparableResolved = stripTrailingSeparators(resolved);
+
+    if (!samePath(comparableInput, comparableResolved)) {
+        throw new Error(`The ${description} is not in canonical form.`);
+    }
+
+    return resolved;
+}
+
+function stripTrailingSeparators(value) {
+    const root = path.parse(value).root;
+    let stripped = value;
+
+    while (stripped.length > root.length && stripped.endsWith(path.sep)) {
+        stripped = stripped.slice(0, -1);
+    }
+
+    return stripped;
+}
+
+function samePath(left, right) {
+    const leftValue = path.resolve(left);
+    const rightValue = path.resolve(right);
+
+    return process.platform === 'win32'
+        ? leftValue.toLowerCase() === rightValue.toLowerCase()
+        : leftValue === rightValue;
+}
+
+function sameOrDescendantPath(candidate, parent) {
+    if (samePath(candidate, parent)) {
+        return true;
+    }
+
+    const relative = path.relative(parent, candidate);
+    return (
+        relative !== '' &&
+        !relative.startsWith('..') &&
+        !path.isAbsolute(relative)
+    );
 }
 
 export function runCsvValidator(validationRoot, options = {}) {

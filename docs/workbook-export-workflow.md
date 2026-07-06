@@ -13,6 +13,18 @@ The automation wrapper is:
 
 `ExportWebsiteDataIncludingCrownStandardsForAutomation(stagingRoot)`
 
+The approved staging parent is the private workbook setting
+`Approved Staging Root` in `Settings!tbSettings`. For the operating release
+workspace it is:
+
+`C:\GitHub\family-running\test-artifacts\workbook-export-staging`
+
+The workbook reads and validates that setting at export time; no repository
+absolute path is embedded in VBA. The supplied export root must be a fresh,
+immediate child of the configured parent after canonical path normalization.
+The gate rejects relative or ambiguous paths, the repository root, tracked
+`data/`, and every descendant of tracked `data/`.
+
 The legacy direct-to-`data/` path has been retired. A workbook export must never
 start by overwriting tracked public data.
 
@@ -49,8 +61,8 @@ CSV files: 63 manifest entries plus the manifest itself.
 
 The workbook exporter:
 
-1. accepts only a fresh child folder of
-   `test-artifacts/workbook-export-staging/`;
+1. reads the approved staging parent from `Settings!tbSettings` and accepts
+   only a canonical, fresh immediate child folder of that exact root;
 2. creates `data/`, `data/family/`, and `data/everyone/` inside that folder;
 3. calculates the required website-source sheets;
 4. runs the workbook's source-coverage validation;
@@ -90,13 +102,17 @@ The default private workbook is resolved from the sibling
 `_private_workbooks` folder. To override it:
 
 ```powershell
-pnpm run workbook:export:staged -- -WorkbookPath "C:\path\source.xlsm"
+pnpm run workbook:export:staged -WorkbookPath "C:\path\source.xlsm"
 ```
+
+The wrapper derives the approved staging parent from the current repository
+root and refuses an alternate `-StagingBase`. The workbook independently
+checks the same root against its `Approved Staging Root` setting.
 
 ### 2. Validate the staged bundle
 
 ```powershell
-pnpm run workbook:validate:staged -- --staged "<STAGED_EXPORT_ROOT>"
+pnpm run workbook:validate:staged --staged "<STAGED_EXPORT_ROOT>"
 ```
 
 This runs the existing full CSV and bundle validation and verifies the exact
@@ -105,7 +121,7 @@ public file set.
 ### 3. Compare with tracked public data
 
 ```powershell
-pnpm run workbook:compare:staged -- --staged "<STAGED_EXPORT_ROOT>"
+pnpm run workbook:compare:staged --staged "<STAGED_EXPORT_ROOT>"
 ```
 
 The comparison ignores only:
@@ -139,14 +155,14 @@ Promotion is intentionally separate and is not run by export, validation, or
 comparison:
 
 ```powershell
-pnpm run workbook:promote:staged -- --staged "<STAGED_EXPORT_ROOT>" --approve
+pnpm run workbook:promote:staged --staged "<STAGED_EXPORT_ROOT>" --approve
 ```
 
 If reviewed meaningful differences are intentional, explicit approval also
 requires:
 
 ```powershell
-pnpm run workbook:promote:staged -- --staged "<STAGED_EXPORT_ROOT>" --approve --approve-differences
+pnpm run workbook:promote:staged --staged "<STAGED_EXPORT_ROOT>" --approve --approve-differences
 ```
 
 Promotion refuses to run when tracked `data/` already has local changes. It

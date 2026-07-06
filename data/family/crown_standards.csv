@@ -1,145 +1,145 @@
 AthleteId,Distance,Period,CrownDistance,CrownAgeCategory,CrownHolderAthleteId,CrownHolderName,CrownAgeGrade,CrownTime,RequiredTimeToEqual,RequiredTimeToTake,AthletePB,GapToPB,Status,SortOrder,OverallTargetsToTake,ExportBundleID
-john-kevan,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:18:09,00:18:08,00:24:39,+00:06:31,Chasing,1,5 km=00:18:08;10 km=00:36:50;10 Mile=01:00:26;Half Marathon=01:20:25;Marathon=02:46:27,20260629T223030374Z-2160E180
-john-kevan,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:41,00:36:39,,,Chasing,2,5 km=00:18:02;10 km=00:36:39;10 Mile=01:00:08;Half Marathon=01:20:01;Marathon=02:45:37,20260629T223030374Z-2160E180
-john-kevan,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260629T223030374Z-2160E180
-john-kevan,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260629T223030374Z-2160E180
-john-kevan,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:38:59,01:38:57,,,Chasing,5,,20260629T223030374Z-2160E180
-john-kevan,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:38:59,01:38:57,,,Chasing,6,,20260629T223030374Z-2160E180
-john-kevan,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260629T223030374Z-2160E180
-john-kevan,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260629T223030374Z-2160E180
-john-kevan,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:21,00:44:20,,,Chasing,9,,20260629T223030374Z-2160E180
-john-kevan,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:41,00:36:39,,,Chasing,10,,20260629T223030374Z-2160E180
-john-kevan,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:18:09,00:18:08,00:24:39,+00:06:31,Chasing,11,,20260629T223030374Z-2160E180
-john-kevan,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:18:09,00:18:08,00:24:39,+00:06:31,Chasing,12,,20260629T223030374Z-2160E180
-carolyn-kevan,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:25:41,00:25:40,00:23:27,+00:00:00,Held,1,5 km=00:25:40;10 km=00:51:43;10 Mile=01:25:56;Half Marathon=01:55:17;Marathon=03:51:45,20260629T223030374Z-2160E180
-carolyn-kevan,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:51:29,00:51:27,00:46:54,+00:00:00,Held,2,5 km=00:25:32;10 km=00:51:27;10 Mile=01:25:30;Half Marathon=01:54:43;Marathon=03:50:35,20260629T223030374Z-2160E180
-carolyn-kevan,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260629T223030374Z-2160E180
-carolyn-kevan,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260629T223030374Z-2160E180
-carolyn-kevan,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:21:53,02:21:51,,,Chasing,5,,20260629T223030374Z-2160E180
-carolyn-kevan,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:21:53,02:21:51,,,Chasing,6,,20260629T223030374Z-2160E180
-carolyn-kevan,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260629T223030374Z-2160E180
-carolyn-kevan,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260629T223030374Z-2160E180
-carolyn-kevan,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,01:02:15,01:02:14,00:46:54,+00:00:00,Chasing,9,,20260629T223030374Z-2160E180
-carolyn-kevan,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:51:29,00:51:27,00:46:54,+00:00:00,Held,10,,20260629T223030374Z-2160E180
-carolyn-kevan,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:25:41,00:25:40,00:23:27,+00:00:00,Held,11,,20260629T223030374Z-2160E180
-carolyn-kevan,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:25:41,00:25:40,00:23:27,+00:00:00,Held,12,,20260629T223030374Z-2160E180
-david-graham-kevan,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:41,00:19:39,00:19:53,+00:00:14,Chasing,1,5 km=00:19:39;10 km=00:40:07;10 Mile=01:05:57;Half Marathon=01:27:53;Marathon=03:02:34,20260629T223030374Z-2160E180
-david-graham-kevan,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:56,00:39:55,00:48:18,+00:08:23,Chasing,2,5 km=00:19:33;10 km=00:39:55;10 Mile=01:05:37;Half Marathon=01:27:26;Marathon=03:01:39,20260629T223030374Z-2160E180
-david-graham-kevan,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260629T223030374Z-2160E180
-david-graham-kevan,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260629T223030374Z-2160E180
-david-graham-kevan,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:48:09,01:48:08,01:48:09,+00:00:01,Held,5,,20260629T223030374Z-2160E180
-david-graham-kevan,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:48:09,01:48:08,01:48:09,+00:00:01,Held,6,,20260629T223030374Z-2160E180
-david-graham-kevan,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260629T223030374Z-2160E180
-david-graham-kevan,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260629T223030374Z-2160E180
-david-graham-kevan,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:48:18,00:48:17,00:48:18,+00:00:01,Held,9,,20260629T223030374Z-2160E180
-david-graham-kevan,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:56,00:39:55,00:48:18,+00:08:23,Chasing,10,,20260629T223030374Z-2160E180
-david-graham-kevan,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:41,00:19:39,00:19:53,+00:00:14,Chasing,11,,20260629T223030374Z-2160E180
-david-graham-kevan,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:41,00:19:39,00:19:53,+00:00:14,Chasing,12,,20260629T223030374Z-2160E180
-poppy-coleman,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:17:50,00:17:48,00:22:37,+00:04:49,Chasing,1,5 km=00:17:48;10 km=00:36:52;10 Mile=01:00:31;Half Marathon=01:20:37;Marathon=02:47:29,20260629T223030374Z-2160E180
-poppy-coleman,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:41,,,Chasing,2,5 km=00:17:43;10 km=00:36:41;10 Mile=01:00:13;Half Marathon=01:20:12;Marathon=02:46:38,20260629T223030374Z-2160E180
-poppy-coleman,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260629T223030374Z-2160E180
-poppy-coleman,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260629T223030374Z-2160E180
-poppy-coleman,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:11,01:42:56,+00:03:45,Chasing,5,,20260629T223030374Z-2160E180
-poppy-coleman,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:11,01:42:56,+00:03:45,Chasing,6,,20260629T223030374Z-2160E180
-poppy-coleman,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260629T223030374Z-2160E180
-poppy-coleman,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260629T223030374Z-2160E180
-poppy-coleman,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:24,00:44:22,,,Chasing,9,,20260629T223030374Z-2160E180
-poppy-coleman,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:41,,,Chasing,10,,20260629T223030374Z-2160E180
-poppy-coleman,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:17:50,00:17:48,00:22:37,+00:04:49,Chasing,11,,20260629T223030374Z-2160E180
-poppy-coleman,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:17:50,00:17:48,00:22:37,+00:04:49,Chasing,12,,20260629T223030374Z-2160E180
-laura-foster,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:17:50,00:17:48,,,Chasing,1,5 km=00:17:48;10 km=00:36:52;10 Mile=01:00:31;Half Marathon=01:20:37;Marathon=02:46:38,20260629T223030374Z-2160E180
-laura-foster,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:41,,,Chasing,2,5 km=00:17:43;10 km=00:36:41;10 Mile=01:00:13;Half Marathon=01:20:12;Marathon=02:45:48,20260629T223030374Z-2160E180
-laura-foster,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260629T223030374Z-2160E180
-laura-foster,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260629T223030374Z-2160E180
-laura-foster,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:11,01:57:04,+00:17:53,Chasing,5,,20260629T223030374Z-2160E180
-laura-foster,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:11,01:57:04,+00:17:53,Chasing,6,,20260629T223030374Z-2160E180
-laura-foster,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260629T223030374Z-2160E180
-laura-foster,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260629T223030374Z-2160E180
-laura-foster,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:24,00:44:22,,,Chasing,9,,20260629T223030374Z-2160E180
-laura-foster,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:41,,,Chasing,10,,20260629T223030374Z-2160E180
-laura-foster,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:17:50,00:17:48,,,Chasing,11,,20260629T223030374Z-2160E180
-laura-foster,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:17:50,00:17:48,,,Chasing,12,,20260629T223030374Z-2160E180
-caitlin-siostrom,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:18:55,00:18:54,00:25:19,+00:06:25,Chasing,1,5 km=00:18:54;10 km=00:38:34;10 Mile=01:03:24;Half Marathon=01:24:32;Marathon=02:53:04,20260629T223030374Z-2160E180
-caitlin-siostrom,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:23,00:38:22,01:01:39,+00:23:17,Chasing,2,5 km=00:18:48;10 km=00:38:22;10 Mile=01:03:05;Half Marathon=01:24:06;Marathon=02:52:11,20260629T223030374Z-2160E180
-caitlin-siostrom,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260629T223030374Z-2160E180
-caitlin-siostrom,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260629T223030374Z-2160E180
-caitlin-siostrom,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:44:02,01:44:00,,,Chasing,5,,20260629T223030374Z-2160E180
-caitlin-siostrom,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:44:02,01:44:00,,,Chasing,6,,20260629T223030374Z-2160E180
-caitlin-siostrom,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260629T223030374Z-2160E180
-caitlin-siostrom,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260629T223030374Z-2160E180
-caitlin-siostrom,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:46:26,00:46:24,01:01:39,+00:15:15,Chasing,9,,20260629T223030374Z-2160E180
-caitlin-siostrom,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:23,00:38:22,01:01:39,+00:23:17,Chasing,10,,20260629T223030374Z-2160E180
-caitlin-siostrom,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:18:55,00:18:54,00:25:19,+00:06:25,Chasing,11,,20260629T223030374Z-2160E180
-caitlin-siostrom,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:18:55,00:18:54,00:25:19,+00:06:25,Chasing,12,,20260629T223030374Z-2160E180
-debbie-martin,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:15,00:19:14,,,Chasing,1,5 km=00:19:14;10 km=00:39:07;10 Mile=01:04:20;Half Marathon=01:25:48;Marathon=02:55:08,20260629T223030374Z-2160E180
-debbie-martin,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:56,00:38:55,00:54:56,+00:16:01,Chasing,2,5 km=00:19:08;10 km=00:38:55;10 Mile=01:04:01;Half Marathon=01:25:22;Marathon=02:54:15,20260629T223030374Z-2160E180
-debbie-martin,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260629T223030374Z-2160E180
-debbie-martin,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260629T223030374Z-2160E180
-debbie-martin,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:45:36,01:45:35,,,Chasing,5,,20260629T223030374Z-2160E180
-debbie-martin,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:45:36,01:45:35,,,Chasing,6,,20260629T223030374Z-2160E180
-debbie-martin,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260629T223030374Z-2160E180
-debbie-martin,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260629T223030374Z-2160E180
-debbie-martin,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:47:05,00:47:04,00:54:56,+00:07:52,Chasing,9,,20260629T223030374Z-2160E180
-debbie-martin,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:56,00:38:55,00:54:56,+00:16:01,Chasing,10,,20260629T223030374Z-2160E180
-debbie-martin,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:15,00:19:14,,,Chasing,11,,20260629T223030374Z-2160E180
-debbie-martin,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:15,00:19:14,,,Chasing,12,,20260629T223030374Z-2160E180
-jack-graham-kevan,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,00:23:32,+00:07:07,Chasing,1,5 km=00:16:25;10 km=00:33:50;10 Mile=00:55:27;Half Marathon=01:13:45;Marathon=02:34:39,20260629T223030374Z-2160E180
-jack-graham-kevan,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:40,,,Chasing,2,5 km=00:16:20;10 km=00:33:40;10 Mile=00:55:10;Half Marathon=01:13:23;Marathon=02:33:52,20260629T223030374Z-2160E180
-jack-graham-kevan,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260629T223030374Z-2160E180
-jack-graham-kevan,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260629T223030374Z-2160E180
-jack-graham-kevan,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:38:13,+00:07:28,Chasing,5,,20260629T223030374Z-2160E180
-jack-graham-kevan,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:38:13,+00:07:28,Chasing,6,,20260629T223030374Z-2160E180
-jack-graham-kevan,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260629T223030374Z-2160E180
-jack-graham-kevan,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260629T223030374Z-2160E180
-jack-graham-kevan,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:40:45,00:40:43,,,Chasing,9,,20260629T223030374Z-2160E180
-jack-graham-kevan,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:40,,,Chasing,10,,20260629T223030374Z-2160E180
-jack-graham-kevan,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,00:23:32,+00:07:07,Chasing,11,,20260629T223030374Z-2160E180
-jack-graham-kevan,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,00:23:32,+00:07:07,Chasing,12,,20260629T223030374Z-2160E180
-blake-coleman,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,,,Chasing,1,5 km=00:16:25;10 km=00:33:50;10 Mile=00:55:27;Half Marathon=01:13:45;Marathon=02:34:39,20260629T223030374Z-2160E180
-blake-coleman,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:40,,,Chasing,2,5 km=00:16:20;10 km=00:33:40;10 Mile=00:55:10;Half Marathon=01:13:23;Marathon=02:33:52,20260629T223030374Z-2160E180
-blake-coleman,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260629T223030374Z-2160E180
-blake-coleman,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260629T223030374Z-2160E180
-blake-coleman,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:57:13,+00:26:28,Chasing,5,,20260629T223030374Z-2160E180
-blake-coleman,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:57:13,+00:26:28,Chasing,6,,20260629T223030374Z-2160E180
-blake-coleman,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260629T223030374Z-2160E180
-blake-coleman,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260629T223030374Z-2160E180
-blake-coleman,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:40:45,00:40:43,,,Chasing,9,,20260629T223030374Z-2160E180
-blake-coleman,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:40,,,Chasing,10,,20260629T223030374Z-2160E180
-blake-coleman,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,,,Chasing,11,,20260629T223030374Z-2160E180
-blake-coleman,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,,,Chasing,12,,20260629T223030374Z-2160E180
-ben-graham-kevan,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,00:24:51,+00:08:26,Chasing,1,5 km=00:16:25;10 km=00:33:50;10 Mile=00:55:27;Half Marathon=01:13:45;Marathon=02:34:57,20260629T223030374Z-2160E180
-ben-graham-kevan,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:40,,,Chasing,2,5 km=00:16:20;10 km=00:33:40;10 Mile=00:55:10;Half Marathon=01:13:23;Marathon=02:34:11,20260629T223030374Z-2160E180
-ben-graham-kevan,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260629T223030374Z-2160E180
-ben-graham-kevan,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260629T223030374Z-2160E180
-ben-graham-kevan,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,,,Chasing,5,,20260629T223030374Z-2160E180
-ben-graham-kevan,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,,,Chasing,6,,20260629T223030374Z-2160E180
-ben-graham-kevan,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260629T223030374Z-2160E180
-ben-graham-kevan,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260629T223030374Z-2160E180
-ben-graham-kevan,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:40:45,00:40:43,,,Chasing,9,,20260629T223030374Z-2160E180
-ben-graham-kevan,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:40,,,Chasing,10,,20260629T223030374Z-2160E180
-ben-graham-kevan,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,00:24:51,+00:08:26,Chasing,11,,20260629T223030374Z-2160E180
-ben-graham-kevan,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,00:24:51,+00:08:26,Chasing,12,,20260629T223030374Z-2160E180
-louise-hamilton,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:38,00:19:37,00:34:31,+00:14:54,Chasing,1,5 km=00:19:37;10 km=00:39:45;10 Mile=01:05:26;Half Marathon=01:27:18;Marathon=02:57:33,20260629T223030374Z-2160E180
-louise-hamilton,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:34,00:39:33,,,Chasing,2,5 km=00:19:31;10 km=00:39:33;10 Mile=01:05:06;Half Marathon=01:26:52;Marathon=02:56:39,20260629T223030374Z-2160E180
-louise-hamilton,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260629T223030374Z-2160E180
-louise-hamilton,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260629T223030374Z-2160E180
-louise-hamilton,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:47:27,01:47:25,,,Chasing,5,,20260629T223030374Z-2160E180
-louise-hamilton,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:47:27,01:47:25,,,Chasing,6,,20260629T223030374Z-2160E180
-louise-hamilton,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260629T223030374Z-2160E180
-louise-hamilton,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260629T223030374Z-2160E180
-louise-hamilton,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:47:51,00:47:50,,,Chasing,9,,20260629T223030374Z-2160E180
-louise-hamilton,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:34,00:39:33,,,Chasing,10,,20260629T223030374Z-2160E180
-louise-hamilton,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:38,00:19:37,00:34:31,+00:14:54,Chasing,11,,20260629T223030374Z-2160E180
-louise-hamilton,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:38,00:19:37,00:34:31,+00:14:54,Chasing,12,,20260629T223030374Z-2160E180
-jess-graham-kevan,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:22:49,00:22:47,,,Chasing,1,5 km=00:22:47;10 km=00:47:19;10 Mile=01:21:38;Half Marathon=01:51:58;Marathon=04:08:04,20260629T223030374Z-2160E180
-jess-graham-kevan,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:47:06,00:47:05,,,Chasing,2,5 km=00:22:40;10 km=00:47:05;10 Mile=01:21:13;Half Marathon=01:51:25;Marathon=04:06:49,20260629T223030374Z-2160E180
-jess-graham-kevan,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260629T223030374Z-2160E180
-jess-graham-kevan,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260629T223030374Z-2160E180
-jess-graham-kevan,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:17:48,02:17:47,,,Chasing,5,,20260629T223030374Z-2160E180
-jess-graham-kevan,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:17:48,02:17:47,,,Chasing,6,,20260629T223030374Z-2160E180
-jess-graham-kevan,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260629T223030374Z-2160E180
-jess-graham-kevan,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260629T223030374Z-2160E180
-jess-graham-kevan,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:56:58,00:56:56,,,Chasing,9,,20260629T223030374Z-2160E180
-jess-graham-kevan,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:47:06,00:47:05,,,Chasing,10,,20260629T223030374Z-2160E180
-jess-graham-kevan,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:22:49,00:22:47,,,Chasing,11,,20260629T223030374Z-2160E180
-jess-graham-kevan,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:22:49,00:22:47,,,Chasing,12,,20260629T223030374Z-2160E180
+john-kevan,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:18:09,00:18:08,00:24:39,+00:06:31,Chasing,1,5 km=00:18:08;10 km=00:36:50;10 Mile=01:00:26;Half Marathon=01:20:25;Marathon=02:46:27,20260706T210842364Z-404B617F
+john-kevan,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:41,00:36:39,,,Chasing,2,5 km=00:18:02;10 km=00:36:39;10 Mile=01:00:08;Half Marathon=01:20:01;Marathon=02:45:37,20260706T210842364Z-404B617F
+john-kevan,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260706T210842364Z-404B617F
+john-kevan,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260706T210842364Z-404B617F
+john-kevan,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:38:59,01:38:57,,,Chasing,5,,20260706T210842364Z-404B617F
+john-kevan,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:38:59,01:38:57,,,Chasing,6,,20260706T210842364Z-404B617F
+john-kevan,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260706T210842364Z-404B617F
+john-kevan,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260706T210842364Z-404B617F
+john-kevan,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:21,00:44:20,,,Chasing,9,,20260706T210842364Z-404B617F
+john-kevan,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:41,00:36:39,,,Chasing,10,,20260706T210842364Z-404B617F
+john-kevan,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:18:09,00:18:08,00:24:39,+00:06:31,Chasing,11,,20260706T210842364Z-404B617F
+john-kevan,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:18:09,00:18:08,00:24:39,+00:06:31,Chasing,12,,20260706T210842364Z-404B617F
+carolyn-kevan,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:25:41,00:25:40,00:23:27,+00:00:00,Held,1,5 km=00:25:40;10 km=00:51:43;10 Mile=01:25:56;Half Marathon=01:55:17;Marathon=03:51:45,20260706T210842364Z-404B617F
+carolyn-kevan,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:51:29,00:51:27,00:46:54,+00:00:00,Held,2,5 km=00:25:32;10 km=00:51:27;10 Mile=01:25:30;Half Marathon=01:54:43;Marathon=03:50:35,20260706T210842364Z-404B617F
+carolyn-kevan,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260706T210842364Z-404B617F
+carolyn-kevan,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260706T210842364Z-404B617F
+carolyn-kevan,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:21:53,02:21:51,,,Chasing,5,,20260706T210842364Z-404B617F
+carolyn-kevan,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:21:53,02:21:51,,,Chasing,6,,20260706T210842364Z-404B617F
+carolyn-kevan,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260706T210842364Z-404B617F
+carolyn-kevan,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260706T210842364Z-404B617F
+carolyn-kevan,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,01:02:15,01:02:14,00:46:54,+00:00:00,Chasing,9,,20260706T210842364Z-404B617F
+carolyn-kevan,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:51:29,00:51:27,00:46:54,+00:00:00,Held,10,,20260706T210842364Z-404B617F
+carolyn-kevan,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:25:41,00:25:40,00:23:27,+00:00:00,Held,11,,20260706T210842364Z-404B617F
+carolyn-kevan,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:25:41,00:25:40,00:23:27,+00:00:00,Held,12,,20260706T210842364Z-404B617F
+david-graham-kevan,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:41,00:19:39,00:19:53,+00:00:14,Chasing,1,5 km=00:19:39;10 km=00:40:07;10 Mile=01:05:57;Half Marathon=01:27:53;Marathon=03:02:34,20260706T210842364Z-404B617F
+david-graham-kevan,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:56,00:39:55,00:48:18,+00:08:23,Chasing,2,5 km=00:19:33;10 km=00:39:55;10 Mile=01:05:37;Half Marathon=01:27:26;Marathon=03:01:39,20260706T210842364Z-404B617F
+david-graham-kevan,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260706T210842364Z-404B617F
+david-graham-kevan,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260706T210842364Z-404B617F
+david-graham-kevan,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:48:09,01:48:08,01:48:09,+00:00:01,Held,5,,20260706T210842364Z-404B617F
+david-graham-kevan,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:48:09,01:48:08,01:48:09,+00:00:01,Held,6,,20260706T210842364Z-404B617F
+david-graham-kevan,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260706T210842364Z-404B617F
+david-graham-kevan,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260706T210842364Z-404B617F
+david-graham-kevan,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:48:18,00:48:17,00:48:18,+00:00:01,Held,9,,20260706T210842364Z-404B617F
+david-graham-kevan,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:56,00:39:55,00:48:18,+00:08:23,Chasing,10,,20260706T210842364Z-404B617F
+david-graham-kevan,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:41,00:19:39,00:19:53,+00:00:14,Chasing,11,,20260706T210842364Z-404B617F
+david-graham-kevan,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:41,00:19:39,00:19:53,+00:00:14,Chasing,12,,20260706T210842364Z-404B617F
+poppy-coleman,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:17:50,00:17:48,00:22:37,+00:04:49,Chasing,1,5 km=00:17:48;10 km=00:36:52;10 Mile=01:00:31;Half Marathon=01:20:37;Marathon=02:47:29,20260706T210842364Z-404B617F
+poppy-coleman,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:41,,,Chasing,2,5 km=00:17:43;10 km=00:36:41;10 Mile=01:00:13;Half Marathon=01:20:12;Marathon=02:46:38,20260706T210842364Z-404B617F
+poppy-coleman,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260706T210842364Z-404B617F
+poppy-coleman,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260706T210842364Z-404B617F
+poppy-coleman,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:11,01:42:56,+00:03:45,Chasing,5,,20260706T210842364Z-404B617F
+poppy-coleman,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:11,01:42:56,+00:03:45,Chasing,6,,20260706T210842364Z-404B617F
+poppy-coleman,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260706T210842364Z-404B617F
+poppy-coleman,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260706T210842364Z-404B617F
+poppy-coleman,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:24,00:44:22,,,Chasing,9,,20260706T210842364Z-404B617F
+poppy-coleman,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:41,,,Chasing,10,,20260706T210842364Z-404B617F
+poppy-coleman,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:17:50,00:17:48,00:22:37,+00:04:49,Chasing,11,,20260706T210842364Z-404B617F
+poppy-coleman,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:17:50,00:17:48,00:22:37,+00:04:49,Chasing,12,,20260706T210842364Z-404B617F
+laura-foster,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:17:50,00:17:48,,,Chasing,1,5 km=00:17:48;10 km=00:36:52;10 Mile=01:00:31;Half Marathon=01:20:37;Marathon=02:46:38,20260706T210842364Z-404B617F
+laura-foster,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:41,,,Chasing,2,5 km=00:17:43;10 km=00:36:41;10 Mile=01:00:13;Half Marathon=01:20:12;Marathon=02:45:48,20260706T210842364Z-404B617F
+laura-foster,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260706T210842364Z-404B617F
+laura-foster,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260706T210842364Z-404B617F
+laura-foster,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:11,01:57:04,+00:17:53,Chasing,5,,20260706T210842364Z-404B617F
+laura-foster,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:39:13,01:39:11,01:57:04,+00:17:53,Chasing,6,,20260706T210842364Z-404B617F
+laura-foster,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260706T210842364Z-404B617F
+laura-foster,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260706T210842364Z-404B617F
+laura-foster,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:44:24,00:44:22,,,Chasing,9,,20260706T210842364Z-404B617F
+laura-foster,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:36:43,00:36:41,,,Chasing,10,,20260706T210842364Z-404B617F
+laura-foster,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:17:50,00:17:48,,,Chasing,11,,20260706T210842364Z-404B617F
+laura-foster,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:17:50,00:17:48,,,Chasing,12,,20260706T210842364Z-404B617F
+caitlin-siostrom,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:18:55,00:18:54,00:25:19,+00:06:25,Chasing,1,5 km=00:18:54;10 km=00:38:34;10 Mile=01:03:24;Half Marathon=01:24:32;Marathon=02:53:04,20260706T210842364Z-404B617F
+caitlin-siostrom,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:23,00:38:22,01:01:39,+00:23:17,Chasing,2,5 km=00:18:48;10 km=00:38:22;10 Mile=01:03:05;Half Marathon=01:24:06;Marathon=02:52:11,20260706T210842364Z-404B617F
+caitlin-siostrom,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260706T210842364Z-404B617F
+caitlin-siostrom,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260706T210842364Z-404B617F
+caitlin-siostrom,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:44:02,01:44:00,,,Chasing,5,,20260706T210842364Z-404B617F
+caitlin-siostrom,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:44:02,01:44:00,,,Chasing,6,,20260706T210842364Z-404B617F
+caitlin-siostrom,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260706T210842364Z-404B617F
+caitlin-siostrom,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260706T210842364Z-404B617F
+caitlin-siostrom,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:46:26,00:46:24,01:01:39,+00:15:15,Chasing,9,,20260706T210842364Z-404B617F
+caitlin-siostrom,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:23,00:38:22,01:01:39,+00:23:17,Chasing,10,,20260706T210842364Z-404B617F
+caitlin-siostrom,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:18:55,00:18:54,00:25:19,+00:06:25,Chasing,11,,20260706T210842364Z-404B617F
+caitlin-siostrom,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:18:55,00:18:54,00:25:19,+00:06:25,Chasing,12,,20260706T210842364Z-404B617F
+debbie-martin,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:15,00:19:14,,,Chasing,1,5 km=00:19:14;10 km=00:39:07;10 Mile=01:04:20;Half Marathon=01:25:48;Marathon=02:55:08,20260706T210842364Z-404B617F
+debbie-martin,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:56,00:38:55,00:54:56,+00:16:01,Chasing,2,5 km=00:19:08;10 km=00:38:55;10 Mile=01:04:01;Half Marathon=01:25:22;Marathon=02:54:15,20260706T210842364Z-404B617F
+debbie-martin,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260706T210842364Z-404B617F
+debbie-martin,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260706T210842364Z-404B617F
+debbie-martin,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:45:36,01:45:35,,,Chasing,5,,20260706T210842364Z-404B617F
+debbie-martin,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:45:36,01:45:35,,,Chasing,6,,20260706T210842364Z-404B617F
+debbie-martin,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260706T210842364Z-404B617F
+debbie-martin,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260706T210842364Z-404B617F
+debbie-martin,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:47:05,00:47:04,00:54:56,+00:07:52,Chasing,9,,20260706T210842364Z-404B617F
+debbie-martin,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:38:56,00:38:55,00:54:56,+00:16:01,Chasing,10,,20260706T210842364Z-404B617F
+debbie-martin,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:15,00:19:14,,,Chasing,11,,20260706T210842364Z-404B617F
+debbie-martin,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:15,00:19:14,,,Chasing,12,,20260706T210842364Z-404B617F
+jack-graham-kevan,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,00:23:32,+00:07:07,Chasing,1,5 km=00:16:25;10 km=00:33:50;10 Mile=00:55:27;Half Marathon=01:13:45;Marathon=02:34:39,20260706T210842364Z-404B617F
+jack-graham-kevan,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:40,,,Chasing,2,5 km=00:16:20;10 km=00:33:40;10 Mile=00:55:10;Half Marathon=01:13:23;Marathon=02:33:52,20260706T210842364Z-404B617F
+jack-graham-kevan,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260706T210842364Z-404B617F
+jack-graham-kevan,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260706T210842364Z-404B617F
+jack-graham-kevan,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:38:13,+00:07:28,Chasing,5,,20260706T210842364Z-404B617F
+jack-graham-kevan,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:38:13,+00:07:28,Chasing,6,,20260706T210842364Z-404B617F
+jack-graham-kevan,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260706T210842364Z-404B617F
+jack-graham-kevan,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260706T210842364Z-404B617F
+jack-graham-kevan,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:40:45,00:40:43,,,Chasing,9,,20260706T210842364Z-404B617F
+jack-graham-kevan,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:40,,,Chasing,10,,20260706T210842364Z-404B617F
+jack-graham-kevan,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,00:23:32,+00:07:07,Chasing,11,,20260706T210842364Z-404B617F
+jack-graham-kevan,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,00:23:32,+00:07:07,Chasing,12,,20260706T210842364Z-404B617F
+blake-coleman,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,,,Chasing,1,5 km=00:16:25;10 km=00:33:50;10 Mile=00:55:27;Half Marathon=01:13:45;Marathon=02:34:39,20260706T210842364Z-404B617F
+blake-coleman,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:40,,,Chasing,2,5 km=00:16:20;10 km=00:33:40;10 Mile=00:55:10;Half Marathon=01:13:23;Marathon=02:33:52,20260706T210842364Z-404B617F
+blake-coleman,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260706T210842364Z-404B617F
+blake-coleman,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260706T210842364Z-404B617F
+blake-coleman,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:57:13,+00:26:28,Chasing,5,,20260706T210842364Z-404B617F
+blake-coleman,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,01:57:13,+00:26:28,Chasing,6,,20260706T210842364Z-404B617F
+blake-coleman,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260706T210842364Z-404B617F
+blake-coleman,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260706T210842364Z-404B617F
+blake-coleman,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:40:45,00:40:43,,,Chasing,9,,20260706T210842364Z-404B617F
+blake-coleman,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:40,,,Chasing,10,,20260706T210842364Z-404B617F
+blake-coleman,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,,,Chasing,11,,20260706T210842364Z-404B617F
+blake-coleman,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,,,Chasing,12,,20260706T210842364Z-404B617F
+ben-graham-kevan,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,00:24:51,+00:08:26,Chasing,1,5 km=00:16:25;10 km=00:33:50;10 Mile=00:55:27;Half Marathon=01:13:45;Marathon=02:34:57,20260706T210842364Z-404B617F
+ben-graham-kevan,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:40,,,Chasing,2,5 km=00:16:20;10 km=00:33:40;10 Mile=00:55:10;Half Marathon=01:13:23;Marathon=02:34:11,20260706T210842364Z-404B617F
+ben-graham-kevan,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260706T210842364Z-404B617F
+ben-graham-kevan,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260706T210842364Z-404B617F
+ben-graham-kevan,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,,,Chasing,5,,20260706T210842364Z-404B617F
+ben-graham-kevan,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:30:46,01:30:45,,,Chasing,6,,20260706T210842364Z-404B617F
+ben-graham-kevan,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260706T210842364Z-404B617F
+ben-graham-kevan,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260706T210842364Z-404B617F
+ben-graham-kevan,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:40:45,00:40:43,,,Chasing,9,,20260706T210842364Z-404B617F
+ben-graham-kevan,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:33:42,00:33:40,,,Chasing,10,,20260706T210842364Z-404B617F
+ben-graham-kevan,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,00:24:51,+00:08:26,Chasing,11,,20260706T210842364Z-404B617F
+ben-graham-kevan,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:16:26,00:16:25,00:24:51,+00:08:26,Chasing,12,,20260706T210842364Z-404B617F
+louise-hamilton,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:38,00:19:37,00:34:31,+00:14:54,Chasing,1,5 km=00:19:37;10 km=00:39:45;10 Mile=01:05:26;Half Marathon=01:27:18;Marathon=02:57:33,20260706T210842364Z-404B617F
+louise-hamilton,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:34,00:39:33,,,Chasing,2,5 km=00:19:31;10 km=00:39:33;10 Mile=01:05:06;Half Marathon=01:26:52;Marathon=02:56:39,20260706T210842364Z-404B617F
+louise-hamilton,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260706T210842364Z-404B617F
+louise-hamilton,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260706T210842364Z-404B617F
+louise-hamilton,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:47:27,01:47:25,,,Chasing,5,,20260706T210842364Z-404B617F
+louise-hamilton,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,01:47:27,01:47:25,,,Chasing,6,,20260706T210842364Z-404B617F
+louise-hamilton,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260706T210842364Z-404B617F
+louise-hamilton,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260706T210842364Z-404B617F
+louise-hamilton,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:47:51,00:47:50,,,Chasing,9,,20260706T210842364Z-404B617F
+louise-hamilton,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:39:34,00:39:33,,,Chasing,10,,20260706T210842364Z-404B617F
+louise-hamilton,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:38,00:19:37,00:34:31,+00:14:54,Chasing,11,,20260706T210842364Z-404B617F
+louise-hamilton,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:19:38,00:19:37,00:34:31,+00:14:54,Chasing,12,,20260706T210842364Z-404B617F
+jess-graham-kevan,Overall,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:22:49,00:22:47,,,Chasing,1,5 km=00:22:47;10 km=00:47:19;10 Mile=01:21:38;Half Marathon=01:51:58;Marathon=04:08:04,20260706T210842364Z-404B617F
+jess-graham-kevan,Overall,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:47:06,00:47:05,,,Chasing,2,5 km=00:22:40;10 km=00:47:05;10 Mile=01:21:13;Half Marathon=01:51:25;Marathon=04:06:49,20260706T210842364Z-404B617F
+jess-graham-kevan,Marathon,Current,,,,Championship Vacant,,,,,,,No Standard,3,,20260706T210842364Z-404B617F
+jess-graham-kevan,Marathon,All Time,,,,Championship Vacant,,,,,,,No Standard,4,,20260706T210842364Z-404B617F
+jess-graham-kevan,Half Marathon,Current,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:17:48,02:17:47,,,Chasing,5,,20260706T210842364Z-404B617F
+jess-graham-kevan,Half Marathon,All Time,Half Marathon,M56,david-graham-kevan,David Graham-Kevan,63.36%,01:48:09,02:17:48,02:17:47,,,Chasing,6,,20260706T210842364Z-404B617F
+jess-graham-kevan,10 Mile,Current,,,,Championship Vacant,,,,,,,No Standard,7,,20260706T210842364Z-404B617F
+jess-graham-kevan,10 Mile,All Time,,,,Championship Vacant,,,,,,,No Standard,8,,20260706T210842364Z-404B617F
+jess-graham-kevan,10 km,Current,10 km,M56,david-graham-kevan,David Graham-Kevan,64.79%,00:48:18,00:56:58,00:56:56,,,Chasing,9,,20260706T210842364Z-404B617F
+jess-graham-kevan,10 km,All Time,10 km,F60,carolyn-kevan,Carolyn Kevan,78.35%,00:46:54,00:47:06,00:47:05,,,Chasing,10,,20260706T210842364Z-404B617F
+jess-graham-kevan,5 km,Current,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:22:49,00:22:47,,,Chasing,11,,20260706T210842364Z-404B617F
+jess-graham-kevan,5 km,All Time,5 km,F66,carolyn-kevan,Carolyn Kevan,77.96%,00:25:20,00:22:49,00:22:47,,,Chasing,12,,20260706T210842364Z-404B617F

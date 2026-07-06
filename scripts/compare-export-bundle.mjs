@@ -4,6 +4,7 @@ import {
     assertExactTrackedCsvSet,
     compareBundles,
     formatComparisonLine,
+    normalizePnpmPathArgument,
     parseCliArguments,
     resolveStagedRoot,
     runCsvValidator
@@ -11,7 +12,9 @@ import {
 
 try {
     const options = parseCliArguments(process.argv.slice(2));
-    const stagedRoot = resolveStagedRoot(options.get('staged'));
+    const stagedRoot = resolveStagedRoot(
+        normalizePnpmPathArgument(options.get('staged'))
+    );
     assertExactTrackedCsvSet(stagedRoot);
 
     const validation = runCsvValidator(stagedRoot);
@@ -24,7 +27,7 @@ try {
 
     const comparison = compareBundles(stagedRoot);
     const reportPath = options.get('report')
-        ? path.resolve(String(options.get('report')))
+        ? path.resolve(String(normalizePnpmPathArgument(options.get('report'))))
         : path.join(stagedRoot, 'reconciliation.json');
 
     fs.writeFileSync(reportPath, `${JSON.stringify(comparison, null, 2)}\n`, 'utf8');
