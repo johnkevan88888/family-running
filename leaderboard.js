@@ -1,5 +1,7 @@
 const params = new URLSearchParams(window.location.search);
-const site = params.get('site') || 'family';
+const site = window.siteNavigation?.selectedSite
+    ? window.siteNavigation.selectedSite()
+    : (params.get('site') || 'family');
 const dataPath = `data/${site}`;
 
 async function buildHallOfFame() {
@@ -205,7 +207,10 @@ function renderHallOfFameCard(row) {
 }
 
 function formatHallOfFameDistance(distance) {
-    return String(distance || '').replace(/^H\. Mar$/i, 'Half Marathon');
+    return String(distance || '')
+        .replace(/^H\. Mar$/i, 'Half Marathon')
+        .replace(/^10km$/i, '10 km')
+        .replace(/^5km$/i, '5 km');
 }
 
 function standardBadgeContent(category) {
@@ -254,6 +259,106 @@ function escapeHTML(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+function csvRowsToObjects(rows) {
+    const headers = (rows[0] || []).map(header => String(header).trim());
+
+    return rows.slice(1)
+        .filter(row => row.some(cell => cell !== ''))
+        .map(row => Object.fromEntries(headers.map((header, index) => [header, row[index] || ''])));
+}
+
+async function buildOverview() {
+    const container = document.getElementById('overview-highlights');
+    const statsContainer = document.getElementById('overview-stats');
+    if (!container) return;
+
+    const metadata = csvRowsToObjects(await fetchCSV(`${dataPath}/webtables.csv`));
+    const distanceOrder = ['Overall', 'Marathon', 'Half Marathon', '10 Mile', '10 km', '5 km'];
+    const currentOfficialTables = metadata
+        .filter(row =>
+            String(row.Enabled || '').toUpperCase() === 'TRUE' &&
+            row.TimeClass === 'Official' &&
+            /^Current Official /i.test(row.DisplayTitle || '')
+        )
+        .sort((a, b) =>
+            distanceOrder.indexOf(formatHallOfFameDistance(a.DisplayDistance)) -
+            distanceOrder.indexOf(formatHallOfFameDistance(b.DisplayDistance))
+        );
+
+    const highlights = await Promise.all(currentOfficialTables.map(async table => {
+        const rows = csvRowsToObjects(await fetchCSV(`${dataPath}/${table.FileName}`));
+        const champion = rows[0] || {};
+
+        return {
+            table,
+            champion
+        };
+    }));
+    const awardedCount = highlights.filter(({ champion }) =>
+        champion.Participant && !isNoResultParticipant(champion.Participant)
+    ).length;
+    const openCount = Math.max(0, highlights.length - awardedCount);
+
+    if (statsContainer) {
+        statsContainer.innerHTML = `
+            <div class="overview-stat">
+                <strong>${awardedCount}</strong>
+                <span>current official champions</span>
+            </div>
+            <div class="overview-stat">
+                <strong>${openCount}</strong>
+                <span>open official crowns</span>
+            </div>
+            <div class="overview-stat">
+                <strong>${highlights.length}</strong>
+                <span>championship distances</span>
+            </div>
+        `;
+    }
+
+    container.innerHTML = `
+        <div class="overview-card-grid">
+            ${highlights.map(renderOverviewHighlight).join('')}
+        </div>
+    `;
+}
+
+function renderOverviewHighlight({ table, champion }) {
+    const participant = champion.Participant || 'No eligible results';
+    const isNoResult = isNoResultParticipant(participant);
+    const athleteId = champion['Athlete ID'] || champion.AthleteID || '';
+    const participantHtml = athleteId && !isNoResult
+        ? athleteLink(athleteId, escapeHTML(participant))
+        : escapeHTML(participant);
+    const score = champion['Age Graded Score'] || champion.AgeGrade || '';
+    const event = champion.SexAgeEvent || champion.Distance || '';
+
+    return `
+        <article class="overview-highlight-card${isNoResult ? ' no-result' : ''}">
+            <div class="overview-highlight-distance">${escapeHTML(formatHallOfFameDistance(table.DisplayDistance))}</div>
+            <h3>${participantHtml}</h3>
+            ${isNoResult ? `
+                <p class="overview-highlight-empty">No eligible official result has been exported for this current championship.</p>
+            ` : `
+                <dl class="overview-highlight-facts">
+                    ${champion.Time ? `<div><dt>Time</dt><dd>${escapeHTML(champion.Time)}</dd></div>` : ''}
+                    ${score ? `<div><dt>Age grade</dt><dd>${escapeHTML(score)}</dd></div>` : ''}
+                    ${event ? `<div><dt>Event</dt><dd>${escapeHTML(event)}</dd></div>` : ''}
+                </dl>
+                ${champion['Age Graded Category'] ? `
+                    <div class="overview-highlight-standard">${escapeHTML(champion['Age Graded Category'])}</div>
+                ` : ''}
+            `}
+        </article>
+    `;
+}
+
+function isNoResultParticipant(participant) {
+    const value = String(participant || '').toLowerCase();
+
+    return value.includes('no eligible') || value.includes('vacant');
 }
 
 async function buildCrownHistory() {
@@ -644,7 +749,20 @@ async function buildLeaderboards() {
     }
 }
 
-buildHallOfFame();
-buildCrownHistory();
-buildLeaderboards();
+if (document.getElementById('overview-highlights')) {
+    buildOverview();
+}
+
+if (document.getElementById('hall-of-fame')) {
+    buildHallOfFame();
+}
+
+if (document.getElementById('crown-history')) {
+    buildCrownHistory();
+}
+
+if (document.getElementById('leaderboards')) {
+    buildLeaderboards();
+}
+
 loadSiteInfo();

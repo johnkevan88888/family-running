@@ -108,14 +108,38 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
     });
 
     try {
-        await page.goto(`${preview.baseUrl}/?site=${mode}`, { waitUntil: 'domcontentloaded' });
-        await waitForRenderedChampionship(page, mode);
+        await page.goto(`${preview.baseUrl}/index.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+        await waitForRenderedOverview(page, mode);
         await waitForNetworkToSettle(page);
 
         const siteName = await expectedSiteName(mode);
         await expectText(page, '#site-title', siteName, `${mode} site title`);
+        await assertPrimaryNavigation(page, mode, viewport, 'overview');
+        await assertModeSwitch(page, mode, viewport, 'overview');
+        await assertOverviewPage(page, mode, viewport, requestedPaths);
+        await assertNavigationBetweenPublicPages(page, mode, viewport);
+        await assertBundleMetadataHidden(page, `${mode}/${viewport.name} overview page`);
+
+        await page.goto(`${preview.baseUrl}/championships.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+        await waitForRenderedChampionship(page, mode);
+        await waitForNetworkToSettle(page);
+        await assertPrimaryNavigation(page, mode, viewport, 'championships');
+        await assertModeSwitch(page, mode, viewport, 'championships');
+        await expectCountAtLeast(page, '#leaderboards table tr', 2, `${mode} championship leaderboard rows`);
+        await assertBundleMetadataHidden(page, `${mode}/${viewport.name} championships page`);
+
+        await assertLeaderboardDisplayLabels(page, mode, viewport);
+        await assertCollapsibleSections(page, mode, viewport);
+        await assertAthleteNavigation(page, mode, viewport);
+        await assertAthleteOfficialMedals(page, mode, viewport);
+        await assertAgeGradeStandards(page, mode, viewport);
+
+        await page.goto(`${preview.baseUrl}/hall-of-fame.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+        await waitForRenderedHallOfFame(page, mode);
+        await waitForNetworkToSettle(page);
+        await assertPrimaryNavigation(page, mode, viewport, 'hall-of-fame');
+        await assertModeSwitch(page, mode, viewport, 'hall-of-fame');
         await expectCountAtLeast(page, '#hall-of-fame .hof-card', 1, `${mode} Hall of Fame cards`);
-        await expectCountAtLeast(page, '#leaderboards table tr', 2, `${mode} leaderboard rows`);
         await assertHallOfFameDisplayLabels(page, mode, viewport);
         await assertCrownHistory(page, mode, viewport, requestedPaths);
         await assertBundleMetadataHidden(page, `${mode}/${viewport.name} championship page`);
@@ -126,23 +150,15 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         }
 
         await assertVacantStatesRender(page, mode, viewport);
-        await assertCollapsibleSections(page, mode, viewport);
-        await assertLeaderboardDisplayLabels(page, mode, viewport);
-        await assertAthleteNavigation(page, mode, viewport);
-        await assertAthleteOfficialMedals(page, mode, viewport);
-        await assertAgeGradeStandards(page, mode, viewport);
+        await assertDirectAthleteProfile(page, mode, viewport);
 
         await page.setViewportSize(viewport);
-        await page.goto(`${preview.baseUrl}/?site=${mode}`, { waitUntil: 'domcontentloaded' });
-        await waitForRenderedChampionship(page, mode);
-        await waitForNetworkToSettle(page);
-        await page.screenshot({
-            path: path.join(artifactsDir, `${mode}-${viewport.name}.png`),
-            fullPage: true
-        });
+        await capturePageScreenshot(page, mode, viewport, 'overview', waitForRenderedOverview);
+        await capturePageScreenshot(page, mode, viewport, 'championships', waitForRenderedChampionship);
+        await capturePageScreenshot(page, mode, viewport, 'hall-of-fame', waitForRenderedHallOfFame);
 
         if (updateScreenshots) {
-            console.log(`Updated ${mode}-${viewport.name}.png`);
+            console.log(`Updated ${mode} ${viewport.name} screenshots`);
         }
     } catch (error) {
         failures.push(`${mode}/${viewport.name}: ${error.message}`);
@@ -165,8 +181,33 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
 
 async function waitForRenderedChampionship(page, mode) {
     await page.waitForSelector('#site-title', { state: 'visible' });
-    await page.waitForSelector('#hall-of-fame .hof-card', { state: 'visible' });
     await page.waitForSelector('#leaderboards table', { state: 'visible' });
+    await page.waitForFunction(expectedMode => {
+        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
+        const expected = expectedMode === 'everyone'
+            ? 'Age-Graded Running Championships'
+            : 'Family Running Championships';
+
+        return title === expected;
+    }, mode);
+}
+
+async function waitForRenderedOverview(page, mode) {
+    await page.waitForSelector('#site-title', { state: 'visible' });
+    await page.waitForSelector('#overview-highlights .overview-highlight-card', { state: 'visible' });
+    await page.waitForFunction(expectedMode => {
+        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
+        const expected = expectedMode === 'everyone'
+            ? 'Age-Graded Running Championships'
+            : 'Family Running Championships';
+
+        return title === expected;
+    }, mode);
+}
+
+async function waitForRenderedHallOfFame(page, mode) {
+    await page.waitForSelector('#site-title', { state: 'visible' });
+    await page.waitForSelector('#hall-of-fame .hof-card', { state: 'visible' });
     await page.waitForSelector('#crown-history[data-rendered="true"]');
     await page.waitForFunction(expectedMode => {
         const title = document.querySelector('#site-title')?.textContent?.trim() || '';
@@ -176,6 +217,134 @@ async function waitForRenderedChampionship(page, mode) {
 
         return title === expected;
     }, mode);
+}
+
+async function assertOverviewPage(page, mode, viewport, requestedPaths) {
+    const context = `${mode}/${viewport.name}`;
+    await expectCountAtLeast(page, '#overview-highlights .overview-highlight-card', 1, `${context} overview current highlights`);
+
+    if (await page.locator('#leaderboards').count() !== 0 || await page.locator('.distance-toggle').count() !== 0) {
+        failures.push(`${context}: Overview rendered the full championship catalogue.`);
+    }
+
+    if (await page.locator('#hall-of-fame').count() !== 0 || await page.locator('#crown-history').count() !== 0) {
+        failures.push(`${context}: Overview rendered Hall of Fame or crown-history sections.`);
+    }
+
+    const modeRequests = requestedPaths.filter(requestPath =>
+        requestPath.startsWith(`data/${mode}/`)
+    );
+    const forbiddenRequests = modeRequests.filter(requestPath =>
+        requestPath.endsWith('/halloffame.csv') ||
+        requestPath.endsWith('/crown_history.csv')
+    );
+
+    if (forbiddenRequests.length) {
+        failures.push(`${context}: Overview requested historical data: ${forbiddenRequests.join(', ')}.`);
+    }
+}
+
+async function assertPrimaryNavigation(page, mode, viewport, activePage) {
+    const context = `${mode}/${viewport.name} ${activePage}`;
+    const expected = new Map([
+        ['Overview', 'index.html'],
+        ['Championships', 'championships.html'],
+        ['Hall of Fame', 'hall-of-fame.html']
+    ]);
+
+    for (const [label, filename] of expected) {
+        const link = page.locator('.site-nav').getByRole('link', { name: label, exact: true });
+        const count = await link.count();
+        if (count !== 1) {
+            failures.push(`${context}: expected one ${label} navigation link, found ${count}.`);
+            continue;
+        }
+
+        const href = await link.getAttribute('href');
+        const url = new URL(href, preview.baseUrl);
+        if (!url.pathname.endsWith(`/${filename}`) || url.searchParams.get('site') !== mode) {
+            failures.push(`${context}: ${label} link "${href}" did not preserve site mode.`);
+        }
+
+        const expectedActive = filename === pageFileForKey(activePage);
+        const ariaCurrent = await link.getAttribute('aria-current');
+        if (expectedActive && ariaCurrent !== 'page') {
+            failures.push(`${context}: ${label} link was not marked active.`);
+        }
+        if (!expectedActive && ariaCurrent === 'page') {
+            failures.push(`${context}: ${label} link was incorrectly marked active.`);
+        }
+    }
+}
+
+async function assertModeSwitch(page, mode, viewport, pageKey) {
+    const otherMode = mode === 'family' ? 'everyone' : 'family';
+    const context = `${mode}/${viewport.name} ${pageKey}`;
+    const switchLink = page.locator(`.site-mode-link[href*="site=${otherMode}"]`);
+    const count = await switchLink.count();
+
+    if (count !== 1) {
+        failures.push(`${context}: expected one ${otherMode} mode switch, found ${count}.`);
+        return;
+    }
+
+    const href = await switchLink.getAttribute('href');
+    const url = new URL(href, preview.baseUrl);
+    if (!url.pathname.endsWith(`/${pageFileForKey(pageKey)}`) || url.searchParams.get('site') !== otherMode) {
+        failures.push(`${context}: mode switch "${href}" did not preserve current page.`);
+    }
+
+    if (pageKey === 'athlete') {
+        const currentAthleteId = new URL(page.url()).searchParams.get('id');
+        if (url.searchParams.get('id') !== currentAthleteId) {
+            failures.push(`${context}: athlete mode switch did not preserve athlete ID.`);
+        }
+    }
+}
+
+async function assertNavigationBetweenPublicPages(page, mode, viewport) {
+    const context = `${mode}/${viewport.name}`;
+    const targets = [
+        { label: 'Championships', pageKey: 'championships', waitFor: waitForRenderedChampionship },
+        { label: 'Hall of Fame', pageKey: 'hall-of-fame', waitFor: waitForRenderedHallOfFame },
+        { label: 'Overview', pageKey: 'overview', waitFor: waitForRenderedOverview }
+    ];
+
+    for (const target of targets) {
+        const link = page.locator('.site-nav').getByRole('link', { name: target.label, exact: true });
+        await Promise.all([
+            page.waitForURL(url =>
+                url.pathname.endsWith(`/${pageFileForKey(target.pageKey)}`) &&
+                url.searchParams.get('site') === mode
+            ),
+            link.click()
+        ]);
+        await target.waitFor(page, mode);
+        await waitForNetworkToSettle(page);
+        await assertPrimaryNavigation(page, mode, viewport, target.pageKey);
+    }
+
+    if (new URL(page.url()).searchParams.get('site') !== mode) {
+        failures.push(`${context}: page navigation did not preserve site mode.`);
+    }
+}
+
+async function capturePageScreenshot(page, mode, viewport, pageKey, waitForPage) {
+    await page.goto(`${preview.baseUrl}/${pageFileForKey(pageKey)}?site=${mode}`, { waitUntil: 'domcontentloaded' });
+    await waitForPage(page, mode);
+    await waitForNetworkToSettle(page);
+    await page.screenshot({
+        path: path.join(artifactsDir, `${mode}-${pageKey}-${viewport.name}.png`),
+        fullPage: true
+    });
+}
+
+function pageFileForKey(pageKey) {
+    if (pageKey === 'championships') return 'championships.html';
+    if (pageKey === 'hall-of-fame') return 'hall-of-fame.html';
+    if (pageKey === 'athlete') return 'athlete.html';
+
+    return 'index.html';
 }
 
 async function assertCrownHistory(page, mode, viewport, requestedPaths) {
@@ -429,7 +598,7 @@ async function withSyntheticCrownHistory(browserInstance, csvText, assertion) {
     );
 
     try {
-        await page.goto(`${preview.baseUrl}/?site=family`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`${preview.baseUrl}/hall-of-fame.html?site=family`, { waitUntil: 'domcontentloaded' });
         await page.waitForSelector('#crown-history[data-rendered="true"]');
         await assertion(page);
     } catch (error) {
@@ -528,8 +697,8 @@ async function assertAthleteNavigation(page, mode, viewport) {
     await assertBundleMetadataHidden(page, `${mode}/${viewport.name} athlete page`);
 
     const backHref = await page.locator('.back-link').getAttribute('href');
-    if (backHref !== `index.html?site=${mode}`) {
-        failures.push(`${mode}/${viewport.name}: back link was "${backHref}", expected index.html?site=${mode}.`);
+    if (backHref !== `championships.html?site=${mode}`) {
+        failures.push(`${mode}/${viewport.name}: back link was "${backHref}", expected championships.html?site=${mode}.`);
     }
 
     await page.goto(new URL(backHref, page.url()).href, { waitUntil: 'domcontentloaded' });
@@ -539,6 +708,26 @@ async function assertAthleteNavigation(page, mode, viewport) {
     }
 
     await waitForRenderedChampionship(page, mode);
+}
+
+async function assertDirectAthleteProfile(page, mode, viewport) {
+    const rows = await readCsvObjects('data/athlete_results.csv');
+    const athleteId = rows.find(row => row.AthleteID)?.AthleteID;
+
+    if (!athleteId) {
+        return;
+    }
+
+    await page.goto(`${preview.baseUrl}/athlete.html?id=${encodeURIComponent(athleteId)}&site=${mode}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#athlete-name');
+    await page.waitForFunction(() => {
+        const name = document.querySelector('#athlete-name')?.textContent?.trim() || '';
+        return name && name !== 'Loading...' && name !== 'Athlete not found';
+    });
+    await waitForNetworkToSettle(page);
+    await assertPrimaryNavigation(page, mode, viewport, 'athlete');
+    await assertModeSwitch(page, mode, viewport, 'athlete');
+    await assertBundleMetadataHidden(page, `${mode}/${viewport.name} direct athlete page`);
 }
 
 async function assertBundleMetadataHidden(page, context) {
