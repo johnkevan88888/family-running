@@ -69,18 +69,26 @@ Unknown historical details are labelled rather than inferred.
 - **Status:** Accepted
 - **Date:** 10 July 2026
 - **Decision:** The public site separates the visitor experience into static
-  Overview, Championships, and Hall of Fame pages, with athlete profiles
-  remaining on `athlete.html`. A shared navigation helper preserves the selected
-  `?site=family` or `?site=everyone` mode across public pages and profile
-  links.
+  Hall of Fame, Championships, and Overview pages, with athlete profiles
+  remaining on `athlete.html`. `index.html` is the Hall of Fame landing page,
+  `championships.html` contains the full standings experience, and
+  `overview.html` contains descriptive public-export statistics and recent
+  results. A shared navigation helper preserves the incoming `?site=family` or
+  `?site=everyone` mode across same-site public pages and profile links without
+  presenting a Family/Everyone switch UI.
 - **Rationale:** Championships, honours, and history should be discoverable as
   normal pages rather than being presented as one long landing page. Static
   pages keep the GitHub Pages architecture simple and reviewable without adding
-  a client-side router or framework.
-- **Consequences:** Navigation and mode switching must be tested for both site
-  modes on Overview, Championships, Hall of Fame, and athlete pages. JavaScript
-  remains display-only: championship standings, honours, crown history, records,
-  and profile data continue to come from workbook-exported CSVs.
+  a client-side router or framework. Family and Everyone are separate public
+  sites, so cross-site movement should happen by entering the corresponding site
+  URL rather than by an in-page toggle.
+- **Consequences:** Navigation must be tested for both site modes on Hall of
+  Fame, Championships, Overview, and athlete pages. JavaScript remains
+  display-only: championship standings, honours, crown history, records, and
+  profile data continue to come from workbook-exported CSVs. Overview
+  statistics may summarize exported public rows for display, but must not
+  calculate championship outcomes, rankings, medals, crowns, records, age
+  grades, or workbook-owned values.
 
 ## Workbook exports are staged before public-data promotion
 

@@ -1,14 +1,14 @@
 (function () {
     const validSites = new Set(['family', 'everyone']);
     const pageFiles = {
-        overview: 'index.html',
+        'hall-of-fame': 'index.html',
         championships: 'championships.html',
-        'hall-of-fame': 'hall-of-fame.html'
+        overview: 'overview.html'
     };
     const pageLabels = {
-        overview: 'Overview',
+        'hall-of-fame': 'Hall of Fame',
         championships: 'Championships',
-        'hall-of-fame': 'Hall of Fame'
+        overview: 'Overview'
     };
 
     function selectedSite() {
@@ -28,10 +28,11 @@
         const filename = window.location.pathname.split('/').pop() || 'index.html';
 
         if (filename === 'championships.html') return 'championships';
+        if (filename === 'overview.html') return 'overview';
         if (filename === 'hall-of-fame.html') return 'hall-of-fame';
         if (filename === 'athlete.html') return 'athlete';
 
-        return 'overview';
+        return 'hall-of-fame';
     }
 
     function pageHref(page, site = selectedSite()) {
@@ -82,32 +83,17 @@
                 `;
             })
             .join('');
-        const modeLinks = [...validSites]
-            .map(candidateSite => {
-                const active = candidateSite === site;
-                const label = candidateSite === 'everyone' ? 'Everyone' : 'Family';
-
-                return `
-                    <a
-                        class="site-mode-link${active ? ' active' : ''}"
-                        href="${pageHref(page, candidateSite)}"
-                        ${active ? 'aria-current="true"' : ''}>
-                        ${label}
-                    </a>
-                `;
-            })
-            .join('');
 
         mount.classList.add('site-header');
         mount.innerHTML = `
             <div class="site-header-main">
                 <div class="site-brand">
-                    <a class="site-title-link" href="${pageHref('overview', site)}">
+                    <a class="site-title-link" href="${pageHref('hall-of-fame', site)}">
                         <h1 id="site-title">Family Running Championships</h1>
                     </a>
                     <div class="subtitle">
-                        <span id="site-mode-label">${modeLabel} mode</span>
-                        <span aria-hidden="true"> · </span>
+                        <span id="site-mode-label">${modeLabel} site</span>
+                        <span aria-hidden="true"> &middot; </span>
                         <span>Age-Graded Rankings Across Generations</span>
                     </div>
                 </div>
@@ -115,9 +101,7 @@
                     <nav class="site-nav" aria-label="Primary pages">
                         ${navItems}
                     </nav>
-                    <div class="site-mode-selector" role="group" aria-label="Championship mode">
-                        ${modeLinks}
-                    </div>
+                    <div class="site-mode-badge" aria-label="Current site">${modeLabel}</div>
                 </div>
             </div>
             <div class="site-meta" id="last-updated" aria-live="polite">

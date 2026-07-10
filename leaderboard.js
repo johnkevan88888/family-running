@@ -361,6 +361,188 @@ function isNoResultParticipant(participant) {
     return value.includes('no eligible') || value.includes('vacant');
 }
 
+async function buildOverviewStats() {
+    const container = document.getElementById('overview-dashboard');
+    if (!container) return;
+
+    const [athleteRows, siteAthleteIds] = await Promise.all([
+        fetchCSV('data/athlete_results.csv').then(csvRowsToObjects),
+        loadSiteAthleteIds()
+    ]);
+    const scopedRows = athleteRows
+        .filter(row => row.AthleteID && siteAthleteIds.has(cleanAthleteId(row.AthleteID)))
+        .map(row => ({
+            ...row,
+            parsedDate: parseExportedDate(row.Date)
+        }))
+        .filter(row => row.parsedDate);
+    const latestYear = scopedRows.length
+        ? Math.max(...scopedRows.map(row => row.parsedDate.getFullYear()))
+        : new Date().getFullYear();
+    const rowsThisYear = scopedRows.filter(row => row.parsedDate.getFullYear() === latestYear);
+    const athletes = new Map();
+
+    for (const row of scopedRows) {
+        if (!athletes.has(row.AthleteID)) {
+            athletes.set(row.AthleteID, row.Participant || row.AthleteID);
+        }
+    }
+
+    const officialThisYear = rowsThisYear.filter(row =>
+        String(row.TimeClass || '').toLowerCase() === 'official'
+    );
+    const latestResult = scopedRows
+        .slice()
+        .sort(compareResultDateDescending)[0];
+    const mostActive = [...countRowsByAthlete(rowsThisYear).entries()]
+        .sort((a, b) => b[1].count - a[1].count || a[1].name.localeCompare(b[1].name))
+        .slice(0, 5);
+    const recentResults = scopedRows
+        .slice()
+        .sort(compareResultDateDescending)
+        .slice(0, 8);
+
+    container.classList.add('overview-dashboard');
+    container.innerHTML = `
+        <div class="overview-stat-grid">
+            ${renderOverviewStat(athletes.size, 'total athletes')}
+            ${renderOverviewStat(rowsThisYear.length, `recorded results in ${latestYear}`)}
+            ${renderOverviewStat(officialThisYear.length, `official results in ${latestYear}`)}
+            ${renderOverviewStat(latestResult ? formatExportedDate(latestResult.parsedDate) : '-', 'latest recorded result')}
+        </div>
+        <section class="overview-panel" aria-labelledby="most-active-title">
+            <h3 id="most-active-title">Most runs recorded in ${latestYear}</h3>
+            ${renderMostActiveList(mostActive)}
+        </section>
+        <section class="overview-panel" aria-labelledby="recent-results-title">
+            <h3 id="recent-results-title">Most recent exported results</h3>
+            ${renderRecentResults(recentResults)}
+        </section>
+    `;
+}
+
+async function loadSiteAthleteIds() {
+    const ids = new Set();
+
+    try {
+        const standardsRows = csvRowsToObjects(await fetchCSV(`${dataPath}/age_grade_standards.csv`));
+        for (const row of standardsRows) {
+            const id = cleanAthleteId(row.AthleteId || row.AthleteID || row['Athlete ID']);
+            if (id) ids.add(id);
+        }
+    } catch (error) {
+        // Fall back to the shared athlete file below if the site-specific export is unavailable.
+    }
+
+    if (!ids.size && site === 'everyone') {
+        const athleteRows = csvRowsToObjects(await fetchCSV('data/athlete_results.csv'));
+        for (const row of athleteRows) {
+            const id = cleanAthleteId(row.AthleteID);
+            if (id) ids.add(id);
+        }
+    }
+
+    return ids;
+}
+
+function renderOverviewStat(value, label) {
+    return `
+        <article class="overview-stat-card">
+            <strong>${escapeHTML(value)}</strong>
+            <span>${escapeHTML(label)}</span>
+        </article>
+    `;
+}
+
+function renderMostActiveList(rows) {
+    if (!rows.length) {
+        return '<p class="description">No exported results are available for this year.</p>';
+    }
+
+    return `
+        <ol class="overview-list">
+            ${rows.map(([athleteId, entry]) => `
+                <li>
+                    <span>${athleteLink(athleteId, escapeHTML(entry.name))}</span>
+                    <span class="overview-list-count">${entry.count} ${entry.count === 1 ? 'run' : 'runs'}</span>
+                </li>
+            `).join('')}
+        </ol>
+    `;
+}
+
+function renderRecentResults(rows) {
+    if (!rows.length) {
+        return '<p class="description">No exported recent results are available.</p>';
+    }
+
+    return `
+        <div class="overview-result-list" id="overview-recent-results">
+            ${rows.map(row => `
+                <article class="overview-result-card">
+                    <div>${athleteLink(row.AthleteID, escapeHTML(row.Participant || row.AthleteID))}</div>
+                    <div class="overview-result-meta">
+                        ${escapeHTML(formatExportedDate(row.parsedDate))}
+                        ${row.Event ? ` &middot; ${escapeHTML(row.Event)}` : ''}
+                    </div>
+                    <div class="overview-result-detail">
+                        ${escapeHTML(row.Distance || '')}
+                        ${row.Time ? ` &middot; ${escapeHTML(row.Time)}` : ''}
+                        ${row.AgeGrade ? ` &middot; ${escapeHTML(row.AgeGrade)}` : ''}
+                        ${row.TimeClass ? ` &middot; ${escapeHTML(row.TimeClass)}` : ''}
+                    </div>
+                </article>
+            `).join('')}
+        </div>
+    `;
+}
+
+function countRowsByAthlete(rows) {
+    const counts = new Map();
+
+    for (const row of rows) {
+        const id = cleanAthleteId(row.AthleteID);
+        if (!id) continue;
+
+        const current = counts.get(id) || {
+            count: 0,
+            name: row.Participant || id
+        };
+
+        current.count += 1;
+        current.name = current.name || row.Participant || id;
+        counts.set(id, current);
+    }
+
+    return counts;
+}
+
+function compareResultDateDescending(a, b) {
+    return b.parsedDate - a.parsedDate || String(a.Participant || '').localeCompare(String(b.Participant || ''));
+}
+
+function parseExportedDate(value) {
+    const parts = String(value || '').split('/').map(Number);
+    if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) {
+        return null;
+    }
+
+    const [day, month, year] = parts;
+    return new Date(year, month - 1, day);
+}
+
+function formatExportedDate(date) {
+    return date.toLocaleDateString(undefined, {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    });
+}
+
+function cleanAthleteId(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
 async function buildCrownHistory() {
     const container = document.getElementById('crown-history');
     const rows = await fetchCSV(`${dataPath}/crown_history.csv`);
@@ -751,6 +933,10 @@ async function buildLeaderboards() {
 
 if (document.getElementById('overview-highlights')) {
     buildOverview();
+}
+
+if (document.getElementById('overview-dashboard')) {
+    buildOverviewStats();
 }
 
 if (document.getElementById('hall-of-fame')) {

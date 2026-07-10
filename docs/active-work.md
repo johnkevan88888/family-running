@@ -2,48 +2,41 @@
 
 ## Task title
 
-Static multi-page site navigation
+PR #18 static navigation review fixes
 
 ## Status
 
-Implementation and local validation complete on `feat/site-navigation`. The
-branch has not been pushed, no Pull Request has been opened, and no release,
-deployment, publication, GitHub setting change, workbook change, or private
-workbook access was performed.
+Implementation and local validation are complete on `feat/site-navigation` for
+PR #18 review. No merge, release, deployment, production publication, GitHub
+setting change, private workbook access, or workbook modification has been
+performed.
 
-## Completed scope
+## Current approved scope
 
-- Split the public site into normal static pages:
-  - `index.html` is now a concise Overview.
-  - `championships.html` contains the full championship standings experience.
-  - `hall-of-fame.html` contains Hall of Fame cards and All-Time Official crown
-    progression/history.
-  - `athlete.html` remains the athlete profile destination.
-- Added shared responsive navigation and mode switching in `site-navigation.js`.
-- Added shared public-page styling in `site.css`.
-- Preserved `?site=family` and `?site=everyone` across page navigation, mode
-  switching, athlete links, and athlete back links.
-- Kept JavaScript display-only. Overview highlights use existing workbook-
-  exported current official leaderboard CSVs; no rankings, honours, crown
-  history, medals, or profile values are calculated in the browser.
-- Kept vacant/no-result states such as `Championship Vacant` and
-  `No eligible results`.
-- Updated browser smoke tests to cover direct loads and navigation for Overview,
-  Championships, Hall of Fame, and valid athlete profiles in both site modes.
-- Updated the preview artifact allowlist so the new static runtime pages/assets
-  are included in PR previews.
+- Keep normal static page navigation, but make `index.html` the Hall of Fame
+  landing page.
+- Keep `championships.html` as the full championship standings page.
+- Add `overview.html` as a descriptive statistics page showing leaderboard
+  participation totals, results recorded in the latest exported year, official
+  results in that year, latest recorded result date, most active athletes, and
+  the most recent exported results.
+- Remove the Family/Everyone switch UI. They are separate sites; the current
+  site is shown as a non-clickable badge, and incoming `?site=family` or
+  `?site=everyone` is preserved across same-site navigation and athlete links.
+- Use the order Hall of Fame, Championships, Overview in the shared header.
+- Remove the old Overview championship-exploration section.
+- Keep JavaScript display-only. The Overview statistics describe existing public
+  exported rows and site-scoped athlete IDs; they do not calculate championship
+  rankings, honours, medals, crowns, records, age grades, or workbook-owned
+  outcomes.
 
-## Files changed
+## Files changed in this review-fix pass
 
 - `index.html`
-- `championships.html`
-- `hall-of-fame.html`
-- `athlete.html`
-- `site.css`
-- `site-navigation.js`
+- `overview.html`
 - `leaderboard.js`
-- `athlete.js`
-- `utils.js`
+- `site-navigation.js`
+- `site.css`
 - `scripts/build-preview-artifact.mjs`
 - `tests/browser-smoke.mjs`
 - `docs/active-work.md`
@@ -53,46 +46,59 @@ workbook access was performed.
 
 - JavaScript syntax checks passed for:
   - `leaderboard.js`
-  - `athlete.js`
   - `site-navigation.js`
   - `tests/browser-smoke.mjs`
   - `scripts/build-preview-artifact.mjs`
-- `pnpm test` passed:
+- Browser smoke tests passed after writing ignored screenshots to
+  `test-artifacts/screenshots/`.
+- Full `pnpm test` passed:
   - repository safety validation;
   - CSV validation for Family and Everyone data;
   - export-bundle validation regression tests;
   - staged-export workflow regression tests;
   - browser smoke tests.
-- Browser screenshots were regenerated in ignored `test-artifacts/screenshots/`
-  for Overview, Championships, and Hall of Fame across Family/Everyone desktop
-  and mobile views.
+- `pnpm screenshots:update` passed and regenerated ignored page screenshots.
 
 ## Screenshot review
 
-Inspected the generated navigation screenshots for both modes and desktop/mobile
-layouts. The shared header wraps cleanly on mobile, the active page is visible,
-the Family/Everyone selector remains distinct from page navigation, and no
-navigation overflow, clipping, or unreadable controls were observed.
+Inspected the regenerated Hall of Fame, Championships, and Overview screenshots
+for both Family and Everyone modes on desktop and mobile. The shared header is
+readable, the active page is clear, the current-site badge is separate from page
+navigation, and no new overflow, clipping, or unreadable navigation controls
+were observed.
+
+## Data note
+
+- Grace Chambers and Jim Chambers are not present in the current tracked
+  `data/family/*.csv` public exports, which matches the separate Family site
+  boundary.
+- The current tracked public `data/athlete_results.csv` does not contain
+  `07/07/2026` rows for Grace or Jim. Its current manifest bundle is
+  `20260706T210842364Z-404B617F`, exported on 6 July 2026, so the PR preview
+  will not show those 7 July results until a newer validated public export is
+  promoted separately.
 
 ## Known limitations and follow-up opportunities
 
-- Championship tables remain very compact on mobile, matching the existing
-  table-first presentation. A future task could improve mobile table ergonomics
-  without changing exported data or browser-side ownership boundaries.
-- The old ignored screenshot filenames from the previous smoke-test naming may
-  still exist locally under `test-artifacts/screenshots/`; they are not tracked.
+- Championship tables remain compact on mobile, matching the existing
+  table-first presentation. A future task could improve table ergonomics without
+  changing exported data or browser-side ownership boundaries.
+- The compatibility `hall-of-fame.html` page remains in the preview artifact for
+  old direct links, but shared navigation now routes Hall of Fame to
+  `index.html`.
 
 ## Handoff notes
 
-- Review the Overview, Championships, Hall of Fame, and athlete profile pages in
-  both `?site=family` and `?site=everyone`.
-- Confirm the PR preview includes the new `championships.html`,
-  `hall-of-fame.html`, `site.css`, and `site-navigation.js` runtime assets.
-- Do not release without the normal PR checks, Netlify preview review, and
-  explicit approval.
+- Review the Hall of Fame landing, Championships, Overview statistics page, and
+  athlete profile pages in both `?site=family` and `?site=everyone`.
+- Review Netlify previews after the branch is pushed; no merge or release should
+  occur without explicit approval.
 
 ## Recently completed historical work
 
+- The initial static navigation split for PR #18 created separate public pages
+  for Overview, Championships, Hall of Fame, and athlete profiles, with shared
+  navigation and browser smoke coverage.
 - Staging-root portability for private workbook exports was completed and merged
   previously. The workbook now uses `Settings!tbSettings[Approved Staging Root]`
   and tracked `data/` was promoted from a validated staged bundle.
