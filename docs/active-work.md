@@ -13,9 +13,10 @@ performed.
 
 ## Current approved scope
 
-- Keep normal static page navigation, but make `index.html` the Hall of Fame
+- Keep normal static page navigation, but make `index.html` the Championships
   landing page.
-- Keep `championships.html` as the full championship standings page.
+- Keep `championships.html` as a direct-link compatibility page for the full
+  championship standings experience.
 - Add `overview.html` as a descriptive statistics page showing leaderboard
   participation totals from official results, official results recorded in the
   latest exported year, official athletes in that year, latest official result
@@ -24,7 +25,7 @@ performed.
 - Remove the Family/Everyone switch UI. They are separate sites; the current
   site is shown as a non-clickable badge, and incoming `?site=family` or
   `?site=everyone` is preserved across same-site navigation and athlete links.
-- Use the order Hall of Fame, Championships, Overview in the shared header.
+- Use the order Championships, Hall of Fame, Overview in the shared header.
 - Remove the old Overview championship-exploration section.
 - Keep JavaScript display-only. The Overview statistics describe existing public
   exported official rows and site-scoped athlete IDs; they do not calculate
@@ -34,7 +35,10 @@ performed.
 ## Files changed in this review-fix pass
 
 - `index.html`
+- `championships.html`
+- `hall-of-fame.html`
 - `overview.html`
+- `athlete.js`
 - `leaderboard.js`
 - `site-navigation.js`
 - `site.css`
@@ -85,13 +89,13 @@ were observed.
 - Championship tables remain compact on mobile, matching the existing
   table-first presentation. A future task could improve table ergonomics without
   changing exported data or browser-side ownership boundaries.
-- The compatibility `hall-of-fame.html` page remains in the preview artifact for
-  old direct links, but shared navigation now routes Hall of Fame to
+- The compatibility `championships.html` page remains in the preview artifact
+  for old direct links, but shared navigation now routes Championships to
   `index.html`.
 
 ## Handoff notes
 
-- Review the Hall of Fame landing, Championships, Overview statistics page, and
+- Review the Championships landing, Hall of Fame, Overview statistics page, and
   athlete profile pages in both `?site=family` and `?site=everyone`.
 - Review Netlify previews after the branch is pushed; no merge or release should
   occur without explicit approval.

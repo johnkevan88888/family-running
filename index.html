@@ -7,36 +7,21 @@
     <link rel="stylesheet" href="site.css">
 </head>
 
-<body data-page="hall-of-fame">
+<body data-page="championships">
 
 <header data-site-header></header>
 
 <main>
-    <section class="page-intro" aria-labelledby="hall-of-fame-page-title">
-        <h2 id="hall-of-fame-page-title">Hall of Fame</h2>
+    <section class="page-intro" aria-labelledby="championships-title">
+        <h2 id="championships-title">Championships</h2>
         <p>
-            Current and all-time honours, historical achievements, and exported
-            All-Time Official crown progression. The history shown here is generated
-            by the workbook export and displayed without reconstruction in the browser.
+            Full official and all-results championship standings, grouped by distance.
+            Rankings, medals, age grades, and vacant/no-result states are exported by
+            the workbook and rendered here without browser-side recalculation.
         </p>
     </section>
 
-    <section aria-labelledby="hall-of-fame-title">
-        <h2 id="hall-of-fame-title">Current and all-time honours</h2>
-        <div id="hall-of-fame"></div>
-    </section>
-
-    <section class="crown-history-section" aria-labelledby="crown-history-title">
-        <h2 id="crown-history-title">All-Time Official Crown Progression</h2>
-        <p class="crown-history-intro">
-            First awards and later transfers of All-Time Official crowns only.
-            Current/12-Month, unofficial, and all-results crown changes are not included,
-            and an existing holder improving their own result does not create another entry.
-        </p>
-        <div id="crown-history" aria-live="polite">
-            <p class="crown-history-empty">Loading All-Time Official crown progression...</p>
-        </div>
-    </section>
+    <div id="leaderboards"></div>
 </main>
 
 <script src="utils.js" defer></script>

@@ -15,7 +15,7 @@ function updateBackLink() {
     if (backLink) {
         backLink.href = window.siteNavigation?.pageHref
             ? window.siteNavigation.pageHref('championships', site)
-            : `championships.html?site=${site}`;
+            : `index.html?site=${site}`;
     }
 
     if (athleteContext) {

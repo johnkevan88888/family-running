@@ -109,19 +109,16 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
 
     try {
         await page.goto(`${preview.baseUrl}/index.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
-        await waitForRenderedHallOfFame(page, mode);
+        await waitForRenderedChampionship(page, mode);
         await waitForNetworkToSettle(page);
 
         const siteName = await expectedSiteName(mode);
         await expectText(page, '#site-title', siteName, `${mode} site title`);
-        await assertPrimaryNavigation(page, mode, viewport, 'hall-of-fame');
-        await assertNoModeSwitch(page, mode, viewport, 'hall-of-fame');
-        await expectCountAtLeast(page, '#hall-of-fame .hof-card', 1, `${mode} landing Hall of Fame cards`);
-        await assertHallOfFameDisplayLabels(page, mode, viewport);
-        await assertCrownHistory(page, mode, viewport, requestedPaths);
-        await assertVacantStatesRender(page, mode, viewport);
+        await assertPrimaryNavigation(page, mode, viewport, 'championships');
+        await assertNoModeSwitch(page, mode, viewport, 'championships');
+        await expectCountAtLeast(page, '#leaderboards table tr', 2, `${mode} landing championship leaderboard rows`);
         await assertNavigationBetweenPublicPages(page, mode, viewport);
-        await assertBundleMetadataHidden(page, `${mode}/${viewport.name} landing page`);
+        await assertBundleMetadataHidden(page, `${mode}/${viewport.name} landing championships page`);
 
         await page.goto(`${preview.baseUrl}/championships.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
         await waitForRenderedChampionship(page, mode);
@@ -136,6 +133,17 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertAthleteNavigation(page, mode, viewport);
         await assertAthleteOfficialMedals(page, mode, viewport);
         await assertAgeGradeStandards(page, mode, viewport);
+
+        await page.goto(`${preview.baseUrl}/hall-of-fame.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+        await waitForRenderedHallOfFame(page, mode);
+        await waitForNetworkToSettle(page);
+        await assertPrimaryNavigation(page, mode, viewport, 'hall-of-fame');
+        await assertNoModeSwitch(page, mode, viewport, 'hall-of-fame');
+        await expectCountAtLeast(page, '#hall-of-fame .hof-card', 1, `${mode} Hall of Fame cards`);
+        await assertHallOfFameDisplayLabels(page, mode, viewport);
+        await assertCrownHistory(page, mode, viewport, requestedPaths);
+        await assertVacantStatesRender(page, mode, viewport);
+        await assertBundleMetadataHidden(page, `${mode}/${viewport.name} Hall of Fame page`);
 
         const overviewRequestStart = requestedPaths.length;
         await page.goto(`${preview.baseUrl}/overview.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
@@ -154,8 +162,8 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertDirectAthleteProfile(page, mode, viewport);
 
         await page.setViewportSize(viewport);
-        await capturePageScreenshot(page, mode, viewport, 'hall-of-fame', waitForRenderedHallOfFame);
         await capturePageScreenshot(page, mode, viewport, 'championships', waitForRenderedChampionship);
+        await capturePageScreenshot(page, mode, viewport, 'hall-of-fame', waitForRenderedHallOfFame);
         await capturePageScreenshot(page, mode, viewport, 'overview', waitForRenderedOverview);
 
         if (updateScreenshots) {
@@ -302,8 +310,8 @@ async function assertOverviewRecentResults(page, mode, viewport) {
 async function assertPrimaryNavigation(page, mode, viewport, activePage) {
     const context = `${mode}/${viewport.name} ${activePage}`;
     const expected = new Map([
-        ['Hall of Fame', 'index.html'],
-        ['Championships', 'championships.html'],
+        ['Championships', 'index.html'],
+        ['Hall of Fame', 'hall-of-fame.html'],
         ['Overview', 'overview.html']
     ]);
 
@@ -357,9 +365,9 @@ async function assertNoModeSwitch(page, mode, viewport, pageKey) {
 async function assertNavigationBetweenPublicPages(page, mode, viewport) {
     const context = `${mode}/${viewport.name}`;
     const targets = [
-        { label: 'Championships', pageKey: 'championships', waitFor: waitForRenderedChampionship },
+        { label: 'Hall of Fame', pageKey: 'hall-of-fame', waitFor: waitForRenderedHallOfFame },
         { label: 'Overview', pageKey: 'overview', waitFor: waitForRenderedOverview },
-        { label: 'Hall of Fame', pageKey: 'hall-of-fame', waitFor: waitForRenderedHallOfFame }
+        { label: 'Championships', pageKey: 'championships', waitFor: waitForRenderedChampionship }
     ];
 
     for (const target of targets) {
@@ -392,7 +400,7 @@ async function capturePageScreenshot(page, mode, viewport, pageKey, waitForPage)
 }
 
 function pageFileForKey(pageKey) {
-    if (pageKey === 'championships') return 'championships.html';
+    if (pageKey === 'hall-of-fame') return 'hall-of-fame.html';
     if (pageKey === 'overview') return 'overview.html';
     if (pageKey === 'athlete') return 'athlete.html';
 
@@ -650,7 +658,7 @@ async function withSyntheticCrownHistory(browserInstance, csvText, assertion) {
     );
 
     try {
-        await page.goto(`${preview.baseUrl}/index.html?site=family`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`${preview.baseUrl}/hall-of-fame.html?site=family`, { waitUntil: 'domcontentloaded' });
         await page.waitForSelector('#crown-history[data-rendered="true"]');
         await assertion(page);
     } catch (error) {
@@ -749,8 +757,8 @@ async function assertAthleteNavigation(page, mode, viewport) {
     await assertBundleMetadataHidden(page, `${mode}/${viewport.name} athlete page`);
 
     const backHref = await page.locator('.back-link').getAttribute('href');
-    if (backHref !== `championships.html?site=${mode}`) {
-        failures.push(`${mode}/${viewport.name}: back link was "${backHref}", expected championships.html?site=${mode}.`);
+    if (backHref !== `index.html?site=${mode}`) {
+        failures.push(`${mode}/${viewport.name}: back link was "${backHref}", expected index.html?site=${mode}.`);
     }
 
     await page.goto(new URL(backHref, page.url()).href, { waitUntil: 'domcontentloaded' });

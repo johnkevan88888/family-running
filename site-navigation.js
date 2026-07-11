@@ -1,13 +1,13 @@
 (function () {
     const validSites = new Set(['family', 'everyone']);
     const pageFiles = {
-        'hall-of-fame': 'index.html',
-        championships: 'championships.html',
+        championships: 'index.html',
+        'hall-of-fame': 'hall-of-fame.html',
         overview: 'overview.html'
     };
     const pageLabels = {
-        'hall-of-fame': 'Hall of Fame',
         championships: 'Championships',
+        'hall-of-fame': 'Hall of Fame',
         overview: 'Overview'
     };
 
@@ -32,7 +32,7 @@
         if (filename === 'hall-of-fame.html') return 'hall-of-fame';
         if (filename === 'athlete.html') return 'athlete';
 
-        return 'hall-of-fame';
+        return 'championships';
     }
 
     function pageHref(page, site = selectedSite()) {
@@ -88,7 +88,7 @@
         mount.innerHTML = `
             <div class="site-header-main">
                 <div class="site-brand">
-                    <a class="site-title-link" href="${pageHref('hall-of-fame', site)}">
+                    <a class="site-title-link" href="${pageHref('championships', site)}">
                         <h1 id="site-title">Family Running Championships</h1>
                     </a>
                     <div class="subtitle">
