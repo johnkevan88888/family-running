@@ -58,6 +58,8 @@ performed.
   - staged-export workflow regression tests;
   - browser smoke tests.
 - `pnpm screenshots:update` passed and regenerated ignored page screenshots.
+- After the navigation review-fix commit, a newer validated public export bundle
+  was promoted into tracked `data/` and `pnpm test` passed again.
 
 ## Screenshot review
 
@@ -72,11 +74,10 @@ were observed.
 - Grace Chambers and Jim Chambers are not present in the current tracked
   `data/family/*.csv` public exports, which matches the separate Family site
   boundary.
-- The current tracked public `data/athlete_results.csv` does not contain
-  `07/07/2026` rows for Grace or Jim. Its current manifest bundle is
-  `20260706T210842364Z-404B617F`, exported on 6 July 2026, so the PR preview
-  will not show those 7 July results until a newer validated public export is
-  promoted separately.
+- The current tracked public `data/athlete_results.csv` now contains the
+  expected `07/07/2026` rows for Grace and Jim from Derry City Football Club.
+  The promoted manifest bundle is `20260710T232312092Z-1391E180`, exported on
+  10 July 2026.
 
 ## Known limitations and follow-up opportunities
 
