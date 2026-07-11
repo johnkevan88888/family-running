@@ -73,9 +73,9 @@ Unknown historical details are labelled rather than inferred.
   remaining on `athlete.html`. `index.html` is the Hall of Fame landing page,
   `championships.html` contains the full standings experience, and
   `overview.html` contains descriptive public-export statistics and recent
-  results. A shared navigation helper preserves the incoming `?site=family` or
-  `?site=everyone` mode across same-site public pages and profile links without
-  presenting a Family/Everyone switch UI.
+  official results. A shared navigation helper preserves the incoming
+  `?site=family` or `?site=everyone` mode across same-site public pages and
+  profile links without presenting a Family/Everyone switch UI.
 - **Rationale:** Championships, honours, and history should be discoverable as
   normal pages rather than being presented as one long landing page. Static
   pages keep the GitHub Pages architecture simple and reviewable without adding
@@ -86,9 +86,9 @@ Unknown historical details are labelled rather than inferred.
   Fame, Championships, Overview, and athlete pages. JavaScript remains
   display-only: championship standings, honours, crown history, records, and
   profile data continue to come from workbook-exported CSVs. Overview
-  statistics may summarize exported public rows for display, but must not
-  calculate championship outcomes, rankings, medals, crowns, records, age
-  grades, or workbook-owned values.
+  statistics may summarize exported public official-result rows for display,
+  but must not calculate championship outcomes, rankings, medals, crowns,
+  records, age grades, or workbook-owned values.
 
 ## Workbook exports are staged before public-data promotion
 

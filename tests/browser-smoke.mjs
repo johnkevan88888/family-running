@@ -290,6 +290,10 @@ async function assertOverviewRecentResults(page, mode, viewport) {
     }
 
     const renderedText = normalizeText(await page.locator('#overview-recent-results').textContent());
+    if (renderedText.includes('Unofficial')) {
+        failures.push(`${context}: Overview recent results included an unofficial result.`);
+    }
+
     if (mode === 'family' && (renderedText.includes('Grace Chambers') || renderedText.includes('Jim Chambers'))) {
         failures.push(`${context}: Family Overview recent results included non-family athletes Grace or Jim.`);
     }
@@ -1054,6 +1058,7 @@ async function expectedOverviewRecentRows(mode) {
 
     return athleteRows
         .filter(row => row.AthleteID && siteAthleteIds.has(cleanAthleteId(row.AthleteID)))
+        .filter(row => String(row.TimeClass || '').toLowerCase() === 'official')
         .map((row, index) => ({
             ...row,
             __csvIndex: index,

@@ -17,18 +17,19 @@ performed.
   landing page.
 - Keep `championships.html` as the full championship standings page.
 - Add `overview.html` as a descriptive statistics page showing leaderboard
-  participation totals, results recorded in the latest exported year, official
-  results in that year, latest recorded result date, most active athletes, and
-  the most recent exported results.
+  participation totals from official results, official results recorded in the
+  latest exported year, official athletes in that year, latest official result
+  date, most active athletes by official results, and the most recent exported
+  official results.
 - Remove the Family/Everyone switch UI. They are separate sites; the current
   site is shown as a non-clickable badge, and incoming `?site=family` or
   `?site=everyone` is preserved across same-site navigation and athlete links.
 - Use the order Hall of Fame, Championships, Overview in the shared header.
 - Remove the old Overview championship-exploration section.
 - Keep JavaScript display-only. The Overview statistics describe existing public
-  exported rows and site-scoped athlete IDs; they do not calculate championship
-  rankings, honours, medals, crowns, records, age grades, or workbook-owned
-  outcomes.
+  exported official rows and site-scoped athlete IDs; they do not calculate
+  championship rankings, honours, medals, crowns, records, age grades, or
+  workbook-owned outcomes.
 
 ## Files changed in this review-fix pass
 

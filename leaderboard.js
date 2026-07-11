@@ -369,35 +369,38 @@ async function buildOverviewStats() {
         fetchCSV('data/athlete_results.csv').then(csvRowsToObjects),
         loadSiteAthleteIds()
     ]);
-    const scopedRows = athleteRows
+    const officialRows = athleteRows
         .filter(row => row.AthleteID && siteAthleteIds.has(cleanAthleteId(row.AthleteID)))
+        .filter(row => String(row.TimeClass || '').toLowerCase() === 'official')
         .map(row => ({
             ...row,
             parsedDate: parseExportedDate(row.Date)
         }))
         .filter(row => row.parsedDate);
-    const latestYear = scopedRows.length
-        ? Math.max(...scopedRows.map(row => row.parsedDate.getFullYear()))
+    const latestYear = officialRows.length
+        ? Math.max(...officialRows.map(row => row.parsedDate.getFullYear()))
         : new Date().getFullYear();
-    const rowsThisYear = scopedRows.filter(row => row.parsedDate.getFullYear() === latestYear);
+    const rowsThisYear = officialRows.filter(row => row.parsedDate.getFullYear() === latestYear);
     const athletes = new Map();
+    const athletesThisYear = new Set();
 
-    for (const row of scopedRows) {
+    for (const row of officialRows) {
         if (!athletes.has(row.AthleteID)) {
             athletes.set(row.AthleteID, row.Participant || row.AthleteID);
         }
     }
 
-    const officialThisYear = rowsThisYear.filter(row =>
-        String(row.TimeClass || '').toLowerCase() === 'official'
-    );
-    const latestResult = scopedRows
+    for (const row of rowsThisYear) {
+        athletesThisYear.add(row.AthleteID);
+    }
+
+    const latestResult = officialRows
         .slice()
         .sort(compareResultDateDescending)[0];
     const mostActive = [...countRowsByAthlete(rowsThisYear).entries()]
         .sort((a, b) => b[1].count - a[1].count || a[1].name.localeCompare(b[1].name))
         .slice(0, 5);
-    const recentResults = scopedRows
+    const recentResults = officialRows
         .slice()
         .sort(compareResultDateDescending)
         .slice(0, 8);
@@ -405,17 +408,17 @@ async function buildOverviewStats() {
     container.classList.add('overview-dashboard');
     container.innerHTML = `
         <div class="overview-stat-grid">
-            ${renderOverviewStat(athletes.size, 'total athletes')}
-            ${renderOverviewStat(rowsThisYear.length, `recorded results in ${latestYear}`)}
-            ${renderOverviewStat(officialThisYear.length, `official results in ${latestYear}`)}
-            ${renderOverviewStat(latestResult ? formatExportedDate(latestResult.parsedDate) : '-', 'latest recorded result')}
+            ${renderOverviewStat(athletes.size, 'athletes with official results')}
+            ${renderOverviewStat(rowsThisYear.length, `official results in ${latestYear}`)}
+            ${renderOverviewStat(athletesThisYear.size, `official athletes in ${latestYear}`)}
+            ${renderOverviewStat(latestResult ? formatExportedDate(latestResult.parsedDate) : '-', 'latest official result')}
         </div>
         <section class="overview-panel" aria-labelledby="most-active-title">
-            <h3 id="most-active-title">Most runs recorded in ${latestYear}</h3>
+            <h3 id="most-active-title">Most official runs recorded in ${latestYear}</h3>
             ${renderMostActiveList(mostActive)}
         </section>
         <section class="overview-panel" aria-labelledby="recent-results-title">
-            <h3 id="recent-results-title">Most recent exported results</h3>
+            <h3 id="recent-results-title">Most recent official results</h3>
             ${renderRecentResults(recentResults)}
         </section>
     `;
@@ -456,7 +459,7 @@ function renderOverviewStat(value, label) {
 
 function renderMostActiveList(rows) {
     if (!rows.length) {
-        return '<p class="description">No exported results are available for this year.</p>';
+        return '<p class="description">No exported official results are available for this year.</p>';
     }
 
     return `
@@ -473,7 +476,7 @@ function renderMostActiveList(rows) {
 
 function renderRecentResults(rows) {
     if (!rows.length) {
-        return '<p class="description">No exported recent results are available.</p>';
+        return '<p class="description">No exported official recent results are available.</p>';
     }
 
     return `
