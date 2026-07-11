@@ -695,8 +695,6 @@ async function loadSiteInfo() {
     const rows = await fetchCSV(`${dataPath}/siteinfo.csv`);
 
     const lastUpdatedRow = rows.find(row => row[0] === 'LastUpdatedUTC');
-    const publishedFromRow = rows.find(row => row[0] === 'PublishedFrom');
-    const siteVersionRow = rows.find(row => row[0] === 'SiteVersion');
     const siteNameRow = rows.find(row => row[0] === 'SiteName');
 
     if (siteNameRow) {
@@ -712,22 +710,11 @@ async function loadSiteInfo() {
             timeStyle: 'short'
         });
 
-        const publishedFrom = publishedFromRow ? publishedFromRow[1] : 'Unknown';
-        const siteVersion = siteVersionRow ? siteVersionRow[1] : '';
-
         document.getElementById('last-updated').innerHTML =
             `<div class="site-meta-item">
                 <span class="site-meta-icon" aria-hidden="true">&#128197;</span>
                 <span><strong>Updated</strong> ${escapeHTML(localTime)}</span>
-             </div>
-             <div class="site-meta-item">
-                <span class="site-meta-icon" aria-hidden="true">&#128205;</span>
-                <span><strong>Published from</strong> ${escapeHTML(publishedFrom)}</span>
-             </div>
-             ${siteVersion ? `<div class="site-meta-item">
-                <span class="site-meta-icon" aria-hidden="true">&#9432;</span>
-                <span><strong>Website version</strong> <span class="site-version">${escapeHTML(siteVersion)}</span></span>
-             </div>` : ''}`;
+             </div>`;
     }
 }
 

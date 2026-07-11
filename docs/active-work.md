@@ -27,6 +27,8 @@ performed.
   `?site=everyone` is preserved across same-site navigation and athlete links.
 - Use the order Championships, Hall of Fame, Overview in the shared header.
 - Remove the old Overview championship-exploration section.
+- Use visitor-facing page-intro and header copy; public pages show the useful
+  last-updated date without source/version/process wording at the top.
 - Keep JavaScript display-only. The Overview statistics describe existing public
   exported official rows and site-scoped athlete IDs; they do not calculate
   championship rankings, honours, medals, crowns, records, age grades, or
@@ -65,6 +67,8 @@ performed.
 - `pnpm screenshots:update` passed and regenerated ignored page screenshots.
 - After the navigation review-fix commit, a newer validated public export bundle
   was promoted into tracked `data/` and `pnpm test` passed again.
+- After the final public-copy cleanup, JavaScript syntax checks and full
+  `pnpm test` passed again.
 
 ## Screenshot review
 
@@ -72,7 +76,8 @@ Inspected the regenerated Hall of Fame, Championships, and Overview screenshots
 for both Family and Everyone modes on desktop and mobile. The shared header is
 readable, the active page is clear, the current-site badge is separate from page
 navigation, and no new overflow, clipping, or unreadable navigation controls
-were observed.
+were observed. The latest screenshots show the top header with only the updated
+date metadata and visitor-facing page introductions.
 
 ## Data note
 

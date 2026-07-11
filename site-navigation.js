@@ -136,8 +136,6 @@
             const setting = name => rows.find(row => row[0] === name)?.[1] || '';
             const siteName = setting('SiteName');
             const lastUpdated = setting('LastUpdatedUTC');
-            const publishedFrom = setting('PublishedFrom') || 'Unknown';
-            const siteVersion = setting('SiteVersion');
 
             if (title && siteName) {
                 title.innerText = siteName;
@@ -156,15 +154,7 @@
                 `<div class="site-meta-item">
                     <span class="site-meta-icon" aria-hidden="true">&#128197;</span>
                     <span><strong>Updated</strong> ${escapeAttribute(localTime)}</span>
-                 </div>
-                 <div class="site-meta-item">
-                    <span class="site-meta-icon" aria-hidden="true">&#128205;</span>
-                    <span><strong>Published from</strong> ${escapeAttribute(publishedFrom)}</span>
-                 </div>
-                 ${siteVersion ? `<div class="site-meta-item">
-                    <span class="site-meta-icon" aria-hidden="true">&#9432;</span>
-                    <span><strong>Website version</strong> <span class="site-version">${escapeAttribute(siteVersion)}</span></span>
-                 </div>` : ''}`;
+                 </div>`;
         } catch (error) {
             if (meta) {
                 meta.innerHTML = '<div class="site-meta-item">Championship data unavailable.</div>';
