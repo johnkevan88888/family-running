@@ -64,6 +64,32 @@ Unknown historical details are labelled rather than inferred.
 - **Consequences:** Age grades, rankings, championship status, crowns, target
   times, and medal positions must arrive from Excel/VBA-owned exports.
 
+## Public site navigation uses static page separation
+
+- **Status:** Accepted
+- **Date:** 10 July 2026
+- **Decision:** The public site separates the visitor experience into static
+  Championships, Hall of Fame, and Overview pages, with athlete profiles
+  remaining on `athlete.html`. `index.html` is the Championships landing page,
+  `championships.html` remains as a direct-link compatibility page for the full
+  standings experience, and `overview.html` contains descriptive public-export
+  statistics and recent official results. A shared navigation helper preserves
+  the incoming `?site=family` or `?site=everyone` mode across same-site public
+  pages and profile links without presenting a Family/Everyone switch UI.
+- **Rationale:** Championships, honours, and history should be discoverable as
+  normal pages rather than being presented as one long landing page. Static
+  pages keep the GitHub Pages architecture simple and reviewable without adding
+  a client-side router or framework. Family and Everyone are separate public
+  sites, so cross-site movement should happen by entering the corresponding site
+  URL rather than by an in-page toggle.
+- **Consequences:** Navigation must be tested for both site modes on
+  Championships, Hall of Fame, Overview, and athlete pages. JavaScript remains
+  display-only: championship standings, honours, crown history, records, and
+  profile data continue to come from workbook-exported CSVs. Overview
+  statistics may summarize exported public official-result rows for display,
+  but must not calculate championship outcomes, rankings, medals, crowns,
+  records, age grades, or workbook-owned values.
+
 ## Workbook exports are staged before public-data promotion
 
 - **Status:** Accepted

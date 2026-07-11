@@ -1,7 +1,9 @@
 const params = new URLSearchParams(window.location.search);
 const athleteId = params.get('id');
 
-const site = params.get('site') || 'family';
+const site = window.siteNavigation?.selectedSite
+    ? window.siteNavigation.selectedSite()
+    : (params.get('site') || 'family');
 const paceUnitStorageKey = 'family-running.age-grade-pace-unit';
 const defaultPaceUnit = 'km';
 const validPaceUnits = new Set(['km', 'mi']);
@@ -11,7 +13,9 @@ function updateBackLink() {
     const athleteContext = document.getElementById('athlete-context');
 
     if (backLink) {
-        backLink.href = `index.html?site=${site}`;
+        backLink.href = window.siteNavigation?.pageHref
+            ? window.siteNavigation.pageHref('championships', site)
+            : `index.html?site=${site}`;
     }
 
     if (athleteContext) {

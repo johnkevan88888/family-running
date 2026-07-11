@@ -55,8 +55,12 @@ function parseCSVRow(row) {
 }
 
 function athleteLink(id, name) {
+    if (window.siteNavigation?.athleteHref) {
+        return `<a href="${window.siteNavigation.athleteHref(id)}">${name}</a>`;
+    }
+
     const params = new URLSearchParams(window.location.search);
     const site = params.get('site') || 'family';
 
-    return `<a href="athlete.html?id=${id}&site=${site}">${name}</a>`;
+    return `<a href="athlete.html?id=${encodeURIComponent(id)}&site=${encodeURIComponent(site)}">${name}</a>`;
 }

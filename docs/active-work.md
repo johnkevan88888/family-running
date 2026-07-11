@@ -2,183 +2,117 @@
 
 ## Task title
 
-Staging-root portability fix for private workbook exports
+PR #18 static navigation review fixes
 
 ## Status
 
-Implementation, validation, and approved staged-data promotion complete on
-`main`. No commit, push, Pull Request, release, or deployment has been made.
+Implementation and local validation are complete on `feat/site-navigation` for
+PR #18 review. No merge, release, deployment, production publication, GitHub
+setting change, private workbook access, or workbook modification has been
+performed.
 
-## Completed scope
+## Current approved scope
 
-- Replaced the fixed OneDrive staging parent embedded in
-  `ExportBundleIntegrity` with a workbook setting:
-  `Settings!tbSettings[Approved Staging Root]`.
-- Configured the approved staging parent as:
-  `C:\GitHub\family-running\test-artifacts\workbook-export-staging`.
-- Preserved Excel/VBA ownership of export calculations and public CSV content.
-- Kept staged export, manifest, validation, reconciliation, and promotion
-  contracts intact while making the safety gate fail closed for non-approved
-  roots.
-- Updated the PowerShell wrapper and Node validation/promotion tools to enforce
-  the same canonical immediate-child staging-root rule.
-- Documented the new setting and command syntax in the workbook export runbook
-  and release/testing protocol.
+- Keep normal static page navigation, but make `index.html` the Championships
+  landing page.
+- Keep `championships.html` as a direct-link compatibility page for the full
+  championship standings experience.
+- Add `overview.html` as a descriptive statistics page showing leaderboard
+  participation totals from official results, official results recorded in the
+  latest exported year, official athletes in that year, latest official result
+  date, most active athletes by official results, and the most recent exported
+  official results.
+- Remove the Family/Everyone switch UI. They are separate sites; the current
+  site is shown as a non-clickable badge, and incoming `?site=family` or
+  `?site=everyone` is preserved across same-site navigation and athlete links.
+- Use the order Championships, Hall of Fame, Overview in the shared header.
+- Remove the old Overview championship-exploration section.
+- Use visitor-facing page-intro and header copy; public pages show the useful
+  last-updated date without source/version/process wording at the top.
+- Keep JavaScript display-only. The Overview statistics describe existing public
+  exported official rows and site-scoped athlete IDs; they do not calculate
+  championship rankings, honours, medals, crowns, records, age grades, or
+  workbook-owned outcomes.
 
-## Private workbook changes
+## Files changed in this review-fix pass
 
-Private source:
+- `index.html`
+- `championships.html`
+- `hall-of-fame.html`
+- `overview.html`
+- `athlete.js`
+- `leaderboard.js`
+- `site-navigation.js`
+- `site.css`
+- `scripts/build-preview-artifact.mjs`
+- `tests/browser-smoke.mjs`
+- `docs/active-work.md`
+- `docs/decision-log.md`
 
-`C:\Users\johnk\OneDrive\GitHub\_private_workbooks\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX WORKING COPY.xlsm`
+## Validation results
 
-Changed workbook elements:
+- JavaScript syntax checks passed for:
+  - `leaderboard.js`
+  - `site-navigation.js`
+  - `tests/browser-smoke.mjs`
+  - `scripts/build-preview-artifact.mjs`
+- Browser smoke tests passed after writing ignored screenshots to
+  `test-artifacts/screenshots/`.
+- Full `pnpm test` passed:
+  - repository safety validation;
+  - CSV validation for Family and Everyone data;
+  - export-bundle validation regression tests;
+  - staged-export workflow regression tests;
+  - browser smoke tests.
+- `pnpm screenshots:update` passed and regenerated ignored page screenshots.
+- After the navigation review-fix commit, a newer validated public export bundle
+  was promoted into tracked `data/` and `pnpm test` passed again.
+- After the final public-copy cleanup, JavaScript syntax checks and full
+  `pnpm test` passed again.
 
-- `Settings!tbSettings`: added `Approved Staging Root`.
-- VBA module `ExportBundleIntegrity`: now reads the approved parent from the
-  setting and validates generated/requested staging roots as fresh immediate
-  children of that parent, while rejecting repository root, tracked `data/`,
-  relative paths, ambiguous paths, and malformed Windows paths.
+## Screenshot review
 
-Private backup:
+Inspected the regenerated Hall of Fame, Championships, and Overview screenshots
+for both Family and Everyone modes on desktop and mobile. The shared header is
+readable, the active page is clear, the current-site badge is separate from page
+navigation, and no new overflow, clipping, or unreadable navigation controls
+were observed. The latest screenshots show the top header with only the updated
+date metadata and visitor-facing page introductions.
 
-`C:\Users\johnk\OneDrive\GitHub\_private_workbooks\backups\Family Age Grading Table before staging-root portability fix 20260706-133319.xlsm`
+## Data note
 
-## Clean staged export results
+- Grace Chambers and Jim Chambers are not present in the current tracked
+  `data/family/*.csv` public exports, which matches the separate Family site
+  boundary.
+- The current tracked public `data/athlete_results.csv` now contains the
+  expected `07/07/2026` rows for Grace and Jim from Derry City Football Club.
+  The promoted manifest bundle is `20260710T232312092Z-1391E180`, exported on
+  10 July 2026.
 
-Staged root:
+## Known limitations and follow-up opportunities
 
-`C:\GitHub\family-running\test-artifacts\workbook-export-staging\run-20260706-220834-129`
+- Championship tables remain compact on mobile, matching the existing
+  table-first presentation. A future task could improve table ergonomics without
+  changing exported data or browser-side ownership boundaries.
+- The compatibility `championships.html` page remains in the preview artifact
+  for old direct links, but shared navigation now routes Championships to
+  `index.html`.
 
-Export bundle ID:
+## Handoff notes
 
-`20260706T210842364Z-404B617F`
+- Review the Championships landing, Hall of Fame, Overview statistics page, and
+  athlete profile pages in both `?site=family` and `?site=everyone`.
+- Review Netlify previews after the branch is pushed; no merge or release should
+  occur without explicit approval.
 
-The staged bundle contains 64 public CSV files, 63 manifest entries, one
-bundle ID across manifest/data files, and the required Family, Everyone, and
-shared scopes.
+## Recently completed historical work
 
-## Reconciliation against tracked data
-
-After ignoring only documented volatile metadata:
-
-- 57 files are content-identical.
-- Seven files differ only because the staged export has blank `Athlete ID`
-  values where tracked data contains the formula-error sentinel `#N/A`:
-  - `data/everyone/marathon-current-all-everyone.csv`
-  - `data/everyone/marathon-current-official-everyone.csv`
-  - `data/family/10mile-alltime-official-family.csv`
-  - `data/family/10mile-current-official-family.csv`
-  - `data/family/marathon-alltime-official-family.csv`
-  - `data/family/marathon-current-all-family.csv`
-  - `data/family/marathon-current-official-family.csv`
-
-This reconciliation was promoted with `--approve --approve-differences`.
-
-Previous tracked data was retained locally at:
-
-`C:\GitHub\family-running\test-artifacts\workbook-export-promotion\20260706212608632\previous-data`
-
-## Release status
-
-- Tracked public `data/` was replaced from the validated staged bundle.
-- No commit, push, Pull Request, merge, release, deployment, or GitHub setting
-  change.
-
-## Previous task title
-
-Private workbook staged export-bundle modernization
-
-## Status
-
-Implementation complete on `feat/workbook-export-bundle-contract`. Two clean
-private-workbook exports independently passed the repository contract. No
-staged bundle has been promoted to tracked `data/`.
-
-## Completed scope
-
-- Replaced direct-to-`data/` VBA paths with one official staged exporter.
-- Added a fresh-folder gate under ignored
-  `test-artifacts/workbook-export-staging/`.
-- Preserved Excel/VBA ownership of all calculations and exported values.
-- Exported all Family, Everyone, and shared public CSVs with one bundle ID.
-- Preserved the exact manifest schema and bundle-ID format enforced by
-  `scripts/validate-csv.mjs`.
-- Added manifest-last completion, planned/actual file reconciliation, duplicate
-  path detection, formula-error checks, UTF-8 output, and deletion of failed
-  partial staging folders.
-- Reconciled the private source workbook with the age-grade
-  `pace_per_km`/`pace_per_mile` VBA change.
-- Corrected the WebExport no-result fallback from an eight-column array to the
-  required nine-column row, replacing an unintended `#N/A` Athlete-ID formula
-  error with blank in no-result rows.
-- Added repository commands for staged validation, reconciliation, and
-  separately approved complete-bundle promotion.
-- Added staged-workflow regression tests and a durable runbook.
-
-## Private workbook changes
-
-Private source:
-
-`C:\Users\johnk\OneDrive\GitHub\_private_workbooks\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX WORKING COPY.xlsm`
-
-Changed VBA modules:
-
-- `ExportBundleIntegrity`
-- `WebsiteDataExport`
-- `WebsiteExportValidation`
-- `CrownStandardsExport`
-- `CrownHistoryExport`
-
-The 48 WebExport leaderboard spill formulas also received the corrected
-no-result fallback width. No calculation, ranking, medal, crown, standards, or
-athlete business logic was moved to JavaScript.
-
-Private backup:
-
-`C:\Users\johnk\OneDrive\GitHub\_private_workbooks\backups\Family Age Grading Table before export-contract modernization 20260702-102546.xlsm`
-
-The workbook, VBA working sources, backups, and QA artefacts remain outside Git
-or in ignored local folders.
-
-## Clean staged export results
-
-Export 1:
-
-`test-artifacts/workbook-export-staging/run-20260702-201456-695`
-
-Export 2:
-
-`test-artifacts/workbook-export-staging/run-20260702-201738-294`
-
-Both exports:
-
-- contain 64 CSVs: 63 manifest entries plus the manifest;
-- independently pass the full CSV and export-bundle validation;
-- contain required Family, Everyone, and shared scopes;
-- include age-grade pace fields and values; and
-- are content-identical to each other after normalizing only bundle IDs and
-  timestamps.
-
-## Reconciliation against tracked data
-
-After ignoring only documented volatile metadata:
-
-- 57 files are content-identical.
-- Seven no-result leaderboard files differ only because the staged export has
-  a blank Athlete ID where tracked data contains the formula-error sentinel
-  `#N/A`:
-  - `data/everyone/marathon-current-all-everyone.csv`
-  - `data/everyone/marathon-current-official-everyone.csv`
-  - `data/family/10mile-alltime-official-family.csv`
-  - `data/family/10mile-current-official-family.csv`
-  - `data/family/marathon-alltime-official-family.csv`
-  - `data/family/marathon-current-all-family.csv`
-  - `data/family/marathon-current-official-family.csv`
-
-This is an expected export-integrity correction, not a changed result or
-championship outcome. It has not been promoted.
-
-## Release status
-
-- No tracked public data overwrite or promotion.
-- No push, Pull Request, merge, deployment, or GitHub setting change.
+- The initial static navigation split for PR #18 created separate public pages
+  for Overview, Championships, Hall of Fame, and athlete profiles, with shared
+  navigation and browser smoke coverage.
+- Staging-root portability for private workbook exports was completed and merged
+  previously. The workbook now uses `Settings!tbSettings[Approved Staging Root]`
+  and tracked `data/` was promoted from a validated staged bundle.
+- Export-bundle modernization was completed previously. Workbook exports stage a
+  complete manifest-backed bundle before any explicitly approved promotion to
+  tracked public data.

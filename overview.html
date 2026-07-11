@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Overview | Family Running Championships</title>
+    <link rel="stylesheet" href="site.css">
+</head>
+
+<body data-page="overview">
+
+<header data-site-header></header>
+
+<main>
+    <section class="page-intro" aria-labelledby="overview-page-title">
+        <h2 id="overview-page-title">Overview</h2>
+        <p>
+            A quick snapshot of official participation, activity, and recent results
+            for this site.
+        </p>
+    </section>
+
+    <section aria-labelledby="overview-stats-title">
+        <h2 id="overview-stats-title">Leaderboard statistics</h2>
+        <div id="overview-dashboard" aria-live="polite">
+            <p class="description">Loading result statistics...</p>
+        </div>
+    </section>
+</main>
+
+<script src="utils.js" defer></script>
+<script src="site-navigation.js" defer></script>
+<script src="leaderboard.js" defer></script>
+
+</body>
+</html>
