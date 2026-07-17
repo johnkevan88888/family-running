@@ -545,7 +545,7 @@ body {
     margin-bottom: 12px;
 }
 
-.crown-standard-facts span {
+.crown-standard-facts > span {
     background: #eef3f7;
     border-radius: 999px;
     color: #1e3a5f;
@@ -555,12 +555,12 @@ body {
     padding: 7px 9px;
 }
 
-.period-current .crown-standard-facts span,
+.period-current .crown-standard-facts > span,
 .period-current .crown-standard-status {
     background: #fff0bd;
 }
 
-.period-all-time .crown-standard-facts span,
+.period-all-time .crown-standard-facts > span,
 .period-all-time .crown-standard-status {
     background: #dff0ff;
 }
@@ -585,7 +585,7 @@ body {
     margin-bottom: 8px;
 }
 
-.crown-standard-time span {
+.crown-standard-time .crown-standard-caption {
     display: block;
     color: #555;
     font-size: 0.92rem;
@@ -625,7 +625,7 @@ body {
     min-width: 0;
 }
 
-.crown-standard-target span {
+.crown-standard-target > span {
     color: #555;
     font-size: 0.84rem;
     font-weight: 800;
