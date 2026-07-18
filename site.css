@@ -389,8 +389,8 @@
     margin-top: 4px;
 }
 
-.hof-primary span,
-.hof-secondary span {
+.hof-primary .metric-label,
+.hof-secondary .metric-label {
     display: block;
     margin-bottom: 3px;
     font-size: 0.72rem;
@@ -735,7 +735,7 @@
     margin-top: 10px;
 }
 
-.crown-history-performance span {
+.crown-history-performance > span {
     color: #394b5c;
     font-weight: 700;
 }
@@ -823,6 +823,98 @@
     justify-content: flex-end;
 }
 
+.site-header-tools {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.pace-unit-control {
+    align-items: center;
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 8px;
+}
+
+.pace-unit-label {
+    color: #33495d;
+    font-size: 0.88rem;
+    font-weight: 900;
+}
+
+.pace-unit-options {
+    border: 1px solid #2b5c88;
+    border-radius: 7px;
+    display: inline-flex;
+    overflow: hidden;
+}
+
+.pace-unit-options button {
+    appearance: none;
+    background: white;
+    border: 0;
+    color: #1e3a5f;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 900;
+    line-height: 1;
+    min-height: 34px;
+    min-width: 46px;
+    padding: 8px 10px;
+}
+
+.pace-unit-options button + button {
+    border-left: 1px solid #2b5c88;
+}
+
+.pace-unit-options button[aria-pressed="true"] {
+    background: #1e3a5f;
+    color: white;
+}
+
+.pace-unit-options button:focus-visible {
+    box-shadow: inset 0 0 0 3px #ffd700;
+    outline: 2px solid #1e3a5f;
+    outline-offset: 2px;
+}
+
+.site-pace-control {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.24);
+    border-radius: 999px;
+    padding: 5px 6px 5px 12px;
+}
+
+.site-pace-control .pace-unit-label {
+    color: #eef5fb;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.site-pace-control .pace-unit-options {
+    border-color: rgba(255,255,255,0.36);
+    border-radius: 999px;
+}
+
+.site-pace-control .pace-unit-options button {
+    background: rgba(255,255,255,0.94);
+    min-height: 30px;
+    min-width: 42px;
+}
+
+.site-pace-control .pace-unit-options button + button {
+    border-left-color: rgba(30,58,95,0.3);
+}
+
+.site-pace-control .pace-unit-options button[aria-pressed="true"] {
+    background: #ffd700;
+    color: #0f2438;
+}
+
 .site-nav-link,
 .site-mode-link {
     border-radius: 999px;
@@ -875,6 +967,28 @@
     letter-spacing: 0.04em;
     padding: 9px 14px;
     text-transform: uppercase;
+}
+
+.time-with-pace {
+    align-items: baseline;
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 3px 7px;
+}
+
+.result-time {
+    font-variant-numeric: tabular-nums;
+}
+
+.result-pace {
+    color: #526779;
+    font-size: 0.78em;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.pace-display[hidden] {
+    display: none;
 }
 
 .page-intro,
@@ -1175,6 +1289,10 @@
 
     .site-nav,
     .site-mode-selector {
+        justify-content: flex-start;
+    }
+
+    .site-header-tools {
         justify-content: flex-start;
     }
 

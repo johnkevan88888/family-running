@@ -49,6 +49,7 @@ async function buildHallOfFame() {
     `).join('');
 
     document.getElementById('hall-of-fame').innerHTML = html;
+    refreshPaceDisplay();
 }
 
 function normalizeHeader(header) {
@@ -149,6 +150,12 @@ function renderHallOfFameCard(row) {
         row.event ? `&#128205; ${escapeHTML(row.event)}` : '',
         row.date ? `&#128197; ${escapeHTML(row.date)}` : ''
     ].filter(Boolean).join(' &nbsp; ');
+    const primaryMetric = row.primarymetric
+        ? renderHallOfFameMetric(row.primarymetriclabel, row.primarymetric, row)
+        : '';
+    const secondaryMetric = row.secondarymetric
+        ? renderHallOfFameMetric(row.secondarymetriclabel, row.secondarymetric, row)
+        : '';
 
     if (isVacant) {
         return `
@@ -160,7 +167,7 @@ function renderHallOfFameCard(row) {
                 <div class="hof-award">${escapeHTML(row.award)}</div>
                 <div class="hof-name">Championship Vacant</div>
                 <div class="hof-primary">
-                    <span>Result</span>
+                    <span class="metric-label">Result</span>
                     No qualifier
                 </div>
                 <div class="hof-detail">No qualifying official performance recorded</div>
@@ -176,16 +183,16 @@ function renderHallOfFameCard(row) {
             </div>
             <div class="hof-award">${escapeHTML(row.award)}</div>
             <div class="hof-name">${participant}</div>
-            ${row.primarymetric ? `
+            ${primaryMetric ? `
                 <div class="hof-primary">
-                    ${row.primarymetriclabel ? `<span>${escapeHTML(row.primarymetriclabel)}</span>` : ''}
-                    ${escapeHTML(row.primarymetric)}
+                    ${row.primarymetriclabel ? `<span class="metric-label">${escapeHTML(row.primarymetriclabel)}</span>` : ''}
+                    ${primaryMetric}
                 </div>
             ` : ''}
-            ${row.secondarymetric ? `
+            ${secondaryMetric ? `
                 <div class="hof-secondary">
-                    ${row.secondarymetriclabel ? `<span>${escapeHTML(row.secondarymetriclabel)}</span>` : ''}
-                    ${escapeHTML(row.secondarymetric)}
+                    ${row.secondarymetriclabel ? `<span class="metric-label">${escapeHTML(row.secondarymetriclabel)}</span>` : ''}
+                    ${secondaryMetric}
                 </div>
             ` : ''}
             ${row.ageclass ? `
@@ -211,6 +218,24 @@ function formatHallOfFameDistance(distance) {
         .replace(/^H\. Mar$/i, 'Half Marathon')
         .replace(/^10km$/i, '10 km')
         .replace(/^5km$/i, '5 km');
+}
+
+function renderHallOfFameMetric(label, value, row) {
+    const isTimeMetric = normalizeHeader(label || '') === 'time' ||
+        (row.time && value === row.time);
+
+    return isTimeMetric
+        ? renderTimeWithPace(value, row.distance, row.displaydistance)
+        : escapeHTML(value);
+}
+
+function renderTimeWithPace(time, ...distanceCandidates) {
+    return window.paceDisplay?.renderTimeWithPace(time, ...distanceCandidates) ||
+        escapeHTML(time);
+}
+
+function refreshPaceDisplay() {
+    window.paceDisplay?.initialize(document);
 }
 
 function standardBadgeContent(category) {
@@ -323,6 +348,7 @@ async function buildOverview() {
             ${highlights.map(renderOverviewHighlight).join('')}
         </div>
     `;
+    refreshPaceDisplay();
 }
 
 function renderOverviewHighlight({ table, champion }) {
@@ -334,6 +360,9 @@ function renderOverviewHighlight({ table, champion }) {
         : escapeHTML(participant);
     const score = champion['Age Graded Score'] || champion.AgeGrade || '';
     const event = champion.SexAgeEvent || champion.Distance || '';
+    const timeHTML = champion.Time
+        ? renderTimeWithPace(champion.Time, champion.SexAgeEvent, champion.Distance, table.DisplayDistance)
+        : '';
 
     return `
         <article class="overview-highlight-card${isNoResult ? ' no-result' : ''}">
@@ -343,7 +372,7 @@ function renderOverviewHighlight({ table, champion }) {
                 <p class="overview-highlight-empty">No eligible official result has been exported for this current championship.</p>
             ` : `
                 <dl class="overview-highlight-facts">
-                    ${champion.Time ? `<div><dt>Time</dt><dd>${escapeHTML(champion.Time)}</dd></div>` : ''}
+                    ${timeHTML ? `<div><dt>Time</dt><dd>${timeHTML}</dd></div>` : ''}
                     ${score ? `<div><dt>Age grade</dt><dd>${escapeHTML(score)}</dd></div>` : ''}
                     ${event ? `<div><dt>Event</dt><dd>${escapeHTML(event)}</dd></div>` : ''}
                 </dl>
@@ -422,6 +451,7 @@ async function buildOverviewStats() {
             ${renderRecentResults(recentResults)}
         </section>
     `;
+    refreshPaceDisplay();
 }
 
 async function loadSiteAthleteIds() {
@@ -481,21 +511,27 @@ function renderRecentResults(rows) {
 
     return `
         <div class="overview-result-list" id="overview-recent-results">
-            ${rows.map(row => `
-                <article class="overview-result-card">
-                    <div>${athleteLink(row.AthleteID, escapeHTML(row.Participant || row.AthleteID))}</div>
-                    <div class="overview-result-meta">
-                        ${escapeHTML(formatExportedDate(row.parsedDate))}
-                        ${row.Event ? ` &middot; ${escapeHTML(row.Event)}` : ''}
-                    </div>
-                    <div class="overview-result-detail">
-                        ${escapeHTML(row.Distance || '')}
-                        ${row.Time ? ` &middot; ${escapeHTML(row.Time)}` : ''}
-                        ${row.AgeGrade ? ` &middot; ${escapeHTML(row.AgeGrade)}` : ''}
-                        ${row.TimeClass ? ` &middot; ${escapeHTML(row.TimeClass)}` : ''}
-                    </div>
-                </article>
-            `).join('')}
+            ${rows.map(row => {
+                const resultDetails = [
+                    row.Distance ? escapeHTML(row.Distance) : '',
+                    row.Time ? renderTimeWithPace(row.Time, row.Distance) : '',
+                    row.AgeGrade ? escapeHTML(row.AgeGrade) : '',
+                    row.TimeClass ? escapeHTML(row.TimeClass) : ''
+                ].filter(Boolean).join(' &middot; ');
+
+                return `
+                    <article class="overview-result-card">
+                        <div>${athleteLink(row.AthleteID, escapeHTML(row.Participant || row.AthleteID))}</div>
+                        <div class="overview-result-meta">
+                            ${escapeHTML(formatExportedDate(row.parsedDate))}
+                            ${row.Event ? ` &middot; ${escapeHTML(row.Event)}` : ''}
+                        </div>
+                        <div class="overview-result-detail">
+                            ${resultDetails}
+                        </div>
+                    </article>
+                `;
+            }).join('')}
         </div>
     `;
 }
@@ -548,13 +584,19 @@ function cleanAthleteId(value) {
 
 async function buildCrownHistory() {
     const container = document.getElementById('crown-history');
-    const rows = await fetchCSV(`${dataPath}/crown_history.csv`);
+    const [rows, athleteResultRows] = await Promise.all([
+        fetchCSV(`${dataPath}/crown_history.csv`),
+        fetchCSV('data/athlete_results.csv').catch(() => [])
+    ]);
     const headers = rows[0] || [];
     const normalizedHeaders = headers.map(normalizeHeader);
+    const athleteResults = athleteResultRows.length
+        ? csvRowsToObjects(athleteResultRows)
+        : [];
     const exportedRows = rows
         .slice(1)
         .filter(row => row.some(cell => cell !== ''))
-        .map(row => crownHistoryRowToObject(normalizedHeaders, row));
+        .map(row => enrichCrownHistoryRow(crownHistoryRowToObject(normalizedHeaders, row), athleteResults));
     const crownOrder = ['Overall', 'Marathon', 'Half Marathon', '10 Mile', '10 km', '5 km'];
     const groups = crownOrder
         .map(distance => ({
@@ -580,6 +622,7 @@ async function buildCrownHistory() {
         </div>
     `;
     container.dataset.rendered = 'true';
+    refreshPaceDisplay();
 }
 
 function crownHistoryRowToObject(normalizedHeaders, row) {
@@ -590,6 +633,41 @@ function crownHistoryRowToObject(normalizedHeaders, row) {
     });
 
     return result;
+}
+
+function enrichCrownHistoryRow(row, athleteResults) {
+    row.resultdistance = resolveCrownHistoryResultDistance(
+        athleteResults,
+        row.athleteid,
+        row.time,
+        row.effectivedate,
+        row.event
+    ) || row.distance;
+    row.previousresultdistance = resolveCrownHistoryResultDistance(
+        athleteResults,
+        row.previousathleteid,
+        row.previoustime
+    ) || row.distance;
+
+    return row;
+}
+
+function resolveCrownHistoryResultDistance(athleteResults, athleteId, time, date = '', event = '') {
+    if (!athleteId || !time) return '';
+
+    const matches = athleteResults.filter(result =>
+        cleanAthleteId(result.AthleteID) === cleanAthleteId(athleteId) &&
+        result.Time === time
+    );
+
+    if (!matches.length) return '';
+
+    const exactMatch = matches.find(result =>
+        (!date || result.Date === date) &&
+        (!event || result.Event === event)
+    );
+
+    return (exactMatch || matches[0]).Distance || '';
 }
 
 function renderCrownHistoryGroup(group, index, expanded) {
@@ -625,7 +703,7 @@ function renderCrownHistoryGroup(group, index, expanded) {
 function renderCrownHistoryEntry(row) {
     const holder = crownHistoryAthlete(row.athleteid, row.athletename);
     const performance = [
-        row.time ? `<span><strong>Time:</strong> ${escapeHTML(row.time)}</span>` : '',
+        row.time ? `<span><strong>Time:</strong> ${renderTimeWithPace(row.time, row.resultdistance, row.distance)}</span>` : '',
         row.agegrade ? `<span><strong>Age grade:</strong> ${escapeHTML(row.agegrade)}</span>` : ''
     ].filter(Boolean).join('');
     const previousDetails = crownHistoryPreviousHolder(row);
@@ -661,7 +739,7 @@ function crownHistoryPreviousHolder(row) {
     }
 
     if (row.previoustime) {
-        details.push(`<strong>Time:</strong> ${escapeHTML(row.previoustime)}`);
+        details.push(`<strong>Time:</strong> ${renderTimeWithPace(row.previoustime, row.previousresultdistance, row.distance)}`);
     }
 
     if (row.previousagegrade) {
@@ -733,6 +811,7 @@ function renderTable(rows) {
 
     rows.forEach((row, rowIndex) => {
         html += '<tr>';
+        const rowObject = Object.fromEntries(headers.map((header, index) => [header, row[index] || '']));
 
         headers.forEach((header, cellIndex) => {
             if (cellIndex === athleteIdIndex || header === 'ExportBundleID') {
@@ -745,6 +824,7 @@ function renderTable(rows) {
             }
 
             let cell = row[cellIndex] || '';
+            const normalizedHeader = header.toLowerCase().replace(/\s+/g, '');
 
             if (
                 cellIndex === participantIndex &&
@@ -752,6 +832,15 @@ function renderTable(rows) {
                 row[athleteIdIndex]
             ) {
                 cell = athleteLink(row[athleteIdIndex], cell);
+            }
+
+            if (normalizedHeader === 'time') {
+                cell = renderTimeWithPace(
+                    cell,
+                    rowObject.SexAgeEvent,
+                    rowObject.Distance,
+                    rowObject.DisplayDistance
+                );
             }
 
             if (row[0] === '1' && cell === row[0]) cell = '<span class="medal">&#129351;</span>';
@@ -816,6 +905,7 @@ async function renderLeaderboardGroup(groupId) {
 
     container.innerHTML = sections.join('');
     group.loaded = true;
+    refreshPaceDisplay();
 }
 
 async function buildLeaderboards() {

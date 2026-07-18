@@ -117,6 +117,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertPrimaryNavigation(page, mode, viewport, 'championships');
         await assertNoModeSwitch(page, mode, viewport, 'championships');
         await expectCountAtLeast(page, '#leaderboards table tr', 2, `${mode} landing championship leaderboard rows`);
+        await assertSitePaceToggle(page, mode, viewport);
         await assertNavigationBetweenPublicPages(page, mode, viewport);
         await assertBundleMetadataHidden(page, `${mode}/${viewport.name} landing championships page`);
 
@@ -142,6 +143,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await expectCountAtLeast(page, '#hall-of-fame .hof-card', 1, `${mode} Hall of Fame cards`);
         await assertHallOfFameDisplayLabels(page, mode, viewport);
         await assertCrownHistory(page, mode, viewport, requestedPaths);
+        await assertVisiblePaceUnit(page.locator('#hall-of-fame'), 'km', `${mode}/${viewport.name} Hall of Fame paces`);
         await assertVacantStatesRender(page, mode, viewport);
         await assertBundleMetadataHidden(page, `${mode}/${viewport.name} Hall of Fame page`);
 
@@ -152,6 +154,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertPrimaryNavigation(page, mode, viewport, 'overview');
         await assertNoModeSwitch(page, mode, viewport, 'overview');
         await assertOverviewPage(page, mode, viewport, requestedPaths.slice(overviewRequestStart));
+        await assertVisiblePaceUnit(page.locator('#overview-dashboard'), 'km', `${mode}/${viewport.name} Overview paces`);
         await assertBundleMetadataHidden(page, `${mode}/${viewport.name} overview page`);
 
         const athleteLinkCount = await page.locator('a[href^="athlete.html?id="]').count();
@@ -359,6 +362,44 @@ async function assertNoModeSwitch(page, mode, viewport, pageKey) {
     const badgeText = normalizeText(await modeBadges.first().textContent());
     if (!badgeText.includes(expectedLabel)) {
         failures.push(`${context}: current-site badge was "${badgeText}", expected ${expectedLabel}.`);
+    }
+}
+
+async function assertSitePaceToggle(page, mode, viewport) {
+    const context = `${mode}/${viewport.name} site pace toggle`;
+    const control = page.locator('.site-pace-control');
+    const perKm = control.getByRole('button', { name: 'Show pace per kilometre' });
+    const perMile = control.getByRole('button', { name: 'Show pace per mile' });
+
+    await assertVisiblePaceUnit(page.locator('#leaderboards'), 'km', context);
+
+    await perMile.click();
+    if (await perMile.getAttribute('aria-pressed') !== 'true') {
+        failures.push(`${context}: /mi was not selected after using the site-wide control.`);
+    }
+    await assertVisiblePaceUnit(page.locator('#leaderboards'), 'mi', context);
+
+    await perKm.click();
+    if (await perKm.getAttribute('aria-pressed') !== 'true') {
+        failures.push(`${context}: /km was not restored after using the site-wide control.`);
+    }
+    await assertVisiblePaceUnit(page.locator('#leaderboards'), 'km', context);
+}
+
+async function assertVisiblePaceUnit(root, unit, context) {
+    const otherUnit = unit === 'km' ? 'mi' : 'km';
+    const visiblePaces = await root.locator('.pace-display').evaluateAll(elements =>
+        elements
+            .filter(element => !element.hidden && element.offsetParent !== null)
+            .map(element => element.textContent.trim())
+    );
+
+    if (!visiblePaces.some(text => text.endsWith(`/${unit}`))) {
+        failures.push(`${context}: no visible /${unit} pace values were rendered.`);
+    }
+
+    if (visiblePaces.some(text => text.endsWith(`/${otherUnit}`))) {
+        failures.push(`${context}: /${otherUnit} pace values remained visible while /${unit} was selected.`);
     }
 }
 
@@ -868,7 +909,7 @@ async function assertAgeGradeStandards(page, mode, viewport) {
     await waitForNetworkToSettle(page);
 
     const section = page.locator('#age-grade-standards-section');
-    const control = section.getByRole('group', { name: 'Pace display unit' });
+    const control = page.locator('.site-pace-control');
     const perKm = control.getByRole('button', { name: 'Show pace per kilometre' });
     const perMile = control.getByRole('button', { name: 'Show pace per mile' });
     const context = `${mode}/${viewport.name}`;
@@ -880,11 +921,14 @@ async function assertAgeGradeStandards(page, mode, viewport) {
         `${context} age-grade pace helper`
     );
 
+    if (await section.locator('.pace-unit-control').count() !== 0) {
+        failures.push(`${context}: age-grade standards rendered a duplicate pace control.`);
+    }
     if (await perKm.getAttribute('aria-pressed') !== 'true') {
-        failures.push(`${context}: /km was not selected for a first-time visitor.`);
+        failures.push(`${context}: header /km was not selected for a first-time visitor.`);
     }
     if (await perMile.getAttribute('aria-pressed') !== 'false') {
-        failures.push(`${context}: /mi was selected before the user changed pace unit.`);
+        failures.push(`${context}: header /mi was selected before the user changed pace unit.`);
     }
 
     await assertRenderedAgeGradePaces(section, paceScenario.examples, 'km', context);
@@ -911,11 +955,17 @@ async function assertAgeGradeStandards(page, mode, viewport) {
     await page.locator('#age-grade-standards-section:not(.hidden)').waitFor({ state: 'visible' });
 
     const reloadedSection = page.locator('#age-grade-standards-section');
-    const reloadedPerMile = reloadedSection.getByRole('button', { name: 'Show pace per mile' });
+    const reloadedControl = page.locator('.site-pace-control');
+    const reloadedPerMile = reloadedControl.getByRole('button', { name: 'Show pace per mile' });
+    const reloadedPerKm = reloadedControl.getByRole('button', { name: 'Show pace per kilometre' });
     if (await reloadedPerMile.getAttribute('aria-pressed') !== 'true') {
         failures.push(`${context}: /mi selection did not persist after reload.`);
     }
     await assertRenderedAgeGradePaces(reloadedSection, paceScenario.examples, 'mi', `${context} after reload`);
+    await assertVisiblePaceUnit(page.locator('#personal-bests'), 'mi', `${context} athlete profile paces`);
+
+    await reloadedPerKm.click();
+    await assertRenderedAgeGradePaces(reloadedSection, paceScenario.examples, 'km', `${context} restored to km`);
 }
 
 async function assertRenderedAgeGradePaces(section, examples, unit, context) {
