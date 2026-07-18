@@ -212,7 +212,7 @@ function renderAbsoluteRecordCard(record) {
         : escapeRecordHTML(record.participant || 'No eligible result');
     const cardClasses = [
         'hof-card',
-        empty ? 'vacant' : 'speed',
+        empty ? 'vacant' : 'legend',
         'absolute-record-card',
         empty ? 'empty' : ''
     ].filter(Boolean).join(' ');
