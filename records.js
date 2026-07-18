@@ -196,9 +196,9 @@ function groupAbsoluteRecords(records) {
 
 function renderAbsoluteRecordGroup(group) {
     return `
-        <section class="absolute-records-group">
+        <section class="hof-group absolute-records-group">
             <h3>${escapeRecordHTML(group.title)}</h3>
-            <div class="absolute-record-grid">
+            <div class="hall-of-fame absolute-record-grid">
                 ${group.records.map(renderAbsoluteRecordCard).join('')}
             </div>
         </section>
@@ -210,29 +210,92 @@ function renderAbsoluteRecordCard(record) {
     const participant = record.athleteId && !empty
         ? athleteLink(record.athleteId, escapeRecordHTML(record.participant))
         : escapeRecordHTML(record.participant || 'No eligible result');
-    const facts = [
-        record.timeClass ? `<span>${escapeRecordHTML(record.timeClass)}</span>` : '',
-        record.date ? `<span>${escapeRecordHTML(record.date)}</span>` : '',
-        record.event ? `<span>${escapeRecordHTML(record.event)}</span>` : ''
-    ].filter(Boolean).join('');
+    const cardClasses = [
+        'hof-card',
+        empty ? 'vacant' : 'speed',
+        'absolute-record-card',
+        empty ? 'empty' : ''
+    ].filter(Boolean).join(' ');
+    const badge = absoluteRecordBadge(record);
+    const dateEvent = [
+        record.event ? `&#128205; ${escapeRecordHTML(record.event)}` : '',
+        record.date ? `&#128197; ${escapeRecordHTML(record.date)}` : ''
+    ].filter(Boolean).join(' &nbsp; ');
     const details = [
-        record.ageClass ? `<div><dt>Age class</dt><dd>${escapeRecordHTML(record.ageClass)}</dd></div>` : '',
-        record.ageGrade ? `<div><dt>Age grade</dt><dd>${escapeRecordHTML(record.ageGrade)}</dd></div>` : '',
-        record.note ? `<div><dt>Note</dt><dd>${escapeRecordHTML(record.note)}</dd></div>` : ''
-    ].filter(Boolean).join('');
+        record.timeClass,
+        record.note
+    ].filter(Boolean).map(escapeRecordHTML).join(' / ');
+
+    if (empty) {
+        const vacantDetail = [
+            record.timeClass,
+            'No qualifying official performance recorded'
+        ].filter(Boolean).map(escapeRecordHTML).join(' / ');
+
+        return `
+            <article class="${cardClasses}">
+                <div class="hof-honours">
+                    <div class="hof-badge">${badge}</div>
+                    <div class="hof-standard standard-vacant">Open</div>
+                </div>
+                <div class="hof-award">${escapeRecordHTML(record.title)}</div>
+                <div class="hof-name">No eligible result</div>
+                <div class="hof-primary">
+                    <span class="metric-label">Result</span>
+                    No qualifier
+                </div>
+                <div class="hof-detail">${vacantDetail}</div>
+            </article>
+        `;
+    }
 
     return `
-        <article class="absolute-record-card${empty ? ' empty' : ''}">
-            <div class="absolute-record-distance">${escapeRecordHTML(record.distance || 'Record')}</div>
-            <h4>${escapeRecordHTML(record.title)}</h4>
-            <div class="absolute-record-time">
-                ${empty ? '-' : renderRecordTimeWithPace(record.time, record.resultDistance, record.distance)}
+        <article class="${cardClasses}">
+            <div class="hof-honours">
+                <div class="hof-badge">${badge}</div>
+                <div class="hof-standard">${escapeRecordHTML(record.distance || 'Record')}</div>
             </div>
-            <div class="absolute-record-holder">${participant}</div>
-            ${facts ? `<div class="absolute-record-facts">${facts}</div>` : ''}
-            ${details ? `<dl class="absolute-record-details">${details}</dl>` : ''}
+            <div class="hof-award">${escapeRecordHTML(record.title)}</div>
+            <div class="hof-name">${participant}</div>
+            <div class="hof-primary">
+                <span class="metric-label">Time</span>
+                ${renderRecordTimeWithPace(record.time, record.resultDistance, record.distance)}
+            </div>
+            ${record.ageGrade ? `
+                <div class="hof-secondary">
+                    <span class="metric-label">Age grade</span>
+                    ${escapeRecordHTML(record.ageGrade)}
+                </div>
+            ` : ''}
+            ${record.ageClass ? `
+                <div class="hof-age-class">
+                    <span>Age class</span>
+                    <strong>${escapeRecordHTML(record.ageClass)}</strong>
+                </div>
+            ` : ''}
+            ${record.distance ? `
+                <div class="hof-winning-distance">
+                    <span>Distance</span>
+                    <strong>${escapeRecordHTML(record.distance)}</strong>
+                </div>
+            ` : ''}
+            ${details ? `<div class="hof-detail">${details}</div>` : ''}
+            ${dateEvent ? `<div class="hof-meta">${dateEvent}</div>` : ''}
         </article>
     `;
+}
+
+function absoluteRecordBadge(record) {
+    const key = canonicalRecordDistanceKey(record.distance || record.resultDistance);
+    const badges = new Map([
+        ['marathon', '42.2'],
+        ['halfmarathon', '21.1'],
+        ['10mile', '10M'],
+        ['10km', '10K'],
+        ['5km', '5K']
+    ]);
+
+    return badges.get(key) || 'PB';
 }
 
 function isEmptyAbsoluteRecord(record) {

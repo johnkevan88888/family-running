@@ -1271,114 +1271,20 @@
 }
 
 .absolute-records-groups {
-    display: grid;
-    gap: 30px;
-}
-
-.absolute-records-group h3 {
-    border-bottom: 1px solid #cfd9e3;
-    color: #1e3a5f;
-    font-size: 1.15rem;
-    letter-spacing: 0.02em;
-    margin: 8px 0 14px;
-    padding-bottom: 7px;
-    text-transform: uppercase;
+    margin-bottom: 34px;
 }
 
 .absolute-record-grid {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 0;
 }
 
-.absolute-record-card {
-    background: #ffffff;
-    border-left: 6px solid #c75c30;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(15,36,56,0.13);
-    min-width: 0;
-    padding: 18px;
-}
-
-.absolute-record-card.empty {
-    border-left-color: #9aa7b2;
-}
-
-.absolute-record-distance {
-    color: #1e3a5f;
-    font-size: 0.78rem;
-    font-weight: 900;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-}
-
-.absolute-record-card h4 {
-    color: #0f2438;
-    font-size: 1.18rem;
-    line-height: 1.15;
-    margin: 7px 0 14px;
-}
-
-.absolute-record-time {
-    color: #1e3a5f;
-    font-size: 1.75rem;
-    font-weight: 900;
-    line-height: 1.05;
-}
-
-.absolute-record-holder {
-    color: #0f2438;
-    font-size: 1.15rem;
-    font-weight: 900;
-    line-height: 1.2;
-    margin-top: 10px;
-}
-
-.absolute-record-holder a {
+.absolute-record-card .hof-name a {
     color: inherit;
 }
 
-.absolute-record-facts {
-    color: #526779;
-    display: flex;
-    flex-wrap: wrap;
-    font-size: 0.86rem;
-    font-weight: 800;
-    gap: 7px 10px;
-    line-height: 1.35;
-    margin-top: 10px;
-}
-
-.absolute-record-facts span + span::before {
-    color: #93a4b2;
-    content: "/";
-    margin-right: 10px;
-}
-
-.absolute-record-details {
-    display: grid;
-    gap: 8px;
-    margin: 14px 0 0;
-}
-
-.absolute-record-details div {
-    background: #f8fafc;
-    border-radius: 6px;
-    padding: 8px 9px;
-}
-
-.absolute-record-details dt {
-    color: #667789;
-    font-size: 0.68rem;
-    font-weight: 900;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-}
-
-.absolute-record-details dd {
-    color: #0f2438;
-    font-weight: 900;
-    margin: 2px 0 0;
+.absolute-record-card .hof-badge {
+    font-size: 4.45rem;
+    letter-spacing: 0;
 }
 
 .absolute-records-empty {
@@ -1449,13 +1355,8 @@
     .overview-stats,
     .overview-card-grid,
     .overview-stat-grid,
-    .overview-result-list,
-    .absolute-record-grid {
+    .overview-result-list {
         grid-template-columns: 1fr;
-    }
-
-    .absolute-record-time {
-        font-size: 1.45rem;
     }
 
     table {
