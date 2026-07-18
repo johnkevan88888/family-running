@@ -1270,6 +1270,68 @@
     color: #0f2438;
 }
 
+.absolute-records-groups {
+    margin-bottom: 34px;
+}
+
+.absolute-records-group h3 {
+    font-size: 5.8rem;
+    line-height: 1;
+    padding-bottom: 9px;
+}
+
+.absolute-record-grid {
+    margin-bottom: 0;
+}
+
+.absolute-record-card .hof-name a {
+    color: inherit;
+}
+
+.absolute-record-card .hof-badge {
+    font-size: 4.45rem;
+    letter-spacing: 0;
+    margin-top: 10px;
+}
+
+.absolute-record-card .hof-honours {
+    gap: 8px;
+}
+
+.absolute-record-card .hof-standard {
+    background: #fff0bd;
+    color: #0f2438;
+}
+
+.absolute-record-card.vacant .hof-standard {
+    background: #999;
+    color: #ffffff;
+}
+
+.absolute-record-medal {
+    color: #f0b400;
+    font-size: 5.6rem;
+    line-height: 0.72;
+    text-shadow:
+        0 1px 0 rgba(255,255,255,0.9),
+        0 3px 8px rgba(0,0,0,0.18);
+}
+
+.absolute-record-card.vacant .absolute-record-medal {
+    color: #b4b4b4;
+    opacity: 0.78;
+}
+
+.absolute-records-empty {
+    background: #ffffff;
+    border: 1px solid #d7e1ea;
+    border-radius: 8px;
+    box-shadow: 0 3px 10px rgba(15,36,56,0.08);
+    color: #566779;
+    font-weight: 750;
+    padding: 22px;
+}
+
 @media (max-width: 700px) {
     body {
         padding: 12px;
@@ -1387,6 +1449,23 @@
     .hof-card {
         padding-right: 158px;
         min-height: 190px;
+    }
+
+    .absolute-record-medal {
+        font-size: 4.15rem;
+        line-height: 0.82;
+    }
+
+    .absolute-record-card .hof-badge {
+        margin-top: 0;
+    }
+
+    .absolute-record-card .hof-honours {
+        gap: 2px;
+    }
+
+    .absolute-records-group h3 {
+        font-size: 2.9rem;
     }
 
     .hof-award {

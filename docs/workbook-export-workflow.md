@@ -54,8 +54,8 @@ Repository validation in `scripts/validate-csv.mjs` is authoritative.
 - Family, Everyone, and shared scopes must all be present.
 
 The staged-workflow validator additionally requires the staged public CSV file
-set to match the currently tracked contract. The current bundle contains 64
-CSV files: 63 manifest entries plus the manifest itself.
+set to match the currently tracked contract. The current export contract
+contains 66 CSV files: 65 manifest entries plus the manifest itself.
 
 ## Workbook guarantees
 
@@ -79,8 +79,8 @@ The workbook exporter:
 
 The complete export includes leaderboard files, `webtables.csv`,
 `siteinfo.csv`, Hall of Fame, official medals, crown history, crown standards,
-age-grade standards including `pace_per_km` and `pace_per_mile`, and shared
-`athlete_results.csv`.
+age-grade standards including `pace_per_km` and `pace_per_mile`, absolute
+records, and shared `athlete_results.csv`.
 
 ## Safe refresh commands
 
@@ -163,6 +163,13 @@ requires:
 
 ```powershell
 pnpm run workbook:promote:staged --staged "<STAGED_EXPORT_ROOT>" --approve --approve-differences
+```
+
+If the staged bundle intentionally adds new public CSV contract files, name each
+new file explicitly:
+
+```powershell
+pnpm run workbook:promote:staged --staged "<STAGED_EXPORT_ROOT>" --approve --approve-differences --approve-new-files "data/family/absolute_records.csv,data/everyone/absolute_records.csv"
 ```
 
 Promotion refuses to run when tracked `data/` already has local changes. It

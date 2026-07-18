@@ -203,17 +203,31 @@ export function runCsvValidator(validationRoot, options = {}) {
 }
 
 export function assertExactTrackedCsvSet(stagedRoot) {
+    return assertTrackedCsvSet(stagedRoot);
+}
+
+export function assertTrackedCsvSet(stagedRoot, options = {}) {
     const stagedFiles = listPublicCsvFiles(path.join(stagedRoot, 'data'));
     const trackedFiles = listPublicCsvFiles(path.join(repoRoot, 'data'));
-    const stagedSet = new Set(stagedFiles);
-    const trackedSet = new Set(trackedFiles);
-    const missing = trackedFiles.filter(file => !stagedSet.has(file));
-    const unexpected = stagedFiles.filter(file => !trackedSet.has(file));
+    const stagedSet = new Set(stagedFiles.map(toPosix));
+    const trackedSet = new Set(trackedFiles.map(toPosix));
+    const approvedNewFiles = new Set(
+        (options.approvedNewFiles || []).map(normalizeApprovedNewCsvFile)
+    );
+    const missing = trackedFiles.filter(file => !stagedSet.has(toPosix(file)));
+    const unexpected = stagedFiles.filter(file => !trackedSet.has(toPosix(file)));
+    const unapprovedUnexpected = unexpected.filter(
+        file => !approvedNewFiles.has(toPosix(file))
+    );
+    const approvedButNotNew = [...approvedNewFiles].filter(
+        file => !unexpected.some(unexpectedFile => toPosix(unexpectedFile) === file)
+    );
 
-    if (missing.length || unexpected.length) {
+    if (missing.length || unapprovedUnexpected.length || approvedButNotNew.length) {
         const details = [
             ...missing.map(file => `missing staged file: data/${file}`),
-            ...unexpected.map(file => `unexpected staged file: data/${file}`)
+            ...unapprovedUnexpected.map(file => `unexpected staged file: data/${file}`),
+            ...approvedButNotNew.map(file => `approved new file is not staged as new: data/${file}`)
         ];
         throw new Error(
             `Staged public CSV set does not match the tracked contract:\n${details.join('\n')}`
@@ -221,6 +235,28 @@ export function assertExactTrackedCsvSet(stagedRoot) {
     }
 
     return stagedFiles;
+}
+
+function normalizeApprovedNewCsvFile(value) {
+    let normalized = String(value || '').trim().replace(/\\/g, '/');
+
+    if (normalized.startsWith('data/')) {
+        normalized = normalized.slice('data/'.length);
+    }
+
+    const segments = normalized.split('/');
+    const invalid =
+        !normalized ||
+        normalized.startsWith('/') ||
+        normalized.includes('//') ||
+        !normalized.toLowerCase().endsWith('.csv') ||
+        segments.some(segment => !segment || segment === '.' || segment === '..');
+
+    if (invalid) {
+        throw new Error(`Approved new CSV path is invalid: "${value}".`);
+    }
+
+    return normalized;
 }
 
 export function compareBundles(stagedRoot, comparisonRoot = repoRoot) {

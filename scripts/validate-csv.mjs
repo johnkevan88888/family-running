@@ -459,6 +459,7 @@ function validateSite(siteMode) {
     validateHallOfFame(siteDir, siteMode, webtables);
     validateCrownHistory(siteDir);
     validateOfficialMedals(siteDir, siteMode, webtables);
+    validateAbsoluteRecords(siteDir);
     validateCrownStandards(siteDir);
     validateAgeGradeStandards(siteDir);
 
@@ -1227,6 +1228,55 @@ function validateAgeGradeStandards(siteDir) {
         validateTime(row.RequiredTime, file, row.__rowNumber, 'RequiredTime', { required: true });
         validateAgeGradePaces(row, file);
         validateNumber(row.SortOrder, file, row.__rowNumber, 'SortOrder', { required: true });
+    }
+}
+
+function validateAbsoluteRecords(siteDir) {
+    const file = `${siteDir}/absolute_records.csv`;
+
+    if (!fs.existsSync(path.join(validationRoot, file))) {
+        return;
+    }
+
+    const rows = readCsvRequired(file, [
+        'SortOrder',
+        'RecordGroup',
+        'RecordTitle',
+        'Sex',
+        'Distance',
+        'ResultDistance',
+        'Participant',
+        'Athlete ID',
+        'Time',
+        'Date',
+        'Event',
+        'TimeClass',
+        'AgeClass',
+        'AgeGrade',
+        'SourceRow',
+        'ExportBundleID'
+    ]);
+
+    for (const row of toObjects(rows, file)) {
+        validateNumber(row.SortOrder, file, row.__rowNumber, 'SortOrder', { required: true });
+        requireValue(row.RecordGroup, file, row.__rowNumber, 'RecordGroup');
+        requireValue(row.RecordTitle, file, row.__rowNumber, 'RecordTitle');
+        validateAllowed(row.Sex, ['Men', 'Women'], file, row.__rowNumber, 'Sex');
+        requireValue(row.Distance, file, row.__rowNumber, 'Distance');
+        requireValue(row.ResultDistance, file, row.__rowNumber, 'ResultDistance');
+        requireValue(row.Participant, file, row.__rowNumber, 'Participant');
+
+        const emptyRecord = isVacantParticipant(row.Participant) || isNoEligibleParticipant(row.Participant);
+        if (emptyRecord) {
+            continue;
+        }
+
+        validateAthleteId(row['Athlete ID'], file, row.__rowNumber, 'Athlete ID', { required: true });
+        validateTime(row.Time, file, row.__rowNumber, 'Time', { required: true });
+        validateDate(row.Date, file, row.__rowNumber, 'Date', { required: true });
+        validateAllowed(row.TimeClass, ['Official'], file, row.__rowNumber, 'TimeClass');
+        validatePercent(row.AgeGrade, file, row.__rowNumber, 'AgeGrade');
+        validateNumber(row.SourceRow, file, row.__rowNumber, 'SourceRow', { required: true });
     }
 }
 

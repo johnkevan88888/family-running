@@ -1,0 +1,11 @@
+SortOrder,RecordGroup,RecordTitle,Sex,Distance,ResultDistance,Participant,Athlete ID,Time,Date,Event,TimeClass,AgeClass,AgeGrade,SourceRow,ExportBundleID
+10,Men,Men's Marathon record,Men,Marathon,Marathon,No eligible result,,,,,Official,,,,20260718T102116092Z-5DB6617F
+20,Men,Men's Half Marathon record,Men,Half Marathon,H. Mar,Jack Graham-Kevan,jack-graham-kevan,01:38:13,13/09/2025,Sutcliffe & Co Worcester City Runs,Official,M22,58.6%,62,20260718T102116092Z-5DB6617F
+30,Men,Men's 10 Mile record,Men,10 Mile,10 Mile,No eligible result,,,,,Official,,,,20260718T102116092Z-5DB6617F
+40,Men,Men's 10 km record,Men,10 km,10 km,David Graham-Kevan,david-graham-kevan,00:48:18,17/05/2026,Worcester 10k,Official,M56,64.8%,97,20260718T102116092Z-5DB6617F
+50,Men,Men's 5 km record,Men,5 km,5 km,David Graham-Kevan,david-graham-kevan,00:19:53,22/09/2012,Worcester Parkrun,Official,M43,69.6%,9,20260718T102116092Z-5DB6617F
+110,Women,Women's Marathon record,Women,Marathon,Marathon,No eligible result,,,,,Official,,,,20260718T102116092Z-5DB6617F
+120,Women,Women's Half Marathon record,Women,Half Marathon,H. Mar,Poppy Coleman,poppy-coleman,01:42:56,17/05/2026,Worcester Half,Official,F24,61.1%,96,20260718T102116092Z-5DB6617F
+130,Women,Women's 10 Mile record,Women,10 Mile,10 Mile,No eligible result,,,,,Official,,,,20260718T102116092Z-5DB6617F
+140,Women,Women's 10 km record,Women,10 km,10 km,Carolyn Kevan,carolyn-kevan,00:46:54,07/12/2019,Xmas Pudding 10k,Official,F60,78.4%,48,20260718T102116092Z-5DB6617F
+150,Women,Women's 5 km record,Women,5 km,5 km,Poppy Coleman,poppy-coleman,00:22:37,20/12/2025,Worcester Parkrun,Official,F24,61.5%,71,20260718T102116092Z-5DB6617F
