@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Records | Family Running Championships</title>
+    <link rel="stylesheet" href="site.css">
+</head>
+
+<body data-page="records">
+
+<header data-site-header></header>
+
+<main>
+    <section class="page-intro" aria-labelledby="records-page-title">
+        <h2 id="records-page-title">Records</h2>
+        <p>
+            Absolute fastest-time records by distance, shown without age grading
+            once the public export includes them.
+        </p>
+    </section>
+
+    <section aria-labelledby="absolute-records-title">
+        <h2 id="absolute-records-title">Absolute records</h2>
+        <div id="absolute-records" aria-live="polite">
+            <p class="absolute-records-empty">Loading absolute records...</p>
+        </div>
+    </section>
+</main>
+
+<script src="utils.js" defer></script>
+<script src="site-navigation.js" defer></script>
+<script src="records.js" defer></script>
+
+</body>
+</html>

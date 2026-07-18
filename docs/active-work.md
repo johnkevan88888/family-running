@@ -2,91 +2,105 @@
 
 ## Task title
 
-Site-wide pace display
+Absolute records page and workbook audit sheet
 
 ## Status
 
-Implementation and local validation are complete on `feat/pace-display`.
-No merge, release, deployment, production publication, GitHub setting change,
-private workbook access, workbook modification, or public CSV data change has
-been performed.
+Implementation, tracked public-data promotion, and local validation are complete
+on `feat/absolute-records-page`. Workbook review remains pending.
+No merge, release, deployment, production publication, or GitHub setting change
+has been performed.
 
 ## Current approved scope
 
-- Show pace next to rendered running performance times across the public site,
-  including leaderboards, Hall of Fame cards, crown history, Overview recent
-  results, athlete result tables, personal bests, official medals, crown target
-  times, and age-grade standard targets.
-- Use the shared header Pace `/km` `/mi` control as the single site-wide pace
-  selector, including Age Grade Standards.
-- Persist the selected pace unit in local storage using the existing pace unit
-  preference key.
-- Keep age-grade standard target paces sourced from the exported
-  `pace_per_km` and `pace_per_mile` fields.
-- Keep JavaScript display-only. Pace is derived from already visible exported
-  times and distances; no rankings, age grades, medals, crowns, target times,
-  championship outcomes, workbook-owned scores, or public CSV data are changed.
-- Leave non-running timestamps, such as the site updated time, without pace.
+- Add a public Records page for non-age-graded, absolute fastest-time records.
+- Keep JavaScript display-only. Absolute records are workbook-owned exports,
+  not browser-derived rankings.
+- Add a visible `AbsoluteRecords` worksheet to the private master workbook so
+  Men and Women official raw-time records can be reviewed and audited by source
+  `tbRaceResults` worksheet row.
+- Export `data/family/absolute_records.csv` and
+  `data/everyone/absolute_records.csv` from the workbook's staged export flow.
+- Preserve `?site=family` and `?site=everyone` navigation behavior.
 
 ## Files changed in this pass
 
-- `utils.js`
-- `athlete.html`
-- `athlete.js`
-- `leaderboard.js`
+- `records.html`
+- `records.js`
 - `site-navigation.js`
 - `site.css`
-- `athlete.css`
+- `scripts/validate-csv.mjs`
+- `scripts/export-bundle-tools.mjs`
+- `scripts/promote-staged-export.mjs`
 - `tests/browser-smoke.mjs`
+- `tests/staged-export-workflow.mjs`
+- `data/` promoted from staged workbook export
 - `docs/active-work.md`
+- `docs/testing-and-release-protocol.md`
+- `docs/workbook-export-workflow.md`
+- `docs/decision-log.md`
+
+## Private workbook changes
+
+- Updated the private master workbook:
+  `_private_workbooks/Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX WORKING COPY.xlsm`.
+- Added a formula-driven `AbsoluteRecords` sheet with separate Family and
+  Everyone blocks. Each block includes Men and Women records for Marathon, Half
+  Marathon, 10 Mile, 10 km, and 5 km.
+- Updated workbook export VBA so staged exports include
+  `absolute_records.csv` for both site modes.
+- Private backups were created before workbook changes, including:
+  - `backups/Family Age Grading Table before absolute records sheet 20260718-111929.xlsm`
+  - `backups/Family Age Grading Table before absolute records export VBA 20260718-111605.xlsm`
 
 ## Validation results
 
-- Latest follow-up checks passed:
-  - `node --check athlete.js`
-  - `node --check tests/browser-smoke.mjs`
+- Passed:
   - `pnpm test`
-- `pnpm test` refreshed ignored screenshots in
-  `test-artifacts/screenshots/`:
-  - repository safety validation;
-  - CSV validation for Family and Everyone data;
-  - export-bundle validation regression tests;
-  - staged-export workflow regression tests;
-  - browser smoke tests.
-
-## Screenshot review
-
-Inspected regenerated Family screenshots for Championships desktop and mobile,
-Hall of Fame mobile, Overview mobile, and the athlete age-grade standards mobile
-pace table. The header pace control is readable, `/km` and `/mi` controls fit
-beside the site badge, the age-grade standards section no longer has a duplicate
-pace toggle, pace text stays inside table cells and cards, and no new overlap or
-clipping was observed. Championship tables remain dense on mobile, matching the
-existing compact table-first presentation.
+  - `node --check records.js`
+  - `node --check tests/browser-smoke.mjs`
+  - `node --check scripts/validate-csv.mjs`
+  - `node --check scripts/export-bundle-tools.mjs`
+  - `node --check scripts/promote-staged-export.mjs`
+  - `node --check tests/staged-export-workflow.mjs`
+  - `pnpm run validate:csv`
+  - `pnpm run test:staged-export`
+  - `pnpm run test:browser`
+  - Direct staged CSV validation with `CSV_VALIDATION_ROOT` set to
+    `test-artifacts/workbook-export-staging/run-20260718-112059-123`
+  - `pnpm run workbook:validate:staged --staged test-artifacts/workbook-export-staging/run-20260718-112059-123`
+  - `pnpm run workbook:compare:staged --staged test-artifacts/workbook-export-staging/run-20260718-112059-123`
+- A staged workbook export completed at
+  `test-artifacts/workbook-export-staging/run-20260718-112059-123`.
+  Its manifest includes both new absolute record CSVs with 10 data rows each.
+- The staged bundle was promoted with explicit approval for the two new public
+  CSV contract files:
+  `data/family/absolute_records.csv` and
+  `data/everyone/absolute_records.csv`.
+- The previous tracked `data/` directory was retained locally at
+  `test-artifacts/workbook-export-promotion/20260718161729818/previous-data`.
+- Post-promotion reconciliation reported no meaningful content differences
+  between tracked `data/` and the staged workbook bundle after volatile
+  metadata normalization.
 
 ## Data note
 
-- No public CSV files were edited. The implementation reads the existing
-  exported time and distance fields and renders pace only when a known or
-  parseable race distance is available.
-- Numeric exported distances such as `1 Mile`, `15 km`, and `30 km` are parsed
-  for display pace in addition to the championship distances.
-
-## Known limitations and follow-up opportunities
-
-- Championship tables remain compact on mobile, matching the existing
-  table-first presentation. A future task could improve table ergonomics without
-  changing exported data or browser-side ownership boundaries.
-- Where an exported time has no parseable race distance, the site leaves the
-  time unchanged rather than guessing a pace.
+- Tracked public CSV files under `data/` were promoted from the validated staged
+  workbook bundle.
+- The Records page now renders the workbook-exported Men/Women absolute records
+  for the selected site mode.
+- Browser smoke coverage still includes a synthetic records CSV fixture proving
+  Men/Women cards render, selected-site-only CSV requests are preserved, and
+  empty exported record states behave correctly.
 
 ## Handoff notes
 
-- Review the Championships landing, Hall of Fame, Overview statistics page, and
-  athlete profile pages in both `?site=family` and `?site=everyone`, with the
-  Pace control toggled between `/km` and `/mi`.
-- Review Netlify previews after the branch is pushed; no merge or release should
-  occur without explicit approval.
+- Review the new `AbsoluteRecords` worksheet in the private master workbook.
+- Review the promoted `data/family/absolute_records.csv` and
+  `data/everyone/absolute_records.csv` files alongside the private workbook
+  audit sheet.
+- Review the full promoted data-bundle diff before PR approval because a full
+  workbook promotion updates bundle IDs across public CSVs.
 
 ## Recently completed historical work
 

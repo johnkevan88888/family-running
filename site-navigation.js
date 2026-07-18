@@ -3,11 +3,13 @@
     const pageFiles = {
         championships: 'index.html',
         'hall-of-fame': 'hall-of-fame.html',
+        records: 'records.html',
         overview: 'overview.html'
     };
     const pageLabels = {
         championships: 'Championships',
         'hall-of-fame': 'Hall of Fame',
+        records: 'Records',
         overview: 'Overview'
     };
 
@@ -30,6 +32,7 @@
         if (filename === 'championships.html') return 'championships';
         if (filename === 'overview.html') return 'overview';
         if (filename === 'hall-of-fame.html') return 'hall-of-fame';
+        if (filename === 'records.html') return 'records';
         if (filename === 'athlete.html') return 'athlete';
 
         return 'championships';

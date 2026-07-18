@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
     assertExactTrackedCsvSet,
+    assertTrackedCsvSet,
     compareBundles,
     listPublicCsvFiles,
     normalizePnpmPathArgument,
@@ -100,6 +101,34 @@ try {
         assertRejectedStagedRoot(testCase.value, testCase.expected);
     }
     console.log('PASS - strict staged-root safety gate');
+
+    const approvedNewFile = path.join(dataRoot, 'family', 'approved_new_file.csv');
+    await fs.writeFile(approvedNewFile, 'Header,ExportBundleID\r\nValue,TEST\r\n');
+
+    let unapprovedNewFileRejected = false;
+    try {
+        assertTrackedCsvSet(stagedRoot);
+    } catch (error) {
+        unapprovedNewFileRejected = error.message.includes('unexpected staged file');
+    }
+    assert(unapprovedNewFileRejected, 'Unapproved new staged file was not rejected.');
+
+    assertTrackedCsvSet(stagedRoot, {
+        approvedNewFiles: ['data/family/approved_new_file.csv']
+    });
+
+    let unusedApprovalRejected = false;
+    try {
+        assertTrackedCsvSet(stagedRoot, {
+            approvedNewFiles: ['data/everyone/missing_approved_file.csv']
+        });
+    } catch (error) {
+        unusedApprovalRejected = error.message.includes('approved new file is not staged as new');
+    }
+    assert(unusedApprovalRejected, 'Unused approved new staged file was not rejected.');
+
+    await fs.rm(approvedNewFile);
+    console.log('PASS - approved staged contract addition gate');
 
     const metadataOnlyComparison = compareBundles(stagedRoot);
     assert(

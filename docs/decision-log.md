@@ -64,6 +64,23 @@ Unknown historical details are labelled rather than inferred.
 - **Consequences:** Age grades, rankings, championship status, crowns, target
   times, and medal positions must arrive from Excel/VBA-owned exports.
 
+## Absolute records are workbook-owned raw-time records
+
+- **Status:** Accepted
+- **Date:** 18 July 2026
+- **Decision:** Absolute records are the fastest official raw times by sex and
+  distance, exported separately for Family and Everyone. Excel/VBA owns the
+  record selection and exposes the auditable source rows on the private
+  `AbsoluteRecords` worksheet.
+- **Rationale:** Absolute records are intentionally non-age-graded, but they
+  still need the same single-source-of-truth boundary as standings, medals,
+  crowns, and age-grade standards.
+- **Consequences:** The public Records page renders only
+  `data/<site>/absolute_records.csv`. It must not derive records from
+  leaderboards or athlete-result CSVs in JavaScript. Record updates require a
+  workbook export, staged review, and explicitly approved public-data
+  promotion.
+
 ## Public site navigation uses static page separation
 
 - **Status:** Accepted

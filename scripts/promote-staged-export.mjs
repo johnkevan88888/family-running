@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-    assertExactTrackedCsvSet,
+    assertTrackedCsvSet,
     compareBundles,
     normalizePnpmPathArgument,
     parseCliArguments,
@@ -23,7 +23,9 @@ try {
         );
     }
 
-    assertExactTrackedCsvSet(stagedRoot);
+    const approvedNewFiles = parseApprovedNewFiles(options.get('approve-new-files'));
+
+    assertTrackedCsvSet(stagedRoot, { approvedNewFiles });
     requireCleanTrackedData();
 
     const validation = runCsvValidator(stagedRoot);
@@ -49,6 +51,17 @@ try {
 } catch (error) {
     console.error(`Staged export promotion failed: ${error.message}`);
     process.exit(1);
+}
+
+function parseApprovedNewFiles(value) {
+    if (!value || value === true) {
+        return [];
+    }
+
+    return String(value)
+        .split(',')
+        .map(file => file.trim())
+        .filter(Boolean);
 }
 
 function requireCleanTrackedData() {
