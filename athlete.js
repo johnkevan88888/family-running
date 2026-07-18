@@ -534,7 +534,7 @@ async function buildAgeGradeStandards() {
                 </table>
             </div>
         `;
-        initializePaceUnitControl(section);
+        refreshPaceDisplay();
     } catch (error) {
         hideAgeGradeStandards(section, container);
     }
@@ -551,10 +551,6 @@ function renderAgeGradeStandardCell(standard) {
             ${renderExportedPaces(standard.pace_per_km, standard.pace_per_mile, 'age-grade-pace')}
         </td>
     `;
-}
-
-function initializePaceUnitControl(section) {
-    window.paceDisplay?.initialize(section);
 }
 
 function hideAgeGradeStandards(section, container) {

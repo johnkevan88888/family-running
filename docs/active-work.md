@@ -17,8 +17,8 @@ been performed.
   including leaderboards, Hall of Fame cards, crown history, Overview recent
   results, athlete result tables, personal bests, official medals, crown target
   times, and age-grade standard targets.
-- Add a site-wide Pace `/km` `/mi` control in the shared header and keep it
-  synchronized with the existing athlete age-grade standards control.
+- Use the shared header Pace `/km` `/mi` control as the single site-wide pace
+  selector, including Age Grade Standards.
 - Persist the selected pace unit in local storage using the existing pace unit
   preference key.
 - Keep age-grade standard target paces sourced from the exported
@@ -31,6 +31,7 @@ been performed.
 ## Files changed in this pass
 
 - `utils.js`
+- `athlete.html`
 - `athlete.js`
 - `leaderboard.js`
 - `site-navigation.js`
@@ -41,15 +42,12 @@ been performed.
 
 ## Validation results
 
-- JavaScript syntax checks passed for:
-  - `utils.js`
-  - `leaderboard.js`
-  - `site-navigation.js`
-  - `athlete.js`
-  - `tests/browser-smoke.mjs`
-- Browser smoke tests passed after writing ignored screenshots to
-  `test-artifacts/screenshots/`.
-- Full `pnpm test` passed:
+- Latest follow-up checks passed:
+  - `node --check athlete.js`
+  - `node --check tests/browser-smoke.mjs`
+  - `pnpm test`
+- `pnpm test` refreshed ignored screenshots in
+  `test-artifacts/screenshots/`:
   - repository safety validation;
   - CSV validation for Family and Everyone data;
   - export-bundle validation regression tests;
@@ -61,9 +59,10 @@ been performed.
 Inspected regenerated Family screenshots for Championships desktop and mobile,
 Hall of Fame mobile, Overview mobile, and the athlete age-grade standards mobile
 pace table. The header pace control is readable, `/km` and `/mi` controls fit
-beside the site badge, pace text stays inside table cells and cards, and no new
-overlap or clipping was observed. Championship tables remain dense on mobile,
-matching the existing compact table-first presentation.
+beside the site badge, the age-grade standards section no longer has a duplicate
+pace toggle, pace text stays inside table cells and cards, and no new overlap or
+clipping was observed. Championship tables remain dense on mobile, matching the
+existing compact table-first presentation.
 
 ## Data note
 

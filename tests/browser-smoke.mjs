@@ -909,7 +909,7 @@ async function assertAgeGradeStandards(page, mode, viewport) {
     await waitForNetworkToSettle(page);
 
     const section = page.locator('#age-grade-standards-section');
-    const control = section.getByRole('group', { name: 'Pace display unit' });
+    const control = page.locator('.site-pace-control');
     const perKm = control.getByRole('button', { name: 'Show pace per kilometre' });
     const perMile = control.getByRole('button', { name: 'Show pace per mile' });
     const context = `${mode}/${viewport.name}`;
@@ -921,11 +921,14 @@ async function assertAgeGradeStandards(page, mode, viewport) {
         `${context} age-grade pace helper`
     );
 
+    if (await section.locator('.pace-unit-control').count() !== 0) {
+        failures.push(`${context}: age-grade standards rendered a duplicate pace control.`);
+    }
     if (await perKm.getAttribute('aria-pressed') !== 'true') {
-        failures.push(`${context}: /km was not selected for a first-time visitor.`);
+        failures.push(`${context}: header /km was not selected for a first-time visitor.`);
     }
     if (await perMile.getAttribute('aria-pressed') !== 'false') {
-        failures.push(`${context}: /mi was selected before the user changed pace unit.`);
+        failures.push(`${context}: header /mi was selected before the user changed pace unit.`);
     }
 
     await assertRenderedAgeGradePaces(section, paceScenario.examples, 'km', context);
@@ -952,8 +955,9 @@ async function assertAgeGradeStandards(page, mode, viewport) {
     await page.locator('#age-grade-standards-section:not(.hidden)').waitFor({ state: 'visible' });
 
     const reloadedSection = page.locator('#age-grade-standards-section');
-    const reloadedPerMile = reloadedSection.getByRole('button', { name: 'Show pace per mile' });
-    const reloadedPerKm = reloadedSection.getByRole('button', { name: 'Show pace per kilometre' });
+    const reloadedControl = page.locator('.site-pace-control');
+    const reloadedPerMile = reloadedControl.getByRole('button', { name: 'Show pace per mile' });
+    const reloadedPerKm = reloadedControl.getByRole('button', { name: 'Show pace per kilometre' });
     if (await reloadedPerMile.getAttribute('aria-pressed') !== 'true') {
         failures.push(`${context}: /mi selection did not persist after reload.`);
     }
