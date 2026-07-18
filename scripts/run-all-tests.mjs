@@ -9,6 +9,7 @@ const checks = [
     ['CSV validation', ['scripts/validate-csv.mjs']],
     ['Export bundle validation regression tests', ['tests/export-bundle-validation.mjs']],
     ['Staged export workflow regression tests', ['tests/staged-export-workflow.mjs']],
+    ['Preview artifact build', ['scripts/build-preview-artifact.mjs']],
     ['Browser smoke tests', ['tests/browser-smoke.mjs']]
 ];
 

@@ -56,6 +56,12 @@ Run browser smoke tests and capture screenshots:
 pnpm run test:browser
 ```
 
+Build the Netlify/GitHub preview artifact:
+
+```bash
+pnpm run preview:build
+```
+
 Start the local static preview:
 
 ```bash
@@ -104,6 +110,10 @@ absolute, canonical, immediate child of the repository's ignored
 `test-artifacts/workbook-export-staging/` parent is accepted; repository root,
 tracked `data/`, descendants of `data/`, relative paths, nested staging paths,
 and ambiguous paths are rejected.
+
+The preview artifact build copies the static runtime pages, JavaScript, styles,
+and public `data/` bundle into `test-artifacts/preview-site`, then fails if a
+required runtime file is absent from the publish directory.
 
 Browser smoke tests run the site through a local static server for:
 
