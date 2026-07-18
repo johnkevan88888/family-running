@@ -191,7 +191,20 @@ function groupAbsoluteRecords(records) {
         group.records.push(record);
     }
 
-    return groups;
+    return groups.sort(compareAbsoluteRecordGroups);
+}
+
+function compareAbsoluteRecordGroups(a, b) {
+    return absoluteRecordGroupSortValue(a.title) - absoluteRecordGroupSortValue(b.title);
+}
+
+function absoluteRecordGroupSortValue(title) {
+    const value = String(title || '').trim().toLowerCase();
+
+    if (value === 'women') return 10;
+    if (value === 'men') return 20;
+
+    return 999;
 }
 
 function renderAbsoluteRecordGroup(group) {

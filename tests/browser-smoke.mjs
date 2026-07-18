@@ -523,16 +523,37 @@ async function assertAbsoluteRecordsPage(page, mode, viewport, requestedPaths) {
     const groupLabels = await page.$$eval('.absolute-records-group h3', nodes =>
         nodes.map(node => node.textContent.trim())
     );
-    for (const expectedGroup of ['Men', 'Women']) {
-        if (!groupLabels.includes(expectedGroup)) {
-            failures.push(`${context}: records page omitted the ${expectedGroup} group.`);
-        }
+    if (groupLabels.join('|') !== 'Women|Men') {
+        failures.push(`${context}: records page groups were ${groupLabels.join(', ')}, expected Women, Men.`);
     }
 
+    const displayRows = sortAbsoluteRecordRowsForDisplay(rows);
     const comparableCount = Math.min(cardCount, rows.length);
     for (let index = 0; index < comparableCount; index += 1) {
-        await assertRenderedAbsoluteRecord(cards.nth(index), rows[index], mode, `${context} record ${index + 1}`);
+        await assertRenderedAbsoluteRecord(cards.nth(index), displayRows[index], mode, `${context} record ${index + 1}`);
     }
+}
+
+function sortAbsoluteRecordRowsForDisplay(rows) {
+    return [...rows].sort((a, b) => {
+        const groupDifference = absoluteRecordGroupDisplayOrder(a.RecordGroup) -
+            absoluteRecordGroupDisplayOrder(b.RecordGroup);
+
+        if (groupDifference !== 0) {
+            return groupDifference;
+        }
+
+        return Number(a.SortOrder || 999) - Number(b.SortOrder || 999);
+    });
+}
+
+function absoluteRecordGroupDisplayOrder(group) {
+    const value = String(group || '').trim().toLowerCase();
+
+    if (value === 'women') return 10;
+    if (value === 'men') return 20;
+
+    return 999;
 }
 
 async function assertRenderedAbsoluteRecord(card, row, mode, context) {
@@ -859,12 +880,12 @@ async function runAbsoluteRecordsEdgeCaseTests(browserInstance) {
         const groups = await page.$$eval('.absolute-records-group h3', nodes =>
             nodes.map(node => node.textContent.trim())
         );
-        if (groups.join('|') !== 'Men|Women') {
-            failures.push(`absolute-records edge case: groups were ${groups.join(', ')}, expected Men, Women.`);
+        if (groups.join('|') !== 'Women|Men') {
+            failures.push(`absolute-records edge case: groups were ${groups.join(', ')}, expected Women, Men.`);
         }
 
         await assertRenderedAbsoluteRecord(
-            cards.nth(0),
+            cards.nth(1),
             {
                 RecordTitle: "Men's 5 km record",
                 Distance: '5 km',
@@ -881,14 +902,14 @@ async function runAbsoluteRecordsEdgeCaseTests(browserInstance) {
             'absolute-records edge case linked record'
         );
 
-        const emptyText = normalizeText(await cards.nth(1).textContent());
+        const emptyText = normalizeText(await cards.nth(2).textContent());
         if (!emptyText.includes('No eligible result') || !emptyText.includes("Men's 10 km record")) {
             failures.push('absolute-records edge case: empty exported record did not render its vacant state.');
         }
-        if (await cards.nth(1).locator('a').count() !== 0) {
+        if (await cards.nth(2).locator('a').count() !== 0) {
             failures.push('absolute-records edge case: empty exported record rendered an athlete link.');
         }
-        if (await cards.nth(2).locator('a').count() !== 0) {
+        if (await cards.nth(0).locator('a').count() !== 0) {
             failures.push('absolute-records edge case: missing athlete ID rendered an athlete link.');
         }
 

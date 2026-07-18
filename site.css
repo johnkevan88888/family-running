@@ -1274,6 +1274,11 @@
     margin-bottom: 34px;
 }
 
+.absolute-records-group h3 {
+    font-size: 1.45rem;
+    padding-bottom: 9px;
+}
+
 .absolute-record-grid {
     margin-bottom: 0;
 }
