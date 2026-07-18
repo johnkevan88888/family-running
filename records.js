@@ -212,7 +212,7 @@ function renderAbsoluteRecordCard(record) {
         : escapeRecordHTML(record.participant || 'No eligible result');
     const cardClasses = [
         'hof-card',
-        empty ? 'vacant' : 'legend',
+        empty ? 'vacant' : 'record',
         'absolute-record-card',
         empty ? 'empty' : ''
     ].filter(Boolean).join(' ');
@@ -235,6 +235,7 @@ function renderAbsoluteRecordCard(record) {
         return `
             <article class="${cardClasses}">
                 <div class="hof-honours">
+                    <div class="absolute-record-medal" aria-hidden="true">&#127941;</div>
                     <div class="hof-badge">${badge}</div>
                     <div class="hof-standard standard-vacant">Open</div>
                 </div>
@@ -252,6 +253,7 @@ function renderAbsoluteRecordCard(record) {
     return `
         <article class="${cardClasses}">
             <div class="hof-honours">
+                <div class="absolute-record-medal" aria-hidden="true">&#127941;</div>
                 <div class="hof-badge">${badge}</div>
                 <div class="hof-standard">${escapeRecordHTML(record.distance || 'Record')}</div>
             </div>

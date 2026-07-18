@@ -1287,6 +1287,34 @@
     letter-spacing: 0;
 }
 
+.absolute-record-card .hof-honours {
+    gap: 2px;
+}
+
+.absolute-record-card .hof-standard {
+    background: #fff0bd;
+    color: #0f2438;
+}
+
+.absolute-record-card.vacant .hof-standard {
+    background: #999;
+    color: #ffffff;
+}
+
+.absolute-record-medal {
+    color: #f0b400;
+    font-size: 5.6rem;
+    line-height: 0.72;
+    text-shadow:
+        0 1px 0 rgba(255,255,255,0.9),
+        0 3px 8px rgba(0,0,0,0.18);
+}
+
+.absolute-record-card.vacant .absolute-record-medal {
+    color: #b4b4b4;
+    opacity: 0.78;
+}
+
 .absolute-records-empty {
     background: #ffffff;
     border: 1px solid #d7e1ea;
@@ -1414,6 +1442,11 @@
     .hof-card {
         padding-right: 158px;
         min-height: 190px;
+    }
+
+    .absolute-record-medal {
+        font-size: 4.15rem;
+        line-height: 0.82;
     }
 
     .hof-award {
