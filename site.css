@@ -1275,7 +1275,8 @@
 }
 
 .absolute-records-group h3 {
-    font-size: 1.45rem;
+    font-size: 5.8rem;
+    line-height: 1;
     padding-bottom: 9px;
 }
 
@@ -1461,6 +1462,10 @@
 
     .absolute-record-card .hof-honours {
         gap: 2px;
+    }
+
+    .absolute-records-group h3 {
+        font-size: 2.9rem;
     }
 
     .hof-award {
