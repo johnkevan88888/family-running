@@ -1285,10 +1285,11 @@
 .absolute-record-card .hof-badge {
     font-size: 4.45rem;
     letter-spacing: 0;
+    margin-top: 10px;
 }
 
 .absolute-record-card .hof-honours {
-    gap: 2px;
+    gap: 8px;
 }
 
 .absolute-record-card .hof-standard {
@@ -1447,6 +1448,14 @@
     .absolute-record-medal {
         font-size: 4.15rem;
         line-height: 0.82;
+    }
+
+    .absolute-record-card .hof-badge {
+        margin-top: 0;
+    }
+
+    .absolute-record-card .hof-honours {
+        gap: 2px;
     }
 
     .hof-award {
