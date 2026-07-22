@@ -177,7 +177,8 @@ Unknown historical details are labelled rather than inferred.
   public site is used without introducing cookies, persistent browser storage,
   personal visitor profiles, or inflated counts from review traffic.
 - **Consequences:** Every tracked page displays a concise GoatCounter
-  disclosure. The public endpoint and integrity-pinned script configuration
-  belong in source control, but account passwords and API keys never do.
-  Client-side blocking means statistics are indicative rather than an exact
-  access log.
+  disclosure. The public endpoint and provider-recommended loader configuration
+  belong in source control, but account passwords and API keys never do. Do not
+  add a subresource-integrity pin for mutable external loader content: a stale
+  pin blocks the script and prevents all visit collection. Client-side blocking
+  means statistics are indicative rather than an exact access log.

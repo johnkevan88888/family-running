@@ -33,9 +33,7 @@
 
     const script = document.createElement('script');
     script.async = true;
-    script.src = 'https://gc.zgo.at/count.v4.js';
+    script.src = 'https://gc.zgo.at/count.js';
     script.dataset.goatcounter = 'https://familyrunning.goatcounter.com/count';
-    script.crossOrigin = 'anonymous';
-    script.integrity = 'sha384-nRw6qfbWyLha9LhsOtSb2YJDyZdKvvCFh0fJYlkquSFjUxp9FVNugbfy8q1jdxI+';
     document.head.appendChild(script);
 })();

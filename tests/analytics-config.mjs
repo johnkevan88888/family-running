@@ -90,8 +90,11 @@ function runAnalytics(location) {
 
 function assertTrackerScript(scripts) {
     assert.equal(scripts.length, 1, 'production pages should load one GoatCounter script');
-    assert.equal(scripts[0].src, 'https://gc.zgo.at/count.v4.js');
+    assert.equal(scripts[0].src, 'https://gc.zgo.at/count.js');
     assert.equal(scripts[0].dataset.goatcounter, 'https://familyrunning.goatcounter.com/count');
-    assert.equal(scripts[0].crossOrigin, 'anonymous');
-    assert.match(scripts[0].integrity, /^sha384-/);
+    assert.equal(
+        'integrity' in scripts[0],
+        false,
+        'the current GoatCounter loader must not be blocked by a stale integrity pin'
+    );
 }

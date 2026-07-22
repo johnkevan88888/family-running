@@ -104,7 +104,10 @@ Analytics configuration tests prove that GoatCounter loads only for the
 production `johnkevan88888.github.io/family-running` site. Local runs, Netlify
 previews, and unrelated GitHub Pages paths must not load it. The tests also
 verify that Family and Everyone paths stay distinct, unrelated query parameters
-are discarded, and only public athlete IDs are retained on profile paths.
+are discarded, and only public athlete IDs are retained on profile paths. They
+also lock the integration to GoatCounter's current recommended loader without
+the stale subresource-integrity pin that previously caused browsers to block
+the script before it could submit a visit.
 
 Focused regression tests copy `data/` to temporary directories and prove validation rejects a changed CSV bundle ID, a CSV omitted from the manifest, and an incorrect manifest row count. Production CSVs are not mutated by these tests.
 
