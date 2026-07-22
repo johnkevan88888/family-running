@@ -2,41 +2,32 @@
 
 ## Task title
 
-Privacy-friendly production usage analytics
+Restore GoatCounter production visit collection
 
 ## Status
 
-Implementation and local validation are complete on
-`feat/goatcounter-analytics`. The change is published for review through a
-draft Pull Request. No merge, release, production publication, or GitHub
+Root-cause diagnosis, implementation, and local validation are complete on
+`agent/fix-goatcounter-script-load`. The change is published for review through
+a draft Pull Request. No merge, release, production publication, or GitHub
 setting change has been performed.
 
 ## Current approved scope
 
-- Add aggregate production visit statistics through the user-created
-  `familyrunning.goatcounter.com` GoatCounter account.
-- Load the tracker only on the production GitHub Pages host and
-  `/family-running` path. Local runs, Netlify previews, and other GitHub Pages
-  projects must not be counted.
-- Keep Family and Everyone usage distinguishable while discarding unrelated
-  query parameters. Retain the public athlete ID on athlete-profile paths.
-- Use GoatCounter's cookie-free aggregate collection defaults and display a
-  concise disclosure on every tracked page.
+- Restore production visit collection after browsers blocked GoatCounter's
+  versioned loader because its configured subresource-integrity hash no longer
+  matched the served content.
+- Use GoatCounter's current recommended `https://gc.zgo.at/count.js` loader
+  without the stale integrity pin.
+- Preserve the production-only host/path guard, Family/Everyone path mapping,
+  public athlete IDs, query-parameter minimization, and visible disclosure.
+- Add regression coverage that rejects reintroducing an integrity pin on this
+  mutable loader configuration.
 - Do not change championship data, workbook calculations, CSV schemas, or
   visible championship behaviour.
 
 ## Files changed in this pass
 
 - `analytics.js`
-- `index.html`
-- `championships.html`
-- `hall-of-fame.html`
-- `records.html`
-- `overview.html`
-- `athlete.html`
-- `site.css`
-- `scripts/build-preview-artifact.mjs`
-- `scripts/run-all-tests.mjs`
 - `tests/analytics-config.mjs`
 - `docs/active-work.md`
 - `docs/testing-and-release-protocol.md`
@@ -49,28 +40,33 @@ setting change has been performed.
   - `node --check analytics.js`
   - `node tests/analytics-config.mjs`
   - `git diff --check`
-- Responsive Overview screenshots were inspected for Family and Everyone at
-  desktop and mobile sizes. The disclosure is readable without disturbing the
-  page layout.
+- Pre-fix production browser tracing confirmed the browser requested
+  `count.v4.js`, blocked it for an integrity digest mismatch, and never sent a
+  visit beacon.
+- A corrected-file production-host probe reached the current `count.js` loader.
+  GoatCounter returned HTTP 204 to the automated headless client, so the probe
+  did not add a fake dashboard visit.
+- Browser smoke tests regenerated responsive screenshots for Family and
+  Everyone at desktop and mobile sizes. This fix has no visual changes.
 
 ## Data note
 
 - No workbook, public CSV, export manifest, or championship calculation changed.
-- The GoatCounter endpoint and script integrity hash are public configuration,
-  not credentials. No password or API key is stored in the repository.
+- The GoatCounter endpoint and loader URL are public configuration, not
+  credentials. No password or API key is stored in the repository.
 
 ## Handoff notes
 
-- Confirm the GoatCounter account email address before release.
-- Review the footer disclosure in both site modes.
-- After an approved production release, open Family and Everyone once and
-  confirm both paths appear in the GoatCounter dashboard after its short
-  processing delay.
+- After an approved production release, open Family and Everyone in a normal
+  browser with GoatCounter allowed, then confirm both paths appear in the
+  dashboard after its short processing delay.
 - Client-side analytics can be blocked by privacy tools, so totals are useful
   indicators rather than guaranteed counts of every visit.
 
 ## Recently completed historical work
 
+- PR #21 introduced GoatCounter production analytics. Its integrity-pinned
+  versioned loader was blocked in production, prompting this follow-up fix.
 - PR #20 added the workbook-owned absolute Records page and was merged before
   this analytics task began.
 - PR #18 static navigation review fixes were completed previously on
