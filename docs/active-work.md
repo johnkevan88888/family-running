@@ -2,108 +2,77 @@
 
 ## Task title
 
-Absolute records page and workbook audit sheet
+Privacy-friendly production usage analytics
 
 ## Status
 
-Implementation, tracked public-data promotion, and local validation are complete
-on `feat/absolute-records-page`. Workbook review remains pending.
-No merge, release, deployment, production publication, or GitHub setting change
-has been performed.
+Implementation and local validation are complete on
+`feat/goatcounter-analytics`. The change is published for review through a
+draft Pull Request. No merge, release, production publication, or GitHub
+setting change has been performed.
 
 ## Current approved scope
 
-- Add a public Records page for non-age-graded, absolute fastest-time records.
-- Keep JavaScript display-only. Absolute records are workbook-owned exports,
-  not browser-derived rankings.
-- Add a visible `AbsoluteRecords` worksheet to the private master workbook so
-  Men and Women official raw-time records can be reviewed and audited by source
-  `tbRaceResults` worksheet row.
-- Export `data/family/absolute_records.csv` and
-  `data/everyone/absolute_records.csv` from the workbook's staged export flow.
-- Preserve `?site=family` and `?site=everyone` navigation behavior.
+- Add aggregate production visit statistics through the user-created
+  `familyrunning.goatcounter.com` GoatCounter account.
+- Load the tracker only on the production GitHub Pages host and
+  `/family-running` path. Local runs, Netlify previews, and other GitHub Pages
+  projects must not be counted.
+- Keep Family and Everyone usage distinguishable while discarding unrelated
+  query parameters. Retain the public athlete ID on athlete-profile paths.
+- Use GoatCounter's cookie-free aggregate collection defaults and display a
+  concise disclosure on every tracked page.
+- Do not change championship data, workbook calculations, CSV schemas, or
+  visible championship behaviour.
 
 ## Files changed in this pass
 
+- `analytics.js`
+- `index.html`
+- `championships.html`
+- `hall-of-fame.html`
 - `records.html`
-- `records.js`
-- `site-navigation.js`
+- `overview.html`
+- `athlete.html`
 - `site.css`
-- `scripts/validate-csv.mjs`
-- `scripts/export-bundle-tools.mjs`
-- `scripts/promote-staged-export.mjs`
-- `tests/browser-smoke.mjs`
-- `tests/staged-export-workflow.mjs`
-- `data/` promoted from staged workbook export
+- `scripts/build-preview-artifact.mjs`
+- `scripts/run-all-tests.mjs`
+- `tests/analytics-config.mjs`
 - `docs/active-work.md`
 - `docs/testing-and-release-protocol.md`
-- `docs/workbook-export-workflow.md`
 - `docs/decision-log.md`
-
-## Private workbook changes
-
-- Updated the private master workbook:
-  `_private_workbooks/Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX WORKING COPY.xlsm`.
-- Added a formula-driven `AbsoluteRecords` sheet with separate Family and
-  Everyone blocks. Each block includes Men and Women records for Marathon, Half
-  Marathon, 10 Mile, 10 km, and 5 km.
-- Updated workbook export VBA so staged exports include
-  `absolute_records.csv` for both site modes.
-- Private backups were created before workbook changes, including:
-  - `backups/Family Age Grading Table before absolute records sheet 20260718-111929.xlsm`
-  - `backups/Family Age Grading Table before absolute records export VBA 20260718-111605.xlsm`
 
 ## Validation results
 
 - Passed:
   - `pnpm test`
-  - `node --check records.js`
-  - `node --check tests/browser-smoke.mjs`
-  - `node --check scripts/validate-csv.mjs`
-  - `node --check scripts/export-bundle-tools.mjs`
-  - `node --check scripts/promote-staged-export.mjs`
-  - `node --check tests/staged-export-workflow.mjs`
-  - `pnpm run validate:csv`
-  - `pnpm run test:staged-export`
-  - `pnpm run test:browser`
-  - Direct staged CSV validation with `CSV_VALIDATION_ROOT` set to
-    `test-artifacts/workbook-export-staging/run-20260718-112059-123`
-  - `pnpm run workbook:validate:staged --staged test-artifacts/workbook-export-staging/run-20260718-112059-123`
-  - `pnpm run workbook:compare:staged --staged test-artifacts/workbook-export-staging/run-20260718-112059-123`
-- A staged workbook export completed at
-  `test-artifacts/workbook-export-staging/run-20260718-112059-123`.
-  Its manifest includes both new absolute record CSVs with 10 data rows each.
-- The staged bundle was promoted with explicit approval for the two new public
-  CSV contract files:
-  `data/family/absolute_records.csv` and
-  `data/everyone/absolute_records.csv`.
-- The previous tracked `data/` directory was retained locally at
-  `test-artifacts/workbook-export-promotion/20260718161729818/previous-data`.
-- Post-promotion reconciliation reported no meaningful content differences
-  between tracked `data/` and the staged workbook bundle after volatile
-  metadata normalization.
+  - `node --check analytics.js`
+  - `node tests/analytics-config.mjs`
+  - `git diff --check`
+- Responsive Overview screenshots were inspected for Family and Everyone at
+  desktop and mobile sizes. The disclosure is readable without disturbing the
+  page layout.
 
 ## Data note
 
-- Tracked public CSV files under `data/` were promoted from the validated staged
-  workbook bundle.
-- The Records page now renders the workbook-exported Men/Women absolute records
-  for the selected site mode.
-- Browser smoke coverage still includes a synthetic records CSV fixture proving
-  Men/Women cards render, selected-site-only CSV requests are preserved, and
-  empty exported record states behave correctly.
+- No workbook, public CSV, export manifest, or championship calculation changed.
+- The GoatCounter endpoint and script integrity hash are public configuration,
+  not credentials. No password or API key is stored in the repository.
 
 ## Handoff notes
 
-- Review the new `AbsoluteRecords` worksheet in the private master workbook.
-- Review the promoted `data/family/absolute_records.csv` and
-  `data/everyone/absolute_records.csv` files alongside the private workbook
-  audit sheet.
-- Review the full promoted data-bundle diff before PR approval because a full
-  workbook promotion updates bundle IDs across public CSVs.
+- Confirm the GoatCounter account email address before release.
+- Review the footer disclosure in both site modes.
+- After an approved production release, open Family and Everyone once and
+  confirm both paths appear in the GoatCounter dashboard after its short
+  processing delay.
+- Client-side analytics can be blocked by privacy tools, so totals are useful
+  indicators rather than guaranteed counts of every visit.
 
 ## Recently completed historical work
 
+- PR #20 added the workbook-owned absolute Records page and was merged before
+  this analytics task began.
 - PR #18 static navigation review fixes were completed previously on
   `feat/site-navigation`, including the Championships landing, Hall of Fame,
   Overview, shared navigation, and browser smoke coverage.

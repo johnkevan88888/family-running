@@ -100,6 +100,12 @@ CSV validation checks `data/family/`, `data/everyone/`, and shared `data/athlete
 
 The existing content checks remain in force: required files and headers, parseable CSV structure, matching row lengths, leaderboard files referenced by `webtables.csv`, athlete IDs used by links, official medal exports, parseable dates, numeric fields and times, non-empty Hall of Fame data, and non-empty enabled championship files. Validation also enforces the exact `crown_history.csv` contract, crown order and chronology, transition and previous-holder rules, and final-holder agreement with the All-Time Official Hall of Fame without deriving history in JavaScript. Athlete medals remain Excel-owned exports and are rendered directly from `official_medals.csv`; their rows must match the current exported official leaderboards. When present, `absolute_records.csv` must be a workbook-owned official raw-time export with Men and Women records, source-row audit fields, and no browser-derived record calculation. Vacant states such as "Championship Vacant" and "No eligible results" are accepted.
 
+Analytics configuration tests prove that GoatCounter loads only for the
+production `johnkevan88888.github.io/family-running` site. Local runs, Netlify
+previews, and unrelated GitHub Pages paths must not load it. The tests also
+verify that Family and Everyone paths stay distinct, unrelated query parameters
+are discarded, and only public athlete IDs are retained on profile paths.
+
 Focused regression tests copy `data/` to temporary directories and prove validation rejects a changed CSV bundle ID, a CSV omitted from the manifest, and an incorrect manifest row count. Production CSVs are not mutated by these tests.
 
 Staged-export regression tests also prove that a complete copied bundle
