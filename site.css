@@ -224,6 +224,19 @@
     font-size: 0.95em;
 }
 
+.site-privacy-note {
+    max-width: 1180px;
+    margin: 40px auto 24px;
+    padding: 16px 24px;
+    color: #5f6b76;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.site-privacy-note a {
+    color: inherit;
+}
+
 .description {
     color: #555;
     margin-top: -20px;

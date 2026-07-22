@@ -14,6 +14,7 @@ const runtimeEntries = [
     'athlete.html',
     'site.css',
     'site-navigation.js',
+    'analytics.js',
     'athlete.css',
     'athlete.js',
     'leaderboard.js',
@@ -51,7 +52,7 @@ if (safetyProblems.length) {
     process.exit(1);
 }
 
-for (const requiredFile of ['index.html', 'championships.html', 'hall-of-fame.html', 'records.html', 'overview.html', 'athlete.html', 'records.js', 'data/family/webtables.csv', 'data/everyone/webtables.csv', 'data/family/absolute_records.csv', 'data/everyone/absolute_records.csv']) {
+for (const requiredFile of ['index.html', 'championships.html', 'hall-of-fame.html', 'records.html', 'overview.html', 'athlete.html', 'analytics.js', 'records.js', 'data/family/webtables.csv', 'data/everyone/webtables.csv', 'data/family/absolute_records.csv', 'data/everyone/absolute_records.csv']) {
     try {
         await fs.access(path.join(outputDir, requiredFile));
     } catch {

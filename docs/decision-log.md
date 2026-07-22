@@ -162,3 +162,22 @@ Unknown historical details are labelled rather than inferred.
 - **Consequences:** Both site folders require `crown_history.csv`. The browser
   must not infer missing history, synthetic vacancies, prior holders, or
   Current/12-Month crown events.
+
+## Production usage analytics are aggregate and cookie-free
+
+- **Status:** Accepted
+- **Date:** 22 July 2026
+- **Decision:** Production pages use the hosted GoatCounter account
+  `familyrunning.goatcounter.com` for aggregate visit statistics. The tracker
+  loads only on `johnkevan88888.github.io/family-running`; local development,
+  Netlify previews, and other GitHub Pages projects are excluded. Analytics
+  paths retain the selected Family/Everyone mode and public athlete ID where
+  relevant, but discard other query parameters.
+- **Rationale:** The site owner needs a simple indication of whether and how the
+  public site is used without introducing cookies, persistent browser storage,
+  personal visitor profiles, or inflated counts from review traffic.
+- **Consequences:** Every tracked page displays a concise GoatCounter
+  disclosure. The public endpoint and integrity-pinned script configuration
+  belong in source control, but account passwords and API keys never do.
+  Client-side blocking means statistics are indicative rather than an exact
+  access log.
