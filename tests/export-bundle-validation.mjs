@@ -85,6 +85,48 @@ const cases = [
             lines[1] = replaceCsvField(lines[1], 6, '9:19.0');
             await fs.writeFile(file, `${lines.join('\r\n')}\r\n`);
         }
+    },
+    {
+        name: 'malformed athlete-comparison target pace',
+        expected: 'RequiredPacePerKm "3:37" must use m:ss.s',
+        mutate: async root => {
+            const manifestFile = path.join(root, 'data', 'export_manifest.csv');
+            const manifestLines = splitLines(await fs.readFile(manifestFile, 'utf8'));
+            const [bundleId, exportedAt, schemaVersion] = manifestLines[1].split(',');
+            manifestLines.push(
+                `${bundleId},${exportedAt},${schemaVersion},family,data/family/athlete_comparison_targets.csv,2`
+            );
+            await fs.writeFile(manifestFile, `${manifestLines.join('\r\n')}\r\n`);
+
+            const comparisonFile = path.join(root, 'data', 'family', 'athlete_comparison_targets.csv');
+            const rows = [
+                'ChallengerAthleteId,StandardAthleteId,Distance,BenchmarkType,StandardTime,StandardAgeGrade,StandardDate,StandardEvent,StandardTimeClass,RequiredTimeToBeat,RequiredPacePerKm,RequiredPacePerMile,SortOrder,ExportBundleID',
+                `john-kevan,carolyn-kevan,5 km,Best Age Grade,00:25:20,78.0%,28/03/2026,Northern Counties Womens Relay,Official,00:18:08,3:37,5:50.1,101,${bundleId}`,
+                `john-kevan,carolyn-kevan,5 km,Fastest Time,00:23:27,77.8%,16/11/2019,Northern Masters 5k Championships,Official,00:18:11,3:38.2,5:51.1,102,${bundleId}`
+            ];
+            await fs.writeFile(comparisonFile, `${rows.join('\r\n')}\r\n`);
+        }
+    },
+    {
+        name: 'incomplete athlete-comparison pair matrix',
+        expected: 'is missing the Best Age Grade benchmark',
+        mutate: async root => {
+            const manifestFile = path.join(root, 'data', 'export_manifest.csv');
+            const manifestLines = splitLines(await fs.readFile(manifestFile, 'utf8'));
+            const [bundleId, exportedAt, schemaVersion] = manifestLines[1].split(',');
+            manifestLines.push(
+                `${bundleId},${exportedAt},${schemaVersion},family,data/family/athlete_comparison_targets.csv,2`
+            );
+            await fs.writeFile(manifestFile, `${manifestLines.join('\r\n')}\r\n`);
+
+            const comparisonFile = path.join(root, 'data', 'family', 'athlete_comparison_targets.csv');
+            const rows = [
+                'ChallengerAthleteId,StandardAthleteId,Distance,BenchmarkType,StandardTime,StandardAgeGrade,StandardDate,StandardEvent,StandardTimeClass,RequiredTimeToBeat,RequiredPacePerKm,RequiredPacePerMile,SortOrder,ExportBundleID',
+                `john-kevan,carolyn-kevan,5 km,Best Age Grade,00:25:20,78.0%,28/03/2026,Northern Counties Womens Relay,Official,00:18:08,3:37.6,5:50.1,101,${bundleId}`,
+                `john-kevan,carolyn-kevan,5 km,Fastest Time,00:23:27,77.8%,16/11/2019,Northern Masters 5k Championships,Official,00:18:11,3:38.2,5:51.1,102,${bundleId}`
+            ];
+            await fs.writeFile(comparisonFile, `${rows.join('\r\n')}\r\n`);
+        }
     }
 ];
 

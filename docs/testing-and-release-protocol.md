@@ -131,6 +131,16 @@ Browser smoke tests run the site through a local static server for:
 
 They check that each mode loads, uses the expected site title, renders Hall of Fame cards and leaderboards, requests only the selected mode's crown history, preserves the exported crown order and values, handles timeline expansion, empty exports and incomplete legacy identities, preserves the selected site in holder links, exposes athlete links where athlete data exists, opens an athlete profile, preserves the original `site` parameter in the back link, renders athlete medals exported by Excel directly from `data/<site>/official_medals.csv` without requesting leaderboard CSVs for those medal cards, renders the Records page empty state while tracked data has no absolute-records export, and never renders `ExportBundleID` names or values in tables or cards. They also check synthetic absolute-records data for Men and Women rendering, selected-site-only CSV requests, linked and unlinked athletes, empty exported record states, collapsible sections, vacant Hall of Fame states, horizontal overflow, JavaScript exceptions, and failed same-origin network requests.
 
+Calculator coverage checks shared navigation, selected-site-only
+`age_grade_standards.csv` requests, the complete exported athlete and benchmark
+option sets, exact target-time and exported-pace rendering, single-athlete
+updates, Challenger/Standard controls, the manifest-absent comparison state,
+pace-unit switching, and absence of export-bundle metadata. Synthetic
+workbook-export coverage checks both `Best Age Grade` and `Fastest Time`
+standards, source-performance details, exact challenger target times and paces,
+self-comparison prevention, mode isolation, and responsive presentation. The
+browser does not interpolate or calculate targets.
+
 The macro-enabled source workbook and its dated private backups stay outside Git. Only VBA-generated public CSVs and `data/export_manifest.csv` belong in the repository.
 
 Screenshots are saved to `test-artifacts/screenshots/` for:
@@ -139,6 +149,11 @@ Screenshots are saved to `test-artifacts/screenshots/` for:
 - Family mobile, 390 x 844
 - Everyone desktop, 1440 x 900
 - Everyone mobile, 390 x 844
+
+The same browser pass also saves full-page Calculator screenshots for Family
+and Everyone at both desktop and mobile sizes, plus focused desktop and mobile
+comparison screenshots using synthetic workbook-export rows while the tracked
+bundle does not yet contain `athlete_comparison_targets.csv`.
 
 Generated screenshots and reports are ignored by Git.
 
@@ -157,7 +172,7 @@ Before approving a Pull Request:
   - `?site=family`
   - `?site=everyone`
 - Review desktop and mobile screenshots.
-- Manually check Hall of Fame, All-Time Official Crown Progression, Records, leaderboards, collapsible sections, athlete links, athlete profile pages, and back links.
+- Manually check Hall of Fame, All-Time Official Crown Progression, Records, Calculator targets and head-to-head comparison, leaderboards, collapsible sections, athlete links, athlete profile pages, and back links.
 - For record changes, review the private workbook's `AbsoluteRecords` sheet and the staged `absolute_records.csv` files before approving tracked data promotion.
 - Confirm known limitations and rollback approach are documented.
 
@@ -201,7 +216,7 @@ After an approved release reaches GitHub Pages, verify:
 - [Family production](https://johnkevan88888.github.io/family-running/?site=family)
 - [Everyone production](https://johnkevan88888.github.io/family-running/?site=everyone)
 
-Check that both modes load, Hall of Fame renders, leaderboards render, athlete links open, and back links preserve the correct mode.
+Check that both modes load, Hall of Fame renders, Calculator targets use the selected mode, leaderboards render, athlete links open, and back links preserve the correct mode.
 
 ## Rollback
 

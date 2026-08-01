@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-    assertExactTrackedCsvSet,
+    assertTrackedCsvSet,
     compareBundles,
     formatComparisonLine,
     normalizePnpmPathArgument,
+    parseApprovedNewCsvFiles,
     parseCliArguments,
     resolveStagedRoot,
     runCsvValidator
@@ -15,7 +16,8 @@ try {
     const stagedRoot = resolveStagedRoot(
         normalizePnpmPathArgument(options.get('staged'))
     );
-    assertExactTrackedCsvSet(stagedRoot);
+    const approvedNewFiles = parseApprovedNewCsvFiles(options.get('approve-new-files'));
+    assertTrackedCsvSet(stagedRoot, { approvedNewFiles });
 
     const validation = runCsvValidator(stagedRoot);
 

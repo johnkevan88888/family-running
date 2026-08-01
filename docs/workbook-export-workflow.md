@@ -5,13 +5,13 @@ website-data bundle in a fresh ignored staging folder. Repository tooling then
 validates and compares that bundle. Promotion to tracked `data/` is a separate,
 explicit action after human review.
 
-The official workbook entry point is:
+The existing core workbook entry point is:
 
 `ExportWebsiteDataIncludingCrownStandards`
 
-The automation wrapper is:
+The complete automation wrapper, including athlete comparison targets, is:
 
-`ExportWebsiteDataIncludingCrownStandardsForAutomation(stagingRoot)`
+`AthleteComparisonExport.ExportWebsiteDataIncludingAthleteComparisonForAutomation(stagingRoot)`
 
 The approved staging parent is the private workbook setting
 `Approved Staging Root` in `Settings!tbSettings`. For the operating release
@@ -55,7 +55,7 @@ Repository validation in `scripts/validate-csv.mjs` is authoritative.
 
 The staged-workflow validator additionally requires the staged public CSV file
 set to match the currently tracked contract. The current export contract
-contains 66 CSV files: 65 manifest entries plus the manifest itself.
+contains 68 CSV files: 67 manifest entries plus the manifest itself.
 
 ## Workbook guarantees
 
@@ -80,7 +80,8 @@ The workbook exporter:
 The complete export includes leaderboard files, `webtables.csv`,
 `siteinfo.csv`, Hall of Fame, official medals, crown history, crown standards,
 age-grade standards including `pace_per_km` and `pace_per_mile`, absolute
-records, and shared `athlete_results.csv`.
+records, Family and Everyone athlete-comparison targets, and shared
+`athlete_results.csv`.
 
 ## Safe refresh commands
 
@@ -112,16 +113,17 @@ checks the same root against its `Approved Staging Root` setting.
 ### 2. Validate the staged bundle
 
 ```powershell
-pnpm run workbook:validate:staged --staged "<STAGED_EXPORT_ROOT>"
+pnpm run workbook:validate:staged --staged "<STAGED_EXPORT_ROOT>" --approve-new-files "data/family/athlete_comparison_targets.csv,data/everyone/athlete_comparison_targets.csv"
 ```
 
-This runs the existing full CSV and bundle validation and verifies the exact
-public file set.
+This runs the existing full CSV and bundle validation and verifies the public
+file set, with the two new contract files named explicitly until they are
+promoted and tracked.
 
 ### 3. Compare with tracked public data
 
 ```powershell
-pnpm run workbook:compare:staged --staged "<STAGED_EXPORT_ROOT>"
+pnpm run workbook:compare:staged --staged "<STAGED_EXPORT_ROOT>" --approve-new-files "data/family/athlete_comparison_targets.csv,data/everyone/athlete_comparison_targets.csv"
 ```
 
 The comparison ignores only:
@@ -169,7 +171,7 @@ If the staged bundle intentionally adds new public CSV contract files, name each
 new file explicitly:
 
 ```powershell
-pnpm run workbook:promote:staged --staged "<STAGED_EXPORT_ROOT>" --approve --approve-differences --approve-new-files "data/family/absolute_records.csv,data/everyone/absolute_records.csv"
+pnpm run workbook:promote:staged --staged "<STAGED_EXPORT_ROOT>" --approve --approve-differences --approve-new-files "data/family/athlete_comparison_targets.csv,data/everyone/athlete_comparison_targets.csv"
 ```
 
 Promotion refuses to run when tracked `data/` already has local changes. It

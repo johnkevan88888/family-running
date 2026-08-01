@@ -462,6 +462,7 @@ function validateSite(siteMode) {
     validateAbsoluteRecords(siteDir);
     validateCrownStandards(siteDir);
     validateAgeGradeStandards(siteDir);
+    validateAthleteComparisonTargets(siteDir);
 
     const enabledTables = webtables.filter(row => String(row.Enabled || '').toUpperCase() === 'TRUE');
 
@@ -1228,6 +1229,195 @@ function validateAgeGradeStandards(siteDir) {
         validateTime(row.RequiredTime, file, row.__rowNumber, 'RequiredTime', { required: true });
         validateAgeGradePaces(row, file);
         validateNumber(row.SortOrder, file, row.__rowNumber, 'SortOrder', { required: true });
+    }
+}
+
+function validateAthleteComparisonTargets(siteDir) {
+    const file = `${siteDir}/athlete_comparison_targets.csv`;
+
+    if (!fs.existsSync(path.join(validationRoot, file))) {
+        return;
+    }
+
+    const rows = readCsvRequired(file, [
+        'ChallengerAthleteId',
+        'StandardAthleteId',
+        'Distance',
+        'BenchmarkType',
+        'StandardTime',
+        'StandardAgeGrade',
+        'StandardDate',
+        'StandardEvent',
+        'StandardTimeClass',
+        'RequiredTimeToBeat',
+        'RequiredPacePerKm',
+        'RequiredPacePerMile',
+        'SortOrder',
+        'ExportBundleID'
+    ]);
+    const objects = toObjects(rows, file);
+    const uniqueRows = new Set();
+    const benchmarksByPairDistance = new Map();
+    const comparisonDistances = ['5 km', '10 km', '10 Mile', 'Half Marathon', 'Marathon'];
+    const ageStandardRows = toObjects(
+        readCsvRequired(`${siteDir}/age_grade_standards.csv`, ['AthleteId']),
+        `${siteDir}/age_grade_standards.csv`
+    );
+    const siteAthleteIds = new Set(
+        ageStandardRows
+            .map(row => String(row.AthleteId || '').trim())
+            .filter(Boolean)
+    );
+
+    for (const row of objects) {
+        validateAthleteId(row.ChallengerAthleteId, file, row.__rowNumber, 'ChallengerAthleteId', { required: true });
+        validateAthleteId(row.StandardAthleteId, file, row.__rowNumber, 'StandardAthleteId', { required: true });
+        validateAllowed(row.Distance, comparisonDistances, file, row.__rowNumber, 'Distance');
+        validateAllowed(row.BenchmarkType, ['Best Age Grade', 'Fastest Time'], file, row.__rowNumber, 'BenchmarkType');
+        validateTime(row.StandardTime, file, row.__rowNumber, 'StandardTime', { required: true });
+        validatePercent(row.StandardAgeGrade, file, row.__rowNumber, 'StandardAgeGrade', { required: true });
+        validateDate(row.StandardDate, file, row.__rowNumber, 'StandardDate', { required: true });
+        requireValue(row.StandardEvent, file, row.__rowNumber, 'StandardEvent');
+        validateAllowed(row.StandardTimeClass, ['Official', 'Unofficial'], file, row.__rowNumber, 'StandardTimeClass');
+        validateTime(row.RequiredTimeToBeat, file, row.__rowNumber, 'RequiredTimeToBeat', { required: true });
+        validateComparisonTargetPaces(row, file);
+        validateNumber(row.SortOrder, file, row.__rowNumber, 'SortOrder', { required: true });
+
+        if (row.ChallengerAthleteId && row.ChallengerAthleteId === row.StandardAthleteId) {
+            addError(file, row.__rowNumber, 'ChallengerAthleteId and StandardAthleteId must be different.');
+        }
+        if (row.ChallengerAthleteId && !siteAthleteIds.has(row.ChallengerAthleteId)) {
+            addError(file, row.__rowNumber, `ChallengerAthleteId "${row.ChallengerAthleteId}" is not available in this site mode.`);
+        }
+        if (row.StandardAthleteId && !siteAthleteIds.has(row.StandardAthleteId)) {
+            addError(file, row.__rowNumber, `StandardAthleteId "${row.StandardAthleteId}" is not available in this site mode.`);
+        }
+
+        const uniqueKey = [
+            row.ChallengerAthleteId,
+            row.StandardAthleteId,
+            row.Distance,
+            row.BenchmarkType
+        ].join('|');
+        if (uniqueRows.has(uniqueKey)) {
+            addError(file, row.__rowNumber, `Duplicate comparison target "${uniqueKey}".`);
+        }
+        uniqueRows.add(uniqueKey);
+
+        const groupKey = [row.ChallengerAthleteId, row.StandardAthleteId, row.Distance].join('|');
+        if (!benchmarksByPairDistance.has(groupKey)) {
+            benchmarksByPairDistance.set(groupKey, new Set());
+        }
+        benchmarksByPairDistance.get(groupKey).add(row.BenchmarkType);
+
+        validateComparisonStandardSource(row, file);
+    }
+
+    for (const standardAthleteId of siteAthleteIds) {
+        const standardDistances = new Set(
+            athleteObjects
+                .filter(result => result.AthleteID === standardAthleteId)
+                .map(result => canonicalDistanceLabel(result.Distance))
+                .filter(distance => comparisonDistances.includes(distance))
+        );
+
+        for (const challengerAthleteId of siteAthleteIds) {
+            if (challengerAthleteId === standardAthleteId) {
+                continue;
+            }
+
+            for (const distance of standardDistances) {
+                const groupKey = [challengerAthleteId, standardAthleteId, distance].join('|');
+                const benchmarkTypes = benchmarksByPairDistance.get(groupKey) || new Set();
+
+                for (const requiredType of ['Best Age Grade', 'Fastest Time']) {
+                    if (!benchmarkTypes.has(requiredType)) {
+                        addError(file, 1, `${groupKey} is missing the ${requiredType} benchmark.`);
+                    }
+                }
+            }
+        }
+    }
+}
+
+function validateComparisonStandardSource(row, file) {
+    const matchingResults = athleteObjects.filter(result =>
+        result.AthleteID === row.StandardAthleteId &&
+        canonicalDistanceKey(result.Distance) === canonicalDistanceKey(row.Distance)
+    );
+    const sourceResult = matchingResults.find(result =>
+        String(result.Time || '').trim() === String(row.StandardTime || '').trim() &&
+        String(result.AgeGrade || '').trim() === String(row.StandardAgeGrade || '').trim() &&
+        String(result.Date || '').trim() === String(row.StandardDate || '').trim() &&
+        String(result.Event || '').trim() === String(row.StandardEvent || '').trim() &&
+        String(result.TimeClass || '').trim() === String(row.StandardTimeClass || '').trim()
+    );
+
+    if (!sourceResult) {
+        addError(file, row.__rowNumber, 'Exported standard performance does not match data/athlete_results.csv.');
+        return;
+    }
+
+    if (row.BenchmarkType === 'Best Age Grade') {
+        const exportedGrade = Number(String(row.StandardAgeGrade || '').replace('%', ''));
+        const hasHigherGrade = matchingResults.some(result =>
+            Number(String(result.AgeGrade || '').replace('%', '')) > exportedGrade
+        );
+        if (hasHigherGrade) {
+            addError(file, row.__rowNumber, 'Best Age Grade is not the standard athlete\'s highest exported age grade for this distance.');
+        }
+    }
+
+    if (row.BenchmarkType === 'Fastest Time') {
+        const exportedSeconds = parseTimeToSeconds(row.StandardTime);
+        const hasFasterTime = matchingResults.some(result => {
+            const resultSeconds = parseTimeToSeconds(result.Time);
+            return resultSeconds !== null && exportedSeconds !== null && resultSeconds < exportedSeconds;
+        });
+        if (hasFasterTime) {
+            addError(file, row.__rowNumber, 'Fastest Time is not the standard athlete\'s fastest exported time for this distance.');
+        }
+    }
+}
+
+function validateComparisonTargetPaces(row, file) {
+    const distance = ageGradeStandardDistance(row.Distance);
+    const targetSeconds = parseTimeToSeconds(row.RequiredTimeToBeat);
+    const paces = [
+        ['RequiredPacePerKm', 1_000_000],
+        ['RequiredPacePerMile', 1_609_344]
+    ];
+
+    if (!distance) {
+        return;
+    }
+
+    for (const [column, unitInScaledKilometres] of paces) {
+        const value = String(row[column] || '').trim();
+
+        if (!/^\d+:[0-5]\d\.\d$/.test(value)) {
+            addError(file, row.__rowNumber, `${column} "${value}" must use m:ss.s.`);
+            continue;
+        }
+
+        if (targetSeconds === null) {
+            continue;
+        }
+
+        const expected = formatPace(
+            roundPaceDownToTenths(
+                targetSeconds,
+                distance.scaledKilometres,
+                unitInScaledKilometres
+            )
+        );
+        if (value !== expected) {
+            addError(
+                file,
+                row.__rowNumber,
+                `${column} "${value}" does not match RequiredTimeToBeat "${row.RequiredTimeToBeat}" at ${row.Distance}; expected "${expected}".`
+            );
+        }
     }
 }
 

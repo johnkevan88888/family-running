@@ -107,7 +107,7 @@ try {
     $excel.AutomationSecurity = 1
     $workbook = $excel.Workbooks.Open($WorkbookPath, 0, $false)
 
-    $macroName = "'$($workbook.Name)'!CrownStandardsExport.ExportWebsiteDataIncludingCrownStandardsForAutomation"
+    $macroName = "'$($workbook.Name)'!AthleteComparisonExport.ExportWebsiteDataIncludingAthleteComparisonForAutomation"
     $failure = [string]$excel.Run($macroName, $stagedRoot)
 
     if ($failure) {
