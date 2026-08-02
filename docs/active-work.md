@@ -2,27 +2,28 @@
 
 ## Task title
 
-Add an exported age-grade target calculator and athlete comparison page
+Add a grouped athlete comparison calculator
 
 ## Status
 
-Calculator implementation, the private-workbook comparison exporter, and the
-real Family/Everyone comparison exports are complete on
-`feat/age-grade-calculator`. The explicitly approved staged bundle has been
-promoted into tracked `data/` and passes the complete local test suite. No
-commit, push, Pull Request, merge, preview publication, production release, or
-GitHub setting change has been performed.
+The Calculator implementation, private-workbook comparison exporter, and real
+Family/Everyone comparison exports are complete on
+`feat/age-grade-calculator`. Draft PR #23 is open. The follow-up refinement
+removes the duplicate race-target builder and presents official and unofficial
+comparison results in separate sections, with official results first. It has
+passed the full local test suite but has not yet been committed or pushed. No
+merge, production release, or GitHub setting change has been performed.
 
 ## Current approved scope
 
 - Add a dedicated Calculator page to the shared site navigation.
-- Let a visitor choose an athlete and an exported age-grade standard, then show
-  the required time and exported kilometre/mile pace for every championship
-  distance.
 - Let a visitor choose a Challenger and The Standard. For each distance, show
-  The Standard's best age-graded performance and fastest raw-time performance,
-  then the workbook-exported time the Challenger must beat to score a higher
-  age grade than each one.
+  The Standard's exported best age-graded performance and fastest raw-time
+  performance, then the workbook-exported time the Challenger must beat to
+  score a higher age grade than each one. Group official results first and
+  unofficial results in a clearly labelled section below.
+- Omit the single-athlete race-target builder because equivalent targets are
+  already available on athlete profile pages.
 - Preserve Family and Everyone query-string modes and load only the selected
   mode's `age_grade_standards.csv`.
 - Keep Excel/VBA as the sole owner of age grades and target times; JavaScript
@@ -34,6 +35,9 @@ GitHub setting change has been performed.
 ## Files changed in this pass
 
 - Added `calculator.html`, `calculator.css`, and `calculator.js`.
+- Refined the Calculator to remove the duplicate race-target section and its
+  unused JavaScript/CSS, and to group comparison rows into official and
+  unofficial sections.
 - Updated `site-navigation.js` with the Calculator page.
 - Updated `scripts/build-preview-artifact.mjs` to publish and verify the new
   runtime files.
@@ -61,8 +65,10 @@ GitHub setting change has been performed.
   validation, analytics and export-workflow regression tests, the preview
   artifact build, and responsive browser smoke tests for both modes.
 - Browser coverage confirms the page displays exact workbook-exported source
-  performances, target times, and paces from the selected mode and never
-  requests the other mode's comparison or age-grade standards.
+  performances, target times, and paces from the selected mode, keeps official
+  and unofficial standards in their labelled sections, omits the race-target
+  builder, and never requests the other mode's comparison or age-grade
+  standards.
 - Synthetic workbook-export coverage confirms Challenger/Standard selection,
   both benchmark types, exact standard-performance fields, exact challenger
   target times and paces, self-comparison prevention, mode isolation, and
@@ -86,11 +92,13 @@ GitHub setting change has been performed.
 - The approved workbook bundle adds
   `data/family/athlete_comparison_targets.csv` and
   `data/everyone/athlete_comparison_targets.csv` plus their manifest entries.
-- The available goals are the six percentages already exported by the workbook:
-  35%, 50%, 60%, 70%, 80%, and 90%.
-- Head-to-head mode now uses The Standard's actual highest age grade and fastest
-  raw time at every available championship distance. It retains each source
-  performance's date, event, and Official/Unofficial class.
+- Head-to-head mode presents The Standard's exported highest age grade and
+  fastest raw time with official results first and unofficial results below.
+  Each displayed performance retains its exported date, event, and class.
+- The current workbook export selects one best-age-grade row and one
+  fastest-time row across all public results for each distance. The browser
+  groups those exact rows; it does not invent a fallback result for a class the
+  export did not supply.
 - Pairwise times for the Challenger to beat those standards belong in the new
   workbook-owned `athlete_comparison_targets.csv`; they are never derived in
   browser JavaScript.
@@ -102,15 +110,26 @@ GitHub setting change has been performed.
   all-results tables now use his 18 February 2026 result and move Jess
   Graham-Kevan up one place. No source result, record, medal, Hall of Fame, or
   crown-history row changed.
+- On 2 August 2026, bundle `20260802T173015230Z-19C1E180` was staged,
+  reconciled, and promoted with explicit approval after adding unofficial
+  Toronto Training 10 km results for John Kevan (`55:20`, `51.9%`) and Caitlin
+  Siostrom (`57:03`, `52.7%`). Meaningful changes were limited to the two
+  athlete-result rows, Family and Everyone all/current 10 km tables, their
+  downstream comparison targets, and manifest row counts. Official tables,
+  records, medals, crowns, and Hall of Fame data were unchanged.
 
 ## Handoff notes
 
 - Review the Calculator in both modes, including changing Challenger, The
-  Standard, and pace unit. Confirm the two source standards and both challenger
-  targets against the private workbook.
-- The feature branch, promoted data, workbook changes, and private VBA module
-  are ready for commit/PR review. Do not push, open a Pull Request, publish, or
-  deploy without explicit approval.
+  Standard, and pace unit. Confirm that the official section appears before the
+  unofficial section and that challenger targets match the private workbook.
+- The grouped-results follow-up is ready to commit and push to draft PR #23. Do
+  not push, merge, publish, or deploy without explicit approval.
+- The 2 August race-results refresh passed staged bundle validation and the
+  complete `pnpm test` suite after promotion. The prior public bundle is
+  retained under ignored `test-artifacts/workbook-export-promotion/` for local
+  rollback. The refreshed data remains uncommitted and has not been pushed or
+  published.
 
 ## Recently completed historical work
 

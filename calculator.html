@@ -16,43 +16,17 @@
 <main class="calculator-page">
     <section class="page-intro calculator-hero" aria-labelledby="calculator-page-title">
         <div>
-            <p class="calculator-eyebrow">Plan the next race</p>
+            <p class="calculator-eyebrow">Head-to-head comparison</p>
             <h2 id="calculator-page-title">Age-grade calculator</h2>
             <p>
-                Turn an age-grade goal into race targets, or choose a challenger
-                and see what they need to beat another athlete's best performances.
+                Choose a challenger and see what they need to run to beat another
+                athlete's best performances on age grade, with official and
+                unofficial results kept clearly separate.
             </p>
         </div>
         <div class="calculator-source-note">
             <span aria-hidden="true">&#10003;</span>
             <span>Every time and pace comes from the latest championship export.</span>
-        </div>
-    </section>
-
-    <section class="calculator-panel" aria-labelledby="target-builder-title">
-        <div class="calculator-panel-heading">
-            <div>
-                <p class="calculator-eyebrow">Single athlete</p>
-                <h2 id="target-builder-title">Build a race target</h2>
-                <p>Pick an athlete and one of the exported age-grade standards.</p>
-            </div>
-            <span class="calculator-step">01</span>
-        </div>
-
-        <form id="target-controls" class="calculator-controls" aria-label="Race target controls">
-            <label class="calculator-field">
-                <span>Athlete</span>
-                <select id="target-athlete" name="target-athlete"></select>
-            </label>
-            <label class="calculator-field">
-                <span>Age-grade goal</span>
-                <select id="target-grade" name="target-grade"></select>
-            </label>
-        </form>
-
-        <div id="target-summary" class="calculator-summary" aria-live="polite"></div>
-        <div id="target-results" class="target-results" aria-live="polite">
-            <p class="calculator-loading">Loading exported race targets...</p>
         </div>
     </section>
 
@@ -63,10 +37,11 @@
                 <h2 id="comparison-title">Challenge the standard</h2>
                 <p>
                     See the standard athlete's best age-grade and fastest-time performances,
-                    then the age-graded target the challenger must beat for each one.
+                    then the age-graded target the challenger must beat for each one. Official
+                    results are shown first, with unofficial results below.
                 </p>
             </div>
-            <span class="calculator-step">02</span>
+            <span class="calculator-step">01</span>
         </div>
 
         <form id="comparison-controls" class="calculator-controls comparison-controls" aria-label="Athlete comparison controls">

@@ -38,7 +38,11 @@ ChallengerAthleteId,StandardAthleteId,Distance,BenchmarkType,StandardTime,Standa
 - Use the five canonical distances: `5 km`, `10 km`, `10 Mile`,
   `Half Marathon`, and `Marathon`.
 - Use all public results, retaining `Official` or `Unofficial` in
-  `StandardTimeClass` for transparency.
+  `StandardTimeClass`. The Calculator groups official rows first and unofficial
+  rows in a separately labelled section below.
+- A result class can be empty for a pairing because the browser groups only the
+  winning source rows supplied by the export; it does not select fallback
+  performances from `data/athlete_results.csv`.
 - Emit two rows for every pair and distance where The Standard has a result:
   - `Best Age Grade`: The Standard's highest age-grade result.
   - `Fastest Time`: The Standard's fastest raw-time result.
@@ -70,4 +74,6 @@ Repository validation treats the file as optional until the workbook exporter
 adds it. When present, validation checks the exact schema, athlete identities,
 distance and benchmark values, source-performance agreement, top-performance
 status, target-time and pace formatting, pair/distance completeness, duplicate
-rows, sort values, and export-bundle integrity.
+rows, sort values, and export-bundle integrity. Browser coverage separately
+proves that official and unofficial source-performance rows stay in their
+correct sections.

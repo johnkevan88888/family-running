@@ -1,8 +1,6 @@
 (function () {
     const state = {
-        standards: [],
         athletes: [],
-        grades: [],
         comparisonTargets: [],
         comparisonExportAvailable: false
     };
@@ -27,24 +25,22 @@
                 fetchCSV('data/export_manifest.csv')
             ]);
 
-            state.standards = rowsToObjects(standardsRows);
+            const standards = rowsToObjects(standardsRows);
             const athleteResults = rowsToObjects(athleteRows);
             const manifest = rowsToObjects(manifestRows);
-            state.athletes = buildAthletes(state.standards, athleteResults);
-            state.grades = buildGrades(state.standards);
+            state.athletes = buildAthletes(standards, athleteResults);
             state.comparisonExportAvailable = manifest.some(row => row.RelativePath === comparisonPath);
 
             if (state.comparisonExportAvailable) {
                 state.comparisonTargets = rowsToObjects(await fetchCSV(comparisonPath));
             }
 
-            if (!state.standards.length || !state.athletes.length || !state.grades.length) {
-                throw new Error('No exported age-grade standards are available.');
+            if (!standards.length || !state.athletes.length) {
+                throw new Error('No exported athletes are available for comparison.');
             }
 
             populateControls();
             bindControls();
-            renderTargetResults();
             renderComparisonResults();
             window.paceDisplay?.initialize(document);
         } catch (error) {
@@ -54,10 +50,6 @@
     }
 
     function captureElements() {
-        elements.targetAthlete = document.getElementById('target-athlete');
-        elements.targetGrade = document.getElementById('target-grade');
-        elements.targetSummary = document.getElementById('target-summary');
-        elements.targetResults = document.getElementById('target-results');
         elements.comparisonAthleteA = document.getElementById('comparison-athlete-a');
         elements.comparisonAthleteB = document.getElementById('comparison-athlete-b');
         elements.comparisonSummary = document.getElementById('comparison-summary');
@@ -69,26 +61,12 @@
             value: athlete.id,
             label: athlete.name
         }));
-        const gradeOptions = state.grades.map(grade => ({
-            value: grade.ageGrade,
-            label: `${grade.ageGrade} — ${grade.standard}`
-        }));
-
-        populateSelect(elements.targetAthlete, athleteOptions);
         populateSelect(elements.comparisonAthleteA, athleteOptions);
         populateSelect(elements.comparisonAthleteB, athleteOptions);
-        populateSelect(elements.targetGrade, gradeOptions);
-
-        const defaultGrade = state.grades.find(grade => grade.ageGrade === '70%')?.ageGrade
-            || state.grades[0].ageGrade;
-
-        elements.targetGrade.value = defaultGrade;
         elements.comparisonAthleteB.value = state.athletes[1]?.id || state.athletes[0].id;
     }
 
     function bindControls() {
-        elements.targetAthlete.addEventListener('change', renderTargetResults);
-        elements.targetGrade.addEventListener('change', renderTargetResults);
         elements.comparisonAthleteA.addEventListener('change', () => {
             keepComparisonAthletesDifferent(elements.comparisonAthleteA);
             renderComparisonResults();
@@ -97,26 +75,6 @@
             keepComparisonAthletesDifferent(elements.comparisonAthleteB);
             renderComparisonResults();
         });
-    }
-
-    function renderTargetResults() {
-        const athlete = athleteById(elements.targetAthlete.value);
-        const grade = gradeByValue(elements.targetGrade.value);
-        const rows = matchingRows(athlete?.id, grade?.ageGrade);
-
-        elements.targetSummary.replaceChildren(
-            summaryContent(
-                `${athlete?.name || 'Athlete'} · ${grade?.ageGrade || ''}`,
-                grade?.standard || ''
-            )
-        );
-        elements.targetResults.replaceChildren(...rows.map(row => targetCard(row)));
-
-        if (!rows.length) {
-            elements.targetResults.replaceChildren(emptyMessage('No exported targets match this selection.'));
-        }
-
-        window.paceDisplay?.initialize(document);
     }
 
     function renderComparisonResults() {
@@ -132,7 +90,7 @@
         elements.comparisonSummary.replaceChildren(
             summaryContent(
                 `${challenger?.name || 'Challenger'} challenges ${standard?.name || 'The Standard'}`,
-                `Beat ${standard?.name || 'the standard athlete'}'s best age-graded and fastest performances on age grade.`
+                `Beat ${standard?.name || 'the standard athlete'}'s exported standards, with official results first and unofficial results below.`
             )
         );
 
@@ -152,54 +110,49 @@
             return;
         }
 
-        const cards = groupByDistance(rows).map(group =>
+        const resultSections = [
+            comparisonClassSection('Official', rows, challenger, standard),
+            comparisonClassSection('Unofficial', rows, challenger, standard)
+        ];
+        const sections = document.createElement('div');
+        sections.className = 'comparison-result-sections';
+        sections.append(...resultSections);
+        elements.comparisonResults.replaceChildren(sections);
+        elements.comparisonResults.dataset.rendered = 'true';
+        window.paceDisplay?.initialize(document);
+    }
+
+    function comparisonClassSection(timeClass, rows, challenger, standard) {
+        const classKey = timeClass.toLowerCase();
+        const classRows = rows.filter(row =>
+            String(row.StandardTimeClass || '').trim().toLowerCase() === classKey
+        );
+        const section = document.createElement('section');
+        section.className = `comparison-class-section comparison-class-${classKey}`;
+        section.dataset.timeClass = classKey;
+
+        const heading = document.createElement('div');
+        heading.className = 'comparison-class-heading';
+        const title = document.createElement('h3');
+        title.textContent = `${timeClass} results`;
+        const count = document.createElement('span');
+        count.textContent = `${classRows.length} ${classRows.length === 1 ? 'standard' : 'standards'}`;
+        heading.append(title, count);
+        section.append(heading);
+
+        if (!classRows.length) {
+            section.append(emptyMessage(`No ${classKey} standards are available for this pairing.`));
+            return section;
+        }
+
+        const cards = groupByDistance(classRows).map(group =>
             comparisonDistanceCard(group.distance, group.rows, challenger, standard)
         );
         const grid = document.createElement('div');
         grid.className = 'comparison-distance-grid';
         grid.append(...cards);
-        elements.comparisonResults.replaceChildren(grid);
-        elements.comparisonResults.dataset.rendered = 'true';
-        window.paceDisplay?.initialize(document);
-    }
-
-    function targetCard(row) {
-        const card = document.createElement('article');
-        card.className = 'target-card';
-
-        const top = document.createElement('div');
-        top.className = 'target-card-top';
-        const distance = document.createElement('h3');
-        distance.textContent = row.Distance;
-        const badge = document.createElement('span');
-        badge.className = `target-standard ${standardClass(row.Standard)}`;
-        badge.textContent = row.Standard;
-        top.append(distance, badge);
-
-        const label = document.createElement('span');
-        label.className = 'target-time-label';
-        label.textContent = `${row.AgeGrade} target`;
-        const time = document.createElement('strong');
-        time.className = 'target-time';
-        time.textContent = row.RequiredTime;
-        const qualifier = document.createElement('span');
-        qualifier.className = 'target-qualifier';
-        qualifier.textContent = 'or faster';
-        const pace = exportedPace(row);
-
-        card.append(top, label, time, qualifier, pace);
-        return card;
-    }
-
-    function exportedPace(row) {
-        const pace = document.createElement('span');
-        pace.className = 'calculator-pace';
-        pace.innerHTML = window.paceDisplay?.renderExportedPaces(
-            row.pace_per_km,
-            row.pace_per_mile,
-            'calculator-pace-value'
-        ) || '';
-        return pace;
+        section.append(grid);
+        return section;
     }
 
     function comparisonDistanceCard(distance, rows, challenger, standard) {
@@ -323,18 +276,10 @@
     }
 
     function renderLoadError() {
-        const message = 'The exported age-grade targets are unavailable right now. Please try again later.';
-        elements.targetSummary.replaceChildren();
+        const message = 'The exported athlete comparisons are unavailable right now. Please try again later.';
         elements.comparisonSummary.replaceChildren();
-        elements.targetResults.replaceChildren(emptyMessage(message));
         elements.comparisonResults.replaceChildren(emptyMessage(message));
         elements.comparisonResults.dataset.rendered = 'true';
-    }
-
-    function matchingRows(athleteId, ageGrade) {
-        return state.standards
-            .filter(row => row.AthleteId === athleteId && row.AgeGrade === ageGrade)
-            .sort((a, b) => Number(a.SortOrder) - Number(b.SortOrder));
     }
 
     function buildAthletes(standards, results) {
@@ -358,20 +303,6 @@
         return athletes;
     }
 
-    function buildGrades(standards) {
-        const seen = new Set();
-        const grades = [];
-        for (const row of standards) {
-            if (!row.AgeGrade || seen.has(row.AgeGrade)) continue;
-            seen.add(row.AgeGrade);
-            grades.push({
-                ageGrade: row.AgeGrade,
-                standard: row.Standard
-            });
-        }
-        return grades;
-    }
-
     function populateSelect(select, options) {
         select.replaceChildren(...options.map(option => new Option(option.label, option.value)));
     }
@@ -385,14 +316,6 @@
 
     function athleteById(id) {
         return state.athletes.find(athlete => athlete.id === id);
-    }
-
-    function gradeByValue(value) {
-        return state.grades.find(grade => grade.ageGrade === value);
-    }
-
-    function standardClass(value) {
-        return `standard-${String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '')}`;
     }
 
     function benchmarkClass(value) {
