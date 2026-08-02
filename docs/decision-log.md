@@ -182,3 +182,27 @@ Unknown historical details are labelled rather than inferred.
   add a subresource-integrity pin for mutable external loader content: a stale
   pin blocks the script and prevents all visit collection. Client-side blocking
   means statistics are indicative rather than an exact access log.
+
+## Age-grade comparisons group exported benchmarks by result class
+
+- **Status:** Accepted and implemented; not yet released
+- **Date:** 31 July 2026
+- **Decision:** The public Calculator selects a Challenger and The Standard,
+  then shows source performances from the workbook-owned comparison export in
+  two sections: official results first and unofficial results below. Each
+  section contains The Standard's exported best age-graded and fastest raw-time
+  performance at each available distance and the exported time the Challenger
+  must beat to score a higher age grade than each performance. The duplicate
+  single-athlete race-target builder is omitted because equivalent targets are
+  already available on athlete pages. The browser does not interpolate
+  percentages or derive pairwise target times.
+- **Rationale:** Interactive selection makes workbook-owned standards easier to
+  use without creating a second calculation path that can disagree with
+  Excel/VBA.
+- **Consequences:** Pairwise comparison uses the site-specific workbook-owned
+  `athlete_comparison_targets.csv` contract, groups rows by the exported
+  `StandardTimeClass`, and stays unavailable when that file is absent from the
+  current export manifest. Family and Everyone Calculator views must load only
+  their own comparison exports while continuing to use shared public athlete
+  names. Source benchmark performances remain auditable against
+  `data/athlete_results.csv`.

@@ -206,6 +206,17 @@ export function assertExactTrackedCsvSet(stagedRoot) {
     return assertTrackedCsvSet(stagedRoot);
 }
 
+export function parseApprovedNewCsvFiles(value) {
+    if (!value || value === true) {
+        return [];
+    }
+
+    return String(value)
+        .split(',')
+        .map(file => file.trim())
+        .filter(Boolean);
+}
+
 export function assertTrackedCsvSet(stagedRoot, options = {}) {
     const stagedFiles = listPublicCsvFiles(path.join(stagedRoot, 'data'));
     const trackedFiles = listPublicCsvFiles(path.join(repoRoot, 'data'));

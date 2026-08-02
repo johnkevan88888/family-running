@@ -39,6 +39,8 @@ try {
 
     await runCrownHistoryEdgeCaseTests(browser);
     await runAbsoluteRecordsEdgeCaseTests(browser);
+    await runCalculatorComparisonUnavailableEdgeCaseTests(browser);
+    await runCalculatorComparisonEdgeCaseTests(browser);
 } finally {
     if (browser) {
         await browser.close();
@@ -157,6 +159,15 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertAbsoluteRecordsPage(page, mode, viewport, requestedPaths.slice(recordsRequestStart));
         await assertBundleMetadataHidden(page, `${mode}/${viewport.name} records page`);
 
+        const calculatorRequestStart = requestedPaths.length;
+        await page.goto(`${preview.baseUrl}/calculator.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+        await waitForRenderedCalculator(page, mode);
+        await waitForNetworkToSettle(page);
+        await assertPrimaryNavigation(page, mode, viewport, 'calculator');
+        await assertNoModeSwitch(page, mode, viewport, 'calculator');
+        await assertCalculatorPage(page, mode, viewport, requestedPaths.slice(calculatorRequestStart));
+        await assertBundleMetadataHidden(page, `${mode}/${viewport.name} calculator page`);
+
         const overviewRequestStart = requestedPaths.length;
         await page.goto(`${preview.baseUrl}/overview.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
         await waitForRenderedOverview(page, mode);
@@ -178,6 +189,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await capturePageScreenshot(page, mode, viewport, 'championships', waitForRenderedChampionship);
         await capturePageScreenshot(page, mode, viewport, 'hall-of-fame', waitForRenderedHallOfFame);
         await capturePageScreenshot(page, mode, viewport, 'records', waitForRenderedRecords);
+        await capturePageScreenshot(page, mode, viewport, 'calculator', waitForRenderedCalculator);
         await capturePageScreenshot(page, mode, viewport, 'overview', waitForRenderedOverview);
 
         if (updateScreenshots) {
@@ -254,6 +266,165 @@ async function waitForRenderedRecords(page, mode) {
 
         return title === expected;
     }, mode);
+}
+
+async function waitForRenderedCalculator(page, mode) {
+    await page.waitForSelector('#site-title', { state: 'visible' });
+    await page.waitForSelector('#comparison-results[data-rendered="true"]');
+    await page.waitForFunction(expectedMode => {
+        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
+        const expected = expectedMode === 'everyone'
+            ? 'Age-Graded Running Championships'
+            : 'Family Running Championships';
+
+        return title === expected;
+    }, mode);
+}
+
+async function assertCalculatorPage(page, mode, viewport, requestedPaths) {
+    const context = `${mode}/${viewport.name}`;
+    const selectedFile = `data/${mode}/age_grade_standards.csv`;
+    const comparisonFile = `data/${mode}/athlete_comparison_targets.csv`;
+    const otherMode = mode === 'family' ? 'everyone' : 'family';
+    const otherFile = `data/${otherMode}/age_grade_standards.csv`;
+    const otherComparisonFile = `data/${otherMode}/athlete_comparison_targets.csv`;
+    const standards = await readCsvObjects(selectedFile);
+    const manifest = await readCsvObjects('data/export_manifest.csv');
+    const comparisonAvailable = manifest.some(row => row.RelativePath === comparisonFile);
+    const comparisonTargets = comparisonAvailable ? await readCsvObjects(comparisonFile) : [];
+
+    if (!requestedPaths.includes(selectedFile)) {
+        failures.push(`${context}: Calculator did not request ${selectedFile}.`);
+    }
+    if (!requestedPaths.includes('data/athlete_results.csv')) {
+        failures.push(`${context}: Calculator did not request shared athlete names.`);
+    }
+    if (!requestedPaths.includes('data/export_manifest.csv')) {
+        failures.push(`${context}: Calculator did not request the export manifest.`);
+    }
+    if (requestedPaths.includes(otherFile)) {
+        failures.push(`${context}: Calculator requested the other site mode's ${otherFile}.`);
+    }
+    if (comparisonAvailable && !requestedPaths.includes(comparisonFile)) {
+        failures.push(`${context}: Calculator did not request the comparison file listed in the current manifest.`);
+    }
+    if (!comparisonAvailable && requestedPaths.includes(comparisonFile)) {
+        failures.push(`${context}: Calculator requested a comparison file absent from the current manifest.`);
+    }
+    if (requestedPaths.includes(otherComparisonFile)) {
+        failures.push(`${context}: Calculator requested the other site mode's comparison file.`);
+    }
+
+    const intro = normalizeText(await page.locator('.calculator-hero').textContent());
+    const calculatorText = normalizeText(await page.locator('.calculator-page').textContent());
+    for (const requiredText of ['Age-grade calculator', 'latest championship export']) {
+        if (!intro.includes(requiredText)) {
+            failures.push(`${context}: Calculator intro omitted "${requiredText}".`);
+        }
+    }
+
+    const targetAthlete = page.locator('#target-athlete');
+    const targetGrade = page.locator('#target-grade');
+    const exportedAthleteIds = [...new Set(standards.map(row => row.AthleteId).filter(Boolean))];
+
+    if (await targetAthlete.count() !== 0 || await targetGrade.count() !== 0) {
+        failures.push(`${context}: Calculator retained the removed race-target controls.`);
+    }
+    if (calculatorText.includes('Build a race target')) {
+        failures.push(`${context}: Calculator retained the removed race-target section.`);
+    }
+    for (const selector of ['#comparison-athlete-a', '#comparison-athlete-b']) {
+        if (await page.locator(`${selector} option`).count() !== exportedAthleteIds.length) {
+            failures.push(`${context}: Comparison athlete options did not match the selected site's export.`);
+        }
+    }
+
+    const comparisonA = await page.locator('#comparison-athlete-a').inputValue();
+    const comparisonB = await page.locator('#comparison-athlete-b').inputValue();
+    const summary = normalizeText(await page.locator('#comparison-summary').textContent());
+    const comparisonText = normalizeText(await page.locator('#comparison-results').textContent());
+
+    if (comparisonA === comparisonB) {
+        failures.push(`${context}: Challenger and The Standard defaulted to the same athlete.`);
+    }
+    if (await page.locator('#comparison-grade').count() !== 0) {
+        failures.push(`${context}: Comparison retained the removed shared age-grade selector.`);
+    }
+    if (!summary.includes('challenges') || !summary.includes('official results first and unofficial results below')) {
+        failures.push(`${context}: Comparison did not explain the challenger/standard relationship.`);
+    }
+    if (comparisonAvailable) {
+        if (comparisonText.includes('Head-to-head targets are not available in this championship update yet.')) {
+            failures.push(`${context}: Comparison rendered unavailable despite a manifest-listed export.`);
+        }
+        await assertCalculatorComparisonCards(page, comparisonTargets, context);
+    } else if (!comparisonText.includes('Head-to-head targets are not available in this championship update yet.')) {
+        failures.push(`${context}: Comparison did not render the current-export unavailable state.`);
+    }
+
+    const perMile = page.locator('.site-pace-control').getByRole('button', { name: 'Show pace per mile' });
+    const perKm = page.locator('.site-pace-control').getByRole('button', { name: 'Show pace per kilometre' });
+    await perMile.click();
+    await assertVisiblePaceUnit(page.locator('.calculator-page'), 'mi', `${context} calculator paces`);
+    await perKm.click();
+}
+
+async function assertCalculatorComparisonCards(page, targets, context) {
+    const challengerId = await page.locator('#comparison-athlete-a').inputValue();
+    const standardId = await page.locator('#comparison-athlete-b').inputValue();
+    const expectedRows = targets
+        .filter(row =>
+            row.ChallengerAthleteId === challengerId &&
+            row.StandardAthleteId === standardId
+        )
+        .sort((a, b) => {
+            const classRank = value => String(value || '').trim().toLowerCase() === 'official' ? 0 : 1;
+            return classRank(a.StandardTimeClass) - classRank(b.StandardTimeClass)
+                || Number(a.SortOrder) - Number(b.SortOrder);
+        });
+    const expectedDistanceCount = new Set(expectedRows.map(row =>
+        `${String(row.StandardTimeClass || '').trim().toLowerCase()}|${row.Distance}`
+    )).size;
+    const cards = page.locator('.comparison-distance-card');
+    const benchmarks = page.locator('.comparison-benchmark');
+    const sections = page.locator('.comparison-class-section');
+
+    if (!expectedRows.length) {
+        failures.push(`${context}: Default challenger/standard pair has no exported comparison rows.`);
+        return;
+    }
+    if (await cards.count() !== expectedDistanceCount) {
+        failures.push(`${context}: Comparison distance-card count did not match the selected export rows.`);
+    }
+    if (await sections.count() !== 2
+        || await sections.nth(0).getAttribute('data-time-class') !== 'official'
+        || await sections.nth(1).getAttribute('data-time-class') !== 'unofficial') {
+        failures.push(`${context}: Comparison did not render official results before unofficial results.`);
+    }
+    if (await benchmarks.count() !== expectedRows.length) {
+        failures.push(`${context}: Comparison benchmark count did not match the selected export rows.`);
+        return;
+    }
+
+    for (let index = 0; index < expectedRows.length; index += 1) {
+        const row = expectedRows[index];
+        const text = normalizeText(await benchmarks.nth(index).textContent());
+
+        for (const expected of [
+            row.BenchmarkType,
+            row.StandardTime,
+            `${row.StandardAgeGrade} age grade`,
+            row.StandardDate,
+            row.StandardEvent,
+            row.StandardTimeClass,
+            row.RequiredTimeToBeat,
+            `${row.RequiredPacePerKm} /km`
+        ]) {
+            if (!text.includes(expected)) {
+                failures.push(`${context}: Comparison benchmark ${index + 1} omitted exported value "${expected}".`);
+            }
+        }
+    }
 }
 
 async function assertOverviewPage(page, mode, viewport, requestedPaths) {
@@ -340,6 +511,7 @@ async function assertPrimaryNavigation(page, mode, viewport, activePage) {
         ['Championships', 'index.html'],
         ['Hall of Fame', 'hall-of-fame.html'],
         ['Records', 'records.html'],
+        ['Calculator', 'calculator.html'],
         ['Overview', 'overview.html']
     ]);
 
@@ -433,6 +605,7 @@ async function assertNavigationBetweenPublicPages(page, mode, viewport) {
     const targets = [
         { label: 'Hall of Fame', pageKey: 'hall-of-fame', waitFor: waitForRenderedHallOfFame },
         { label: 'Records', pageKey: 'records', waitFor: waitForRenderedRecords },
+        { label: 'Calculator', pageKey: 'calculator', waitFor: waitForRenderedCalculator },
         { label: 'Overview', pageKey: 'overview', waitFor: waitForRenderedOverview },
         { label: 'Championships', pageKey: 'championships', waitFor: waitForRenderedChampionship }
     ];
@@ -470,6 +643,7 @@ function pageFileForKey(pageKey) {
     if (pageKey === 'hall-of-fame') return 'hall-of-fame.html';
     if (pageKey === 'overview') return 'overview.html';
     if (pageKey === 'records') return 'records.html';
+    if (pageKey === 'calculator') return 'calculator.html';
     if (pageKey === 'athlete') return 'athlete.html';
 
     return 'index.html';
@@ -962,6 +1136,151 @@ async function withSyntheticAbsoluteRecords(browserInstance, manifestText, recor
         failures.push(`absolute-records edge case: ${error.message}`);
     } finally {
         await context.close();
+    }
+}
+
+async function runCalculatorComparisonUnavailableEdgeCaseTests(browserInstance) {
+    const manifestPath = path.join(siteRoot, 'data', 'export_manifest.csv');
+    const manifest = (await fs.readFile(manifestPath, 'utf8'))
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .split('\n')
+        .filter(line => !line.includes('/athlete_comparison_targets.csv,'))
+        .join('\r\n');
+
+    for (const viewport of viewports) {
+        const context = await browserInstance.newContext({ viewport });
+        const page = await context.newPage();
+        const requestedPaths = [];
+
+        await page.route('**/data/export_manifest.csv', route =>
+            route.fulfill({ status: 200, contentType: 'text/csv', body: manifest })
+        );
+        page.on('request', request => {
+            if (isSameOrigin(request.url())) {
+                requestedPaths.push(sameOriginRequestPath(request.url()));
+            }
+        });
+
+        try {
+            await page.goto(`${preview.baseUrl}/calculator.html?site=family`, { waitUntil: 'domcontentloaded' });
+            await waitForRenderedCalculator(page, 'family');
+            await waitForNetworkToSettle(page);
+
+            if (requestedPaths.includes('data/family/athlete_comparison_targets.csv')) {
+                failures.push(`calculator unavailable ${viewport.name}: requested a comparison file absent from the manifest.`);
+            }
+
+            const text = normalizeText(await page.locator('#comparison-results').textContent());
+            if (!text.includes('Head-to-head targets are not available in this championship update yet.')) {
+                failures.push(`calculator unavailable ${viewport.name}: unavailable state was not rendered.`);
+            }
+        } catch (error) {
+            failures.push(`calculator unavailable ${viewport.name}: ${error.message}`);
+        } finally {
+            await context.close();
+        }
+    }
+}
+
+async function runCalculatorComparisonEdgeCaseTests(browserInstance) {
+    const manifest = [
+        'ExportBundleID,ExportedAtUTC,SchemaVersion,Scope,RelativePath,DataRowCount',
+        '20990101T010203004Z-A1B2C3D4,2099-01-01T01:02:03.004Z,1.0,family,data/family/athlete_comparison_targets.csv,4'
+    ].join('\r\n');
+    const comparisonTargets = [
+        'ChallengerAthleteId,StandardAthleteId,Distance,BenchmarkType,StandardTime,StandardAgeGrade,StandardDate,StandardEvent,StandardTimeClass,RequiredTimeToBeat,RequiredPacePerKm,RequiredPacePerMile,SortOrder,ExportBundleID',
+        'john-kevan,carolyn-kevan,5 km,Best Age Grade,00:25:20,78.0%,28/03/2026,Northern Counties Womens Relay,Official,00:18:08,3:37.6,5:50.1,101,20990101T010203004Z-A1B2C3D4',
+        'john-kevan,carolyn-kevan,5 km,Fastest Time,00:23:27,77.8%,16/11/2019,Northern Masters 5k Championships,Official,00:18:11,3:38.2,5:51.1,102,20990101T010203004Z-A1B2C3D4',
+        'john-kevan,carolyn-kevan,10 km,Best Age Grade,00:52:00,72.0%,01/02/2026,Training effort,Unofficial,00:38:00,3:48.0,6:06.3,201,20990101T010203004Z-A1B2C3D4',
+        'john-kevan,carolyn-kevan,10 km,Fastest Time,00:51:00,71.0%,01/02/2026,Training effort,Unofficial,00:38:30,3:51.0,6:11.1,202,20990101T010203004Z-A1B2C3D4'
+    ].join('\r\n');
+
+    for (const viewport of viewports) {
+        const context = await browserInstance.newContext({ viewport });
+        const page = await context.newPage();
+        const requestedPaths = [];
+
+        await page.route('**/data/export_manifest.csv', route =>
+            route.fulfill({ status: 200, contentType: 'text/csv', body: `${manifest}\r\n` })
+        );
+        await page.route('**/data/family/athlete_comparison_targets.csv', route =>
+            route.fulfill({ status: 200, contentType: 'text/csv', body: `${comparisonTargets}\r\n` })
+        );
+        await page.route('**/data/everyone/athlete_comparison_targets.csv', route => route.abort());
+        page.on('request', request => {
+            if (isSameOrigin(request.url())) {
+                requestedPaths.push(sameOriginRequestPath(request.url()));
+            }
+        });
+
+        try {
+            await page.goto(`${preview.baseUrl}/calculator.html?site=family`, { waitUntil: 'domcontentloaded' });
+            await waitForRenderedCalculator(page, 'family');
+            await page.locator('.comparison-distance-card').first().waitFor({ state: 'visible' });
+            await waitForNetworkToSettle(page);
+
+            if (!requestedPaths.includes('data/family/athlete_comparison_targets.csv')) {
+                failures.push(`calculator comparison ${viewport.name}: selected-site comparison export was not requested.`);
+            }
+            if (requestedPaths.includes('data/everyone/athlete_comparison_targets.csv')) {
+                failures.push(`calculator comparison ${viewport.name}: other-site comparison export was requested.`);
+            }
+            if (await page.locator('.comparison-distance-card').count() !== 2) {
+                failures.push(`calculator comparison ${viewport.name}: expected one official and one unofficial distance card.`);
+            }
+            if (await page.locator('.comparison-benchmark').count() !== 4) {
+                failures.push(`calculator comparison ${viewport.name}: expected all four grouped benchmark rows.`);
+            }
+
+            const text = normalizeText(await page.locator('.comparison-panel').textContent());
+            for (const expected of [
+                'John Kevan challenges Carolyn Kevan',
+                'Best Age Grade',
+                '00:25:20',
+                '78.0% age grade',
+                '00:18:08',
+                'Fastest Time',
+                '00:23:27',
+                '77.8% age grade',
+                '00:18:11',
+                'Official results',
+                'Unofficial results',
+                'Training effort',
+                '00:52:00',
+                '00:51:00'
+            ]) {
+                if (!text.includes(expected)) {
+                    failures.push(`calculator comparison ${viewport.name}: omitted exported value "${expected}".`);
+                }
+            }
+            await assertVisiblePaceUnit(
+                page.locator('.comparison-panel'),
+                'km',
+                `calculator comparison ${viewport.name} paces`
+            );
+            await page.locator('.site-pace-control').getByRole('button', { name: 'Show pace per mile' }).click();
+            await assertVisiblePaceUnit(
+                page.locator('.comparison-panel'),
+                'mi',
+                `calculator comparison ${viewport.name} mile paces`
+            );
+
+            await page.locator('.comparison-panel').screenshot({
+                path: path.join(artifactsDir, `family-calculator-comparison-${viewport.name}.png`)
+            });
+
+            await page.locator('#comparison-athlete-b').selectOption('john-kevan');
+            const challenger = await page.locator('#comparison-athlete-a').inputValue();
+            const standard = await page.locator('#comparison-athlete-b').inputValue();
+            if (challenger === standard) {
+                failures.push(`calculator comparison ${viewport.name}: allowed a self-comparison.`);
+            }
+        } catch (error) {
+            failures.push(`calculator comparison ${viewport.name}: ${error.message}`);
+        } finally {
+            await context.close();
+        }
     }
 }
 

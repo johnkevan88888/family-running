@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Age-Grade Calculator | Family Running Championships</title>
+    <link rel="stylesheet" href="site.css">
+    <link rel="stylesheet" href="calculator.css">
+</head>
+
+<body data-page="calculator">
+
+<header data-site-header></header>
+
+<main class="calculator-page">
+    <section class="page-intro calculator-hero" aria-labelledby="calculator-page-title">
+        <div>
+            <p class="calculator-eyebrow">Head-to-head comparison</p>
+            <h2 id="calculator-page-title">Age-grade calculator</h2>
+            <p>
+                Choose a challenger and see what they need to run to beat another
+                athlete's best performances on age grade, with official and
+                unofficial results kept clearly separate.
+            </p>
+        </div>
+        <div class="calculator-source-note">
+            <span aria-hidden="true">&#10003;</span>
+            <span>Every time and pace comes from the latest championship export.</span>
+        </div>
+    </section>
+
+    <section class="calculator-panel comparison-panel" aria-labelledby="comparison-title">
+        <div class="calculator-panel-heading">
+            <div>
+                <p class="calculator-eyebrow">Head to head</p>
+                <h2 id="comparison-title">Challenge the standard</h2>
+                <p>
+                    See the standard athlete's best age-grade and fastest-time performances,
+                    then the age-graded target the challenger must beat for each one. Official
+                    results are shown first, with unofficial results below.
+                </p>
+            </div>
+            <span class="calculator-step">01</span>
+        </div>
+
+        <form id="comparison-controls" class="calculator-controls comparison-controls" aria-label="Athlete comparison controls">
+            <label class="calculator-field athlete-a-field">
+                <span>Challenger</span>
+                <select id="comparison-athlete-a" name="comparison-athlete-a"></select>
+            </label>
+            <span class="comparison-versus" aria-hidden="true">vs</span>
+            <label class="calculator-field athlete-b-field">
+                <span>The standard</span>
+                <select id="comparison-athlete-b" name="comparison-athlete-b"></select>
+            </label>
+        </form>
+
+        <div id="comparison-summary" class="calculator-summary" aria-live="polite"></div>
+        <div id="comparison-results" class="comparison-results" aria-live="polite">
+            <p class="calculator-loading">Loading athlete comparison...</p>
+        </div>
+    </section>
+</main>
+
+<footer class="site-privacy-note">
+    Privacy-friendly, cookie-free visit statistics are provided by
+    <a href="https://www.goatcounter.com/" rel="external">GoatCounter</a>.
+</footer>
+
+<script src="analytics.js" defer></script>
+<script src="utils.js" defer></script>
+<script src="site-navigation.js" defer></script>
+<script src="calculator.js" defer></script>
+
+</body>
+</html>

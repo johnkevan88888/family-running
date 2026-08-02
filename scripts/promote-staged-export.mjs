@@ -5,6 +5,7 @@ import {
     assertTrackedCsvSet,
     compareBundles,
     normalizePnpmPathArgument,
+    parseApprovedNewCsvFiles,
     parseCliArguments,
     repoRoot,
     resolveStagedRoot,
@@ -23,7 +24,7 @@ try {
         );
     }
 
-    const approvedNewFiles = parseApprovedNewFiles(options.get('approve-new-files'));
+    const approvedNewFiles = parseApprovedNewCsvFiles(options.get('approve-new-files'));
 
     assertTrackedCsvSet(stagedRoot, { approvedNewFiles });
     requireCleanTrackedData();
@@ -51,17 +52,6 @@ try {
 } catch (error) {
     console.error(`Staged export promotion failed: ${error.message}`);
     process.exit(1);
-}
-
-function parseApprovedNewFiles(value) {
-    if (!value || value === true) {
-        return [];
-    }
-
-    return String(value)
-        .split(',')
-        .map(file => file.trim())
-        .filter(Boolean);
 }
 
 function requireCleanTrackedData() {
