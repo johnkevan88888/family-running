@@ -137,10 +137,13 @@ Challenger/Standard controls, official-first and unofficial-second result
 grouping, the absence of the duplicate single-athlete race-target builder, the
 manifest-absent comparison state, pace-unit switching, and absence of
 export-bundle metadata. Synthetic workbook-export coverage checks both `Best
-Age Grade` and `Fastest Time` standards in both result classes, preserves exact
-source-performance details and challenger target times and paces, prevents
-self-comparison, preserves mode isolation, and checks responsive presentation.
-The browser does not interpolate or calculate targets.
+Age Grade` and `Fastest Time` standards in both result classes. CSV validation
+requires both benchmarks independently for every available athlete, distance,
+and result class, verifies the source performance is best within that class,
+and enforces class-aware sort order. Browser coverage preserves exact source
+details and challenger target times and paces, prevents self-comparison,
+preserves mode isolation, and checks responsive presentation. The browser does
+not interpolate or calculate targets.
 
 The macro-enabled source workbook and its dated private backups stay outside Git. Only VBA-generated public CSVs and `data/export_manifest.csv` belong in the repository.
 

@@ -6,13 +6,15 @@ Add a grouped athlete comparison calculator
 
 ## Status
 
-The Calculator implementation, private-workbook comparison exporter, and real
-Family/Everyone comparison exports are complete on
-`feat/age-grade-calculator`. Draft PR #23 is open. The follow-up refinement
-removes the duplicate race-target builder and presents official and unofficial
-comparison results in separate sections, with official results first. It has
-passed the full local test suite but has not yet been committed or pushed. No
-merge, production release, or GitHub setting change has been performed.
+The initial Calculator implementation and grouped official/unofficial display
+were merged in PR #23. This follow-up completes the private-workbook exporter
+and public data contract so official and unofficial benchmarks are selected
+independently. The private VBA source module and repository validator are now
+updated for both result classes. The module compiled successfully and staged
+bundle `20260805T155056454Z-1459E180` passed validation and reconciliation. Its
+three meaningful differences were explicitly approved and promoted, and the
+complete local test suite passes. No merge or production release has been
+performed for this follow-up.
 
 ## Current approved scope
 
@@ -54,6 +56,10 @@ merge, production release, or GitHub setting change has been performed.
   `Athlete Comparison` worksheet. The worksheet's participant dropdown is
   table-driven and its deterministic performance tie-break prefers the most
   recent date after score and time.
+- Updated the private `AthleteComparisonExport.bas` source to select best age
+  grade and fastest time independently for Official and Unofficial results.
+- Strengthened comparison CSV validation for class-specific uniqueness,
+  completeness, source-performance ranking, and sort order.
 - Added `docs/athlete-comparison-export-contract.md` with the exact workbook
   export schema, row rules, tie-breaking, and validation contract.
 - Updated `docs/active-work.md`, `docs/testing-and-release-protocol.md`, and
@@ -61,9 +67,23 @@ merge, production release, or GitHub setting change has been performed.
 
 ## Validation results
 
-- Passed `pnpm test`, including repository safety, Family and Everyone CSV
-  validation, analytics and export-workflow regression tests, the preview
-  artifact build, and responsive browser smoke tests for both modes.
+- The pre-expansion implementation passed `pnpm test`, including repository
+  safety, Family and Everyone CSV validation, analytics and export-workflow
+  regression tests, the preview artifact build, and responsive browser smoke
+  tests for both modes.
+- After the contract expansion, JavaScript syntax and `git diff --check` pass.
+  CSV validation correctly rejected the old comparison bundle's class-agnostic
+  sort order and missing class-specific benchmark matrices.
+- Staged bundle `20260805T155056454Z-1459E180` passed CSV and 68-file manifest
+  validation. Reconciliation reports only the two comparison CSVs and their
+  manifest row counts as meaningfully changed; the other 65 public CSVs are
+  unchanged.
+- The staged comparison matrices contain 770 Family rows and 1,496 Everyone
+  rows. All 385 Family and 748 Everyone pair/distance/class groups contain
+  exactly one `Best Age Grade` and one `Fastest Time` benchmark.
+- The explicitly approved staged bundle was promoted into tracked `data/`.
+  The complete `pnpm test` suite passes, including responsive browser coverage
+  for both site modes.
 - Browser coverage confirms the page displays exact workbook-exported source
   performances, target times, and paces from the selected mode, keeps official
   and unofficial standards in their labelled sections, omits the race-target
@@ -73,9 +93,10 @@ merge, production release, or GitHub setting change has been performed.
   both benchmark types, exact standard-performance fields, exact challenger
   target times and paces, self-comparison prevention, mode isolation, and
   responsive presentation.
-- Real-export coverage verifies 572 Family rows and 1,156 Everyone rows across
-  5 km, 10 km, 10 Mile, Half Marathon, and Marathon, with both benchmark types,
-  complete ordered pairs for every available standard, and no self-comparisons.
+- The tracked comparison exports now contain 770 Family rows and 1,496 Everyone
+  rows across 5 km, 10 km, 10 Mile, Half Marathon, and Marathon. Every available
+  pair/distance/result-class group contains both benchmark types, and there are
+  no self-comparisons.
 - A synthetic manifest-absent edge case confirms the browser does not request a
   missing comparison CSV and renders a clear unavailable message.
 - The first staged export was rejected after a Half Marathon completeness gap
@@ -95,10 +116,9 @@ merge, production release, or GitHub setting change has been performed.
 - Head-to-head mode presents The Standard's exported highest age grade and
   fastest raw time with official results first and unofficial results below.
   Each displayed performance retains its exported date, event, and class.
-- The current workbook export selects one best-age-grade row and one
-  fastest-time row across all public results for each distance. The browser
-  groups those exact rows; it does not invent a fallback result for a class the
-  export did not supply.
+- The revised private source selects one best-age-grade row and one fastest-time
+  row independently for each available result class and distance. It emits up
+  to four rows per Challenger/Standard/distance combination.
 - Pairwise times for the Challenger to beat those standards belong in the new
   workbook-owned `athlete_comparison_targets.csv`; they are never derived in
   browser JavaScript.
@@ -123,13 +143,19 @@ merge, production release, or GitHub setting change has been performed.
 - Review the Calculator in both modes, including changing Challenger, The
   Standard, and pace unit. Confirm that the official section appears before the
   unofficial section and that challenger targets match the private workbook.
-- The grouped-results follow-up is ready to commit and push to draft PR #23. Do
-  not push, merge, publish, or deploy without explicit approval.
+- The revised private module was imported and compiled. The validated staging
+  root `test-artifacts/workbook-export-staging/run-20260805-115026-579` was
+  explicitly approved and promoted. The previous tracked data is retained under
+  ignored `test-artifacts/workbook-export-promotion/20260805161831463/previous-data`
+  for local rollback.
+- The grouped-results implementation, expanded validator, and promoted export
+  are ready for Pull Request review.
+- Approval has been granted to commit, push, and open a draft Pull Request for
+  this follow-up. Merge and deployment still require separate approval.
 - The 2 August race-results refresh passed staged bundle validation and the
-  complete `pnpm test` suite after promotion. The prior public bundle is
-  retained under ignored `test-artifacts/workbook-export-promotion/` for local
-  rollback. The refreshed data remains uncommitted and has not been pushed or
-  published.
+  complete `pnpm test` suite after promotion. It is included in the promoted
+  public bundle for this follow-up. The prior public bundle is retained under
+  ignored `test-artifacts/workbook-export-promotion/` for local rollback.
 
 ## Recently completed historical work
 

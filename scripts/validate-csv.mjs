@@ -1257,8 +1257,9 @@ function validateAthleteComparisonTargets(siteDir) {
     ]);
     const objects = toObjects(rows, file);
     const uniqueRows = new Set();
-    const benchmarksByPairDistance = new Map();
+    const benchmarksByPairDistanceClass = new Map();
     const comparisonDistances = ['5 km', '10 km', '10 Mile', 'Half Marathon', 'Marathon'];
+    const comparisonTimeClasses = ['Official', 'Unofficial'];
     const ageStandardRows = toObjects(
         readCsvRequired(`${siteDir}/age_grade_standards.csv`, ['AthleteId']),
         `${siteDir}/age_grade_standards.csv`
@@ -1278,7 +1279,7 @@ function validateAthleteComparisonTargets(siteDir) {
         validatePercent(row.StandardAgeGrade, file, row.__rowNumber, 'StandardAgeGrade', { required: true });
         validateDate(row.StandardDate, file, row.__rowNumber, 'StandardDate', { required: true });
         requireValue(row.StandardEvent, file, row.__rowNumber, 'StandardEvent');
-        validateAllowed(row.StandardTimeClass, ['Official', 'Unofficial'], file, row.__rowNumber, 'StandardTimeClass');
+        validateAllowed(row.StandardTimeClass, comparisonTimeClasses, file, row.__rowNumber, 'StandardTimeClass');
         validateTime(row.RequiredTimeToBeat, file, row.__rowNumber, 'RequiredTimeToBeat', { required: true });
         validateComparisonTargetPaces(row, file);
         validateNumber(row.SortOrder, file, row.__rowNumber, 'SortOrder', { required: true });
@@ -1297,6 +1298,7 @@ function validateAthleteComparisonTargets(siteDir) {
             row.ChallengerAthleteId,
             row.StandardAthleteId,
             row.Distance,
+            row.StandardTimeClass,
             row.BenchmarkType
         ].join('|');
         if (uniqueRows.has(uniqueKey)) {
@@ -1304,31 +1306,48 @@ function validateAthleteComparisonTargets(siteDir) {
         }
         uniqueRows.add(uniqueKey);
 
-        const groupKey = [row.ChallengerAthleteId, row.StandardAthleteId, row.Distance].join('|');
-        if (!benchmarksByPairDistance.has(groupKey)) {
-            benchmarksByPairDistance.set(groupKey, new Set());
+        const groupKey = [
+            row.ChallengerAthleteId,
+            row.StandardAthleteId,
+            row.Distance,
+            row.StandardTimeClass
+        ].join('|');
+        if (!benchmarksByPairDistanceClass.has(groupKey)) {
+            benchmarksByPairDistanceClass.set(groupKey, new Set());
         }
-        benchmarksByPairDistance.get(groupKey).add(row.BenchmarkType);
+        benchmarksByPairDistanceClass.get(groupKey).add(row.BenchmarkType);
+
+        const distanceIndex = comparisonDistances.indexOf(row.Distance);
+        const timeClassIndex = comparisonTimeClasses.indexOf(row.StandardTimeClass);
+        const benchmarkIndex = ['Best Age Grade', 'Fastest Time'].indexOf(row.BenchmarkType);
+        if (distanceIndex >= 0 && timeClassIndex >= 0 && benchmarkIndex >= 0) {
+            const expectedSortOrder = ((distanceIndex + 1) * 100) + (timeClassIndex * 2) + benchmarkIndex + 1;
+            if (Number(row.SortOrder) !== expectedSortOrder) {
+                addError(file, row.__rowNumber, `SortOrder must be ${expectedSortOrder} for ${row.Distance} ${row.StandardTimeClass} ${row.BenchmarkType}.`);
+            }
+        }
 
         validateComparisonStandardSource(row, file);
     }
 
     for (const standardAthleteId of siteAthleteIds) {
-        const standardDistances = new Set(
-            athleteObjects
-                .filter(result => result.AthleteID === standardAthleteId)
-                .map(result => canonicalDistanceLabel(result.Distance))
-                .filter(distance => comparisonDistances.includes(distance))
-        );
+        const standardDistanceClasses = new Map();
+        for (const result of athleteObjects.filter(result => result.AthleteID === standardAthleteId)) {
+            const distance = canonicalDistanceLabel(result.Distance);
+            const timeClass = String(result.TimeClass || '').trim();
+            if (comparisonDistances.includes(distance) && comparisonTimeClasses.includes(timeClass)) {
+                standardDistanceClasses.set(`${distance}|${timeClass}`, { distance, timeClass });
+            }
+        }
 
         for (const challengerAthleteId of siteAthleteIds) {
             if (challengerAthleteId === standardAthleteId) {
                 continue;
             }
 
-            for (const distance of standardDistances) {
-                const groupKey = [challengerAthleteId, standardAthleteId, distance].join('|');
-                const benchmarkTypes = benchmarksByPairDistance.get(groupKey) || new Set();
+            for (const { distance, timeClass } of standardDistanceClasses.values()) {
+                const groupKey = [challengerAthleteId, standardAthleteId, distance, timeClass].join('|');
+                const benchmarkTypes = benchmarksByPairDistanceClass.get(groupKey) || new Set();
 
                 for (const requiredType of ['Best Age Grade', 'Fastest Time']) {
                     if (!benchmarkTypes.has(requiredType)) {
@@ -1343,7 +1362,8 @@ function validateAthleteComparisonTargets(siteDir) {
 function validateComparisonStandardSource(row, file) {
     const matchingResults = athleteObjects.filter(result =>
         result.AthleteID === row.StandardAthleteId &&
-        canonicalDistanceKey(result.Distance) === canonicalDistanceKey(row.Distance)
+        canonicalDistanceKey(result.Distance) === canonicalDistanceKey(row.Distance) &&
+        String(result.TimeClass || '').trim() === String(row.StandardTimeClass || '').trim()
     );
     const sourceResult = matchingResults.find(result =>
         String(result.Time || '').trim() === String(row.StandardTime || '').trim() &&

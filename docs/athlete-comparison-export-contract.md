@@ -37,16 +37,15 @@ ChallengerAthleteId,StandardAthleteId,Distance,BenchmarkType,StandardTime,Standa
   excluding self-comparisons.
 - Use the five canonical distances: `5 km`, `10 km`, `10 Mile`,
   `Half Marathon`, and `Marathon`.
-- Use all public results, retaining `Official` or `Unofficial` in
-  `StandardTimeClass`. The Calculator groups official rows first and unofficial
-  rows in a separately labelled section below.
-- A result class can be empty for a pairing because the browser groups only the
-  winning source rows supplied by the export; it does not select fallback
-  performances from `data/athlete_results.csv`.
-- Emit two rows for every pair and distance where The Standard has a result:
-  - `Best Age Grade`: The Standard's highest age-grade result.
-  - `Fastest Time`: The Standard's fastest raw-time result.
-- Emit both benchmark rows even when one performance sets both standards.
+- Select benchmarks independently within each available `Official` and
+  `Unofficial` result class. The Calculator groups official rows first and
+  unofficial rows in a separately labelled section below.
+- For every pair, distance, and available result class, emit two rows:
+  - `Best Age Grade`: The Standard's highest age-grade result in that class.
+  - `Fastest Time`: The Standard's fastest raw-time result in that class.
+- Emit both benchmark rows even when one performance sets both standards. This
+  produces up to four rows per pair and distance when The Standard has both
+  official and unofficial results.
 - `StandardTime`, `StandardAgeGrade`, `StandardDate`, `StandardEvent`, and
   `StandardTimeClass` must identify one exact row in
   `data/athlete_results.csv`.
@@ -57,11 +56,14 @@ ChallengerAthleteId,StandardAthleteId,Distance,BenchmarkType,StandardTime,Standa
   `RequiredTimeToBeat`, rounded down to one tenth of a second using the same
   rule as `age_grade_standards.csv`.
 - `SortOrder` controls presentation. Order distances as 5 km, 10 km, 10 Mile,
-  Half Marathon, and Marathon, with `Best Age Grade` before `Fastest Time`.
+  Half Marathon, and Marathon. Within each distance use official best age
+  grade, official fastest time, unofficial best age grade, then unofficial
+  fastest time (`101`-`104`, `201`-`204`, and so on).
 
 ## Recommended tie-breaking
 
-To keep repeated exports deterministic:
+Apply tie-breaking within the same result class to keep repeated exports
+deterministic:
 
 - For `Best Age Grade`, prefer the faster time when age grades tie, then the
   most recent date, then the earlier workbook source row.
