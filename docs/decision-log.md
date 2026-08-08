@@ -128,25 +128,35 @@ Unknown historical details are labelled rather than inferred.
   of the configured parent and rejects the repository root, tracked `data/`,
   its descendants, and relative or ambiguous paths.
 
-## Main is PR-gated, with Netlify previews
+## Main is PR-gated, with conditional Netlify previews
 
 - **Status:** Accepted policy; repository automation and an active default-branch
   ruleset are implemented. The ruleset was verified through GitHub's API on
   30 June 2026.
 - **Date:** Release protocol established 25 June 2026; automated Netlify preview
-  review links added 28-29 June 2026; hosted ruleset verified 30 June 2026.
-- **Decision:** Substantial changes use a feature branch and Pull Request.
-  Automated checks and a successful Netlify Deploy Preview for both site modes
-  precede review, and `main` is intended to be the protected production branch.
+  review links added 28-29 June 2026; hosted ruleset verified 30 June 2026;
+  lightweight data-refresh pathway added 5 August 2026.
+- **Decision:** Changes use a feature branch and Pull Request. Code,
+  configuration, schema, export-set, and broader documentation changes require
+  automated checks and a successful Netlify Deploy Preview for both site modes.
+  A routine existing-schema public CSV refresh, such as adding new race times,
+  may put `[skip netlify]` in the Pull Request title and use full automated
+  checks, exact CSV diff review, and responsive screenshots without generating
+  a Netlify preview. `main` remains the protected production branch.
 - **Rationale:** Reviewable previews and checks reduce the chance that an
   incorrect export or display change reaches GitHub Pages.
 - **Consequences:** Do not commit or merge directly to `main`. No merge or
   production release occurs without explicit John approval. The active ruleset
   requires a Pull Request, resolved review threads, and the strict
   `Test static site` check, and blocks deletion and non-fast-forward updates.
-  It currently requires zero approving reviews and does not list Netlify's
-  Deploy Preview status as a required check, so those documented safeguards
-  still rely on process rather than hosted enforcement.
+  The lightweight route fails closed unless every tracked public CSV is
+  refreshed, every changed runtime file is an existing CSV under `data/` with
+  an unchanged header, and only
+  `docs/active-work.md` notes may accompany those exports. Every automated test
+  and screenshot still runs. The active ruleset should not list Netlify's
+  Deploy Preview status as an unconditional required check because eligible
+  lightweight Pull Requests intentionally do not create it; the full-preview
+  requirement for other changes remains a documented process gate.
 
 ## Crown history is exported, not reconstructed in the browser
 

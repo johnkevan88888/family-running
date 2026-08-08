@@ -8,6 +8,7 @@ const checks = [
     ['Repository safety validation', ['scripts/validate-repository-safety.mjs']],
     ['CSV validation', ['scripts/validate-csv.mjs']],
     ['Analytics configuration tests', ['tests/analytics-config.mjs']],
+    ['PR release-path tests', ['tests/pr-release-path.mjs']],
     ['Export bundle validation regression tests', ['tests/export-bundle-validation.mjs']],
     ['Staged export workflow regression tests', ['tests/staged-export-workflow.mjs']],
     ['Preview artifact build', ['scripts/build-preview-artifact.mjs']],
