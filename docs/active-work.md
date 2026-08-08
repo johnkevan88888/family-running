@@ -16,6 +16,32 @@ three meaningful differences were explicitly approved and promoted, and the
 complete local test suite passes. No merge or production release has been
 performed for this follow-up.
 
+## Lightweight data-refresh pathway
+
+A second Pull Request pathway is now implemented for routine existing-schema
+public CSV refreshes, such as adding new race times. A Pull Request title that
+contains `[skip netlify]` prevents Netlify from generating a Deploy Preview,
+while the normal GitHub test job still runs the complete suite and uploads
+Family and Everyone responsive screenshots. The eligibility guard fails closed
+unless the diff contains the complete tracked public CSV bundle below `data/`,
+unchanged CSV headers, no added or removed exports, and only optional
+`docs/active-work.md` notes outside the data bundle. Code, configuration,
+schema, export-set, and broader documentation changes continue to require the
+standard Netlify preview pathway.
+
+The preview-links workflow now maintains a lightweight-review comment instead
+of dead preview URLs when the marker is present. The Pull Request template,
+testing and release protocol, deployment guide, and durable decision log all
+describe the two pathways. Focused release-path tests pass, including eligible
+data refreshes and fail-closed code, schema, added-export, incomplete-bundle,
+and documentation-only cases. The complete `pnpm test` suite also passes,
+including repository safety, both-mode CSV validation, export workflow
+regressions, the preview artifact build, browser smoke coverage, and responsive
+screenshots.
+The current Calculator follow-up branch contains code and contract changes, so
+it remains on the standard preview pathway; this alternative is for future
+qualifying data refreshes after the workflow reaches `main`.
+
 ## Current approved scope
 
 - Add a dedicated Calculator page to the shared site navigation.
@@ -137,6 +163,26 @@ performed for this follow-up.
   athlete-result rows, Family and Everyone all/current 10 km tables, their
   downstream comparison targets, and manifest row counts. Official tables,
   records, medals, crowns, and Hall of Fame data were unchanged.
+- On 8 August 2026, bundle `20260808T184046876Z-5035E17F` was staged,
+  reconciled, and promoted with explicit approval after adding 13 official
+  5 km results. The private workbook's `Lifetime PB` and `Best 12m` flags now
+  compare each row only with results in the same `Time Class`, retaining
+  independent Official and Unofficial PBs.
+- The private workbook now rebuilds `tbOfficialMedals` automatically from the
+  enabled Official leaderboard spills before every website export, links each
+  medal back to its exact `tbRaceResults` row for date and event, and normalizes
+  a missing legacy event to `UNKNOWN`. The resulting 22 Family and 26 Everyone
+  medal rows passed the repository's medal-to-leaderboard validation.
+- The 8 August medal changes give David Graham-Kevan Current 5 km Silver in
+  Family and Bronze in Everyone, move Poppy Coleman to Family Bronze, and
+  remove Caitlin Siostrom and Poppy from the displaced Current 5 km places.
+  Jim Chambers retains his medal places with the improved `26:01` / `67.0%`
+  result, while David's existing Current Overall medals now cite `23:37` /
+  `65.5%`.
+- Niall Carberry's addition expands Everyone age-grade standards and crown
+  standards; Jack Graham-Kevan's new current 5 km result updates his crown and
+  comparison targets. Absolute-record holders and performances are unchanged;
+  only their source-row audit references moved after the result-table update.
 
 ## Handoff notes
 
@@ -156,6 +202,11 @@ performed for this follow-up.
   complete `pnpm test` suite after promotion. It is included in the promoted
   public bundle for this follow-up. The prior public bundle is retained under
   ignored `test-artifacts/workbook-export-promotion/` for local rollback.
+- The 8 August race-results and medal refresh passed the complete 68-file staged
+  validation, reconciliation review, and `pnpm test` suite after promotion.
+  The prior tracked bundle is retained under ignored
+  `test-artifacts/workbook-export-promotion/20260808204832981/previous-data`
+  for local rollback.
 
 ## Recently completed historical work
 

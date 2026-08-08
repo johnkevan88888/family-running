@@ -56,7 +56,8 @@ Run browser smoke tests and capture screenshots:
 pnpm run test:browser
 ```
 
-Build the Netlify/GitHub preview artifact:
+Build the static preview artifact used by local checks and standard Netlify
+previews:
 
 ```bash
 pnpm run preview:build
@@ -124,6 +125,15 @@ The preview artifact build copies the static runtime pages, JavaScript, styles,
 and public `data/` bundle into `test-artifacts/preview-site`, then fails if a
 required runtime file is absent from the publish directory.
 
+Pull Request release-path tests recognize Netlify's `[skip netlify]` title
+marker only for a narrow lightweight data refresh. That route requires at least
+one changed existing CSV under `data/`, requires the complete tracked public
+CSV bundle to be refreshed, permits only optional
+`docs/active-work.md` notes alongside it, rejects added or removed CSVs, and
+compares every changed CSV header against `main` to reject schema changes. Code,
+configuration, schema, export-set, and broader documentation changes fail the
+eligibility gate and must use a standard Deploy Preview.
+
 Browser smoke tests run the site through a local static server for:
 
 - `/?site=family`
@@ -170,11 +180,14 @@ Before approving a Pull Request:
 - Confirm any CSV schema impact is intentional.
 - Confirm any Excel/VBA impact is intentional.
 - Check automated test results.
-- Confirm Netlify's Deploy Preview status is successful.
-- Use the bot-maintained `Family Running preview review links` PR comment as the authoritative review entry point.
-- Open both review links:
+- Confirm the Pull Request is using the correct release pathway.
+- For a standard change, confirm Netlify's Deploy Preview status is successful,
+  use the bot-maintained preview-links comment, and open both review links:
   - `?site=family`
   - `?site=everyone`
+- For a validated lightweight data refresh, confirm the Pull Request title
+  contains `[skip netlify]`, the automated eligibility gate passed, and the
+  exact CSV diff contains only the intended new data and bundle metadata.
 - Review desktop and mobile screenshots.
 - Manually check Hall of Fame, All-Time Official Crown Progression, Records, the Calculator's grouped head-to-head comparison, leaderboards, collapsible sections, athlete links, athlete profile pages, and back links.
 - For record changes, review the private workbook's `AbsoluteRecords` sheet and the staged `absolute_records.csv` files before approving tracked data promotion.
@@ -182,9 +195,14 @@ Before approving a Pull Request:
 
 ## Release Gate
 
-No preview, no release.
-
 No passing tests, no release.
+
+For standard changes, no successful preview and review of both site modes, no
+release.
+
+For validated lightweight data refreshes, no accepted eligibility gate, exact
+CSV diff review, and responsive screenshot review for both site modes, no
+release.
 
 No explicit John approval, no release.
 
@@ -193,8 +211,16 @@ No explicit John approval, no release.
 1. Create a feature branch.
 2. Make the smallest safe change.
 3. Run all local checks.
-4. Open a Pull Request and wait for GitHub checks, a successful Netlify Deploy Preview status, and the automated preview-review-links comment.
-5. John reviews the preview, screenshots, manual test steps, limitations, and rollback plan.
+4. Choose the Pull Request pathway:
+   - standard changes use an ordinary title and wait for GitHub checks, a
+     successful Netlify Deploy Preview, and the preview-review-links comment;
+   - an eligible existing-schema data refresh uses a title such as
+     `[skip netlify] Refresh August race times` before the Pull Request is
+     opened, then waits for the full GitHub checks and lightweight-review
+     comment without generating a Netlify preview.
+5. John reviews both site modes through the standard preview, or reviews the
+   exact CSV diff and uploaded responsive screenshots for a validated
+   lightweight refresh, plus the manual steps, limitations, and rollback plan.
 6. Merge to `main` only after John explicitly approves production.
 7. Verify production after GitHub Pages updates.
 
@@ -207,7 +233,17 @@ GitHub Actions runs `.github/workflows/pr-checks.yml` for Pull Requests targetin
 - Family: `https://deploy-preview-PR_NUMBER--thunderous-moxie-c5aac5.netlify.app/?site=family`
 - Everyone: `https://deploy-preview-PR_NUMBER--thunderous-moxie-c5aac5.netlify.app/?site=everyone`
 
-The deterministic URLs are available immediately, but they are not ready for review until Netlify's Deploy Preview status succeeds. Review both site modes before approval.
+For the standard pathway, the deterministic URLs are available immediately,
+but they are not ready for review until Netlify's Deploy Preview status
+succeeds. Review both site modes before approval.
+
+For a lightweight data refresh, add `[skip netlify]` to the Pull Request title
+before opening it. Netlify's supported title marker prevents a Deploy Preview
+from being generated. The preview-review-links workflow instead maintains a
+lightweight-review comment, while `Pull Request Checks / Test static site`
+confirms that only existing-schema CSV exports and optional active-work notes
+changed. Every local-style test and the responsive screenshot upload still
+runs. Do not use `[skip ci]`, because GitHub Actions must not be skipped.
 
 Once the workflow exists on `main`, test it manually by opening `PR Preview Review Links` in GitHub Actions, choosing **Run workflow**, selecting the implementation branch, entering the Pull Request number, and running it. Re-running it updates the same marked comment rather than adding another. GitHub does not expose `workflow_dispatch` for the first Pull Request that introduces a workflow because the workflow file is not yet on the default branch.
 
@@ -239,7 +275,9 @@ John will need to configure these manually in GitHub when ready:
 - Branch protection for `main`.
 - Required Pull Request review before merge.
 - Required automated checks before merge: `Pull Request Checks / Test static site`.
-- Required Netlify Deploy Preview status before merge.
+- Netlify Deploy Preview treated as a process gate for standard changes, but
+  not as an unconditional repository ruleset check because validated
+  lightweight refreshes intentionally do not create one.
 - GitHub Pages production deployment permissions.
 - Optional environment protection requiring John approval before production release.
 
