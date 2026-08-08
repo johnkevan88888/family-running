@@ -86,6 +86,12 @@ Pull Request title marker](https://docs.netlify.com/deploy/manage-deploys/manage
 for skipping a Deploy Preview. Do not use `[skip ci]` because the GitHub checks
 must still run.
 
+For routine workbook updates, `pnpm run data:update` is the preferred guided
+entry point. It prepares the complete export, preserves the staged review and
+promotion boundary, runs the full local suite, verifies lightweight-path
+eligibility, and opens the correctly titled Pull Request after explicit
+confirmation. It does not merge or release production.
+
 The `Pull Request Checks / Test static site` job fails closed if the marker is
 used with code, configuration, schema, added or removed exports, or broader
 documentation changes. Remove `[skip netlify]` from the title and push a new
