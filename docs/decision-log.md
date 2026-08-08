@@ -222,3 +222,22 @@ Unknown historical details are labelled rather than inferred.
   comparison exports while continuing to use shared public athlete names.
   Source benchmark performances remain auditable against
   `data/athlete_results.csv`.
+
+## Challenge defaults and period display are browser presentation choices
+
+- **Status:** Accepted and implemented; period-labelled workbook export pending
+- **Date:** 8 August 2026
+- **Decision:** Challenge the Standard displays Current and All Time standards
+  through a single period switch instead of duplicating cards. When the same
+  exported source performance is both Best Age Grade and Fastest Time, one row
+  retains both badges. The initial athletes are the closest age-grade
+  percentage rivalry among the exported top five Current Official Overall
+  championship rows, with the lower-ranked athlete challenging the
+  higher-ranked athlete.
+- **Rationale:** One period at a time keeps the existing official/unofficial and
+  distance hierarchy readable. The default matchup makes the page immediately
+  relevant while using only already-exported ranking and percentage values.
+- **Consequences:** The browser may choose this initial view and merge identical
+  display rows, but it still cannot derive age grades or target times. The
+  comparison export adds a `Period` dimension owned by Excel/VBA. Legacy rows
+  without that field remain readable as All Time during the schema transition.

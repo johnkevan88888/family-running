@@ -2,19 +2,76 @@
 
 ## Task title
 
-Add a grouped athlete comparison calculator
+Streamline routine website data updates
 
 ## Status
 
-The initial Calculator implementation and grouped official/unofficial display
-were merged in PR #23. This follow-up completes the private-workbook exporter
-and public data contract so official and unofficial benchmarks are selected
-independently. The private VBA source module and repository validator are now
-updated for both result classes. The module compiled successfully and staged
-bundle `20260805T155056454Z-1459E180` passed validation and reconciliation. Its
-three meaningful differences were explicitly approved and promoted, and the
-complete local test suite passes. No merge or production release has been
-performed for this follow-up.
+The lightweight `[skip netlify]` pathway and 8 August public data were released
+through PR #25. This follow-up adds a guarded, guided command for routine data
+updates so John no longer needs to copy staging paths between commands or
+manually remember the branch and Pull Request conventions. The command keeps
+the existing staged-review, explicit-promotion, full-test, Pull Request, and
+production-approval gates intact. It does not change workbook calculations,
+CSV schemas, public data, or website behaviour.
+
+## Challenge the Standard layout follow-up
+
+The Calculator now combines identical Best Age Grade and Fastest Time
+performances into one visible row while retaining both badges. Its initial
+matchup is the smallest exported age-grade percentage gap among the top five
+Current Official Overall championship rows; the lower-ranked athlete is the
+Challenger and the higher-ranked athlete is The Standard.
+
+A compact Standards period switch shows one of Current (last 12 months) or All
+Time at once, avoiding duplicated official/unofficial distance cards. The
+browser and validator support the new workbook-owned `Period` field and treat
+the currently published period-less comparison rows as All Time during the
+transition. Current standards will become visible after a complete validated
+workbook export supplies both period matrices; no tracked public CSV was
+manually changed.
+
+Focused browser coverage verifies the default rivalry, Current-first switching,
+All Time isolation, responsive period controls, and the two-badge/one-row case.
+Repository validation remains compatible with the current public bundle and
+will enforce period-specific completeness and source-performance ranking once
+`Period` is present. The complete `pnpm test` suite passes, including repository
+safety, both-mode CSV validation, export and staged-workflow regressions,
+preview artifact creation, responsive browser tests, and refreshed desktop and
+mobile Calculator screenshots.
+
+## Streamlined routine update command
+
+`pnpm run data:update` now guides one qualifying data refresh from a clean
+workspace through branch creation, workbook export, validation,
+reconciliation, explicit promotion, full tests, eligibility checks, commit,
+push, and `[skip netlify]` Pull Request creation. Windows users can launch the
+same flow by double-clicking `update-website-data.cmd`.
+
+The exact confirmation words `PROMOTE` and `PUBLISH` preserve the two material
+local/external change boundaries. The command never merges the Pull Request or
+deploys production. A stopped update can resume from ignored local state with
+`pnpm run data:update -- --resume`, without copying the staged export path.
+
+The wrapper fails closed for a missing GitHub login, dirty worktree,
+overlapping open data Pull Request, incomplete public bundle, header/schema
+change, non-data file, failed bundle validation, or failed repository test.
+
+The focused updater tests, JavaScript syntax check, `git diff --check`, and the
+complete `pnpm test` suite pass locally. The full suite includes repository
+safety, both-mode CSV validation, release-path tests, staged-export
+regressions, preview artifact creation, browser smoke coverage, and responsive
+screenshots. The implementation is local on
+`feat/streamlined-data-updates` and is ready for the standard Pull Request
+pathway. Merge and production deployment remain separate approval steps.
+
+## Files changed for the streamlined updater
+
+- Added `scripts/simple-data-update.mjs`, its focused regression test, and the
+  double-clickable `update-website-data.cmd` launcher.
+- Added `pnpm run data:update` and included the updater regression in the full
+  repository suite.
+- Updated the README, workbook workflow, testing/release protocol, preview
+  deployment guide, decision log, and these handoff notes.
 
 ## Lightweight data-refresh pathway
 

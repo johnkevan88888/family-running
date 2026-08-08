@@ -37,8 +37,8 @@
                 <h2 id="comparison-title">Challenge the standard</h2>
                 <p>
                     See the standard athlete's best age-grade and fastest-time performances,
-                    then the age-graded target the challenger must beat for each one. Official
-                    results are shown first, with unofficial results below.
+                    then the age-graded target the challenger must beat for each one. Switch
+                    between current and all-time standards, with official results shown first.
                 </p>
             </div>
             <span class="calculator-step">01</span>
@@ -54,6 +54,11 @@
                 <span>The standard</span>
                 <select id="comparison-athlete-b" name="comparison-athlete-b"></select>
             </label>
+            <fieldset id="comparison-period-control" class="comparison-period-control" hidden>
+                <legend>Standards period</legend>
+                <div id="comparison-period-options" class="comparison-period-options"></div>
+                <p id="comparison-period-note">Current covers performances from the last 12 months.</p>
+            </fieldset>
         </form>
 
         <div id="comparison-summary" class="calculator-summary" aria-live="polite"></div>
