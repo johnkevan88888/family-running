@@ -157,6 +157,10 @@ Unknown historical details are labelled rather than inferred.
   Deploy Preview status as an unconditional required check because eligible
   lightweight Pull Requests intentionally do not create it; the full-preview
   requirement for other changes remains a documented process gate.
+  Routine data refreshes use a guided local wrapper that automates branch
+  creation, full-bundle staging, validation, reconciliation, tests, and Pull
+  Request creation while retaining separate typed confirmations for data
+  promotion and publication. The wrapper never merges or deploys.
 
 ## Crown history is exported, not reconstructed in the browser
 

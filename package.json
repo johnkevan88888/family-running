@@ -14,6 +14,7 @@
     "test:staged-export": "node tests/staged-export-workflow.mjs",
     "test:browser": "node tests/browser-smoke.mjs",
     "screenshots:update": "node tests/browser-smoke.mjs --update-screenshots",
+    "data:update": "node scripts/simple-data-update.mjs",
     "workbook:export:staged": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-workbook-staged-export.ps1",
     "workbook:validate:staged": "node scripts/export-bundle-validation.mjs",
     "workbook:compare:staged": "node scripts/compare-export-bundle.mjs",

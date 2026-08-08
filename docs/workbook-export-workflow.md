@@ -83,6 +83,51 @@ age-grade standards including `pace_per_km` and `pace_per_mile`, absolute
 records, Family and Everyone athlete-comparison targets, and shared
 `athlete_results.csv`.
 
+## Streamlined routine data update
+
+For a simple existing-schema data refresh, such as adding race times, save and
+close Excel and then either double-click `update-website-data.cmd` or run:
+
+```powershell
+pnpm run data:update
+```
+
+The guided updater:
+
+1. confirms that GitHub CLI is logged in and the repository is clean;
+2. fetches current `origin/main` and creates a timestamped `data/refresh-*`
+   branch from it;
+3. generates a fresh complete staged workbook export;
+4. validates and reconciles the bundle without changing tracked data;
+5. lists every meaningful CSV difference and requires the exact word
+   `PROMOTE` before replacing tracked `data/`;
+6. runs the complete repository test and responsive screenshot suite;
+7. confirms that every tracked CSV was refreshed and no header changed; and
+8. requires the exact word `PUBLISH` before committing, pushing, and opening a
+   `[skip netlify]` Pull Request.
+
+It never merges the Pull Request or deploys production. John must still review
+the exact CSV diff, GitHub checks, and Family/Everyone screenshot artifacts and
+explicitly approve production.
+
+If the command is stopped at either review point, resume the same staged update
+without copying its path:
+
+```powershell
+pnpm run data:update -- --resume
+```
+
+For a non-interactive preparation that stops before promotion:
+
+```powershell
+pnpm run data:update -- --prepare-only
+```
+
+The updater refuses dirty worktrees, overlapping open data-update Pull
+Requests, incomplete bundles, changed CSV schemas, non-data changes, failed
+validation, and failed tests. Use the manual workflow below for schema,
+export-set, code, configuration, or broader documentation changes.
+
 ## Safe refresh commands
 
 Run commands from the repository root on Windows.

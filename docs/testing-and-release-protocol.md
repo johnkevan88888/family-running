@@ -38,6 +38,23 @@ Run CSV validation only:
 pnpm run validate:csv
 ```
 
+Run the guided routine data updater after saving and closing Excel:
+
+```powershell
+pnpm run data:update
+```
+
+Resume an update stopped at a review checkpoint:
+
+```powershell
+pnpm run data:update -- --resume
+```
+
+This wrapper prepares the complete staged export, preserves the explicit
+promotion checkpoint, runs this full test suite, and opens an eligible
+`[skip netlify]` Pull Request only after a second explicit confirmation. It
+never merges or deploys.
+
 Run focused export-bundle failure regression tests:
 
 ```bash
@@ -218,6 +235,8 @@ No explicit John approval, no release.
      `[skip netlify] Refresh August race times` before the Pull Request is
      opened, then waits for the full GitHub checks and lightweight-review
      comment without generating a Netlify preview.
+   The guided `pnpm run data:update` command performs these branch, validation,
+   promotion, test, and Pull Request steps for a qualifying routine refresh.
 5. John reviews both site modes through the standard preview, or reviews the
    exact CSV diff and uploaded responsive screenshots for a validated
    lightweight refresh, plus the manual steps, limitations, and rollback plan.
