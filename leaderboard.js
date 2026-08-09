@@ -148,7 +148,7 @@ function renderHallOfFameCard(row) {
     ].filter(Boolean).map(escapeHTML).join(' / ');
     const dateEvent = [
         row.event ? `&#128205; ${escapeHTML(row.event)}` : '',
-        row.date ? `&#128197; ${escapeHTML(row.date)}` : ''
+        row.date ? `&#128197; ${escapeHTML(formatExportedDate(row.date))}` : ''
     ].filter(Boolean).join(' &nbsp; ');
     const primaryMetric = row.primarymetric
         ? renderHallOfFameMetric(row.primarymetriclabel, row.primarymetric, row)
@@ -394,9 +394,10 @@ async function buildOverviewStats() {
     const container = document.getElementById('overview-dashboard');
     if (!container) return;
 
-    const [athleteRows, siteAthleteIds] = await Promise.all([
+    const [athleteRows, siteAthleteIds, siteInfoRows] = await Promise.all([
         fetchCSV('data/athlete_results.csv').then(csvRowsToObjects),
-        loadSiteAthleteIds()
+        loadSiteAthleteIds(),
+        fetchCSV(`${dataPath}/siteinfo.csv`)
     ]);
     const officialRows = athleteRows
         .filter(row => row.AthleteID && siteAthleteIds.has(cleanAthleteId(row.AthleteID)))
@@ -406,12 +407,22 @@ async function buildOverviewStats() {
             parsedDate: parseExportedDate(row.Date)
         }))
         .filter(row => row.parsedDate);
-    const latestYear = officialRows.length
-        ? Math.max(...officialRows.map(row => row.parsedDate.getFullYear()))
-        : new Date().getFullYear();
-    const rowsThisYear = officialRows.filter(row => row.parsedDate.getFullYear() === latestYear);
+    const latestResult = officialRows
+        .slice()
+        .sort(compareResultDateDescending)[0];
+    const publishedAt = siteInfoRows.find(row => row[0] === 'LastUpdatedUTC')?.[1] || '';
+    const publishedDate = parseExportedDate(String(publishedAt).split('T')[0]);
+    const windowEnd = publishedDate || latestResult?.parsedDate || new Date();
+    const twelveMonthStart = window.dateDisplay.subtractMonths(windowEnd, 12);
+    const sixMonthStart = window.dateDisplay.subtractMonths(windowEnd, 6);
+    const rowsLastTwelveMonths = officialRows.filter(row =>
+        row.parsedDate >= twelveMonthStart && row.parsedDate <= windowEnd
+    );
+    const rowsLastSixMonths = officialRows.filter(row =>
+        row.parsedDate >= sixMonthStart && row.parsedDate <= windowEnd
+    );
     const athletes = new Map();
-    const athletesThisYear = new Set();
+    const athletesLastTwelveMonths = new Set();
 
     for (const row of officialRows) {
         if (!athletes.has(row.AthleteID)) {
@@ -419,35 +430,30 @@ async function buildOverviewStats() {
         }
     }
 
-    for (const row of rowsThisYear) {
-        athletesThisYear.add(row.AthleteID);
+    for (const row of rowsLastTwelveMonths) {
+        athletesLastTwelveMonths.add(row.AthleteID);
     }
 
-    const latestResult = officialRows
+    const mostActive = [...countRowsByAthlete(rowsLastTwelveMonths).entries()]
+        .sort((a, b) => b[1].count - a[1].count || a[1].name.localeCompare(b[1].name));
+    const recentResults = rowsLastSixMonths
         .slice()
-        .sort(compareResultDateDescending)[0];
-    const mostActive = [...countRowsByAthlete(rowsThisYear).entries()]
-        .sort((a, b) => b[1].count - a[1].count || a[1].name.localeCompare(b[1].name))
-        .slice(0, 5);
-    const recentResults = officialRows
-        .slice()
-        .sort(compareResultDateDescending)
-        .slice(0, 8);
+        .sort(compareResultDateDescending);
 
     container.classList.add('overview-dashboard');
     container.innerHTML = `
         <div class="overview-stat-grid">
             ${renderOverviewStat(athletes.size, 'athletes with official results')}
-            ${renderOverviewStat(rowsThisYear.length, `official results in ${latestYear}`)}
-            ${renderOverviewStat(athletesThisYear.size, `official athletes in ${latestYear}`)}
+            ${renderOverviewStat(rowsLastTwelveMonths.length, 'official results in the last 12 months')}
+            ${renderOverviewStat(athletesLastTwelveMonths.size, 'official athletes in the last 12 months')}
             ${renderOverviewStat(latestResult ? formatExportedDate(latestResult.parsedDate) : '-', 'latest official result')}
         </div>
         <section class="overview-panel" aria-labelledby="most-active-title">
-            <h3 id="most-active-title">Most official runs recorded in ${latestYear}</h3>
+            <h3 id="most-active-title">Most official runs recorded in the last 12 months</h3>
             ${renderMostActiveList(mostActive)}
         </section>
         <section class="overview-panel" aria-labelledby="recent-results-title">
-            <h3 id="recent-results-title">Most recent official results</h3>
+            <h3 id="recent-results-title">Most recent official results from the last six months</h3>
             ${renderRecentResults(recentResults)}
         </section>
     `;
@@ -489,7 +495,7 @@ function renderOverviewStat(value, label) {
 
 function renderMostActiveList(rows) {
     if (!rows.length) {
-        return '<p class="description">No exported official results are available for this year.</p>';
+        return '<p class="description">No exported official results are available for the last 12 months.</p>';
     }
 
     return `
@@ -561,21 +567,11 @@ function compareResultDateDescending(a, b) {
 }
 
 function parseExportedDate(value) {
-    const parts = String(value || '').split('/').map(Number);
-    if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) {
-        return null;
-    }
-
-    const [day, month, year] = parts;
-    return new Date(year, month - 1, day);
+    return window.dateDisplay?.parse(value) || null;
 }
 
-function formatExportedDate(date) {
-    return date.toLocaleDateString(undefined, {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-    });
+function formatExportedDate(value) {
+    return window.dateDisplay?.format(value) || String(value || '');
 }
 
 function cleanAthleteId(value) {
@@ -713,7 +709,7 @@ function renderCrownHistoryEntry(row) {
             class="crown-history-item"
             data-effective-date="${escapeHTML(row.effectivedate)}"
             data-athlete-id="${escapeHTML(row.athleteid)}">
-            <div class="crown-history-date">${escapeHTML(row.effectivedate)}</div>
+            <div class="crown-history-date">${escapeHTML(formatExportedDate(row.effectivedate))}</div>
             <article class="crown-history-card">
                 <h4 class="crown-history-holder">${holder}</h4>
                 ${performance ? `<div class="crown-history-performance">${performance}</div>` : ''}
@@ -783,10 +779,7 @@ async function loadSiteInfo() {
     if (lastUpdatedRow) {
         const utcDate = new Date(lastUpdatedRow[1]);
 
-        const localTime = utcDate.toLocaleString(undefined, {
-            dateStyle: 'medium',
-            timeStyle: 'short'
-        });
+        const localTime = window.dateDisplay?.formatDateTime(utcDate) || utcDate.toLocaleString();
 
         document.getElementById('last-updated').innerHTML =
             `<div class="site-meta-item">
@@ -841,6 +834,10 @@ function renderTable(rows) {
                     rowObject.Distance,
                     rowObject.DisplayDistance
                 );
+            }
+
+            if (['date', 'eventdate', 'effectivedate', 'standarddate'].includes(normalizedHeader)) {
+                cell = escapeHTML(formatExportedDate(cell));
             }
 
             if (row[0] === '1' && cell === row[0]) cell = '<span class="medal">&#129351;</span>';

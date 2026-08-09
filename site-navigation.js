@@ -161,10 +161,7 @@
                 return;
             }
 
-            const localTime = new Date(lastUpdated).toLocaleString(undefined, {
-                dateStyle: 'medium',
-                timeStyle: 'short'
-            });
+            const localTime = window.dateDisplay?.formatDateTime(lastUpdated) || lastUpdated;
 
             meta.innerHTML =
                 `<div class="site-meta-item">

@@ -14,6 +14,28 @@ the existing staged-review, explicit-promotion, full-test, Pull Request, and
 production-approval gates intact. It does not change workbook calculations,
 CSV schemas, public data, or website behaviour.
 
+## Overview rolling activity and site-wide date display
+
+The Overview now anchors its rolling windows to the selected site's published
+`LastUpdatedUTC` date. “Most official runs recorded” includes every athlete
+with an official result in the inclusive last 12 months, ordered by run count,
+and the recent-results section includes every official result from the
+inclusive last six months. The related statistics and headings describe those
+same windows; no championship ranking or workbook-owned result is calculated
+in the browser.
+
+Visible dates now use `day Month year` throughout the site, including the
+header update timestamp, Overview cards, championship tables, athlete results
+and medals, Hall of Fame and crown history, records, Calculator source details,
+and chart tooltips. The header retains the visitor's local update time.
+
+JavaScript syntax checks and `git diff --check` pass. Repository safety, both
+CSV modes, analytics and workflow regressions, preview packaging, and the full
+responsive browser suite pass. Desktop and mobile Overview screenshots were
+reviewed for Family and Everyone; the expanded lists remain readable without
+horizontal overflow. This work is on `agent/overview-date-windows` and uses the
+standard preview Pull Request pathway.
+
 ## Challenge the Standard layout follow-up
 
 The Calculator now combines identical Best Age Grade and Fastest Time

@@ -232,7 +232,7 @@ function renderAbsoluteRecordCard(record) {
     const badge = absoluteRecordBadge(record);
     const dateEvent = [
         record.event ? `&#128205; ${escapeRecordHTML(record.event)}` : '',
-        record.date ? `&#128197; ${escapeRecordHTML(record.date)}` : ''
+        record.date ? `&#128197; ${escapeRecordHTML(formatRecordDate(record.date))}` : ''
     ].filter(Boolean).join(' &nbsp; ');
     const details = [
         record.timeClass,
@@ -329,6 +329,10 @@ function renderAbsoluteRecordsEmpty(container) {
 function renderRecordTimeWithPace(time, ...distanceCandidates) {
     return window.paceDisplay?.renderTimeWithPace(time, ...distanceCandidates) ||
         escapeRecordHTML(time);
+}
+
+function formatRecordDate(value) {
+    return window.dateDisplay?.format(value) || String(value || '');
 }
 
 function refreshRecordsPaceDisplay() {

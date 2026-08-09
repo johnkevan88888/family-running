@@ -23,8 +23,11 @@ function updateBackLink() {
 }
 
 function parseDate(dateStr) {
-    const [day, month, year] = dateStr.split('/');
-    return new Date(year, month - 1, day);
+    return window.dateDisplay?.parse(dateStr) || new Date(Number.NaN);
+}
+
+function displayDate(value) {
+    return window.dateDisplay?.format(value) || String(value || '');
 }
 
 function timeToSeconds(time) {
@@ -164,7 +167,7 @@ spanGaps: true
                     max: chartResults[chartResults.length - 1].Date ? parseDate(chartResults[chartResults.length - 1].Date) : undefined,
                     time: {
                         unit: 'year',
-                        tooltipFormat: 'dd MMM yyyy',
+                        tooltipFormat: 'd MMMM yyyy',
                         displayFormats: {
                             year: 'yyyy'
                         }
@@ -204,7 +207,7 @@ function renderTable(rows) {
     rows.forEach(row => {
         html += `
             <tr>
-                <td>${escapeHTML(row.Date)}</td>
+                <td>${escapeHTML(displayDate(row.Date))}</td>
                 <td>${escapeHTML(row.Distance)}</td>
                 <td>${renderTimeWithPace(row.Time, row.Distance)}</td>
                 <td>${escapeHTML(row.AgeGrade)}</td>
@@ -340,7 +343,7 @@ function formatPBBlock(label, result, isAgeGrade) {
             <div class="pb-value">${mainValue}</div>
             <div class="pb-sub">${secondaryValue}</div>
             ${result.Event ? `<div class="pb-meta">&#128205; ${escapeHTML(result.Event)}</div>` : ''}
-            ${result.Date ? `<div class="pb-meta">&#128197; ${escapeHTML(result.Date)}</div>` : ''}
+            ${result.Date ? `<div class="pb-meta">&#128197; ${escapeHTML(displayDate(result.Date))}</div>` : ''}
         </div>
     `;
 }
@@ -353,7 +356,7 @@ function formatPB(result) {
     return `
         <strong>${renderTimeWithPace(result.Time, result.Distance)}</strong><br>
         <span>&#128205; ${escapeHTML(result.Event)}</span><br>
-        <span>&#128197; ${escapeHTML(result.Date)}</span>
+        <span>&#128197; ${escapeHTML(displayDate(result.Date))}</span>
     `;
 }
 
@@ -708,7 +711,7 @@ function renderOfficialMedalHeld(medal, results) {
     ].filter(Boolean).join(' &middot; ');
     const event = [
         medal.EventName ? `&#128205; ${escapeHTML(medal.EventName)}` : '',
-        medal.EventDate ? `&#128197; ${escapeHTML(medal.EventDate)}` : ''
+        medal.EventDate ? `&#128197; ${escapeHTML(displayDate(medal.EventDate))}` : ''
     ].filter(Boolean).join(' &nbsp; ');
     const context = [medal.Period, medal.Distance].filter(Boolean)
         .map(escapeHTML)
