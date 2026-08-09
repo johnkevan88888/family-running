@@ -135,14 +135,18 @@ Unknown historical details are labelled rather than inferred.
   30 June 2026.
 - **Date:** Release protocol established 25 June 2026; automated Netlify preview
   review links added 28-29 June 2026; hosted ruleset verified 30 June 2026;
-  lightweight data-refresh pathway added 5 August 2026.
+  lightweight data-refresh pathway added 5 August 2026; custom-domain pathway
+  added 9 August 2026.
 - **Decision:** Changes use a feature branch and Pull Request. Code,
   configuration, schema, export-set, and broader documentation changes require
   automated checks and a successful Netlify Deploy Preview for both site modes.
   A routine existing-schema public CSV refresh, such as adding new race times,
   may put `[skip netlify]` in the Pull Request title and use full automated
   checks, exact CSV diff review, and responsive screenshots without generating
-  a Netlify preview. `main` remains the protected production branch.
+  a Netlify preview. A narrowly scoped custom-domain configuration may use the
+  same marker because its hostname, DNS, redirect, and certificate behavior can
+  only be verified on GitHub Pages after merge. `main` remains the protected
+  production branch.
 - **Rationale:** Reviewable previews and checks reduce the chance that an
   incorrect export or display change reaches GitHub Pages.
 - **Consequences:** Do not commit or merge directly to `main`. No merge or
@@ -153,7 +157,9 @@ Unknown historical details are labelled rather than inferred.
   refreshed, every changed runtime file is an existing CSV under `data/` with
   an unchanged header, and only
   `docs/active-work.md` notes may accompany those exports. Every automated test
-  and screenshot still runs. The active ruleset should not list Netlify's
+  and screenshot still runs. The custom-domain route requires a syntactically
+  valid root `CNAME` and accepts only its explicit domain, analytics, test,
+  workflow, and documentation allowlist. The active ruleset should not list Netlify's
   Deploy Preview status as an unconditional required check because eligible
   lightweight Pull Requests intentionally do not create it; the full-preview
   requirement for other changes remains a documented process gate.
@@ -183,10 +189,11 @@ Unknown historical details are labelled rather than inferred.
 - **Date:** 22 July 2026
 - **Decision:** Production pages use the hosted GoatCounter account
   `familyrunning.goatcounter.com` for aggregate visit statistics. The tracker
-  loads only on `johnkevan88888.github.io/family-running`; local development,
-  Netlify previews, and other GitHub Pages projects are excluded. Analytics
-  paths retain the selected Family/Everyone mode and public athlete ID where
-  relevant, but discard other query parameters.
+  loads only on `www.aceofrace.com`, `aceofrace.com`, and the legacy
+  `johnkevan88888.github.io/family-running` address; local development, Netlify
+  previews, unrelated subdomains, and other GitHub Pages projects are excluded.
+  Analytics paths retain the selected Family/Everyone mode and public athlete
+  ID where relevant, but discard other query parameters.
 - **Rationale:** The site owner needs a simple indication of whether and how the
   public site is used without introducing cookies, persistent browser storage,
   personal visitor profiles, or inflated counts from review traffic.

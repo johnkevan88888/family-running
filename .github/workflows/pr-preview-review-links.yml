@@ -80,12 +80,12 @@ jobs:
             const commentBody = skipsNetlify
               ? [
                   process.env.PREVIEW_COMMENT_MARKER,
-                  "## Family Running lightweight data refresh",
+                  "## Family Running Netlify preview skipped",
                   "",
-                  "Netlify preview intentionally skipped to preserve deploy capacity.",
+                  "Netlify preview intentionally skipped for an eligible release pathway.",
                   "",
-                  "The Pull Request Checks workflow must confirm that this change contains the complete existing-schema CSV bundle under `data/` plus optional `docs/active-work.md` notes.",
-                  "Review the exact CSV diff and the uploaded Family and Everyone responsive screenshots before approval.",
+                  "The Pull Request Checks workflow must confirm that this is either a complete existing-schema data refresh or a narrowly scoped custom-domain configuration.",
+                  "Review the exact diff and the uploaded Family and Everyone responsive screenshots before approval.",
                   "",
                   `Head commit: \`${headSha.slice(0, 7)}\``,
                 ].join("\n")

@@ -54,6 +54,35 @@ const codeChange = assessReleasePath({
 });
 assert.match(codeChange.errors.join('\n'), /leaderboard\.js/);
 
+const customDomain = assessReleasePath({
+    title: '[skip netlify] Configure custom domain',
+    changedFiles: [
+        'CNAME',
+        'analytics.js',
+        'tests/analytics-config.mjs',
+        'docs/decision-log.md'
+    ],
+    cnameContents: 'www.aceofrace.com\n'
+});
+assert.deepEqual(customDomain, {
+    pathway: 'custom-domain-configuration',
+    errors: []
+});
+
+const invalidCustomDomain = assessReleasePath({
+    title: '[skip netlify] Configure custom domain',
+    changedFiles: ['CNAME'],
+    cnameContents: 'https://www.aceofrace.com/path'
+});
+assert.match(invalidCustomDomain.errors.join('\n'), /valid hostname/);
+
+const broadCustomDomainChange = assessReleasePath({
+    title: '[skip netlify] Configure custom domain',
+    changedFiles: ['CNAME', 'leaderboard.js'],
+    cnameContents: 'www.aceofrace.com'
+});
+assert.match(broadCustomDomainChange.errors.join('\n'), /leaderboard\.js/);
+
 const schemaChange = assessReleasePath({
     title: '[skip netlify] Refresh race times',
     changedFiles: ['data/athlete_results.csv'],
