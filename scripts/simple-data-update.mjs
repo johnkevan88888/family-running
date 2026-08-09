@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -11,14 +12,23 @@ import {
 } from './export-bundle-tools.mjs';
 
 const STATE_VERSION = 1;
+const REPOSITORY = 'johnkevan88888/family-running';
+const BASE_BRANCH = 'main';
+const REQUIRED_CHECK = 'Test static site';
 const stateDirectory = path.join(repoRoot, 'test-artifacts', 'simple-data-update');
 const statePath = path.join(stateDirectory, 'latest.json');
+const promotionDirectory = path.join(
+    repoRoot,
+    'test-artifacts',
+    'workbook-export-promotion'
+);
 const acceptedPhases = new Set([
     'prepared',
     'promoted',
     'tested',
     'committed',
     'published',
+    'merged',
     'no-changes'
 ]);
 
@@ -138,8 +148,57 @@ export function validateUpdateState(state) {
     if (!state.stagedRoot || !path.isAbsolute(state.stagedRoot)) {
         throw new Error('The saved staged-export path is invalid.');
     }
+    if (state.promotionRoot && !path.isAbsolute(state.promotionRoot)) {
+        throw new Error('The saved promotion-artifact path is invalid.');
+    }
 
     return state;
+}
+
+export function assessDataPullRequestIdentity(pullRequest, state) {
+    const errors = [];
+
+    if (!pullRequest || typeof pullRequest !== 'object') {
+        return ['GitHub did not return Pull Request metadata.'];
+    }
+    if (pullRequest.url !== state.pullRequestUrl) {
+        errors.push('The Pull Request URL does not match the saved update.');
+    }
+    if (pullRequest.baseRefName !== BASE_BRANCH) {
+        errors.push(`The Pull Request does not target ${BASE_BRANCH}.`);
+    }
+    if (pullRequest.headRefName !== state.branch) {
+        errors.push('The Pull Request head branch does not match the saved update.');
+    }
+    if (pullRequest.headRefOid !== state.commitSha) {
+        errors.push('The Pull Request head commit does not match the validated data commit.');
+    }
+    if (pullRequest.title !== state.pullRequestTitle) {
+        errors.push('The Pull Request title changed after local validation.');
+    }
+    if (!/\[skip netlify\]/i.test(pullRequest.title || '')) {
+        errors.push('The Pull Request is missing the lightweight data-refresh marker.');
+    }
+
+    return errors;
+}
+
+export function assessRequiredDataChecks(pullRequest) {
+    const checks = Array.isArray(pullRequest?.statusCheckRollup)
+        ? pullRequest.statusCheckRollup
+        : [];
+    const requiredCheck = checks.find(check => check?.name === REQUIRED_CHECK);
+
+    if (!requiredCheck) {
+        return [`GitHub did not report the required ${REQUIRED_CHECK} check.`];
+    }
+    if (requiredCheck.conclusion !== 'SUCCESS') {
+        return [
+            `${REQUIRED_CHECK} did not succeed (reported ${requiredCheck.conclusion || requiredCheck.status || 'unknown'}).`
+        ];
+    }
+
+    return [];
 }
 
 async function main() {
@@ -163,19 +222,24 @@ async function main() {
 
     if (options.resume) {
         state = loadState();
-        ensureCurrentBranch(tools.git, state.branch);
-        console.log(`Resuming data update on ${state.branch}.`);
+        if (!['published', 'merged', 'no-changes'].includes(state.phase)) {
+            ensureCurrentBranch(tools.git, state.branch);
+            console.log(`Resuming data update on ${state.branch}.`);
+        } else {
+            console.log(`Resuming published data update ${state.branch}.`);
+        }
     } else {
         refuseUnfinishedUpdate(tools.gh);
         state = prepareUpdate(options, tools);
     }
 
     if (state.phase === 'no-changes') {
-        console.log('Nothing needs to be promoted or published.');
+        console.log('Nothing needs to be promoted or published. Cleaning up the unused update branch.');
+        cleanupCompletedUpdate(state, tools.git, { merged: false });
         return;
     }
-    if (state.phase === 'published') {
-        console.log(`Pull Request already created: ${state.pullRequestUrl}`);
+    if (state.phase === 'merged') {
+        cleanupCompletedUpdate(state, tools.git, { merged: true });
         return;
     }
     if (options.prepareOnly && state.phase === 'prepared') {
@@ -198,16 +262,31 @@ async function main() {
             return;
         }
 
-        state = promoteAndTest(state);
+        state = promoteAndTest(state, tools.git);
     } else if (state.phase === 'promoted') {
-        state = runFullTests(state);
+        state = runFullTests(state, tools.git);
+    }
+
+    if (
+        state.phase === 'tested' &&
+        state.testedDataFingerprint !== captureDataFingerprint(tools.git)
+    ) {
+        console.log('The saved update predates the tested-data fingerprint or its CSV diff changed. Running the full tests again...');
+        delete state.productionApprovedAt;
+        state = runFullTests(state, tools.git);
     }
 
     if (state.phase === 'tested') {
         showWorkingTreeSummary(tools.git);
+    }
+
+    if (
+        ['tested', 'committed', 'published'].includes(state.phase) &&
+        !state.productionApprovedAt
+    ) {
         const approved = options.approvePublish || await confirmExactWord(
             'PUBLISH',
-            'Publish will commit the complete CSV bundle, push the data branch, and open a lightweight Pull Request. It will not merge or deploy.'
+            'Publish will commit and push the validated CSV bundle, open a lightweight Pull Request, wait for GitHub checks, merge it to production, delete the data branch, and clean up this update.'
         );
 
         if (!approved) {
@@ -215,6 +294,11 @@ async function main() {
             return;
         }
 
+        state.productionApprovedAt = new Date().toISOString();
+        saveState(state);
+    }
+
+    if (state.phase === 'tested') {
         state = commitUpdate(state, tools.git);
     }
 
@@ -222,10 +306,13 @@ async function main() {
         state = pushAndOpenPullRequest(state, tools);
     }
 
-    console.log('');
-    console.log(`Lightweight data Pull Request: ${state.pullRequestUrl}`);
-    console.log('Netlify will be skipped. GitHub tests and responsive screenshots still run.');
-    console.log('The Pull Request remains unmerged until John explicitly approves production.');
+    if (state.phase === 'published') {
+        state = await waitForChecksAndMerge(state, tools);
+    }
+
+    if (state.phase === 'merged') {
+        cleanupCompletedUpdate(state, tools.git, { merged: true });
+    }
 }
 
 function prepareUpdate(options, tools) {
@@ -294,7 +381,7 @@ function prepareUpdate(options, tools) {
     return state;
 }
 
-function promoteAndTest(state) {
+function promoteAndTest(state, git) {
     resolveStagedRoot(state.stagedRoot);
     const argumentsList = [
         '--staged',
@@ -307,23 +394,43 @@ function promoteAndTest(state) {
     }
 
     console.log('Promoting the reviewed complete bundle into tracked public data...');
-    runNodeScript('scripts/promote-staged-export.mjs', argumentsList);
+    const promoted = runNodeScript('scripts/promote-staged-export.mjs', argumentsList);
+    const promotionMatch = /(?:^|\r?\n)PROMOTION_ARTIFACT_ROOT=([^\r\n]+)/.exec(
+        promoted.stdout
+    );
+
+    if (!promotionMatch) {
+        throw new Error('Promotion completed without reporting its cleanup path.');
+    }
+
+    state.promotionRoot = resolvePromotionRoot(promotionMatch[1].trim());
     state.phase = 'promoted';
     saveState(state);
-    return runFullTests(state);
+    return runFullTests(state, git);
 }
 
-function runFullTests(state) {
+function runFullTests(state, git) {
     console.log('Running the complete repository test and screenshot suite...');
     runNodeScript('scripts/run-all-tests.mjs');
     state.phase = 'tested';
     state.testedAt = new Date().toISOString();
+    state.testedDataFingerprint = captureDataFingerprint(git);
     saveState(state);
     return state;
 }
 
 function commitUpdate(state, git) {
     ensureCurrentBranch(git, state.branch);
+
+    if (
+        !state.testedDataFingerprint ||
+        captureDataFingerprint(git) !== state.testedDataFingerprint
+    ) {
+        throw new Error(
+            'The public-data diff changed after the full test suite passed. Resume from a freshly tested update.'
+        );
+    }
+
     const changedFiles = splitNullTerminated(runCommand(
         git,
         ['diff', '--name-only', '-z'],
@@ -368,6 +475,7 @@ function commitUpdate(state, git) {
 
 function pushAndOpenPullRequest(state, tools) {
     ensureCurrentBranch(tools.git, state.branch);
+    requireCleanWorkingTree(tools.git);
     validateCommittedReleasePath(state, tools.git);
     runCommand(tools.git, ['push', '--set-upstream', 'origin', state.branch], {
         label: 'Push data branch'
@@ -380,7 +488,7 @@ function pushAndOpenPullRequest(state, tools) {
             'view',
             state.branch,
             '--repo',
-            'johnkevan88888/family-running',
+            REPOSITORY,
             '--json',
             'url,state'
         ],
@@ -402,9 +510,9 @@ function pushAndOpenPullRequest(state, tools) {
                 'pr',
                 'create',
                 '--repo',
-                'johnkevan88888/family-running',
+                REPOSITORY,
                 '--base',
-                'main',
+                BASE_BRANCH,
                 '--head',
                 state.branch,
                 '--title',
@@ -422,6 +530,261 @@ function pushAndOpenPullRequest(state, tools) {
     state.publishedAt = new Date().toISOString();
     saveState(state);
     return state;
+}
+
+async function waitForChecksAndMerge(state, tools) {
+    let pullRequest = await waitForRequiredCheckRegistration(state, tools.gh);
+
+    requireDataPullRequestIdentity(pullRequest, state);
+
+    if (pullRequest.state === 'MERGED') {
+        return recordMergedPullRequest(state, pullRequest);
+    }
+    if (pullRequest.state !== 'OPEN') {
+        throw new Error(
+            `The data Pull Request is ${pullRequest.state || 'in an unknown state'} and cannot be merged automatically.`
+        );
+    }
+
+    console.log('');
+    console.log(`Lightweight data Pull Request: ${state.pullRequestUrl}`);
+    console.log('Waiting for GitHub checks and responsive screenshot generation...');
+    runCommand(
+        tools.gh,
+        [
+            'pr',
+            'checks',
+            state.pullRequestUrl,
+            '--repo',
+            REPOSITORY,
+            '--required',
+            '--watch',
+            '--fail-fast'
+        ],
+        { label: 'GitHub Pull Request checks' }
+    );
+
+    pullRequest = loadPullRequest(state, tools.gh);
+    requireDataPullRequestIdentity(pullRequest, state);
+
+    if (pullRequest.state === 'MERGED') {
+        return recordMergedPullRequest(state, pullRequest);
+    }
+
+    const checkErrors = assessRequiredDataChecks(pullRequest);
+
+    if (checkErrors.length > 0) {
+        throw new Error(`Automatic merge refused:\n- ${checkErrors.join('\n- ')}`);
+    }
+
+    console.log('All required checks passed. Merging the approved data Pull Request...');
+    runCommand(
+        tools.gh,
+        [
+            'pr',
+            'merge',
+            state.pullRequestUrl,
+            '--repo',
+            REPOSITORY,
+            '--merge',
+            '--match-head-commit',
+            state.commitSha,
+            '--delete-branch'
+        ],
+        { label: 'Merge data Pull Request' }
+    );
+
+    pullRequest = loadPullRequest(state, tools.gh);
+    requireDataPullRequestIdentity(pullRequest, state);
+
+    if (pullRequest.state !== 'MERGED') {
+        throw new Error(
+            'GitHub accepted the merge request but has not completed it. Run the launcher with --resume after GitHub finishes.'
+        );
+    }
+
+    return recordMergedPullRequest(state, pullRequest);
+}
+
+async function waitForRequiredCheckRegistration(state, gh) {
+    const deadline = Date.now() + 2 * 60 * 1000;
+    let announcedWait = false;
+
+    while (true) {
+        const pullRequest = loadPullRequest(state, gh);
+
+        requireDataPullRequestIdentity(pullRequest, state);
+
+        if (pullRequest.state !== 'OPEN') {
+            return pullRequest;
+        }
+        if (
+            pullRequest.statusCheckRollup?.some(
+                check => check?.name === REQUIRED_CHECK
+            )
+        ) {
+            return pullRequest;
+        }
+        if (Date.now() >= deadline) {
+            throw new Error(
+                `GitHub did not register the required ${REQUIRED_CHECK} check within two minutes. Run the launcher with --resume to try again.`
+            );
+        }
+        if (!announcedWait) {
+            console.log(`Waiting for GitHub to register the required ${REQUIRED_CHECK} check...`);
+            announcedWait = true;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+}
+
+function loadPullRequest(state, gh) {
+    const result = runCommand(
+        gh,
+        [
+            'pr',
+            'view',
+            state.pullRequestUrl,
+            '--repo',
+            REPOSITORY,
+            '--json',
+            'url,state,title,baseRefName,headRefName,headRefOid,mergeCommit,mergedAt,statusCheckRollup'
+        ],
+        { label: 'Data Pull Request inspection', quiet: true }
+    );
+
+    return JSON.parse(result.stdout);
+}
+
+function requireDataPullRequestIdentity(pullRequest, state) {
+    const errors = assessDataPullRequestIdentity(pullRequest, state);
+
+    if (errors.length > 0) {
+        throw new Error(`Automatic merge refused:\n- ${errors.join('\n- ')}`);
+    }
+}
+
+function recordMergedPullRequest(state, pullRequest) {
+    const mergeCommitSha = pullRequest.mergeCommit?.oid;
+
+    if (!/^[0-9a-f]{40}$/i.test(mergeCommitSha || '')) {
+        throw new Error('GitHub did not report the completed merge commit.');
+    }
+
+    state.phase = 'merged';
+    state.mergeCommitSha = mergeCommitSha;
+    state.mergedAt = pullRequest.mergedAt || new Date().toISOString();
+    saveState(state);
+    return state;
+}
+
+function cleanupCompletedUpdate(state, git, { merged }) {
+    const currentBranch = captureGit(git, ['branch', '--show-current']).trim();
+
+    if (![state.branch, BASE_BRANCH].includes(currentBranch)) {
+        throw new Error(
+            `Cleanup expected ${state.branch} or ${BASE_BRANCH}, but the current branch is ${currentBranch || 'detached HEAD'}.`
+        );
+    }
+
+    requireCleanWorkingTree(git);
+    console.log('Refreshing local main and removing the completed data branch...');
+    runCommand(git, ['fetch', 'origin', BASE_BRANCH, '--prune'], {
+        label: 'Post-update GitHub refresh'
+    });
+
+    if (currentBranch !== BASE_BRANCH) {
+        runCommand(git, ['switch', BASE_BRANCH], { label: 'Return to main' });
+    }
+
+    runCommand(git, ['merge', '--ff-only', `origin/${BASE_BRANCH}`], {
+        label: 'Fast-forward local main'
+    });
+
+    const localDataBranch = captureGit(
+        git,
+        ['branch', '--list', state.branch, '--format=%(refname:short)']
+    ).trim();
+
+    if (localDataBranch) {
+        const branchHead = captureGit(git, ['rev-parse', state.branch]).trim();
+
+        if (merged && branchHead !== state.commitSha) {
+            throw new Error('The local data branch no longer matches the merged Pull Request head.');
+        }
+
+        runCommand(git, ['branch', '--delete', state.branch], {
+            label: merged
+                ? 'Delete merged local data branch'
+                : 'Delete unused local data branch'
+        });
+    }
+
+    if (merged) {
+        deleteRemoteBranchIfPresent(state, git);
+    }
+
+    cleanupUpdateArtifacts(state);
+    console.log('');
+    console.log(
+        merged
+            ? `Data update merged at ${state.mergeCommitSha}. Local main is current and update artifacts were removed.`
+            : 'No-change update cleaned up. Local main is current and no update branch remains.'
+    );
+}
+
+function deleteRemoteBranchIfPresent(state, git) {
+    const remoteBranch = runCommand(
+        git,
+        ['ls-remote', '--exit-code', '--heads', 'origin', state.branch],
+        {
+            label: 'Remote data branch check',
+            acceptedStatuses: [0, 2],
+            quiet: true
+        }
+    );
+
+    if (remoteBranch.status === 0) {
+        runCommand(git, ['push', 'origin', '--delete', state.branch], {
+            label: 'Delete merged remote data branch'
+        });
+    }
+}
+
+function cleanupUpdateArtifacts(state) {
+    console.log('Removing staged export and saved update state...');
+
+    if (fs.existsSync(state.stagedRoot)) {
+        fs.rmSync(resolveStagedRoot(state.stagedRoot), { recursive: true });
+    }
+
+    if (state.promotionRoot && fs.existsSync(state.promotionRoot)) {
+        fs.rmSync(resolvePromotionRoot(state.promotionRoot), { recursive: true });
+    }
+
+    fs.rmSync(statePath, { force: true });
+
+    if (fs.existsSync(stateDirectory) && fs.readdirSync(stateDirectory).length === 0) {
+        fs.rmdirSync(stateDirectory);
+    }
+}
+
+export function resolvePromotionRoot(candidate) {
+    if (!candidate || !path.isAbsolute(candidate)) {
+        throw new Error('The promotion cleanup path must be absolute.');
+    }
+
+    const resolvedParent = fs.realpathSync(promotionDirectory);
+    const resolvedCandidate = fs.realpathSync(candidate);
+
+    if (path.dirname(resolvedCandidate) !== resolvedParent) {
+        throw new Error(
+            'The promotion cleanup path must be an immediate child of the managed promotion-artifact directory.'
+        );
+    }
+
+    return resolvedCandidate;
 }
 
 function validateCommittedReleasePath(state, git) {
@@ -466,8 +829,8 @@ function createPullRequestBody(state) {
         '',
         '## Review',
         '',
-        '- Review the exact CSV diff and the Family/Everyone screenshot artifacts.',
-        '- Merge only after John explicitly approves production.'
+        '- The local PUBLISH confirmation explicitly approved this routine data refresh for production.',
+        '- The guided updater will merge only after the required GitHub check succeeds.'
     ].join('\n');
 }
 
@@ -555,33 +918,30 @@ function refuseUnfinishedUpdate(gh) {
 
     const state = loadState();
 
-    if (!['published', 'no-changes'].includes(state.phase)) {
+    if (state.phase !== 'published') {
         throw new Error(
-            `An unfinished data update already exists on ${state.branch}. Run "pnpm run data:update -- --resume".`
+            `A data update already exists on ${state.branch}. Run "update-website-data.cmd --resume" to continue or finish its cleanup.`
         );
     }
-    if (state.phase === 'published') {
-        const result = runCommand(
-            gh,
-            [
-                'pr',
-                'view',
-                state.pullRequestUrl,
-                '--repo',
-                'johnkevan88888/family-running',
-                '--json',
-                'state'
-            ],
-            { label: 'Previous data Pull Request check', quiet: true }
-        );
-        const pullRequestState = JSON.parse(result.stdout).state;
 
-        if (pullRequestState === 'OPEN') {
-            throw new Error(
-                `The previous data update is still open: ${state.pullRequestUrl}. Merge or close it before starting another.`
-            );
-        }
-    }
+    const result = runCommand(
+        gh,
+        [
+            'pr',
+            'view',
+            state.pullRequestUrl,
+            '--repo',
+            REPOSITORY,
+            '--json',
+            'state'
+        ],
+        { label: 'Previous data Pull Request check', quiet: true }
+    );
+    const pullRequestState = JSON.parse(result.stdout).state;
+
+    throw new Error(
+        `The previous data Pull Request is ${pullRequestState}: ${state.pullRequestUrl}. Run "update-website-data.cmd --resume" to finish its merge or cleanup.`
+    );
 }
 
 function verifyGitHubLogin(gh) {
@@ -613,7 +973,7 @@ function saveState(state) {
 function printResumeInstructions(state) {
     console.log('');
     console.log(`Prepared update retained on ${state.branch}.`);
-    console.log('Resume later with: pnpm run data:update -- --resume');
+    console.log('Resume later with: update-website-data.cmd --resume');
 }
 
 function runNodeScript(relativeScript, argumentsList = [], options = {}) {
@@ -732,15 +1092,24 @@ function printHelp() {
     console.log(`Simple Family Running data update
 
 Usage:
+  update-website-data.cmd
+  update-website-data.cmd --resume
   pnpm run data:update
   pnpm run data:update -- --resume
   pnpm run data:update -- --prepare-only
   pnpm run data:update -- --workbook "C:\\path\\source.xlsm"
 
 The guided command creates a data branch, exports and validates the workbook,
-requires confirmation before promotion, runs all tests, and requires a second
-confirmation before pushing and opening a [skip netlify] Pull Request.
-It never merges or deploys.`);
+requires confirmation before promotion, runs all tests, and requires PUBLISH
+confirmation before opening a [skip netlify] Pull Request, waiting for GitHub
+checks, merging to production, deleting the data branch, and removing only the
+saved artifacts for that update.`);
+}
+
+function captureDataFingerprint(git) {
+    const dataDiff = captureGit(git, ['diff', '--binary', '--', 'data']);
+
+    return createHash('sha256').update(dataDiff, 'utf8').digest('hex');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

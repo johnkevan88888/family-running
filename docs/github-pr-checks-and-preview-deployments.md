@@ -90,8 +90,10 @@ must still run.
 For routine workbook updates, `pnpm run data:update` is the preferred guided
 entry point. It prepares the complete export, preserves the staged review and
 promotion boundary, runs the full local suite, verifies lightweight-path
-eligibility, and opens the correctly titled Pull Request after explicit
-confirmation. It does not merge or release production.
+eligibility, and requires `PUBLISH` as explicit approval for the complete
+routine-data production action. It then opens the correctly titled Pull
+Request, waits for GitHub checks, verifies the PR branch, title, and head
+commit, merges through the protected pathway, and performs scoped cleanup.
 
 The `Pull Request Checks / Test static site` job fails closed if the marker is
 used outside the data-refresh or custom-domain allowlists. Remove
@@ -126,7 +128,10 @@ John needs to complete these once:
 3. Confirm Netlify uses the repository `netlify.toml` build settings.
 4. Enable Netlify Deploy Previews for Pull Requests.
 5. Open GitHub branch protection for `main`.
-6. Require Pull Request review before merge.
+6. Require Pull Request review before merge for standard and custom-domain
+   changes. Do not add an unconditional review requirement if the guided
+   routine-data `PUBLISH` auto-merge path must remain available; its explicit
+   local approval is paired with the protected required check.
 7. Require `Pull Request Checks / Test static site` before merge.
 8. Treat the Netlify Deploy Preview status as a required process gate for the
    standard pathway, but do not configure it as an unconditional repository
@@ -149,4 +154,6 @@ For validated lightweight data refreshes: no accepted eligibility gate, exact
 CSV diff review, and Family and Everyone responsive screenshot review, no
 release.
 
-No explicit John approval, no release.
+No explicit John approval, no release. For the guided routine-data command,
+typing `PUBLISH` after the local review and full test suite is that explicit
+approval; every other pathway retains a separate Pull Request approval.
