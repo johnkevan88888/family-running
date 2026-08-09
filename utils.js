@@ -1,5 +1,99 @@
 const csvCache = new Map();
 
+window.dateDisplay = (function () {
+    const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    function parse(value) {
+        if (value instanceof Date) {
+            return Number.isNaN(value.getTime()) ? null : new Date(value.getTime());
+        }
+
+        const text = String(value || '').trim();
+        if (!text) return null;
+
+        const exportedDate = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (exportedDate) {
+            return checkedLocalDate(
+                Number(exportedDate[3]),
+                Number(exportedDate[2]),
+                Number(exportedDate[1])
+            );
+        }
+
+        const isoDate = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (isoDate) {
+            return checkedLocalDate(
+                Number(isoDate[1]),
+                Number(isoDate[2]),
+                Number(isoDate[3])
+            );
+        }
+
+        const parsed = new Date(text);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    function checkedLocalDate(year, month, day) {
+        const parsed = new Date(year, month - 1, day);
+
+        if (
+            parsed.getFullYear() !== year ||
+            parsed.getMonth() !== month - 1 ||
+            parsed.getDate() !== day
+        ) {
+            return null;
+        }
+
+        return parsed;
+    }
+
+    function format(value) {
+        const date = parse(value);
+        if (!date) return String(value || '');
+
+        return `${date.getDate()} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+    }
+
+    function formatDateTime(value) {
+        const date = parse(value);
+        if (!date) return String(value || '');
+
+        const time = date.toLocaleTimeString(undefined, {
+            hour: 'numeric',
+            minute: '2-digit'
+        });
+
+        return `${format(date)}, ${time}`;
+    }
+
+    function subtractMonths(value, months) {
+        const date = parse(value);
+        if (!date || !Number.isInteger(months)) return null;
+
+        const originalDay = date.getDate();
+        const result = new Date(date.getTime());
+        result.setDate(1);
+        result.setMonth(result.getMonth() - months);
+        result.setDate(Math.min(originalDay, daysInMonth(result.getFullYear(), result.getMonth())));
+
+        return result;
+    }
+
+    function daysInMonth(year, monthIndex) {
+        return new Date(year, monthIndex + 1, 0).getDate();
+    }
+
+    return {
+        format,
+        formatDateTime,
+        parse,
+        subtractMonths
+    };
+})();
+
 window.paceDisplay = (function () {
     const storageKey = 'family-running.age-grade-pace-unit';
     const defaultUnit = 'km';

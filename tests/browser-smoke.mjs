@@ -437,7 +437,7 @@ async function assertCalculatorComparisonCards(page, targets, context) {
             ...group.map(groupRow => groupRow.BenchmarkType),
             row.StandardTime,
             `${row.StandardAgeGrade} age grade`,
-            row.StandardDate,
+            formatWebsiteDate(row.StandardDate),
             row.StandardEvent,
             row.StandardTimeClass,
             row.RequiredTimeToBeat,
@@ -548,6 +548,7 @@ async function assertOverviewPage(page, mode, viewport, requestedPaths) {
     }
 
     await assertOverviewRecentResults(page, mode, viewport);
+    await assertOverviewActivity(page, mode, viewport);
 
     const modeRequests = requestedPaths.filter(requestPath =>
         requestPath.startsWith(`data/${mode}/`)
@@ -578,6 +579,7 @@ async function assertOverviewRecentResults(page, mode, viewport) {
         const text = normalizeText(await cards.nth(index).textContent());
         const expectedValues = [
             expectedRow.Participant,
+            formatWebsiteDate(expectedRow.Date),
             expectedRow.Distance,
             expectedRow.Time,
             expectedRow.AgeGrade,
@@ -600,6 +602,41 @@ async function assertOverviewRecentResults(page, mode, viewport) {
     if (mode === 'family' && (renderedText.includes('Grace Chambers') || renderedText.includes('Jim Chambers'))) {
         failures.push(`${context}: Family Overview recent results included non-family athletes Grace or Jim.`);
     }
+}
+
+async function assertOverviewActivity(page, mode, viewport) {
+    const context = `${mode}/${viewport.name}`;
+    const expectedRows = await expectedOverviewActivityRows(mode);
+    const items = page.locator('#overview-dashboard .overview-list li');
+    const itemCount = await items.count();
+
+    if (itemCount !== expectedRows.length) {
+        failures.push(`${context}: rendered ${itemCount} 12-month activity rows, expected ${expectedRows.length}.`);
+    }
+
+    const comparableCount = Math.min(itemCount, expectedRows.length);
+    for (let index = 0; index < comparableCount; index += 1) {
+        const expectedRow = expectedRows[index];
+        const text = normalizeText(await items.nth(index).textContent());
+        const expectedText = `${expectedRow.name} ${expectedRow.count} ${expectedRow.count === 1 ? 'run' : 'runs'}`;
+
+        if (!text.includes(expectedText)) {
+            failures.push(`${context}: 12-month activity row ${index + 1} was "${text}", expected "${expectedText}".`);
+        }
+    }
+
+    await expectText(
+        page,
+        '#most-active-title',
+        'Most official runs recorded in the last 12 months',
+        `${context} activity window heading`
+    );
+    await expectText(
+        page,
+        '#recent-results-title',
+        'Most recent official results from the last six months',
+        `${context} recent-results window heading`
+    );
 }
 
 async function assertPrimaryNavigation(page, mode, viewport, activePage) {
@@ -634,6 +671,23 @@ async function assertPrimaryNavigation(page, mode, viewport, activePage) {
         if (!expectedActive && ariaCurrent === 'page') {
             failures.push(`${context}: ${label} link was incorrectly marked active.`);
         }
+    }
+
+    await assertWebsiteDateFormat(page, context);
+}
+
+async function assertWebsiteDateFormat(page, context) {
+    const bodyText = normalizeText(await page.locator('body').textContent());
+    const rawExportedDates = bodyText.match(/\b\d{1,2}\/\d{1,2}\/\d{4}\b/g) || [];
+
+    if (rawExportedDates.length) {
+        failures.push(`${context}: displayed unformatted date(s): ${[...new Set(rawExportedDates)].join(', ')}.`);
+    }
+
+    const updatedText = normalizeText(await page.locator('#last-updated').textContent());
+    const fullDatePattern = /\b\d{1,2} (?:January|February|March|April|May|June|July|August|September|October|November|December) \d{4}\b/;
+    if (!fullDatePattern.test(updatedText)) {
+        failures.push(`${context}: header update timestamp was not in day Month year format: "${updatedText}".`);
     }
 }
 
@@ -834,7 +888,7 @@ async function assertRenderedAbsoluteRecord(card, row, mode, context) {
         row.Distance,
         row.Participant,
         row.Time,
-        row.Date,
+        formatWebsiteDate(row.Date),
         row.Event,
         row.TimeClass,
         row.AgeClass,
@@ -921,7 +975,7 @@ async function assertCrownHistory(page, mode, viewport, requestedPaths) {
         const entry = entries.nth(index);
         const text = normalizeText(await entry.textContent());
         const requiredValues = [
-            row.EffectiveDate,
+            formatWebsiteDate(row.EffectiveDate),
             row.AthleteName,
             row.Time,
             row.AgeGrade,
@@ -1761,7 +1815,7 @@ async function assertDisplayedOfficialMedals(page, mode, viewport, expectedMedal
             medal.Time ? `Time: ${medal.Time}` : '',
             medal.AgeGrade ? `Age grade: ${medal.AgeGrade}` : '',
             medal.EventName,
-            medal.EventDate,
+            formatWebsiteDate(medal.EventDate),
             medal.Place ? `#${medal.Place}` : ''
         ].filter(Boolean);
 
@@ -1815,6 +1869,47 @@ async function hasAthleteData() {
 }
 
 async function expectedOverviewRecentRows(mode) {
+    const [officialRows, windowEnd] = await Promise.all([
+        overviewOfficialRows(mode),
+        overviewReferenceDate(mode)
+    ]);
+    const windowStart = subtractCalendarMonths(windowEnd, 6);
+
+    return officialRows
+        .filter(row => row.parsedDate >= windowStart && row.parsedDate <= windowEnd)
+        .sort((a, b) =>
+            b.parsedDate - a.parsedDate ||
+            String(a.Participant || '').localeCompare(String(b.Participant || '')) ||
+            a.__csvIndex - b.__csvIndex
+        );
+}
+
+async function expectedOverviewActivityRows(mode) {
+    const [officialRows, windowEnd] = await Promise.all([
+        overviewOfficialRows(mode),
+        overviewReferenceDate(mode)
+    ]);
+    const windowStart = subtractCalendarMonths(windowEnd, 12);
+    const counts = new Map();
+
+    for (const row of officialRows.filter(candidate =>
+        candidate.parsedDate >= windowStart && candidate.parsedDate <= windowEnd
+    )) {
+        const athleteId = cleanAthleteId(row.AthleteID);
+        const current = counts.get(athleteId) || {
+            count: 0,
+            name: row.Participant || row.AthleteID
+        };
+
+        current.count += 1;
+        counts.set(athleteId, current);
+    }
+
+    return [...counts.values()]
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+async function overviewOfficialRows(mode) {
     const [athleteRows, siteAthleteIds] = await Promise.all([
         readCsvObjects('data/athlete_results.csv'),
         overviewSiteAthleteIds(mode)
@@ -1828,13 +1923,13 @@ async function expectedOverviewRecentRows(mode) {
             __csvIndex: index,
             parsedDate: parseOverviewDate(row.Date)
         }))
-        .filter(row => row.parsedDate)
-        .sort((a, b) =>
-            b.parsedDate - a.parsedDate ||
-            String(a.Participant || '').localeCompare(String(b.Participant || '')) ||
-            a.__csvIndex - b.__csvIndex
-        )
-        .slice(0, 8);
+        .filter(row => row.parsedDate);
+}
+
+async function overviewReferenceDate(mode) {
+    const siteInfoRows = await readCsvObjects(`data/${mode}/siteinfo.csv`);
+    const updatedAt = siteInfoRows.find(row => row.Label === 'LastUpdatedUTC')?.Value || '';
+    return parseOverviewDate(String(updatedAt).split('T')[0]) || new Date();
 }
 
 async function overviewSiteAthleteIds(mode) {
@@ -1858,13 +1953,45 @@ async function overviewSiteAthleteIds(mode) {
 }
 
 function parseOverviewDate(value) {
-    const parts = String(value || '').split('/').map(Number);
-    if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) {
+    const text = String(value || '').trim();
+    const exportedMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    let year;
+    let month;
+    let day;
+
+    if (exportedMatch) {
+        [, day, month, year] = exportedMatch.map(Number);
+    } else if (isoMatch) {
+        [, year, month, day] = isoMatch.map(Number);
+    } else {
         return null;
     }
 
-    const [day, month, year] = parts;
-    return new Date(year, month - 1, day);
+    const parsed = new Date(year, month - 1, day);
+    return parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day
+        ? parsed
+        : null;
+}
+
+function subtractCalendarMonths(value, months) {
+    const result = new Date(value.getTime());
+    const originalDay = result.getDate();
+    result.setDate(1);
+    result.setMonth(result.getMonth() - months);
+    result.setDate(Math.min(originalDay, new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate()));
+    return result;
+}
+
+function formatWebsiteDate(value) {
+    const parsed = parseOverviewDate(value);
+    if (!parsed) return String(value || '');
+
+    const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return `${parsed.getDate()} ${months[parsed.getMonth()]} ${parsed.getFullYear()}`;
 }
 
 function cleanAthleteId(value) {

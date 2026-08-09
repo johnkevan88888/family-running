@@ -228,7 +228,7 @@
         standardMetrics.append(standardTime, standardAgeGrade);
         const standardDetail = document.createElement('span');
         standardDetail.className = 'comparison-standard-detail';
-        standardDetail.textContent = [row.StandardDate, row.StandardEvent, row.StandardTimeClass]
+        standardDetail.textContent = [formatComparisonDate(row.StandardDate), row.StandardEvent, row.StandardTimeClass]
             .filter(Boolean)
             .join(' · ');
         standardResult.append(standardLabel, standardMetrics, standardDetail);
@@ -370,6 +370,10 @@
         element.className = 'calculator-empty';
         element.textContent = message;
         return element;
+    }
+
+    function formatComparisonDate(value) {
+        return window.dateDisplay?.format(value) || String(value || '');
     }
 
     function renderLoadError() {
