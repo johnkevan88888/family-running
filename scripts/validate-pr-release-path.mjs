@@ -4,12 +4,28 @@ import { pathToFileURL } from 'node:url';
 const NETLIFY_SKIP_MARKER = /\[skip netlify\]/i;
 const ACTIVE_WORK_PATH = 'docs/active-work.md';
 const DATA_CSV_PATH = /^data\/(?:[^/]+\/)*[^/]+\.csv$/i;
+const CUSTOM_DOMAIN_PATH = 'CNAME';
+const CUSTOM_DOMAIN_ALLOWED_PATHS = new Set([
+    '.github/pull_request_template.md',
+    '.github/workflows/pr-preview-review-links.yml',
+    'CNAME',
+    'README.md',
+    'analytics.js',
+    'docs/decision-log.md',
+    'docs/github-pr-checks-and-preview-deployments.md',
+    'docs/testing-and-release-protocol.md',
+    'scripts/validate-pr-release-path.mjs',
+    'tests/analytics-config.mjs',
+    'tests/pr-release-path.mjs'
+]);
+const DOMAIN_NAME = /^(?=.{1,253}$)(?!-)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
 
 export function assessReleasePath({
     title,
     changedFiles,
     csvMetadata = new Map(),
-    expectedDataCsvFiles = null
+    expectedDataCsvFiles = null,
+    cnameContents = null
 }) {
     if (!NETLIFY_SKIP_MARKER.test(title || '')) {
         return {
@@ -19,6 +35,29 @@ export function assessReleasePath({
     }
 
     const normalizedFiles = [...new Set(changedFiles.map(normalizePath))].sort();
+    if (normalizedFiles.includes(CUSTOM_DOMAIN_PATH)) {
+        const errors = [];
+        const disallowedFiles = normalizedFiles.filter(
+            file => !CUSTOM_DOMAIN_ALLOWED_PATHS.has(file)
+        );
+        const domain = String(cnameContents || '').trim();
+
+        if (!DOMAIN_NAME.test(domain)) {
+            errors.push('CNAME must contain one valid hostname without a protocol or path.');
+        }
+
+        if (disallowedFiles.length > 0) {
+            errors.push(
+                `The custom-domain pathway cannot include these files: ${disallowedFiles.join(', ')}`
+            );
+        }
+
+        return {
+            pathway: 'custom-domain-configuration',
+            errors
+        };
+    }
+
     const dataCsvFiles = normalizedFiles.filter(file => DATA_CSV_PATH.test(file));
     const disallowedFiles = normalizedFiles.filter(
         file => file !== ACTIVE_WORK_PATH && !DATA_CSV_PATH.test(file)
@@ -208,11 +247,14 @@ function runCli() {
         title,
         changedFiles,
         csvMetadata: readCsvMetadata(baseSha, headSha, changedFiles),
-        expectedDataCsvFiles: listDataCsvFiles(headSha)
+        expectedDataCsvFiles: listDataCsvFiles(headSha),
+        cnameContents: changedFiles.includes(CUSTOM_DOMAIN_PATH)
+            ? execFileSync('git', ['show', `${headSha}:${CUSTOM_DOMAIN_PATH}`], { encoding: 'utf8' })
+            : null
     });
 
     if (assessment.errors.length > 0) {
-        console.error('The [skip netlify] lightweight data-refresh pathway is not eligible:');
+        console.error(`The [skip netlify] ${assessment.pathway} pathway is not eligible:`);
         for (const error of assessment.errors) {
             console.error(`- ${error}`);
         }
@@ -220,7 +262,7 @@ function runCli() {
         process.exit(1);
     }
 
-    console.log('Release pathway: validated lightweight data refresh; Netlify preview is intentionally skipped.');
+    console.log(`Release pathway: validated ${assessment.pathway}; Netlify preview is intentionally skipped.`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -1,10 +1,16 @@
 (function () {
-    const productionHost = 'johnkevan88888.github.io';
-    const productionPathPrefix = '/family-running';
+    const productionSites = new Map([
+        ['www.aceofrace.com', ''],
+        ['aceofrace.com', ''],
+        ['johnkevan88888.github.io', '/family-running']
+    ]);
     const validSites = new Set(['family', 'everyone']);
     const currentPath = window.location.pathname;
-    const isProductionSite = window.location.hostname === productionHost
-        && (currentPath === productionPathPrefix || currentPath.startsWith(`${productionPathPrefix}/`));
+    const productionPathPrefix = productionSites.get(window.location.hostname.toLowerCase());
+    const isProductionSite = productionPathPrefix !== undefined
+        && (productionPathPrefix === ''
+            || currentPath === productionPathPrefix
+            || currentPath.startsWith(`${productionPathPrefix}/`));
 
     if (!isProductionSite) {
         return;

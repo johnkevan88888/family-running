@@ -119,13 +119,14 @@ CSV validation checks `data/family/`, `data/everyone/`, and shared `data/athlete
 The existing content checks remain in force: required files and headers, parseable CSV structure, matching row lengths, leaderboard files referenced by `webtables.csv`, athlete IDs used by links, official medal exports, parseable dates, numeric fields and times, non-empty Hall of Fame data, and non-empty enabled championship files. Validation also enforces the exact `crown_history.csv` contract, crown order and chronology, transition and previous-holder rules, and final-holder agreement with the All-Time Official Hall of Fame without deriving history in JavaScript. Athlete medals remain Excel-owned exports and are rendered directly from `official_medals.csv`; their rows must match the current exported official leaderboards. When present, `absolute_records.csv` must be a workbook-owned official raw-time export with Men and Women records, source-row audit fields, and no browser-derived record calculation. Vacant states such as "Championship Vacant" and "No eligible results" are accepted.
 
 Analytics configuration tests prove that GoatCounter loads only for the
-production `johnkevan88888.github.io/family-running` site. Local runs, Netlify
-previews, and unrelated GitHub Pages paths must not load it. The tests also
-verify that Family and Everyone paths stay distinct, unrelated query parameters
-are discarded, and only public athlete IDs are retained on profile paths. They
-also lock the integration to GoatCounter's current recommended loader without
-the stale subresource-integrity pin that previously caused browsers to block
-the script before it could submit a visit.
+production `www.aceofrace.com` and `aceofrace.com` domains, plus the legacy
+`johnkevan88888.github.io/family-running` address. Local runs, Netlify previews,
+unrelated subdomains, and unrelated GitHub Pages paths must not load it. The
+tests also verify that Family and Everyone paths stay distinct, unrelated query
+parameters are discarded, and only public athlete IDs are retained on profile
+paths. They also lock the integration to GoatCounter's current recommended
+loader without the stale subresource-integrity pin that previously caused
+browsers to block the script before it could submit a visit.
 
 Focused regression tests copy `data/` to temporary directories and prove validation rejects a changed CSV bundle ID, a CSV omitted from the manifest, and an incorrect manifest row count. Production CSVs are not mutated by these tests.
 
@@ -143,11 +144,14 @@ and public `data/` bundle into `test-artifacts/preview-site`, then fails if a
 required runtime file is absent from the publish directory.
 
 Pull Request release-path tests recognize Netlify's `[skip netlify]` title
-marker only for a narrow lightweight data refresh. That route requires at least
+marker for a narrow lightweight data refresh or custom-domain configuration.
+The data route requires at least
 one changed existing CSV under `data/`, requires the complete tracked public
 CSV bundle to be refreshed, permits only optional
 `docs/active-work.md` notes alongside it, rejects added or removed CSVs, and
-compares every changed CSV header against `main` to reject schema changes. Code,
+compares every changed CSV header against `main` to reject schema changes. The
+domain route requires a valid root `CNAME` and permits only the explicit domain,
+analytics, test, workflow, and documentation allowlist. Other code,
 configuration, schema, export-set, and broader documentation changes fail the
 eligibility gate and must use a standard Deploy Preview.
 
@@ -207,6 +211,9 @@ Before approving a Pull Request:
 - For a validated lightweight data refresh, confirm the Pull Request title
   contains `[skip netlify]`, the automated eligibility gate passed, and the
   exact CSV diff contains only the intended new data and bundle metadata.
+- For a validated custom-domain change, confirm the title contains
+  `[skip netlify]`, the eligibility gate passed, `CNAME` contains only the
+  intended hostname, and the exact diff stays within the domain allowlist.
 - Review desktop and mobile screenshots.
 - Manually check Hall of Fame, All-Time Official Crown Progression, Records, the Calculator's grouped head-to-head comparison, leaderboards, collapsible sections, athlete links, athlete profile pages, and back links.
 - For record changes, review the private workbook's `AbsoluteRecords` sheet and the staged `absolute_records.csv` files before approving tracked data promotion.
@@ -223,6 +230,10 @@ For validated lightweight data refreshes, no accepted eligibility gate, exact
 CSV diff review, and responsive screenshot review for both site modes, no
 release.
 
+For validated custom-domain changes, no accepted eligibility gate, exact diff
+review, responsive screenshot review, and post-merge production verification,
+no release.
+
 No explicit John approval, no release.
 
 ## Proposed Workflow
@@ -236,12 +247,17 @@ No explicit John approval, no release.
    - an eligible existing-schema data refresh uses a title such as
      `[skip netlify] Refresh August race times` before the Pull Request is
      opened, then waits for the full GitHub checks and lightweight-review
-     comment without generating a Netlify preview.
+     comment without generating a Netlify preview;
+   - an eligible custom-domain change uses a title such as
+     `[skip netlify] Configure aceofrace.com custom domain`, then relies on the
+     full GitHub checks, screenshots, exact diff review, and post-merge
+     production verification because DNS behavior cannot be represented by the
+     Netlify hostname.
    The guided `pnpm run data:update` command performs these branch, validation,
    promotion, test, and Pull Request steps for a qualifying routine refresh.
 5. John reviews both site modes through the standard preview, or reviews the
-   exact CSV diff and uploaded responsive screenshots for a validated
-   lightweight refresh, plus the manual steps, limitations, and rollback plan.
+   exact diff and uploaded responsive screenshots for a validated skip
+   pathway, plus the manual steps, limitations, and rollback plan.
 6. Merge to `main` only after John explicitly approves production.
 7. Verify production after GitHub Pages updates.
 
@@ -274,8 +290,8 @@ The Netlify build uses `netlify.toml`, runs `pnpm run preview:build`, and publis
 
 After an approved release reaches GitHub Pages, verify:
 
-- [Family production](https://johnkevan88888.github.io/family-running/?site=family)
-- [Everyone production](https://johnkevan88888.github.io/family-running/?site=everyone)
+- [Family production](https://www.aceofrace.com/?site=family)
+- [Everyone production](https://www.aceofrace.com/?site=everyone)
 
 Check that both modes load, Hall of Fame renders, Calculator comparisons use the selected mode and separate official from unofficial source performances, leaderboards render, athlete links open, and back links preserve the correct mode.
 

@@ -29,6 +29,13 @@ const unrelatedGithubPage = runAnalytics({
 });
 assert.equal(unrelatedGithubPage.scripts.length, 0, 'other GitHub Pages projects must not load GoatCounter');
 
+const unrelatedCustomDomain = runAnalytics({
+    hostname: 'preview.aceofrace.com',
+    pathname: '/',
+    search: '?site=family'
+});
+assert.equal(unrelatedCustomDomain.scripts.length, 0, 'other custom-domain subdomains must not load GoatCounter');
+
 const family = runAnalytics({
     hostname: 'johnkevan88888.github.io',
     pathname: '/family-running/',
@@ -52,14 +59,30 @@ const defaultSite = runAnalytics({
 });
 assert.equal(defaultSite.window.goatcounter.path(), '/family-running/?site=family');
 
+const customDomainFamily = runAnalytics({
+    hostname: 'www.aceofrace.com',
+    pathname: '/',
+    search: '?site=family&utm_source=test'
+});
+assertTrackerScript(customDomainFamily.scripts);
+assert.equal(customDomainFamily.window.goatcounter.path(), '/?site=family');
+
+const apexDomainEveryone = runAnalytics({
+    hostname: 'aceofrace.com',
+    pathname: '/records.html',
+    search: '?site=everyone'
+});
+assertTrackerScript(apexDomainEveryone.scripts);
+assert.equal(apexDomainEveryone.window.goatcounter.path(), '/records.html?site=everyone');
+
 const athlete = runAnalytics({
-    hostname: 'johnkevan88888.github.io',
-    pathname: '/family-running/athlete.html',
+    hostname: 'www.aceofrace.com',
+    pathname: '/athlete.html',
     search: '?id=athlete-42&site=everyone&private=discarded'
 });
 assert.equal(
     athlete.window.goatcounter.path(),
-    '/family-running/athlete.html?site=everyone&id=athlete-42',
+    '/athlete.html?site=everyone&id=athlete-42',
     'athlete analytics should retain only the public athlete ID and selected site'
 );
 

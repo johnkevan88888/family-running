@@ -1,9 +1,10 @@
 # GitHub PR Checks And Preview Deployments
 
-This repository has two Pull Request review pathways:
+This repository has three Pull Request review pathways:
 
 - standard change: feature branch -> automated tests -> Netlify preview URLs -> John approval -> merge -> production verification;
 - lightweight data refresh: feature branch -> automated eligibility gate and full tests -> responsive screenshots and CSV diff review -> John approval -> merge -> production verification.
+- custom-domain configuration: feature branch -> automated eligibility gate and full tests -> responsive screenshots and exact diff review -> John approval -> merge -> DNS and production verification.
 
 ## Automated Pull Request Checks
 
@@ -14,8 +15,8 @@ Workflow file:
 The workflow runs for Pull Requests targeting `main` and for manual dispatches. It:
 
 - checks out the repository;
-- validates any Pull Request whose title contains `[skip netlify]` as a narrow
-  existing-schema data refresh;
+- validates any Pull Request whose title contains `[skip netlify]` as either a
+  narrow existing-schema data refresh or custom-domain configuration;
 - installs Node 24 and pnpm;
 - installs the locked dependencies;
 - installs the Playwright Chromium browser;
@@ -37,8 +38,8 @@ exactly one bot-maintained comment headed `Family Running preview review links`.
 That comment is the authoritative entry point for preview review and includes
 the Family link, Everyone link, preview root, and current short head commit SHA.
 For Pull Requests whose title contains `[skip netlify]`, it instead maintains a
-`Family Running lightweight data refresh` comment with the data-diff and
-screenshot review instructions.
+`Family Running Netlify preview skipped` comment with exact-diff and screenshot
+review instructions.
 
 The workflow uses the verified Netlify hostname stored in its source-controlled configuration. It runs from trusted `main` with `pull_request_target`, does not check out repository code, and does not run Pull Request code.
 
@@ -93,9 +94,19 @@ eligibility, and opens the correctly titled Pull Request after explicit
 confirmation. It does not merge or release production.
 
 The `Pull Request Checks / Test static site` job fails closed if the marker is
-used with code, configuration, schema, added or removed exports, or broader
-documentation changes. Remove `[skip netlify]` from the title and push a new
-commit to return the Pull Request to the standard preview pathway.
+used outside the data-refresh or custom-domain allowlists. Remove
+`[skip netlify]` from the title and push a new commit to return the Pull Request
+to the standard preview pathway.
+
+## Custom-Domain Pathway
+
+Use this pathway only when the change includes a valid root `CNAME` and stays
+within the explicit domain, analytics, test, workflow, and documentation
+allowlist enforced by `scripts/validate-pr-release-path.mjs`. The full automated
+suite and responsive screenshots still run. Netlify is skipped because its
+preview hostname cannot verify GitHub Pages DNS, canonical-host redirects, or
+HTTPS certificate provisioning; verify those behaviors on production after
+merge and DNS propagation.
 
 ## Expected Preview URLs
 
