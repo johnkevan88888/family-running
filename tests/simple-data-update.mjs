@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
     assessPublishableDataChange,
     createDataBranchName,
@@ -8,6 +10,15 @@ import {
     parseUpdateArguments,
     validateUpdateState
 } from '../scripts/simple-data-update.mjs';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const launcher = await fs.readFile(path.join(repoRoot, 'update-website-data.cmd'), 'utf8');
+
+assert.doesNotMatch(launcher, /call pnpm run data:update/i);
+assert.match(launcher, /where node\.exe/i);
+assert.match(launcher, /codex-primary-runtime\\dependencies\\node\\bin\\node\.exe/i);
+assert.match(launcher, /"%node_exe%" "%~dp0scripts\\simple-data-update\.mjs" %\*/i);
+assert.match(launcher, /if not defined node_exe \([\s\S]*set "update_exit_code=1"/i);
 
 const date = new Date('2026-08-08T21:30:45.123Z');
 
