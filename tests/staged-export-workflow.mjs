@@ -18,7 +18,15 @@ const stagedRoot = path.join(
 );
 const dataRoot = path.join(stagedRoot, 'data');
 const bundleId = '20990101T010203004Z-A1B2C3D4';
-const exportedAt = '2099-01-01T01:02:03.004Z';
+const sourceManifest = await fs.readFile(
+    path.join(repoRoot, 'data', 'export_manifest.csv'),
+    'utf8'
+);
+const sourceExportedAt = splitLines(sourceManifest)[1].split(',')[1];
+const replacementTime = sourceExportedAt.endsWith('T12:34:56.789Z')
+    ? 'T00:00:00.000Z'
+    : 'T12:34:56.789Z';
+const exportedAt = `${sourceExportedAt.slice(0, 10)}${replacementTime}`;
 
 try {
     await fs.mkdir(stagedRoot, { recursive: true });

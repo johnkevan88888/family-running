@@ -2,7 +2,10 @@
     const state = {
         athletes: [],
         comparisonTargets: [],
-        comparisonExportAvailable: false
+        comparisonExportAvailable: false,
+        comparisonPeriods: [],
+        selectedComparisonPeriod: '',
+        defaultRivalry: null
     };
 
     const elements = {};
@@ -19,20 +22,27 @@
         try {
             const site = window.siteNavigation?.selectedSite?.() || selectedSite();
             const comparisonPath = `data/${site}/athlete_comparison_targets.csv`;
-            const [standardsRows, athleteRows, manifestRows] = await Promise.all([
+            const currentChampionshipPath = `data/${site}/overall-current-official-${site}.csv`;
+            const [standardsRows, athleteRows, manifestRows, currentChampionshipRows] = await Promise.all([
                 fetchCSV(`data/${site}/age_grade_standards.csv`),
                 fetchCSV('data/athlete_results.csv'),
-                fetchCSV('data/export_manifest.csv')
+                fetchCSV('data/export_manifest.csv'),
+                fetchCSV(currentChampionshipPath)
             ]);
 
             const standards = rowsToObjects(standardsRows);
             const athleteResults = rowsToObjects(athleteRows);
             const manifest = rowsToObjects(manifestRows);
             state.athletes = buildAthletes(standards, athleteResults);
+            state.defaultRivalry = closestCurrentRivalry(rowsToObjects(currentChampionshipRows));
             state.comparisonExportAvailable = manifest.some(row => row.RelativePath === comparisonPath);
 
             if (state.comparisonExportAvailable) {
                 state.comparisonTargets = rowsToObjects(await fetchCSV(comparisonPath));
+                state.comparisonPeriods = availableComparisonPeriods(state.comparisonTargets);
+                state.selectedComparisonPeriod = state.comparisonPeriods.includes('Current')
+                    ? 'Current'
+                    : state.comparisonPeriods[0] || '';
             }
 
             if (!standards.length || !state.athletes.length) {
@@ -52,6 +62,9 @@
     function captureElements() {
         elements.comparisonAthleteA = document.getElementById('comparison-athlete-a');
         elements.comparisonAthleteB = document.getElementById('comparison-athlete-b');
+        elements.comparisonPeriodControl = document.getElementById('comparison-period-control');
+        elements.comparisonPeriodOptions = document.getElementById('comparison-period-options');
+        elements.comparisonPeriodNote = document.getElementById('comparison-period-note');
         elements.comparisonSummary = document.getElementById('comparison-summary');
         elements.comparisonResults = document.getElementById('comparison-results');
     }
@@ -63,7 +76,11 @@
         }));
         populateSelect(elements.comparisonAthleteA, athleteOptions);
         populateSelect(elements.comparisonAthleteB, athleteOptions);
-        elements.comparisonAthleteB.value = state.athletes[1]?.id || state.athletes[0].id;
+        elements.comparisonAthleteA.value = state.defaultRivalry?.challengerId || state.athletes[0].id;
+        elements.comparisonAthleteB.value = state.defaultRivalry?.standardId
+            || state.athletes.find(athlete => athlete.id !== elements.comparisonAthleteA.value)?.id
+            || state.athletes[0].id;
+        populateComparisonPeriods();
     }
 
     function bindControls() {
@@ -75,6 +92,11 @@
             keepComparisonAthletesDifferent(elements.comparisonAthleteB);
             renderComparisonResults();
         });
+        elements.comparisonPeriodOptions.addEventListener('change', event => {
+            if (event.target.name !== 'comparison-period') return;
+            state.selectedComparisonPeriod = event.target.value;
+            renderComparisonResults();
+        });
     }
 
     function renderComparisonResults() {
@@ -83,14 +105,19 @@
         const rows = state.comparisonTargets
             .filter(row =>
                 row.ChallengerAthleteId === challenger?.id &&
-                row.StandardAthleteId === standard?.id
+                row.StandardAthleteId === standard?.id &&
+                comparisonPeriod(row) === state.selectedComparisonPeriod
             )
             .sort((a, b) => Number(a.SortOrder) - Number(b.SortOrder));
+
+        const periodDetail = state.selectedComparisonPeriod === 'Current'
+            ? 'Showing current standards from the last 12 months.'
+            : 'Showing all-time standards.';
 
         elements.comparisonSummary.replaceChildren(
             summaryContent(
                 `${challenger?.name || 'Challenger'} challenges ${standard?.name || 'The Standard'}`,
-                `Beat ${standard?.name || 'the standard athlete'}'s exported standards, with official results first and unofficial results below.`
+                `${periodDetail} Beat ${standard?.name || 'the standard athlete'}'s exported marks, with official results first and unofficial results below.`
             )
         );
 
@@ -136,7 +163,8 @@
         const title = document.createElement('h3');
         title.textContent = `${timeClass} results`;
         const count = document.createElement('span');
-        count.textContent = `${classRows.length} ${classRows.length === 1 ? 'standard' : 'standards'}`;
+        const displayedCount = mergedBenchmarkCount(classRows);
+        count.textContent = `${displayedCount} ${displayedCount === 1 ? 'standard' : 'standards'}`;
         heading.append(title, count);
         section.append(heading);
 
@@ -156,6 +184,7 @@
     }
 
     function comparisonDistanceCard(distance, rows, challenger, standard) {
+        const benchmarkGroups = mergeEquivalentBenchmarks(rows);
         const card = document.createElement('article');
         card.className = 'comparison-distance-card';
         const header = document.createElement('div');
@@ -163,19 +192,25 @@
         const title = document.createElement('h3');
         title.textContent = distance;
         const count = document.createElement('span');
-        count.textContent = `${rows.length} ${rows.length === 1 ? 'standard' : 'standards'}`;
+        count.textContent = `${benchmarkGroups.length} ${benchmarkGroups.length === 1 ? 'standard' : 'standards'}`;
         header.append(title, count);
-        card.append(header, ...rows.map(row => comparisonBenchmark(row, challenger, standard)));
+        card.append(header, ...benchmarkGroups.map(group => comparisonBenchmark(group, challenger, standard)));
         return card;
     }
 
-    function comparisonBenchmark(row, challenger, standard) {
+    function comparisonBenchmark(rows, challenger, standard) {
+        const row = rows[0];
         const benchmark = document.createElement('div');
         benchmark.className = 'comparison-benchmark';
 
-        const type = document.createElement('span');
-        type.className = `comparison-benchmark-type ${benchmarkClass(row.BenchmarkType)}`;
-        type.textContent = row.BenchmarkType;
+        const types = document.createElement('div');
+        types.className = 'comparison-benchmark-types';
+        for (const benchmarkRow of rows) {
+            const type = document.createElement('span');
+            type.className = `comparison-benchmark-type ${benchmarkClass(benchmarkRow.BenchmarkType)}`;
+            type.textContent = benchmarkRow.BenchmarkType;
+            types.append(type);
+        }
 
         const standardResult = document.createElement('div');
         standardResult.className = 'comparison-result-side standard-result-side';
@@ -216,8 +251,40 @@
         qualifier.textContent = 'or faster';
         targetResult.append(targetLabel, targetTime, qualifier, exportedComparisonPace(row));
 
-        benchmark.append(type, standardResult, direction, targetResult);
+        benchmark.append(types, standardResult, direction, targetResult);
         return benchmark;
+    }
+
+    function mergeEquivalentBenchmarks(rows) {
+        const groups = [];
+        const groupsByPerformance = new Map();
+
+        for (const row of rows) {
+            const key = JSON.stringify([
+                row.StandardTime,
+                row.StandardAgeGrade,
+                row.StandardDate,
+                row.StandardEvent,
+                row.StandardTimeClass,
+                row.RequiredTimeToBeat,
+                row.RequiredPacePerKm,
+                row.RequiredPacePerMile
+            ]);
+
+            if (!groupsByPerformance.has(key)) {
+                const group = [];
+                groupsByPerformance.set(key, group);
+                groups.push(group);
+            }
+            groupsByPerformance.get(key).push(row);
+        }
+
+        return groups;
+    }
+
+    function mergedBenchmarkCount(rows) {
+        return groupByDistance(rows)
+            .reduce((total, group) => total + mergeEquivalentBenchmarks(group.rows).length, 0);
     }
 
     function exportedComparisonPace(row) {
@@ -256,6 +323,36 @@
         } else {
             elements.comparisonAthleteA.value = replacement.id;
         }
+    }
+
+    function populateComparisonPeriods() {
+        elements.comparisonPeriodControl.hidden = !state.comparisonExportAvailable || !state.comparisonPeriods.length;
+        elements.comparisonPeriodNote.textContent = state.comparisonPeriods.includes('Current')
+            ? 'Current covers performances from the last 12 months.'
+            : 'Current standards are not included in this championship update yet.';
+        elements.comparisonPeriodOptions.replaceChildren(...state.comparisonPeriods.map(period => {
+            const label = document.createElement('label');
+            const input = document.createElement('input');
+            const text = document.createElement('span');
+            input.type = 'radio';
+            input.name = 'comparison-period';
+            input.value = period;
+            input.checked = period === state.selectedComparisonPeriod;
+            text.textContent = period === 'Current' ? 'Current' : 'All time';
+            label.append(input, text);
+            return label;
+        }));
+    }
+
+    function availableComparisonPeriods(rows) {
+        const available = new Set(rows.map(comparisonPeriod));
+        return ['Current', 'All Time'].filter(period => available.has(period));
+    }
+
+    function comparisonPeriod(row) {
+        return String(row.Period || '').trim().toLowerCase() === 'current'
+            ? 'Current'
+            : 'All Time';
     }
 
     function summaryContent(title, detail) {
@@ -301,6 +398,43 @@
             });
         }
         return athletes;
+    }
+
+    function closestCurrentRivalry(rows) {
+        const availableAthletes = new Set(state.athletes.map(athlete => athlete.id));
+        const contenders = rows
+            .map(row => ({
+                athleteId: row['Athlete ID'],
+                rank: Number(row.Rank),
+                ageGrade: Number(String(row['Age Graded Score'] || '').replace('%', ''))
+            }))
+            .filter(contender =>
+                availableAthletes.has(contender.athleteId) &&
+                Number.isFinite(contender.rank) &&
+                contender.rank >= 1 &&
+                contender.rank <= 5 &&
+                Number.isFinite(contender.ageGrade)
+            )
+            .sort((a, b) => a.rank - b.rank);
+
+        let closest = null;
+        for (let higherIndex = 0; higherIndex < contenders.length; higherIndex += 1) {
+            for (let lowerIndex = higherIndex + 1; lowerIndex < contenders.length; lowerIndex += 1) {
+                const higher = contenders[higherIndex];
+                const lower = contenders[lowerIndex];
+                const gap = Math.abs(higher.ageGrade - lower.ageGrade);
+                if (!closest || gap < closest.gap || (gap === closest.gap && higher.rank < closest.standardRank)) {
+                    closest = {
+                        challengerId: lower.athleteId,
+                        standardId: higher.athleteId,
+                        standardRank: higher.rank,
+                        gap
+                    };
+                }
+            }
+        }
+
+        return closest;
     }
 
     function populateSelect(select, options) {

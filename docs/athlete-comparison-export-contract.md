@@ -9,6 +9,8 @@ each championship distance where The Standard has a public result, it shows:
 - The Standard's fastest raw-time performance.
 - The workbook-calculated time and pace the Challenger must beat to score a
   higher age grade than each performance.
+- Separate Current (last 12 months) and All Time standards when the export
+  supplies both periods.
 
 The browser only selects and renders exported rows. It does not choose winning
 performances, calculate age grades, interpolate targets, or subtract time.
@@ -28,8 +30,13 @@ file.
 ## Exact schema
 
 ```text
-ChallengerAthleteId,StandardAthleteId,Distance,BenchmarkType,StandardTime,StandardAgeGrade,StandardDate,StandardEvent,StandardTimeClass,RequiredTimeToBeat,RequiredPacePerKm,RequiredPacePerMile,SortOrder,ExportBundleID
+ChallengerAthleteId,StandardAthleteId,Distance,BenchmarkType,StandardTime,StandardAgeGrade,StandardDate,StandardEvent,StandardTimeClass,Period,RequiredTimeToBeat,RequiredPacePerKm,RequiredPacePerMile,SortOrder,ExportBundleID
 ```
+
+The browser and repository validator temporarily accept the previously
+published schema without `Period` and treat those rows as `All Time`. The next
+workbook export-contract revision should add `Period`; once both site exports
+have moved to the revised schema, this compatibility path can be removed.
 
 ## Row contract
 
@@ -37,6 +44,10 @@ ChallengerAthleteId,StandardAthleteId,Distance,BenchmarkType,StandardTime,Standa
   excluding self-comparisons.
 - Use the five canonical distances: `5 km`, `10 km`, `10 Mile`,
   `Half Marathon`, and `Marathon`.
+- Use `Current` for standards selected only from performances in the export
+  date's rolling 12-month window, and `All Time` for standards selected from
+  the complete result history. Emit rows only where the Standard athlete has
+  a qualifying result for that period, distance, and result class.
 - Select benchmarks independently within each available `Official` and
   `Unofficial` result class. The Calculator groups official rows first and
   unofficial rows in a separately labelled section below.
@@ -44,8 +55,9 @@ ChallengerAthleteId,StandardAthleteId,Distance,BenchmarkType,StandardTime,Standa
   - `Best Age Grade`: The Standard's highest age-grade result in that class.
   - `Fastest Time`: The Standard's fastest raw-time result in that class.
 - Emit both benchmark rows even when one performance sets both standards. This
-  produces up to four rows per pair and distance when The Standard has both
-  official and unofficial results.
+  lets the page preserve both badges while visually combining their identical
+  performance and target into one row. With two periods and both result
+  classes, the export produces up to eight rows per pair and distance.
 - `StandardTime`, `StandardAgeGrade`, `StandardDate`, `StandardEvent`, and
   `StandardTimeClass` must identify one exact row in
   `data/athlete_results.csv`.
@@ -55,10 +67,24 @@ ChallengerAthleteId,StandardAthleteId,Distance,BenchmarkType,StandardTime,Standa
 - `RequiredPacePerKm` and `RequiredPacePerMile` are workbook-exported paces for
   `RequiredTimeToBeat`, rounded down to one tenth of a second using the same
   rule as `age_grade_standards.csv`.
-- `SortOrder` controls presentation. Order distances as 5 km, 10 km, 10 Mile,
-  Half Marathon, and Marathon. Within each distance use official best age
-  grade, official fastest time, unofficial best age grade, then unofficial
-  fastest time (`101`-`104`, `201`-`204`, and so on).
+- `SortOrder` controls presentation within each period. Order distances as
+  5 km, 10 km, 10 Mile, Half Marathon, and Marathon. Within each distance use
+  official best age grade, official fastest time, unofficial best age grade,
+  then unofficial fastest time (`101`-`104`, `201`-`204`, and so on). Current
+  and All Time rows may reuse the same period-local sort values.
+
+## Browser-only presentation choices
+
+- The period switch shows one period at a time and defaults to `Current` when
+  that period exists; legacy exports show the sole `All Time` option.
+- When Best Age Grade and Fastest Time identify the same source performance
+  and exported challenger target, the page displays one performance row with
+  both badges.
+- The default matchup is the smallest exported age-grade percentage gap among
+  the top five rows in the selected site's Current Official Overall
+  championship. The lower-ranked athlete is the Challenger and the
+  higher-ranked athlete is The Standard. This selects an initial view only; it
+  does not calculate or change any age grade.
 
 ## Recommended tie-breaking
 
@@ -72,10 +98,10 @@ deterministic:
 
 ## Validation
 
-Repository validation treats the file as optional until the workbook exporter
-adds it. When present, validation checks the exact schema, athlete identities,
-distance and benchmark values, source-performance agreement, top-performance
-status, target-time and pace formatting, pair/distance completeness, duplicate
+When present, repository validation checks the supported transitional or
+period-labelled schema, athlete identities, period/distance/benchmark values,
+source-performance agreement, period-specific top-performance status,
+target-time and pace formatting, pair/period/distance completeness, duplicate
 rows, sort values, and export-bundle integrity. Browser coverage separately
-proves that official and unofficial source-performance rows stay in their
-correct sections.
+proves that period switching and official/unofficial source-performance
+sections retain exact exported values.

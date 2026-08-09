@@ -164,13 +164,16 @@ Challenger/Standard controls, official-first and unofficial-second result
 grouping, the absence of the duplicate single-athlete race-target builder, the
 manifest-absent comparison state, pace-unit switching, and absence of
 export-bundle metadata. Synthetic workbook-export coverage checks both `Best
-Age Grade` and `Fastest Time` standards in both result classes. CSV validation
-requires both benchmarks independently for every available athlete, distance,
-and result class, verifies the source performance is best within that class,
-and enforces class-aware sort order. Browser coverage preserves exact source
-details and challenger target times and paces, prevents self-comparison,
-preserves mode isolation, and checks responsive presentation. The browser does
-not interpolate or calculate targets.
+Age Grade` and `Fastest Time` standards in both result classes, Current and All
+Time switching, and one-row/two-badge presentation when both benchmarks share
+the same performance. CSV validation requires both benchmarks independently
+for every available athlete, period, distance, and result class, verifies the
+source performance is best within that period and class, and enforces
+class-aware sort order. Browser coverage preserves exact source details and
+challenger target times and paces, prevents self-comparison, defaults to the
+closest age-grade gap among the exported top-five Current Official Overall
+championship, preserves mode isolation, and checks responsive presentation.
+The browser does not interpolate or calculate age grades or targets.
 
 The macro-enabled source workbook and its dated private backups stay outside Git. Only VBA-generated public CSVs and `data/export_manifest.csv` belong in the repository.
 
@@ -183,8 +186,7 @@ Screenshots are saved to `test-artifacts/screenshots/` for:
 
 The same browser pass also saves full-page Calculator screenshots for Family
 and Everyone at both desktop and mobile sizes, plus focused desktop and mobile
-comparison screenshots using synthetic workbook-export rows while the tracked
-bundle does not yet contain `athlete_comparison_targets.csv`.
+comparison screenshots using synthetic period-labelled workbook-export rows.
 
 Generated screenshots and reports are ignored by Git.
 

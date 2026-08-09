@@ -285,6 +285,7 @@ async function assertCalculatorPage(page, mode, viewport, requestedPaths) {
     const context = `${mode}/${viewport.name}`;
     const selectedFile = `data/${mode}/age_grade_standards.csv`;
     const comparisonFile = `data/${mode}/athlete_comparison_targets.csv`;
+    const currentChampionshipFile = `data/${mode}/overall-current-official-${mode}.csv`;
     const otherMode = mode === 'family' ? 'everyone' : 'family';
     const otherFile = `data/${otherMode}/age_grade_standards.csv`;
     const otherComparisonFile = `data/${otherMode}/athlete_comparison_targets.csv`;
@@ -292,6 +293,7 @@ async function assertCalculatorPage(page, mode, viewport, requestedPaths) {
     const manifest = await readCsvObjects('data/export_manifest.csv');
     const comparisonAvailable = manifest.some(row => row.RelativePath === comparisonFile);
     const comparisonTargets = comparisonAvailable ? await readCsvObjects(comparisonFile) : [];
+    const currentChampionshipRows = await readCsvObjects(currentChampionshipFile);
 
     if (!requestedPaths.includes(selectedFile)) {
         failures.push(`${context}: Calculator did not request ${selectedFile}.`);
@@ -301,6 +303,9 @@ async function assertCalculatorPage(page, mode, viewport, requestedPaths) {
     }
     if (!requestedPaths.includes('data/export_manifest.csv')) {
         failures.push(`${context}: Calculator did not request the export manifest.`);
+    }
+    if (!requestedPaths.includes(currentChampionshipFile)) {
+        failures.push(`${context}: Calculator did not request the current overall championship for its default rivalry.`);
     }
     if (requestedPaths.includes(otherFile)) {
         failures.push(`${context}: Calculator requested the other site mode's ${otherFile}.`);
@@ -347,6 +352,13 @@ async function assertCalculatorPage(page, mode, viewport, requestedPaths) {
     if (comparisonA === comparisonB) {
         failures.push(`${context}: Challenger and The Standard defaulted to the same athlete.`);
     }
+    const expectedRivalry = closestTopFiveRivalry(currentChampionshipRows, new Set(exportedAthleteIds));
+    if (expectedRivalry && (
+        comparisonA !== expectedRivalry.challengerId ||
+        comparisonB !== expectedRivalry.standardId
+    )) {
+        failures.push(`${context}: Calculator did not default to the closest top-five current championship rivalry.`);
+    }
     if (await page.locator('#comparison-grade').count() !== 0) {
         failures.push(`${context}: Comparison retained the removed shared age-grade selector.`);
     }
@@ -358,6 +370,10 @@ async function assertCalculatorPage(page, mode, viewport, requestedPaths) {
             failures.push(`${context}: Comparison rendered unavailable despite a manifest-listed export.`);
         }
         await assertCalculatorComparisonCards(page, comparisonTargets, context);
+        const expectedPeriods = comparisonPeriods(comparisonTargets);
+        if (await page.locator('input[name="comparison-period"]').count() !== expectedPeriods.length) {
+            failures.push(`${context}: Standards-period options did not match the exported comparison periods.`);
+        }
     } else if (!comparisonText.includes('Head-to-head targets are not available in this championship update yet.')) {
         failures.push(`${context}: Comparison did not render the current-export unavailable state.`);
     }
@@ -372,16 +388,19 @@ async function assertCalculatorPage(page, mode, viewport, requestedPaths) {
 async function assertCalculatorComparisonCards(page, targets, context) {
     const challengerId = await page.locator('#comparison-athlete-a').inputValue();
     const standardId = await page.locator('#comparison-athlete-b').inputValue();
+    const selectedPeriod = await page.locator('input[name="comparison-period"]:checked').inputValue();
     const expectedRows = targets
         .filter(row =>
             row.ChallengerAthleteId === challengerId &&
-            row.StandardAthleteId === standardId
+            row.StandardAthleteId === standardId &&
+            comparisonPeriod(row) === selectedPeriod
         )
         .sort((a, b) => {
             const classRank = value => String(value || '').trim().toLowerCase() === 'official' ? 0 : 1;
             return classRank(a.StandardTimeClass) - classRank(b.StandardTimeClass)
                 || Number(a.SortOrder) - Number(b.SortOrder);
         });
+    const expectedGroups = mergeExpectedComparisonBenchmarks(expectedRows);
     const expectedDistanceCount = new Set(expectedRows.map(row =>
         `${String(row.StandardTimeClass || '').trim().toLowerCase()}|${row.Distance}`
     )).size;
@@ -401,17 +420,21 @@ async function assertCalculatorComparisonCards(page, targets, context) {
         || await sections.nth(1).getAttribute('data-time-class') !== 'unofficial') {
         failures.push(`${context}: Comparison did not render official results before unofficial results.`);
     }
-    if (await benchmarks.count() !== expectedRows.length) {
+    if (await benchmarks.count() !== expectedGroups.length) {
         failures.push(`${context}: Comparison benchmark count did not match the selected export rows.`);
         return;
     }
+    if (await page.locator('.comparison-benchmark-type').count() !== expectedRows.length) {
+        failures.push(`${context}: Combined comparison rows did not retain every exported benchmark badge.`);
+    }
 
-    for (let index = 0; index < expectedRows.length; index += 1) {
-        const row = expectedRows[index];
+    for (let index = 0; index < expectedGroups.length; index += 1) {
+        const group = expectedGroups[index];
+        const row = group[0];
         const text = normalizeText(await benchmarks.nth(index).textContent());
 
         for (const expected of [
-            row.BenchmarkType,
+            ...group.map(groupRow => groupRow.BenchmarkType),
             row.StandardTime,
             `${row.StandardAgeGrade} age grade`,
             row.StandardDate,
@@ -425,6 +448,80 @@ async function assertCalculatorComparisonCards(page, targets, context) {
             }
         }
     }
+}
+
+function mergeExpectedComparisonBenchmarks(rows) {
+    const groups = [];
+    const byPerformance = new Map();
+
+    for (const row of rows) {
+        const key = JSON.stringify([
+            row.StandardTimeClass,
+            row.Distance,
+            row.StandardTime,
+            row.StandardAgeGrade,
+            row.StandardDate,
+            row.StandardEvent,
+            row.RequiredTimeToBeat,
+            row.RequiredPacePerKm,
+            row.RequiredPacePerMile
+        ]);
+        if (!byPerformance.has(key)) {
+            const group = [];
+            byPerformance.set(key, group);
+            groups.push(group);
+        }
+        byPerformance.get(key).push(row);
+    }
+
+    return groups;
+}
+
+function comparisonPeriod(row) {
+    return String(row.Period || '').trim().toLowerCase() === 'current'
+        ? 'Current'
+        : 'All Time';
+}
+
+function comparisonPeriods(rows) {
+    const available = new Set(rows.map(comparisonPeriod));
+    return ['Current', 'All Time'].filter(period => available.has(period));
+}
+
+function closestTopFiveRivalry(rows, availableAthletes) {
+    const contenders = rows
+        .map(row => ({
+            athleteId: row['Athlete ID'],
+            rank: Number(row.Rank),
+            ageGrade: Number(String(row['Age Graded Score'] || '').replace('%', ''))
+        }))
+        .filter(contender =>
+            availableAthletes.has(contender.athleteId) &&
+            Number.isFinite(contender.rank) &&
+            contender.rank >= 1 &&
+            contender.rank <= 5 &&
+            Number.isFinite(contender.ageGrade)
+        )
+        .sort((a, b) => a.rank - b.rank);
+    let closest = null;
+
+    for (let higherIndex = 0; higherIndex < contenders.length; higherIndex += 1) {
+        for (let lowerIndex = higherIndex + 1; lowerIndex < contenders.length; lowerIndex += 1) {
+            const higher = contenders[higherIndex];
+            const lower = contenders[lowerIndex];
+            const gap = Math.abs(higher.ageGrade - lower.ageGrade);
+            if (!closest || gap < closest.gap || (gap === closest.gap && higher.rank < closest.standardRank)) {
+                closest = {
+                    challengerId: lower.athleteId,
+                    standardId: higher.athleteId,
+                    standardRank: higher.rank,
+                    gap
+                };
+            }
+        }
+    }
+
+    return closest;
 }
 
 async function assertOverviewPage(page, mode, viewport, requestedPaths) {
@@ -1186,14 +1283,26 @@ async function runCalculatorComparisonUnavailableEdgeCaseTests(browserInstance) 
 async function runCalculatorComparisonEdgeCaseTests(browserInstance) {
     const manifest = [
         'ExportBundleID,ExportedAtUTC,SchemaVersion,Scope,RelativePath,DataRowCount',
-        '20990101T010203004Z-A1B2C3D4,2099-01-01T01:02:03.004Z,1.0,family,data/family/athlete_comparison_targets.csv,4'
+        '20990101T010203004Z-A1B2C3D4,2099-01-01T01:02:03.004Z,1.0,family,data/family/athlete_comparison_targets.csv,8'
     ].join('\r\n');
     const comparisonTargets = [
-        'ChallengerAthleteId,StandardAthleteId,Distance,BenchmarkType,StandardTime,StandardAgeGrade,StandardDate,StandardEvent,StandardTimeClass,RequiredTimeToBeat,RequiredPacePerKm,RequiredPacePerMile,SortOrder,ExportBundleID',
-        'john-kevan,carolyn-kevan,5 km,Best Age Grade,00:25:20,78.0%,28/03/2026,Northern Counties Womens Relay,Official,00:18:08,3:37.6,5:50.1,101,20990101T010203004Z-A1B2C3D4',
-        'john-kevan,carolyn-kevan,5 km,Fastest Time,00:23:27,77.8%,16/11/2019,Northern Masters 5k Championships,Official,00:18:11,3:38.2,5:51.1,102,20990101T010203004Z-A1B2C3D4',
-        'john-kevan,carolyn-kevan,10 km,Best Age Grade,00:52:00,72.0%,01/02/2026,Training effort,Unofficial,00:38:00,3:48.0,6:06.3,201,20990101T010203004Z-A1B2C3D4',
-        'john-kevan,carolyn-kevan,10 km,Fastest Time,00:51:00,71.0%,01/02/2026,Training effort,Unofficial,00:38:30,3:51.0,6:11.1,202,20990101T010203004Z-A1B2C3D4'
+        'ChallengerAthleteId,StandardAthleteId,Distance,BenchmarkType,StandardTime,StandardAgeGrade,StandardDate,StandardEvent,StandardTimeClass,Period,RequiredTimeToBeat,RequiredPacePerKm,RequiredPacePerMile,SortOrder,ExportBundleID',
+        'john-kevan,carolyn-kevan,5 km,Best Age Grade,00:25:20,78.0%,28/03/2026,Northern Counties Womens Relay,Official,Current,00:18:08,3:37.6,5:50.1,101,20990101T010203004Z-A1B2C3D4',
+        'john-kevan,carolyn-kevan,5 km,Fastest Time,00:25:20,78.0%,28/03/2026,Northern Counties Womens Relay,Official,Current,00:18:08,3:37.6,5:50.1,102,20990101T010203004Z-A1B2C3D4',
+        'john-kevan,carolyn-kevan,10 km,Best Age Grade,00:52:00,72.0%,01/02/2026,Training effort,Unofficial,Current,00:38:00,3:48.0,6:06.3,201,20990101T010203004Z-A1B2C3D4',
+        'john-kevan,carolyn-kevan,10 km,Fastest Time,00:51:00,71.0%,01/02/2026,Training effort,Unofficial,Current,00:38:30,3:51.0,6:11.1,202,20990101T010203004Z-A1B2C3D4',
+        'john-kevan,carolyn-kevan,5 km,Best Age Grade,00:25:20,78.0%,28/03/2026,Northern Counties Womens Relay,Official,All Time,00:18:08,3:37.6,5:50.1,101,20990101T010203004Z-A1B2C3D4',
+        'john-kevan,carolyn-kevan,5 km,Fastest Time,00:23:27,77.8%,16/11/2019,Northern Masters 5k Championships,Official,All Time,00:18:11,3:38.2,5:51.1,102,20990101T010203004Z-A1B2C3D4',
+        'john-kevan,carolyn-kevan,10 km,Best Age Grade,00:52:00,72.0%,01/02/2026,Training effort,Unofficial,All Time,00:38:00,3:48.0,6:06.3,201,20990101T010203004Z-A1B2C3D4',
+        'john-kevan,carolyn-kevan,10 km,Fastest Time,00:51:00,71.0%,01/02/2026,Training effort,Unofficial,All Time,00:38:30,3:51.0,6:11.1,202,20990101T010203004Z-A1B2C3D4'
+    ].join('\r\n');
+    const currentChampionship = [
+        'Rank,Participant,Race Year,Time Class,SexAgeEvent,Time,Age Graded Score,Age Graded Category,Athlete ID,ExportBundleID',
+        '1,Carolyn Kevan,2026,Official,F66|5 km,00:25:20,78.0%,Regional Class,carolyn-kevan,20990101T010203004Z-A1B2C3D4',
+        '2,John Kevan,2026,Official,M46|5 km,00:18:00,77.9%,Regional Class,john-kevan,20990101T010203004Z-A1B2C3D4',
+        '3,David Graham-Kevan,2026,Official,M57|5 km,00:23:37,65.5%,Local Competitive,david-graham-kevan,20990101T010203004Z-A1B2C3D4',
+        '4,Poppy Coleman,2026,Official,F24|5 km,00:22:37,61.5%,Local Competitive,poppy-coleman,20990101T010203004Z-A1B2C3D4',
+        '5,Jack Graham-Kevan,2026,Official,M22|5 km,00:24:00,58.6%,Club,jack-graham-kevan,20990101T010203004Z-A1B2C3D4'
     ].join('\r\n');
 
     for (const viewport of viewports) {
@@ -1206,6 +1315,9 @@ async function runCalculatorComparisonEdgeCaseTests(browserInstance) {
         );
         await page.route('**/data/family/athlete_comparison_targets.csv', route =>
             route.fulfill({ status: 200, contentType: 'text/csv', body: `${comparisonTargets}\r\n` })
+        );
+        await page.route('**/data/family/overall-current-official-family.csv', route =>
+            route.fulfill({ status: 200, contentType: 'text/csv', body: `${currentChampionship}\r\n` })
         );
         await page.route('**/data/everyone/athlete_comparison_targets.csv', route => route.abort());
         page.on('request', request => {
@@ -1229,8 +1341,15 @@ async function runCalculatorComparisonEdgeCaseTests(browserInstance) {
             if (await page.locator('.comparison-distance-card').count() !== 2) {
                 failures.push(`calculator comparison ${viewport.name}: expected one official and one unofficial distance card.`);
             }
-            if (await page.locator('.comparison-benchmark').count() !== 4) {
-                failures.push(`calculator comparison ${viewport.name}: expected all four grouped benchmark rows.`);
+            if (await page.locator('.comparison-benchmark').count() !== 3) {
+                failures.push(`calculator comparison ${viewport.name}: matching current benchmarks were not combined into one row.`);
+            }
+            if (await page.locator('.comparison-benchmark-type').count() !== 4) {
+                failures.push(`calculator comparison ${viewport.name}: combined current row did not retain both benchmark badges.`);
+            }
+            if (await page.locator('input[name="comparison-period"]').count() !== 2
+                || await page.locator('input[name="comparison-period"]:checked').inputValue() !== 'Current') {
+                failures.push(`calculator comparison ${viewport.name}: did not default the period switch to Current.`);
             }
 
             const text = normalizeText(await page.locator('.comparison-panel').textContent());
@@ -1241,9 +1360,6 @@ async function runCalculatorComparisonEdgeCaseTests(browserInstance) {
                 '78.0% age grade',
                 '00:18:08',
                 'Fastest Time',
-                '00:23:27',
-                '77.8% age grade',
-                '00:18:11',
                 'Official results',
                 'Unofficial results',
                 'Training effort',
@@ -1252,6 +1368,20 @@ async function runCalculatorComparisonEdgeCaseTests(browserInstance) {
             ]) {
                 if (!text.includes(expected)) {
                     failures.push(`calculator comparison ${viewport.name}: omitted exported value "${expected}".`);
+                }
+            }
+            if (text.includes('00:23:27') || text.includes('Northern Masters 5k Championships')) {
+                failures.push(`calculator comparison ${viewport.name}: Current view included an all-time-only performance.`);
+            }
+
+            await page.getByText('All time', { exact: true }).click();
+            if (await page.locator('.comparison-benchmark').count() !== 4) {
+                failures.push(`calculator comparison ${viewport.name}: All-time view did not show its four distinct standards.`);
+            }
+            const allTimeText = normalizeText(await page.locator('.comparison-panel').textContent());
+            for (const expected of ['Showing all-time standards', '00:23:27', '77.8% age grade', '00:18:11']) {
+                if (!allTimeText.includes(expected)) {
+                    failures.push(`calculator comparison ${viewport.name}: All-time view omitted "${expected}".`);
                 }
             }
             await assertVisiblePaceUnit(
@@ -1265,6 +1395,7 @@ async function runCalculatorComparisonEdgeCaseTests(browserInstance) {
                 'mi',
                 `calculator comparison ${viewport.name} mile paces`
             );
+            await page.getByText('Current', { exact: true }).click();
 
             await page.locator('.comparison-panel').screenshot({
                 path: path.join(artifactsDir, `family-calculator-comparison-${viewport.name}.png`)
