@@ -24,20 +24,23 @@ Challenger and the higher-ranked athlete is The Standard.
 
 A compact Standards period switch shows one of Current (last 12 months) or All
 Time at once, avoiding duplicated official/unofficial distance cards. The
-browser and validator support the new workbook-owned `Period` field and treat
-the currently published period-less comparison rows as All Time during the
-transition. Current standards will become visible after a complete validated
-workbook export supplies both period matrices; no tracked public CSV was
-manually changed.
+workbook exporter now supplies the workbook-owned `Period` field and selects
+Current benchmarks from the export date's inclusive rolling 12-month window.
+Bundle `20260809T011814593Z-6B8F617F` was generated through the complete staged
+workflow and explicitly promoted after validation and reconciliation. It adds
+528 Current comparison rows for Family and 1,116 for Everyone while preserving
+all 770 Family and 1,620 Everyone All Time rows exactly.
 
 Focused browser coverage verifies the default rivalry, Current-first switching,
 All Time isolation, responsive period controls, and the two-badge/one-row case.
-Repository validation remains compatible with the current public bundle and
-will enforce period-specific completeness and source-performance ranking once
-`Period` is present. The complete `pnpm test` suite passes, including repository
-safety, both-mode CSV validation, export and staged-workflow regressions,
-preview artifact creation, responsive browser tests, and refreshed desktop and
-mobile Calculator screenshots.
+Repository validation enforces period-specific completeness, inclusive Current
+date-window membership, and source-performance ranking. The complete `pnpm
+test` suite passes against the promoted data, including repository safety,
+both-mode CSV validation, export and staged-workflow regressions, preview
+artifact creation, responsive browser tests, and refreshed desktop and mobile
+Calculator screenshots. Visual review confirms the Current-first rivalry,
+period controls, official/unofficial grouping, and combined two-badge rows in
+both site modes.
 
 ## Streamlined routine update command
 
@@ -243,6 +246,13 @@ qualifying data refreshes after the workflow reaches `main`.
 
 ## Handoff notes
 
+- The Current/All Time private comparison module was imported and the complete
+  68-file bundle `20260809T011814593Z-6B8F617F` passed staged validation,
+  reconciliation, explicit promotion, and the full repository test suite. The
+  prior tracked bundle is retained under ignored
+  `test-artifacts/workbook-export-promotion/20260809032702327/previous-data`
+  for local rollback. PR #27 remains the review and preview path; merge and
+  production deployment still require separate approval.
 - Review the Calculator in both modes, including changing Challenger, The
   Standard, and pace unit. Confirm that the official section appears before the
   unofficial section and that challenger targets match the private workbook.
