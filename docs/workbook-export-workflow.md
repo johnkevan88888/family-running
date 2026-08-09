@@ -102,13 +102,20 @@ The guided updater:
 5. lists every meaningful CSV difference and requires the exact word
    `PROMOTE` before replacing tracked `data/`;
 6. runs the complete repository test and responsive screenshot suite;
-7. confirms that every tracked CSV was refreshed and no header changed; and
-8. requires the exact word `PUBLISH` before committing, pushing, and opening a
-   `[skip netlify]` Pull Request.
+7. confirms that every tracked CSV was refreshed, no header changed, and the
+   tested data-diff fingerprint still matches;
+8. requires the exact word `PUBLISH` as explicit production approval before
+   committing, pushing, and opening a `[skip netlify]` Pull Request;
+9. waits for GitHub checks and re-verifies the PR title, base branch, data
+   branch, and exact tested head commit before merging through the protected
+   Pull Request pathway; and
+10. fast-forwards local `main`, deletes the verified merged branch locally and
+    remotely, and removes only the staged export, promotion backup, and state
+    paths recorded for that update.
 
-It never merges the Pull Request or deploys production. John must still review
-the exact CSV diff, GitHub checks, and Family/Everyone screenshot artifacts and
-explicitly approve production.
+This automatic merge authority is limited to the existing fail-closed routine
+data pathway. Code, schema, configuration, export-set, and broader
+documentation changes still use the manual release process.
 
 If the command is stopped at either review point, resume the same staged update
 without copying its path:
@@ -125,8 +132,9 @@ pnpm run data:update -- --prepare-only
 
 The updater refuses dirty worktrees, overlapping open data-update Pull
 Requests, incomplete bundles, changed CSV schemas, non-data changes, failed
-validation, and failed tests. Use the manual workflow below for schema,
-export-set, code, configuration, or broader documentation changes.
+validation, changed post-test data, failed local or GitHub tests, mismatched PR
+identity, and non-fast-forward local `main`. Use the manual workflow below for
+schema, export-set, code, configuration, or broader documentation changes.
 
 ## Safe refresh commands
 
@@ -231,4 +239,8 @@ Never promote by selectively copying CSV files.
 - A failed workbook export leaves no staged bundle.
 - A staged validation or comparison failure never changes tracked data.
 - A failed promotion attempts to restore the previous `data/` directory.
+- A failed GitHub check or merge retains the saved state for `--resume` and
+  does not delete the data branch or its rollback artifacts.
+- Successful merge cleanup removes only paths recorded in that update's state;
+  unrelated ignored test artifacts and older manual backups are retained.
 - The private workbook and its timestamped backups remain outside Git.

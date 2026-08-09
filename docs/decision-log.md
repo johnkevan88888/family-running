@@ -136,7 +136,7 @@ Unknown historical details are labelled rather than inferred.
 - **Date:** Release protocol established 25 June 2026; automated Netlify preview
   review links added 28-29 June 2026; hosted ruleset verified 30 June 2026;
   lightweight data-refresh pathway added 5 August 2026; custom-domain pathway
-  added 9 August 2026.
+  added 9 August 2026; guarded routine-data auto-merge added 9 August 2026.
 - **Decision:** Changes use a feature branch and Pull Request. Code,
   configuration, schema, export-set, and broader documentation changes require
   automated checks and a successful Netlify Deploy Preview for both site modes.
@@ -166,7 +166,14 @@ Unknown historical details are labelled rather than inferred.
   Routine data refreshes use a guided local wrapper that automates branch
   creation, full-bundle staging, validation, reconciliation, tests, and Pull
   Request creation while retaining separate typed confirmations for data
-  promotion and publication. The wrapper never merges or deploys.
+  promotion and publication. For this narrow pathway, `PUBLISH` is explicit
+  John approval to wait for the required GitHub check, re-verify the PR title,
+  base, branch, and exact tested commit, merge through the protected Pull
+  Request route, fast-forward local `main`, delete the merged local and remote
+  data branch, and remove only the saved artifacts belonging to that update.
+  The tested data diff is fingerprinted before approval. Code, schema,
+  configuration, export-set, and broader documentation changes cannot use this
+  automatic authority.
 
 ## Crown history is exported, not reconstructed in the browser
 

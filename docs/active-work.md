@@ -11,8 +11,12 @@ through PR #25. This follow-up adds a guarded, guided command for routine data
 updates so John no longer needs to copy staging paths between commands or
 manually remember the branch and Pull Request conventions. The command keeps
 the existing staged-review, explicit-promotion, full-test, Pull Request, and
-production-approval gates intact. It does not change workbook calculations,
-CSV schemas, public data, or website behaviour.
+production-approval gates intact. The `PUBLISH` confirmation now authorizes the
+complete routine-data release: the command waits for GitHub checks, merges the
+verified Pull Request, refreshes local `main`, deletes the merged branch, and
+removes only the staging, promotion-backup, and state artifacts recorded for
+that update. It does not change workbook calculations, CSV schemas, public
+data, or website behaviour.
 
 ## Overview rolling activity and site-wide date display
 
@@ -69,25 +73,39 @@ both site modes.
 `pnpm run data:update` now guides one qualifying data refresh from a clean
 workspace through branch creation, workbook export, validation,
 reconciliation, explicit promotion, full tests, eligibility checks, commit,
-push, and `[skip netlify]` Pull Request creation. Windows users can launch the
-same flow by double-clicking `update-website-data.cmd`.
+push, `[skip netlify]` Pull Request creation, required-check waiting, protected
+merge, branch deletion, and scoped cleanup. Windows users can launch the same
+flow by double-clicking `update-website-data.cmd`.
 
 The exact confirmation words `PROMOTE` and `PUBLISH` preserve the two material
-local/external change boundaries. The command never merges the Pull Request or
-deploys production. A stopped update can resume from ignored local state with
-`pnpm run data:update -- --resume`, without copying the staged export path.
+local/external change boundaries. `PUBLISH` is explicit production approval for
+this narrow existing-schema data pathway; it does not apply to code, schema,
+configuration, export-set, or broader documentation changes. A stopped update
+can resume from ignored local state with `update-website-data.cmd --resume`,
+without copying the staged export path.
 
 The wrapper fails closed for a missing GitHub login, dirty worktree,
 overlapping open data Pull Request, incomplete public bundle, header/schema
-change, non-data file, failed bundle validation, or failed repository test.
+change, non-data file, a changed post-test data fingerprint, failed bundle
+validation, failed local or GitHub test, Pull Request identity mismatch, or
+non-fast-forward local `main`.
 
 The focused updater tests, JavaScript syntax check, `git diff --check`, and the
 complete `pnpm test` suite pass locally. The full suite includes repository
 safety, both-mode CSV validation, release-path tests, staged-export
 regressions, preview artifact creation, browser smoke coverage, and responsive
 screenshots. The implementation is local on
-`feat/streamlined-data-updates` and is ready for the standard Pull Request
-pathway. Merge and production deployment remain separate approval steps.
+`feat/data-update-auto-merge` and is ready for the standard Pull Request
+pathway. This implementation change still requires ordinary review; its
+automatic production authority applies only to future validated data branches.
+
+The automatic-completion extension was verified with PR identity mismatch,
+missing/failed required-check, launcher-runtime, merge-command, branch-deletion,
+and cleanup-path containment regressions. `node --check`, `git diff --check`,
+and the complete repository suite pass after the final changes. The installed
+GitHub CLI supports the required check-watch, exact-head-match, merge, and
+branch-deletion flags. No live Pull Request was created or merged while testing
+this implementation.
 
 ## Files changed for the streamlined updater
 
@@ -95,6 +113,9 @@ pathway. Merge and production deployment remain separate approval steps.
   double-clickable `update-website-data.cmd` launcher.
 - Added `pnpm run data:update` and included the updater regression in the full
   repository suite.
+- Extended the updater with checked PR merge, verified branch deletion,
+  update-scoped artifact cleanup, and a fingerprint binding the tested data
+  diff to the committed data.
 - Updated the README, workbook workflow, testing/release protocol, preview
   deployment guide, decision log, and these handoff notes.
 

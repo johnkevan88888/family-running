@@ -24,7 +24,8 @@ set "update_exit_code=%ERRORLEVEL%"
 :update_finished
 echo.
 if not "%update_exit_code%"=="0" (
-    echo The data update stopped safely. Nothing was merged or deployed.
+    echo The data update stopped safely. Review the message above.
+    echo If an update was saved, rerun this launcher with --resume.
 )
 pause
 exit /b %update_exit_code%

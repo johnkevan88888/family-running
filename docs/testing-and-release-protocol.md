@@ -51,9 +51,11 @@ pnpm run data:update -- --resume
 ```
 
 This wrapper prepares the complete staged export, preserves the explicit
-promotion checkpoint, runs this full test suite, and opens an eligible
-`[skip netlify]` Pull Request only after a second explicit confirmation. It
-never merges or deploys.
+promotion checkpoint, runs this full test suite, and treats the second explicit
+`PUBLISH` confirmation as approval for the complete routine-data production
+action. It opens an eligible `[skip netlify]` Pull Request, waits for GitHub
+checks, verifies the exact tested commit, merges through the protected Pull
+Request pathway, deletes the merged branch, and performs update-scoped cleanup.
 
 Run focused export-bundle failure regression tests:
 
@@ -211,6 +213,8 @@ Before approving a Pull Request:
 - For a validated lightweight data refresh, confirm the Pull Request title
   contains `[skip netlify]`, the automated eligibility gate passed, and the
   exact CSV diff contains only the intended new data and bundle metadata.
+  When using the guided updater, complete this review before typing `PUBLISH`;
+  that confirmation authorizes merge after the remote check succeeds.
 - For a validated custom-domain change, confirm the title contains
   `[skip netlify]`, the eligibility gate passed, `CNAME` contains only the
   intended hostname, and the exact diff stays within the domain allowlist.
@@ -234,7 +238,9 @@ For validated custom-domain changes, no accepted eligibility gate, exact diff
 review, responsive screenshot review, and post-merge production verification,
 no release.
 
-No explicit John approval, no release.
+No explicit John approval, no release. In the guided routine-data workflow,
+the exact `PUBLISH` confirmation after local review and tests is explicit John
+approval for the merge; other pathways still require separate PR approval.
 
 ## Proposed Workflow
 
@@ -254,11 +260,14 @@ No explicit John approval, no release.
      production verification because DNS behavior cannot be represented by the
      Netlify hostname.
    The guided `pnpm run data:update` command performs these branch, validation,
-   promotion, test, and Pull Request steps for a qualifying routine refresh.
+   promotion, test, Pull Request, required-check wait, merge, branch deletion,
+   and scoped-cleanup steps for a qualifying routine refresh after `PUBLISH`.
 5. John reviews both site modes through the standard preview, or reviews the
    exact diff and uploaded responsive screenshots for a validated skip
    pathway, plus the manual steps, limitations, and rollback plan.
-6. Merge to `main` only after John explicitly approves production.
+6. Merge to `main` only after John explicitly approves production. For the
+   guided routine-data workflow, `PUBLISH` supplies this approval and the
+   launcher performs the merge after the required check succeeds.
 7. Verify production after GitHub Pages updates.
 
 ## Pull Request Checks And Preview URLs
@@ -310,7 +319,10 @@ If production verification fails:
 John will need to configure these manually in GitHub when ready:
 
 - Branch protection for `main`.
-- Required Pull Request review before merge.
+- Required Pull Request review before merge for standard and custom-domain
+  changes. The guided routine-data pathway instead uses its exact `PUBLISH`
+  approval plus the protected required check, so an unconditional review rule
+  would intentionally disable that automatic path.
 - Required automated checks before merge: `Pull Request Checks / Test static site`.
 - Netlify Deploy Preview treated as a process gate for standard changes, but
   not as an unconditional repository ruleset check because validated

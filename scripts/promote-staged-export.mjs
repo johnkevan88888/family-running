@@ -148,4 +148,5 @@ function promoteDataDirectory(stagedRoot) {
 
     console.log(`Validated staged bundle promoted to ${trackedData}`);
     console.log(`Previous tracked data retained locally at ${backupData}`);
+    console.log(`PROMOTION_ARTIFACT_ROOT=${operationRoot}`);
 }
