@@ -2,7 +2,7 @@
 
 ## Task title
 
-Publish only the built runtime artifact to GitHub Pages
+Publish only the built runtime artifact, and exclude the site from search
 
 ## Status
 
@@ -49,8 +49,21 @@ governance gaps was readable by anyone who guessed a path.
   the same builder Netlify already uses, so previews and production stay
   identical.
 
-No page, style, script, CSV, or workbook change. Nothing about what the site
-renders is affected.
+John then asked for the site to stay live but not be searchable, so the same
+branch also adds:
+
+- `<meta name="robots" content="noindex, follow">` on all seven public pages.
+- A deliberately permissive `robots.txt`, published as part of the artifact.
+- A browser-test guard that fails if any public page lacks the noindex tag.
+
+The permissiveness is the point and is easy to "fix" incorrectly. A crawler must
+fetch a page to read its noindex tag, so a `Disallow` rule would stop search
+engines ever seeing it and would leave already-indexed pages listed as bare
+URLs. Blocking `/data/` would be worse, because every page renders from those
+CSVs, so a blocked crawler would index only "Loading..." placeholders.
+
+No page content, style, script, CSV, or workbook change. Nothing about what a
+visitor sees is affected.
 
 ## Validation results
 
@@ -74,14 +87,23 @@ renders is affected.
 
 ## Known limitations and follow-up opportunities
 
-- Exported public CSVs under `data/` remain publicly readable. That is by
-  design, since the browser fetches them, but it does mean athlete names, age
-  categories, event names, and dates stay public and indexable. There is still
-  no `robots.txt`, so they remain open to search engines and scrapers. Adding
-  one is a small, separate change if wanted.
-- The repository itself remains public, so all of the above is readable on
-  GitHub regardless of what Pages serves. Only the live-site exposure is closed
-  by this change.
+- **`noindex` is not privacy.** It removes the site from search results only.
+  Exported CSVs under `data/` remain fetchable by anyone with the URL, because
+  the browser needs them to render anything at all. Scrapers that ignore robots
+  conventions are unaffected. Making the data genuinely private would require
+  authenticated hosting, which GitHub Pages does not provide; that would mean
+  moving to something like Netlify password protection or Cloudflare Access, and
+  is a separate decision.
+- The repository itself remains public, so the same CSVs are readable and
+  indexable on GitHub regardless of what Pages serves or what `robots.txt` says.
+  Making it private would close that route but needs GitHub Pro for Pages to
+  keep working, so it was deliberately left to John.
+- Deindexing is not instant. Pages already in a search index are removed over
+  the following crawls rather than immediately. Google Search Console can speed
+  that up if wanted.
+- Open Graph tags still work, so shared links keep previewing correctly in
+  messaging apps. The site is shareable but not searchable, which is the
+  intended outcome.
 - The new workflow pins its actions by tag, matching the existing workflows.
   Pinning deployment actions by commit SHA would be stronger.
 

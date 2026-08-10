@@ -13,6 +13,8 @@ const runtimeEntries = [
     // Keeps the www.aceofrace.com custom domain bound when Pages publishes this
     // artifact instead of the repository root. Removing it drops the domain.
     'CNAME',
+    // Permissive by design; the noindex meta tag on each page does the work.
+    'robots.txt',
     'index.html',
     'championships.html',
     'hall-of-fame.html',
@@ -97,7 +99,7 @@ if (leakedFiles.length) {
     process.exit(1);
 }
 
-for (const requiredFile of ['CNAME', 'index.html', 'championships.html', 'hall-of-fame.html', 'records.html', 'calculator.html', 'overview.html', 'athlete.html', 'analytics.js', 'records.js', 'calculator.js', 'vendor/chart.umd.min.js', 'vendor/chartjs-adapter-date-fns.bundle.min.js', 'data/family/webtables.csv', 'data/everyone/webtables.csv', 'data/family/absolute_records.csv', 'data/everyone/absolute_records.csv']) {
+for (const requiredFile of ['CNAME', 'robots.txt', 'index.html', 'championships.html', 'hall-of-fame.html', 'records.html', 'calculator.html', 'overview.html', 'athlete.html', 'analytics.js', 'records.js', 'calculator.js', 'vendor/chart.umd.min.js', 'vendor/chartjs-adapter-date-fns.bundle.min.js', 'data/family/webtables.csv', 'data/everyone/webtables.csv', 'data/family/absolute_records.csv', 'data/everyone/absolute_records.csv']) {
     try {
         await fs.access(path.join(outputDir, requiredFile));
     } catch {

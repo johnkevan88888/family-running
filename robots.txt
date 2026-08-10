@@ -1,0 +1,18 @@
+# Crawling is deliberately allowed. Do not add a Disallow rule here.
+#
+# This site is kept out of search results by a
+# <meta name="robots" content="noindex, follow"> tag on every public page, not
+# by blocking crawlers in this file. A crawler must be able to fetch a page to
+# read that tag, so "Disallow: /" would stop search engines ever seeing the
+# noindex, and already-indexed pages would linger as bare URLs with no snippet.
+#
+# Blocking /data/ specifically would be worse than useless: every page renders
+# its content from those exported CSVs, so a blocked crawler would see only
+# "Loading..." placeholders rather than nothing at all.
+#
+# The site remains fully available to anyone with the link. This file changes
+# search visibility only; it is not an access control and does not make the
+# exported data private.
+
+User-agent: *
+Allow: /

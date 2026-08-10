@@ -34,6 +34,13 @@ Preserve the selected `site` parameter when navigating between championship page
   athlete-link helpers. `escapeHTML` and `csvRowsToObjects` live here only;
   do not reintroduce per-file copies. `athleteLink` escapes its own label, so
   call sites pass raw exported values.
+- The site is deliberately excluded from search results. Every public page
+  carries `<meta name="robots" content="noindex, follow">`, and `robots.txt` is
+  deliberately permissive so crawlers can fetch pages and read that tag. Do not
+  add a `Disallow` rule: blocking crawling prevents search engines from ever
+  seeing the noindex, and blocking `/data/` would leave crawlers rendering only
+  "Loading..." placeholders. This controls search visibility only; it is not
+  access control and does not make exported data private.
 - The public site is the built artifact, not the repository. GitHub Pages
   publishes `test-artifacts/preview-site` through
   `.github/workflows/deploy-pages.yml`. A file that is not listed in

@@ -279,3 +279,26 @@ Unknown historical details are labelled rather than inferred.
   production now build through the same script, so preview fidelity improves.
   This does not change what the site itself publishes: exported public CSVs
   under `data/` remain readable by design, because the browser fetches them.
+
+## The public site is excluded from search results
+
+- **Status:** Accepted and implemented
+- **Date:** 10 August 2026
+- **Decision:** Every public page carries
+  `<meta name="robots" content="noindex, follow">`, and `robots.txt` explicitly
+  allows crawling. The site stays fully available to anyone with the link but is
+  not listed in search results.
+- **Rationale:** The site publishes real athletes' names, age categories, event
+  names, and dates. John chose for it to be shareable rather than searchable.
+  Crawling must stay allowed because a crawler has to fetch a page to read its
+  noindex tag; a `Disallow` rule would prevent search engines ever seeing it and
+  would leave already-indexed pages listed as bare URLs. Blocking `/data/` would
+  be worse still, because every page renders from those exported CSVs, so a
+  blocked crawler would index only "Loading..." placeholders.
+- **Consequences:** New public pages must carry the tag; browser smoke tests fail
+  if one does not. This governs search visibility only. It is not access control:
+  the exported CSVs remain fetchable by anyone with the URL, because the browser
+  needs them, and the repository is public so the same data is readable on
+  GitHub. Making the data genuinely private would require authenticated hosting,
+  which GitHub Pages does not provide. The Open Graph tags still work, so shared
+  links continue to preview correctly in messaging apps.

@@ -1687,9 +1687,19 @@ async function assertProgressionChart(page, mode, viewport) {
 async function assertResponsiveViewport(page, viewport, context) {
     const layout = await page.evaluate(() => ({
         content: document.querySelector('meta[name="viewport"]')?.getAttribute('content') || '',
+        robots: document.querySelector('meta[name="robots"]')?.getAttribute('content') || '',
         lang: document.documentElement.getAttribute('lang') || '',
         clientWidth: document.documentElement.clientWidth
     }));
+
+    // The site is deliberately kept out of search results by this tag rather
+    // than by a robots.txt Disallow, so a page shipping without it would be
+    // indexed while every other page is not.
+    if (!/\bnoindex\b/i.test(layout.robots)) {
+        failures.push(
+            `${context}: missing a noindex robots meta tag (found "${layout.robots}").`
+        );
+    }
 
     if (!/width\s*=\s*device-width/i.test(layout.content)) {
         failures.push(
