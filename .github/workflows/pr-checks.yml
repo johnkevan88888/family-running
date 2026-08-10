@@ -4,6 +4,11 @@ on:
   pull_request:
     branches:
       - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
   workflow_dispatch:
 
 permissions:
@@ -21,6 +26,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -33,6 +40,14 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+
+      - name: Validate Pull Request release pathway
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/validate-pr-release-path.mjs
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

@@ -8,8 +8,12 @@ const checks = [
     ['Repository safety validation', ['scripts/validate-repository-safety.mjs']],
     ['Vendored library validation', ['scripts/sync-vendor.mjs', '--check']],
     ['CSV validation', ['scripts/validate-csv.mjs']],
+    ['Analytics configuration tests', ['tests/analytics-config.mjs']],
+    ['PR release-path tests', ['tests/pr-release-path.mjs']],
+    ['Simple data-update workflow tests', ['tests/simple-data-update.mjs']],
     ['Export bundle validation regression tests', ['tests/export-bundle-validation.mjs']],
     ['Staged export workflow regression tests', ['tests/staged-export-workflow.mjs']],
+    ['Preview artifact build', ['scripts/build-preview-artifact.mjs']],
     ['Browser smoke tests', ['tests/browser-smoke.mjs']]
 ];
 

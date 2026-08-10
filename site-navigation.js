@@ -3,11 +3,15 @@
     const pageFiles = {
         championships: 'index.html',
         'hall-of-fame': 'hall-of-fame.html',
+        records: 'records.html',
+        calculator: 'calculator.html',
         overview: 'overview.html'
     };
     const pageLabels = {
         championships: 'Championships',
         'hall-of-fame': 'Hall of Fame',
+        records: 'Records',
+        calculator: 'Calculator',
         overview: 'Overview'
     };
 
@@ -30,6 +34,8 @@
         if (filename === 'championships.html') return 'championships';
         if (filename === 'overview.html') return 'overview';
         if (filename === 'hall-of-fame.html') return 'hall-of-fame';
+        if (filename === 'records.html') return 'records';
+        if (filename === 'calculator.html') return 'calculator';
         if (filename === 'athlete.html') return 'athlete';
 
         return 'championships';
@@ -101,7 +107,16 @@
                     <nav class="site-nav" aria-label="Primary pages">
                         ${navItems}
                     </nav>
-                    <div class="site-mode-badge" aria-label="Current site">${modeLabel}</div>
+                    <div class="site-header-tools">
+                        <div class="site-pace-control pace-unit-control" role="group" aria-label="Pace display unit">
+                            <span class="pace-unit-label">Pace</span>
+                            <div class="pace-unit-options">
+                                <button type="button" data-pace-unit="km" aria-label="Show pace per kilometre" aria-pressed="true">/km</button>
+                                <button type="button" data-pace-unit="mi" aria-label="Show pace per mile" aria-pressed="false">/mi</button>
+                            </div>
+                        </div>
+                        <div class="site-mode-badge" aria-label="Current site">${modeLabel}</div>
+                    </div>
                 </div>
             </div>
             <div class="site-meta" id="last-updated" aria-live="polite">
@@ -110,6 +125,7 @@
         `;
 
         updateModeAwareLinks();
+        window.paceDisplay?.initialize(document);
         loadSiteMetadata();
     }
 
@@ -145,10 +161,7 @@
                 return;
             }
 
-            const localTime = new Date(lastUpdated).toLocaleString(undefined, {
-                dateStyle: 'medium',
-                timeStyle: 'short'
-            });
+            const localTime = window.dateDisplay?.formatDateTime(lastUpdated) || lastUpdated;
 
             meta.innerHTML =
                 `<div class="site-meta-item">

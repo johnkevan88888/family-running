@@ -64,6 +64,23 @@ Unknown historical details are labelled rather than inferred.
 - **Consequences:** Age grades, rankings, championship status, crowns, target
   times, and medal positions must arrive from Excel/VBA-owned exports.
 
+## Absolute records are workbook-owned raw-time records
+
+- **Status:** Accepted
+- **Date:** 18 July 2026
+- **Decision:** Absolute records are the fastest official raw times by sex and
+  distance, exported separately for Family and Everyone. Excel/VBA owns the
+  record selection and exposes the auditable source rows on the private
+  `AbsoluteRecords` worksheet.
+- **Rationale:** Absolute records are intentionally non-age-graded, but they
+  still need the same single-source-of-truth boundary as standings, medals,
+  crowns, and age-grade standards.
+- **Consequences:** The public Records page renders only
+  `data/<site>/absolute_records.csv`. It must not derive records from
+  leaderboards or athlete-result CSVs in JavaScript. Record updates require a
+  workbook export, staged review, and explicitly approved public-data
+  promotion.
+
 ## Public site navigation uses static page separation
 
 - **Status:** Accepted
@@ -111,25 +128,52 @@ Unknown historical details are labelled rather than inferred.
   of the configured parent and rejects the repository root, tracked `data/`,
   its descendants, and relative or ambiguous paths.
 
-## Main is PR-gated, with Netlify previews
+## Main is PR-gated, with conditional Netlify previews
 
 - **Status:** Accepted policy; repository automation and an active default-branch
   ruleset are implemented. The ruleset was verified through GitHub's API on
   30 June 2026.
 - **Date:** Release protocol established 25 June 2026; automated Netlify preview
-  review links added 28-29 June 2026; hosted ruleset verified 30 June 2026.
-- **Decision:** Substantial changes use a feature branch and Pull Request.
-  Automated checks and a successful Netlify Deploy Preview for both site modes
-  precede review, and `main` is intended to be the protected production branch.
+  review links added 28-29 June 2026; hosted ruleset verified 30 June 2026;
+  lightweight data-refresh pathway added 5 August 2026; custom-domain pathway
+  added 9 August 2026; guarded routine-data auto-merge added 9 August 2026.
+- **Decision:** Changes use a feature branch and Pull Request. Code,
+  configuration, schema, export-set, and broader documentation changes require
+  automated checks and a successful Netlify Deploy Preview for both site modes.
+  A routine existing-schema public CSV refresh, such as adding new race times,
+  may put `[skip netlify]` in the Pull Request title and use full automated
+  checks, exact CSV diff review, and responsive screenshots without generating
+  a Netlify preview. A narrowly scoped custom-domain configuration may use the
+  same marker because its hostname, DNS, redirect, and certificate behavior can
+  only be verified on GitHub Pages after merge. `main` remains the protected
+  production branch.
 - **Rationale:** Reviewable previews and checks reduce the chance that an
   incorrect export or display change reaches GitHub Pages.
 - **Consequences:** Do not commit or merge directly to `main`. No merge or
   production release occurs without explicit John approval. The active ruleset
   requires a Pull Request, resolved review threads, and the strict
   `Test static site` check, and blocks deletion and non-fast-forward updates.
-  It currently requires zero approving reviews and does not list Netlify's
-  Deploy Preview status as a required check, so those documented safeguards
-  still rely on process rather than hosted enforcement.
+  The lightweight route fails closed unless every tracked public CSV is
+  refreshed, every changed runtime file is an existing CSV under `data/` with
+  an unchanged header, and only
+  `docs/active-work.md` notes may accompany those exports. Every automated test
+  and screenshot still runs. The custom-domain route requires a syntactically
+  valid root `CNAME` and accepts only its explicit domain, analytics, test,
+  workflow, and documentation allowlist. The active ruleset should not list Netlify's
+  Deploy Preview status as an unconditional required check because eligible
+  lightweight Pull Requests intentionally do not create it; the full-preview
+  requirement for other changes remains a documented process gate.
+  Routine data refreshes use a guided local wrapper that automates branch
+  creation, full-bundle staging, validation, reconciliation, tests, and Pull
+  Request creation while retaining separate typed confirmations for data
+  promotion and publication. For this narrow pathway, `PUBLISH` is explicit
+  John approval to wait for the required GitHub check, re-verify the PR title,
+  base, branch, and exact tested commit, merge through the protected Pull
+  Request route, fast-forward local `main`, delete the merged local and remote
+  data branch, and remove only the saved artifacts belonging to that update.
+  The tested data diff is fingerprinted before approval. Code, schema,
+  configuration, export-set, and broader documentation changes cannot use this
+  automatic authority.
 
 ## Crown history is exported, not reconstructed in the browser
 
@@ -145,3 +189,69 @@ Unknown historical details are labelled rather than inferred.
 - **Consequences:** Both site folders require `crown_history.csv`. The browser
   must not infer missing history, synthetic vacancies, prior holders, or
   Current/12-Month crown events.
+
+## Production usage analytics are aggregate and cookie-free
+
+- **Status:** Accepted
+- **Date:** 22 July 2026
+- **Decision:** Production pages use the hosted GoatCounter account
+  `familyrunning.goatcounter.com` for aggregate visit statistics. The tracker
+  loads only on `www.aceofrace.com`, `aceofrace.com`, and the legacy
+  `johnkevan88888.github.io/family-running` address; local development, Netlify
+  previews, unrelated subdomains, and other GitHub Pages projects are excluded.
+  Analytics paths retain the selected Family/Everyone mode and public athlete
+  ID where relevant, but discard other query parameters.
+- **Rationale:** The site owner needs a simple indication of whether and how the
+  public site is used without introducing cookies, persistent browser storage,
+  personal visitor profiles, or inflated counts from review traffic.
+- **Consequences:** Every tracked page displays a concise GoatCounter
+  disclosure. The public endpoint and provider-recommended loader configuration
+  belong in source control, but account passwords and API keys never do. Do not
+  add a subresource-integrity pin for mutable external loader content: a stale
+  pin blocks the script and prevents all visit collection. Client-side blocking
+  means statistics are indicative rather than an exact access log.
+
+## Age-grade comparisons group exported benchmarks by result class
+
+- **Status:** Accepted and implemented; not yet released
+- **Date:** 31 July 2026
+- **Decision:** The public Calculator selects a Challenger and The Standard,
+  then shows source performances from the workbook-owned comparison export in
+  two sections: official results first and unofficial results below. Each
+  section independently contains The Standard's exported best age-graded and
+  fastest raw-time performance at each available distance and the exported
+  time the Challenger must beat to score a higher age grade than each
+  performance. The duplicate
+  single-athlete race-target builder is omitted because equivalent targets are
+  already available on athlete pages. The browser does not interpolate
+  percentages or derive pairwise target times.
+- **Rationale:** Interactive selection makes workbook-owned standards easier to
+  use without creating a second calculation path that can disagree with
+  Excel/VBA.
+- **Consequences:** Pairwise comparison uses the site-specific workbook-owned
+  `athlete_comparison_targets.csv` contract, groups rows by the exported
+  `StandardTimeClass`, requires both benchmark types for every available result
+  class, and stays unavailable when that file is absent from the current export
+  manifest. Family and Everyone Calculator views must load only their own
+  comparison exports while continuing to use shared public athlete names.
+  Source benchmark performances remain auditable against
+  `data/athlete_results.csv`.
+
+## Challenge defaults and period display are browser presentation choices
+
+- **Status:** Accepted and implemented; period-labelled workbook export pending
+- **Date:** 8 August 2026
+- **Decision:** Challenge the Standard displays Current and All Time standards
+  through a single period switch instead of duplicating cards. When the same
+  exported source performance is both Best Age Grade and Fastest Time, one row
+  retains both badges. The initial athletes are the closest age-grade
+  percentage rivalry among the exported top five Current Official Overall
+  championship rows, with the lower-ranked athlete challenging the
+  higher-ranked athlete.
+- **Rationale:** One period at a time keeps the existing official/unofficial and
+  distance hierarchy readable. The default matchup makes the page immediately
+  relevant while using only already-exported ranking and percentage values.
+- **Consequences:** The browser may choose this initial view and merge identical
+  display rows, but it still cannot derive age grades or target times. The
+  comparison export adds a `Period` dimension owned by Excel/VBA. Legacy rows
+  without that field remain readable as All Time during the schema transition.

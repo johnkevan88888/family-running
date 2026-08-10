@@ -49,6 +49,7 @@ async function buildHallOfFame() {
     `).join('');
 
     document.getElementById('hall-of-fame').innerHTML = html;
+    refreshPaceDisplay();
 }
 
 function normalizeHeader(header) {
@@ -147,8 +148,14 @@ function renderHallOfFameCard(row) {
     ].filter(Boolean).map(escapeHTML).join(' / ');
     const dateEvent = [
         row.event ? `&#128205; ${escapeHTML(row.event)}` : '',
-        row.date ? `&#128197; ${escapeHTML(row.date)}` : ''
+        row.date ? `&#128197; ${escapeHTML(formatExportedDate(row.date))}` : ''
     ].filter(Boolean).join(' &nbsp; ');
+    const primaryMetric = row.primarymetric
+        ? renderHallOfFameMetric(row.primarymetriclabel, row.primarymetric, row)
+        : '';
+    const secondaryMetric = row.secondarymetric
+        ? renderHallOfFameMetric(row.secondarymetriclabel, row.secondarymetric, row)
+        : '';
 
     if (isVacant) {
         return `
@@ -160,7 +167,7 @@ function renderHallOfFameCard(row) {
                 <div class="hof-award">${escapeHTML(row.award)}</div>
                 <div class="hof-name">Championship Vacant</div>
                 <div class="hof-primary">
-                    <span>Result</span>
+                    <span class="metric-label">Result</span>
                     No qualifier
                 </div>
                 <div class="hof-detail">No qualifying official performance recorded</div>
@@ -176,16 +183,16 @@ function renderHallOfFameCard(row) {
             </div>
             <div class="hof-award">${escapeHTML(row.award)}</div>
             <div class="hof-name">${participant}</div>
-            ${row.primarymetric ? `
+            ${primaryMetric ? `
                 <div class="hof-primary">
-                    ${row.primarymetriclabel ? `<span>${escapeHTML(row.primarymetriclabel)}</span>` : ''}
-                    ${escapeHTML(row.primarymetric)}
+                    ${row.primarymetriclabel ? `<span class="metric-label">${escapeHTML(row.primarymetriclabel)}</span>` : ''}
+                    ${primaryMetric}
                 </div>
             ` : ''}
-            ${row.secondarymetric ? `
+            ${secondaryMetric ? `
                 <div class="hof-secondary">
-                    ${row.secondarymetriclabel ? `<span>${escapeHTML(row.secondarymetriclabel)}</span>` : ''}
-                    ${escapeHTML(row.secondarymetric)}
+                    ${row.secondarymetriclabel ? `<span class="metric-label">${escapeHTML(row.secondarymetriclabel)}</span>` : ''}
+                    ${secondaryMetric}
                 </div>
             ` : ''}
             ${row.ageclass ? `
@@ -211,6 +218,24 @@ function formatHallOfFameDistance(distance) {
         .replace(/^H\. Mar$/i, 'Half Marathon')
         .replace(/^10km$/i, '10 km')
         .replace(/^5km$/i, '5 km');
+}
+
+function renderHallOfFameMetric(label, value, row) {
+    const isTimeMetric = normalizeHeader(label || '') === 'time' ||
+        (row.time && value === row.time);
+
+    return isTimeMetric
+        ? renderTimeWithPace(value, row.distance, row.displaydistance)
+        : escapeHTML(value);
+}
+
+function renderTimeWithPace(time, ...distanceCandidates) {
+    return window.paceDisplay?.renderTimeWithPace(time, ...distanceCandidates) ||
+        escapeHTML(time);
+}
+
+function refreshPaceDisplay() {
+    window.paceDisplay?.initialize(document);
 }
 
 function standardBadgeContent(category) {
@@ -256,9 +281,10 @@ async function buildOverviewStats() {
     const container = document.getElementById('overview-dashboard');
     if (!container) return;
 
-    const [athleteRows, siteAthleteIds] = await Promise.all([
+    const [athleteRows, siteAthleteIds, siteInfoRows] = await Promise.all([
         fetchCSV('data/athlete_results.csv').then(csvRowsToObjects),
-        loadSiteAthleteIds()
+        loadSiteAthleteIds(),
+        fetchCSV(`${dataPath}/siteinfo.csv`)
     ]);
     const officialRows = athleteRows
         .filter(row => row.AthleteID && siteAthleteIds.has(cleanAthleteId(row.AthleteID)))
@@ -268,12 +294,22 @@ async function buildOverviewStats() {
             parsedDate: parseExportedDate(row.Date)
         }))
         .filter(row => row.parsedDate);
-    const latestYear = officialRows.length
-        ? Math.max(...officialRows.map(row => row.parsedDate.getFullYear()))
-        : new Date().getFullYear();
-    const rowsThisYear = officialRows.filter(row => row.parsedDate.getFullYear() === latestYear);
+    const latestResult = officialRows
+        .slice()
+        .sort(compareResultDateDescending)[0];
+    const publishedAt = siteInfoRows.find(row => row[0] === 'LastUpdatedUTC')?.[1] || '';
+    const publishedDate = parseExportedDate(String(publishedAt).split('T')[0]);
+    const windowEnd = publishedDate || latestResult?.parsedDate || new Date();
+    const twelveMonthStart = window.dateDisplay.subtractMonths(windowEnd, 12);
+    const sixMonthStart = window.dateDisplay.subtractMonths(windowEnd, 6);
+    const rowsLastTwelveMonths = officialRows.filter(row =>
+        row.parsedDate >= twelveMonthStart && row.parsedDate <= windowEnd
+    );
+    const rowsLastSixMonths = officialRows.filter(row =>
+        row.parsedDate >= sixMonthStart && row.parsedDate <= windowEnd
+    );
     const athletes = new Map();
-    const athletesThisYear = new Set();
+    const athletesLastTwelveMonths = new Set();
 
     for (const row of officialRows) {
         if (!athletes.has(row.AthleteID)) {
@@ -281,38 +317,34 @@ async function buildOverviewStats() {
         }
     }
 
-    for (const row of rowsThisYear) {
-        athletesThisYear.add(row.AthleteID);
+    for (const row of rowsLastTwelveMonths) {
+        athletesLastTwelveMonths.add(row.AthleteID);
     }
 
-    const latestResult = officialRows
+    const mostActive = [...countRowsByAthlete(rowsLastTwelveMonths).entries()]
+        .sort((a, b) => b[1].count - a[1].count || a[1].name.localeCompare(b[1].name));
+    const recentResults = rowsLastSixMonths
         .slice()
-        .sort(compareResultDateDescending)[0];
-    const mostActive = [...countRowsByAthlete(rowsThisYear).entries()]
-        .sort((a, b) => b[1].count - a[1].count || a[1].name.localeCompare(b[1].name))
-        .slice(0, 5);
-    const recentResults = officialRows
-        .slice()
-        .sort(compareResultDateDescending)
-        .slice(0, 8);
+        .sort(compareResultDateDescending);
 
     container.classList.add('overview-dashboard');
     container.innerHTML = `
         <div class="overview-stat-grid">
             ${renderOverviewStat(athletes.size, 'athletes with official results')}
-            ${renderOverviewStat(rowsThisYear.length, `official results in ${latestYear}`)}
-            ${renderOverviewStat(athletesThisYear.size, `official athletes in ${latestYear}`)}
+            ${renderOverviewStat(rowsLastTwelveMonths.length, 'official results in the last 12 months')}
+            ${renderOverviewStat(athletesLastTwelveMonths.size, 'official athletes in the last 12 months')}
             ${renderOverviewStat(latestResult ? formatExportedDate(latestResult.parsedDate) : '-', 'latest official result')}
         </div>
         <section class="overview-panel" aria-labelledby="most-active-title">
-            <h3 id="most-active-title">Most official runs recorded in ${latestYear}</h3>
+            <h3 id="most-active-title">Most official runs recorded in the last 12 months</h3>
             ${renderMostActiveList(mostActive)}
         </section>
         <section class="overview-panel" aria-labelledby="recent-results-title">
-            <h3 id="recent-results-title">Most recent official results</h3>
+            <h3 id="recent-results-title">Most recent official results from the last six months</h3>
             ${renderRecentResults(recentResults)}
         </section>
     `;
+    refreshPaceDisplay();
 }
 
 async function loadSiteAthleteIds() {
@@ -350,7 +382,7 @@ function renderOverviewStat(value, label) {
 
 function renderMostActiveList(rows) {
     if (!rows.length) {
-        return '<p class="description">No exported official results are available for this year.</p>';
+        return '<p class="description">No exported official results are available for the last 12 months.</p>';
     }
 
     return `
@@ -372,21 +404,27 @@ function renderRecentResults(rows) {
 
     return `
         <div class="overview-result-list" id="overview-recent-results">
-            ${rows.map(row => `
-                <article class="overview-result-card">
-                    <div>${athleteLink(row.AthleteID, row.Participant || row.AthleteID)}</div>
-                    <div class="overview-result-meta">
-                        ${escapeHTML(formatExportedDate(row.parsedDate))}
-                        ${row.Event ? ` &middot; ${escapeHTML(row.Event)}` : ''}
-                    </div>
-                    <div class="overview-result-detail">
-                        ${escapeHTML(row.Distance || '')}
-                        ${row.Time ? ` &middot; ${escapeHTML(row.Time)}` : ''}
-                        ${row.AgeGrade ? ` &middot; ${escapeHTML(row.AgeGrade)}` : ''}
-                        ${row.TimeClass ? ` &middot; ${escapeHTML(row.TimeClass)}` : ''}
-                    </div>
-                </article>
-            `).join('')}
+            ${rows.map(row => {
+                const resultDetails = [
+                    row.Distance ? escapeHTML(row.Distance) : '',
+                    row.Time ? renderTimeWithPace(row.Time, row.Distance) : '',
+                    row.AgeGrade ? escapeHTML(row.AgeGrade) : '',
+                    row.TimeClass ? escapeHTML(row.TimeClass) : ''
+                ].filter(Boolean).join(' &middot; ');
+
+                return `
+                    <article class="overview-result-card">
+                        <div>${athleteLink(row.AthleteID, row.Participant || row.AthleteID)}</div>
+                        <div class="overview-result-meta">
+                            ${escapeHTML(formatExportedDate(row.parsedDate))}
+                            ${row.Event ? ` &middot; ${escapeHTML(row.Event)}` : ''}
+                        </div>
+                        <div class="overview-result-detail">
+                            ${resultDetails}
+                        </div>
+                    </article>
+                `;
+            }).join('')}
         </div>
     `;
 }
@@ -416,21 +454,11 @@ function compareResultDateDescending(a, b) {
 }
 
 function parseExportedDate(value) {
-    const parts = String(value || '').split('/').map(Number);
-    if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) {
-        return null;
-    }
-
-    const [day, month, year] = parts;
-    return new Date(year, month - 1, day);
+    return window.dateDisplay?.parse(value) || null;
 }
 
-function formatExportedDate(date) {
-    return date.toLocaleDateString(undefined, {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-    });
+function formatExportedDate(value) {
+    return window.dateDisplay?.format(value) || String(value || '');
 }
 
 function cleanAthleteId(value) {
@@ -439,13 +467,19 @@ function cleanAthleteId(value) {
 
 async function buildCrownHistory() {
     const container = document.getElementById('crown-history');
-    const rows = await fetchCSV(`${dataPath}/crown_history.csv`);
+    const [rows, athleteResultRows] = await Promise.all([
+        fetchCSV(`${dataPath}/crown_history.csv`),
+        fetchCSV('data/athlete_results.csv').catch(() => [])
+    ]);
     const headers = rows[0] || [];
     const normalizedHeaders = headers.map(normalizeHeader);
+    const athleteResults = athleteResultRows.length
+        ? csvRowsToObjects(athleteResultRows)
+        : [];
     const exportedRows = rows
         .slice(1)
         .filter(row => row.some(cell => cell !== ''))
-        .map(row => crownHistoryRowToObject(normalizedHeaders, row));
+        .map(row => enrichCrownHistoryRow(crownHistoryRowToObject(normalizedHeaders, row), athleteResults));
     const crownOrder = ['Overall', 'Marathon', 'Half Marathon', '10 Mile', '10 km', '5 km'];
     const groups = crownOrder
         .map(distance => ({
@@ -471,6 +505,7 @@ async function buildCrownHistory() {
         </div>
     `;
     container.dataset.rendered = 'true';
+    refreshPaceDisplay();
 }
 
 function crownHistoryRowToObject(normalizedHeaders, row) {
@@ -481,6 +516,41 @@ function crownHistoryRowToObject(normalizedHeaders, row) {
     });
 
     return result;
+}
+
+function enrichCrownHistoryRow(row, athleteResults) {
+    row.resultdistance = resolveCrownHistoryResultDistance(
+        athleteResults,
+        row.athleteid,
+        row.time,
+        row.effectivedate,
+        row.event
+    ) || row.distance;
+    row.previousresultdistance = resolveCrownHistoryResultDistance(
+        athleteResults,
+        row.previousathleteid,
+        row.previoustime
+    ) || row.distance;
+
+    return row;
+}
+
+function resolveCrownHistoryResultDistance(athleteResults, athleteId, time, date = '', event = '') {
+    if (!athleteId || !time) return '';
+
+    const matches = athleteResults.filter(result =>
+        cleanAthleteId(result.AthleteID) === cleanAthleteId(athleteId) &&
+        result.Time === time
+    );
+
+    if (!matches.length) return '';
+
+    const exactMatch = matches.find(result =>
+        (!date || result.Date === date) &&
+        (!event || result.Event === event)
+    );
+
+    return (exactMatch || matches[0]).Distance || '';
 }
 
 function renderCrownHistoryGroup(group, index, expanded) {
@@ -516,7 +586,7 @@ function renderCrownHistoryGroup(group, index, expanded) {
 function renderCrownHistoryEntry(row) {
     const holder = crownHistoryAthlete(row.athleteid, row.athletename);
     const performance = [
-        row.time ? `<span><strong>Time:</strong> ${escapeHTML(row.time)}</span>` : '',
+        row.time ? `<span><strong>Time:</strong> ${renderTimeWithPace(row.time, row.resultdistance, row.distance)}</span>` : '',
         row.agegrade ? `<span><strong>Age grade:</strong> ${escapeHTML(row.agegrade)}</span>` : ''
     ].filter(Boolean).join('');
     const previousDetails = crownHistoryPreviousHolder(row);
@@ -526,7 +596,7 @@ function renderCrownHistoryEntry(row) {
             class="crown-history-item"
             data-effective-date="${escapeHTML(row.effectivedate)}"
             data-athlete-id="${escapeHTML(row.athleteid)}">
-            <div class="crown-history-date">${escapeHTML(row.effectivedate)}</div>
+            <div class="crown-history-date">${escapeHTML(formatExportedDate(row.effectivedate))}</div>
             <article class="crown-history-card">
                 <h4 class="crown-history-holder">${holder}</h4>
                 ${performance ? `<div class="crown-history-performance">${performance}</div>` : ''}
@@ -552,7 +622,7 @@ function crownHistoryPreviousHolder(row) {
     }
 
     if (row.previoustime) {
-        details.push(`<strong>Time:</strong> ${escapeHTML(row.previoustime)}`);
+        details.push(`<strong>Time:</strong> ${renderTimeWithPace(row.previoustime, row.previousresultdistance, row.distance)}`);
     }
 
     if (row.previousagegrade) {
@@ -607,6 +677,7 @@ function renderLeaderboardTable(rows) {
 
     rows.forEach((row, rowIndex) => {
         html += '<tr>';
+        const rowObject = Object.fromEntries(headers.map((header, index) => [header, row[index] || '']));
 
         headers.forEach((header, cellIndex) => {
             if (cellIndex === athleteIdIndex || header === 'ExportBundleID') {
@@ -619,6 +690,7 @@ function renderLeaderboardTable(rows) {
             }
 
             const value = row[cellIndex] || '';
+            const normalizedHeader = header.toLowerCase().replace(/\s+/g, '');
             let cell = escapeHTML(value);
 
             if (
@@ -627,6 +699,22 @@ function renderLeaderboardTable(rows) {
                 row[athleteIdIndex]
             ) {
                 cell = athleteLink(row[athleteIdIndex], value);
+            }
+
+            // Both helpers take the raw exported value: renderTimeWithPace
+            // escapes internally, and formatExportedDate is escaped after
+            // formatting. Passing the already-escaped cell would double-escape.
+            if (normalizedHeader === 'time') {
+                cell = renderTimeWithPace(
+                    value,
+                    rowObject.SexAgeEvent,
+                    rowObject.Distance,
+                    rowObject.DisplayDistance
+                );
+            }
+
+            if (['date', 'eventdate', 'effectivedate', 'standarddate'].includes(normalizedHeader)) {
+                cell = escapeHTML(formatExportedDate(value));
             }
 
             // Match on the rank column itself, so an unrelated column that
@@ -693,6 +781,7 @@ async function renderLeaderboardGroup(groupId) {
 
     container.innerHTML = sections.join('');
     group.loaded = true;
+    refreshPaceDisplay();
 }
 
 async function buildLeaderboards() {

@@ -1,8 +1,10 @@
 # GitHub PR Checks And Preview Deployments
 
-This repository is now prepared for the Pull Request gate:
+This repository has three Pull Request review pathways:
 
-feature branch -> automated tests -> preview URLs -> John approval -> merge -> production verification.
+- standard change: feature branch -> automated tests -> Netlify preview URLs -> John approval -> merge -> production verification;
+- lightweight data refresh: feature branch -> automated eligibility gate and full tests -> responsive screenshots and CSV diff review -> John approval -> merge -> production verification.
+- custom-domain configuration: feature branch -> automated eligibility gate and full tests -> responsive screenshots and exact diff review -> John approval -> merge -> DNS and production verification.
 
 ## Automated Pull Request Checks
 
@@ -13,6 +15,8 @@ Workflow file:
 The workflow runs for Pull Requests targeting `main` and for manual dispatches. It:
 
 - checks out the repository;
+- validates any Pull Request whose title contains `[skip netlify]` as either a
+  narrow existing-schema data refresh or custom-domain configuration;
 - installs Node 24 and pnpm;
 - installs the locked dependencies;
 - installs the Playwright Chromium browser;
@@ -29,11 +33,19 @@ Workflow file:
 
 - `.github/workflows/pr-preview-review-links.yml`
 
-For Pull Requests targeting `main`, the workflow creates or updates exactly one bot-maintained comment headed `Family Running preview review links`. That comment is the authoritative entry point for preview review and includes the Family link, Everyone link, preview root, and current short head commit SHA.
+For standard Pull Requests targeting `main`, the workflow creates or updates
+exactly one bot-maintained comment headed `Family Running preview review links`.
+That comment is the authoritative entry point for preview review and includes
+the Family link, Everyone link, preview root, and current short head commit SHA.
+For Pull Requests whose title contains `[skip netlify]`, it instead maintains a
+`Family Running Netlify preview skipped` comment with exact-diff and screenshot
+review instructions.
 
 The workflow uses the verified Netlify hostname stored in its source-controlled configuration. It runs from trusted `main` with `pull_request_target`, does not check out repository code, and does not run Pull Request code.
 
-Netlify's Deploy Preview status must be successful before the deterministic links are treated as ready. Both `?site=family` and `?site=everyone` must be checked before approval.
+For the standard pathway, Netlify's Deploy Preview status must be successful
+before the deterministic links are treated as ready. Both `?site=family` and
+`?site=everyone` must be checked before approval.
 
 Once the workflow exists on `main`, test an implementation update by opening `PR Preview Review Links` in GitHub Actions, choosing **Run workflow**, selecting the branch containing the workflow version to test, entering the target Pull Request number, and running it. The manual route obtains the Pull Request details through the GitHub API and uses the same comment-generation path. Run it again to confirm that the marked comment is updated rather than duplicated.
 
@@ -55,6 +67,49 @@ Netlify build settings from the repository:
 
 The preview build copies only the static runtime site files and `data/` exports into the publish directory. It does not publish docs, scripts, tests, dependency folders, reports, or local artifacts.
 
+## Lightweight Data-Refresh Pathway
+
+Use this pathway only for a routine full-bundle refresh, such as adding new
+race times, when all of the following are true:
+
+- every changed runtime file is an existing CSV below `data/`;
+- every tracked public CSV is part of the refreshed bundle;
+- no CSV header or schema changes;
+- no export is added, removed, or renamed;
+- the only optional non-data change is `docs/active-work.md` handoff notes;
+- the complete automated suite, including repository safety, bundle
+  consistency, CSV validation, browser smoke tests, and responsive screenshots,
+  still passes.
+
+Put `[skip netlify]` in the Pull Request title before opening it, for example
+`[skip netlify] Refresh August race times`. [Netlify officially supports this
+Pull Request title marker](https://docs.netlify.com/deploy/manage-deploys/manage-deploys-overview/#skip-a-deploy)
+for skipping a Deploy Preview. Do not use `[skip ci]` because the GitHub checks
+must still run.
+
+For routine workbook updates, `pnpm run data:update` is the preferred guided
+entry point. It prepares the complete export, preserves the staged review and
+promotion boundary, runs the full local suite, verifies lightweight-path
+eligibility, and requires `PUBLISH` as explicit approval for the complete
+routine-data production action. It then opens the correctly titled Pull
+Request, waits for GitHub checks, verifies the PR branch, title, and head
+commit, merges through the protected pathway, and performs scoped cleanup.
+
+The `Pull Request Checks / Test static site` job fails closed if the marker is
+used outside the data-refresh or custom-domain allowlists. Remove
+`[skip netlify]` from the title and push a new commit to return the Pull Request
+to the standard preview pathway.
+
+## Custom-Domain Pathway
+
+Use this pathway only when the change includes a valid root `CNAME` and stays
+within the explicit domain, analytics, test, workflow, and documentation
+allowlist enforced by `scripts/validate-pr-release-path.mjs`. The full automated
+suite and responsive screenshots still run. Netlify is skipped because its
+preview hostname cannot verify GitHub Pages DNS, canonical-host redirects, or
+HTTPS certificate provisioning; verify those behaviors on production after
+merge and DNS propagation.
+
 ## Expected Preview URLs
 
 For Pull Request `123`, Netlify will use these preview URLs:
@@ -73,11 +128,16 @@ John needs to complete these once:
 3. Confirm Netlify uses the repository `netlify.toml` build settings.
 4. Enable Netlify Deploy Previews for Pull Requests.
 5. Open GitHub branch protection for `main`.
-6. Require Pull Request review before merge.
-7. Require status checks before merge:
-   - `Pull Request Checks / Test static site`
-   - the Netlify Deploy Preview status check
-8. Require John approval before production release.
+6. Require Pull Request review before merge for standard and custom-domain
+   changes. Do not add an unconditional review requirement if the guided
+   routine-data `PUBLISH` auto-merge path must remain available; its explicit
+   local approval is paired with the protected required check.
+7. Require `Pull Request Checks / Test static site` before merge.
+8. Treat the Netlify Deploy Preview status as a required process gate for the
+   standard pathway, but do not configure it as an unconditional repository
+   ruleset check because eligible lightweight Pull Requests intentionally do
+   not create that status.
+9. Require John approval before production release.
 
 ## Why Not GitHub Pages For PR Previews
 
@@ -87,6 +147,13 @@ GitHub Pages deployment actions publish artifacts to the GitHub Pages site. This
 
 No passing automated tests, no release.
 
-No successful Netlify Deploy Preview status and no review of both automated Family and Everyone links, no release.
+For standard changes: no successful Netlify Deploy Preview status and no review
+of both automated Family and Everyone links, no release.
 
-No explicit John approval, no release.
+For validated lightweight data refreshes: no accepted eligibility gate, exact
+CSV diff review, and Family and Everyone responsive screenshot review, no
+release.
+
+No explicit John approval, no release. For the guided routine-data command,
+typing `PUBLISH` after the local review and full test suite is that explicit
+approval; every other pathway retains a separate Pull Request approval.

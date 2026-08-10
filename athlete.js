@@ -4,9 +4,6 @@ const athleteId = params.get('id');
 const site = window.siteNavigation?.selectedSite
     ? window.siteNavigation.selectedSite()
     : (params.get('site') || 'family');
-const paceUnitStorageKey = 'family-running.age-grade-pace-unit';
-const defaultPaceUnit = 'km';
-const validPaceUnits = new Set(['km', 'mi']);
 
 function updateBackLink() {
     const backLink = document.querySelector('.back-link');
@@ -26,8 +23,11 @@ function updateBackLink() {
 }
 
 function parseDate(dateStr) {
-    const [day, month, year] = dateStr.split('/');
-    return new Date(year, month - 1, day);
+    return window.dateDisplay?.parse(dateStr) || new Date(Number.NaN);
+}
+
+function displayDate(value) {
+    return window.dateDisplay?.format(value) || String(value || '');
 }
 
 function timeToSeconds(time) {
@@ -139,7 +139,7 @@ spanGaps: true
                             return [
                                 `\u{1F4CD} ${row.Event}`,
                                 `Distance: ${row.Distance}`,
-                                `Time: ${row.Time}`,
+                                `Time: ${formatTimeWithPaceText(row.Time, row.Distance)}`,
                                 `Class: ${row.TimeClass}`
                             ];
                         }
@@ -167,7 +167,7 @@ spanGaps: true
                     max: chartResults[chartResults.length - 1].Date ? parseDate(chartResults[chartResults.length - 1].Date) : undefined,
                     time: {
                         unit: 'year',
-                        tooltipFormat: 'dd MMM yyyy',
+                        tooltipFormat: 'd MMMM yyyy',
                         displayFormats: {
                             year: 'yyyy'
                         }
@@ -207,9 +207,9 @@ function renderAthleteResultsTable(rows) {
     rows.forEach(row => {
         html += `
             <tr>
-                <td>${escapeHTML(row.Date)}</td>
+                <td>${escapeHTML(displayDate(row.Date))}</td>
                 <td>${escapeHTML(row.Distance)}</td>
-                <td>${escapeHTML(row.Time)}</td>
+                <td>${renderTimeWithPace(row.Time, row.Distance)}</td>
                 <td>${escapeHTML(row.AgeGrade)}</td>
                 <td>${escapeHTML(row.Event)}</td>
                 <td>${escapeHTML(row.TimeClass)}</td>
@@ -273,6 +273,7 @@ function buildPersonalBests(results) {
     html += '</div>';
 
     pbContainer.innerHTML = html;
+    refreshPaceDisplay();
 }
 
 function getFastestResult(results, distances, timeClass) {
@@ -323,27 +324,33 @@ function formatPBBlock(label, result, isAgeGrade) {
     if (!result) {
         return `
             <div class="pb-block empty">
-                <div class="pb-label">${label}</div>
+                <div class="pb-label">${escapeHTML(label)}</div>
                 <div class="pb-value">-</div>
             </div>
         `;
     }
 
-    const mainValue = isAgeGrade ? result.AgeGrade : result.Time;
-    const secondaryValue = isAgeGrade ? result.Time : result.AgeGrade;
+    const mainValue = isAgeGrade
+        ? escapeHTML(result.AgeGrade)
+        : renderTimeWithPace(result.Time, result.Distance);
+    const secondaryValue = isAgeGrade
+        ? renderTimeWithPace(result.Time, result.Distance)
+        : escapeHTML(result.AgeGrade);
 
     return `
         <div class="pb-block">
             <div class="pb-label">${escapeHTML(label)}</div>
-            <div class="pb-value">${escapeHTML(mainValue)}</div>
-            <div class="pb-sub">${escapeHTML(secondaryValue)}</div>
+            <!-- Already-escaped HTML: escapeHTML for age grades, pace markup
+                 from renderTimeWithPace. Re-escaping here would strip the pace. -->
+            <div class="pb-value">${mainValue}</div>
+            <div class="pb-sub">${secondaryValue}</div>
             ${result.Event ? `<div class="pb-meta">&#128205; ${escapeHTML(result.Event)}</div>` : ''}
-            ${result.Date ? `<div class="pb-meta">&#128197; ${escapeHTML(result.Date)}</div>` : ''}
+            ${result.Date ? `<div class="pb-meta">&#128197; ${escapeHTML(displayDate(result.Date))}</div>` : ''}
         </div>
     `;
 }
 
-async function buildOfficialMedals() {
+async function buildOfficialMedals(results) {
     const section = document.getElementById('official-medals-section');
     const container = document.getElementById('official-medals');
 
@@ -366,9 +373,10 @@ async function buildOfficialMedals() {
     section.classList.remove('hidden');
     container.innerHTML = `
         <div class="official-medal-grid">
-            ${medals.map(renderOfficialMedalHeld).join('')}
+            ${medals.map(medal => renderOfficialMedalHeld(medal, results)).join('')}
         </div>
     `;
+    refreshPaceDisplay();
 }
 
 async function loadOfficialMedalsFromCsv() {
@@ -448,6 +456,7 @@ async function buildCrownStandards() {
                 ${standards.map(renderCrownStandard).join('')}
             </div>
         `;
+        refreshPaceDisplay();
     } catch (error) {
         hideCrownStandards(section, container);
     }
@@ -518,7 +527,7 @@ async function buildAgeGradeStandards() {
                 </table>
             </div>
         `;
-        initializePaceUnitControl(section);
+        refreshPaceDisplay();
     } catch (error) {
         hideAgeGradeStandards(section, container);
     }
@@ -532,52 +541,9 @@ function renderAgeGradeStandardCell(standard) {
     return `
         <td>
             <span class="age-grade-target-time">${escapeHTML(standard.RequiredTime)}</span>
-            <span class="age-grade-pace" data-pace-unit="km">${escapeHTML(standard.pace_per_km)} /km</span>
-            <span class="age-grade-pace" data-pace-unit="mi" hidden>${escapeHTML(standard.pace_per_mile)} /mi</span>
+            ${renderExportedPaces(standard.pace_per_km, standard.pace_per_mile, 'age-grade-pace')}
         </td>
     `;
-}
-
-function initializePaceUnitControl(section) {
-    if (!section.dataset.paceControlBound) {
-        section.querySelectorAll('.pace-unit-options button').forEach(button => {
-            button.addEventListener('click', () => {
-                setPaceUnit(section, button.dataset.paceUnit, true);
-            });
-        });
-        section.dataset.paceControlBound = 'true';
-    }
-
-    setPaceUnit(section, readStoredPaceUnit(), false);
-}
-
-function setPaceUnit(section, unit, persist) {
-    const selectedUnit = validPaceUnits.has(unit) ? unit : defaultPaceUnit;
-
-    section.dataset.paceUnit = selectedUnit;
-    section.querySelectorAll('.pace-unit-options button').forEach(button => {
-        button.setAttribute('aria-pressed', String(button.dataset.paceUnit === selectedUnit));
-    });
-    section.querySelectorAll('.age-grade-pace').forEach(pace => {
-        pace.hidden = pace.dataset.paceUnit !== selectedUnit;
-    });
-
-    if (persist) {
-        try {
-            window.localStorage.setItem(paceUnitStorageKey, selectedUnit);
-        } catch (error) {
-            // The selected unit still applies for this page when storage is unavailable.
-        }
-    }
-}
-
-function readStoredPaceUnit() {
-    try {
-        const storedUnit = window.localStorage.getItem(paceUnitStorageKey);
-        return validPaceUnits.has(storedUnit) ? storedUnit : defaultPaceUnit;
-    } catch (error) {
-        return defaultPaceUnit;
-    }
 }
 
 function hideAgeGradeStandards(section, container) {
@@ -615,10 +581,10 @@ function renderCrownStandard(standard) {
     const timeCaption = currentAgeTargetCaption(isHeld, targetDistance);
     const statusLabel = isHeld ? 'Already held' : status;
     const crownFacts = [
-        shouldShowCrownDistance ? `Crown won over: ${crownDistance}` : '',
-        standard.CrownTime ? `Crown time: ${standard.CrownTime}` : '',
-        standard.CrownAgeCategory ? `Winning age class: ${standard.CrownAgeCategory}` : '',
-        standard.CrownAgeGrade ? `Crown age grade: ${standard.CrownAgeGrade}` : ''
+        shouldShowCrownDistance ? escapeHTML(`Crown won over: ${crownDistance}`) : '',
+        standard.CrownTime ? `Crown time: ${renderTimeWithPace(standard.CrownTime, crownDistance, standard.Distance)}` : '',
+        standard.CrownAgeCategory ? escapeHTML(`Winning age class: ${standard.CrownAgeCategory}`) : '',
+        standard.CrownAgeGrade ? escapeHTML(`Crown age grade: ${standard.CrownAgeGrade}`) : ''
     ].filter(Boolean);
     const overallTargets = isOverallCrown
         ? parseOverallTargets(standard.OverallTargetsToTake)
@@ -631,7 +597,7 @@ function renderCrownStandard(standard) {
                     ${overallTargets.map(target => `
                         <div class="crown-standard-target">
                             <span>${escapeHTML(target.distance)}</span>
-                            <strong>${escapeHTML(target.time)}</strong>
+                            <strong>${renderTimeWithPace(target.time, target.distance)}</strong>
                         </div>
                     `).join('')}
                 </div>
@@ -642,7 +608,7 @@ function renderCrownStandard(standard) {
         ? `<div class="crown-standard-gap">Gap from your PB to the crown target: ${escapeHTML(standard.GapToPB)}</div>`
         : '';
     const pb = !isHeld && standard.AthletePB
-        ? `<div class="crown-standard-meta">Your PB over ${escapeHTML(standard.Distance)}: ${escapeHTML(standard.AthletePB)}</div>`
+        ? `<div class="crown-standard-meta">Your PB over ${escapeHTML(standard.Distance)}: ${renderTimeWithPace(standard.AthletePB, targetDistance, standard.Distance)}</div>`
         : '';
 
     return `
@@ -659,11 +625,11 @@ function renderCrownStandard(standard) {
                 <span class="crown-standard-period">${escapeHTML(standard.Period)}</span>
             </div>
             <div class="crown-standard-facts">
-                ${crownFacts.map(fact => `<span>${escapeHTML(fact)}</span>`).join('')}
+                ${crownFacts.map(fact => `<span>${fact}</span>`).join('')}
             </div>
             <div class="crown-standard-time">
-                ${escapeHTML(standard.RequiredTimeToTake)}
-                <span>${escapeHTML(timeCaption)}</span>
+                ${renderTimeWithPace(standard.RequiredTimeToTake, targetDistance, standard.Distance)}
+                <span class="crown-standard-caption">${escapeHTML(timeCaption)}</span>
             </div>
             ${overallTargetsHTML}
             ${pb}
@@ -708,17 +674,18 @@ function parseOverallTargets(value) {
         .filter(target => target.distance && target.time);
 }
 
-function renderOfficialMedalHeld(medal) {
+function renderOfficialMedalHeld(medal, results) {
     const medalName = medal.Medal || '';
     const medalClass = medalCssClass(medalName);
     const medalTitle = medal.AwardTitle || `${medalName || 'Official'} medal held`;
+    const medalDistance = resolveMedalDistance(medal, results);
     const metric = [
-        medal.Time ? `Time: ${escapeHTML(medal.Time)}` : '',
+        medal.Time ? `Time: ${renderTimeWithPace(medal.Time, medalDistance, medal.Distance)}` : '',
         medal.AgeGrade ? `Age grade: ${escapeHTML(medal.AgeGrade)}` : ''
     ].filter(Boolean).join(' &middot; ');
     const event = [
         medal.EventName ? `&#128205; ${escapeHTML(medal.EventName)}` : '',
-        medal.EventDate ? `&#128197; ${escapeHTML(medal.EventDate)}` : ''
+        medal.EventDate ? `&#128197; ${escapeHTML(displayDate(medal.EventDate))}` : ''
     ].filter(Boolean).join(' &nbsp; ');
     const context = [medal.Period, medal.Distance].filter(Boolean)
         .map(escapeHTML)
@@ -741,6 +708,21 @@ function renderOfficialMedalHeld(medal) {
     `;
 }
 
+function resolveMedalDistance(medal, results) {
+    if (clean(medal.Distance) !== 'overall') {
+        return medal.Distance;
+    }
+
+    const match = (results || []).find(row =>
+        clean(row.AthleteID) === clean(medal.AthleteId) &&
+        clean(row.Time) === clean(medal.Time) &&
+        clean(row.Date) === clean(medal.EventDate) &&
+        clean(row.Event) === clean(medal.EventName)
+    );
+
+    return match?.Distance || medal.Distance;
+}
+
 function medalIcon(medal) {
     const value = clean(medal);
 
@@ -758,6 +740,25 @@ function medalCssClass(medal) {
         ? value
         : '';
 }
+
+function renderTimeWithPace(time, ...distanceCandidates) {
+    return window.paceDisplay?.renderTimeWithPace(time, ...distanceCandidates) ||
+        escapeHTML(time);
+}
+
+function renderExportedPaces(perKm, perMile, className) {
+    return window.paceDisplay?.renderExportedPaces(perKm, perMile, className) || '';
+}
+
+function formatTimeWithPaceText(time, ...distanceCandidates) {
+    return window.paceDisplay?.formatTimeWithPaceText(time, ...distanceCandidates) ||
+        String(time || '');
+}
+
+function refreshPaceDisplay() {
+    window.paceDisplay?.initialize(document);
+}
+
 
 function runWhenIdle(callback) {
     if ('requestIdleCallback' in window) {
@@ -780,6 +781,7 @@ function buildRecentResults(results) {
     );
 
     recentContainer.innerHTML = renderAthleteResultsTable(recent);
+    refreshPaceDisplay();
 }
 
 async function buildAthletePage() {
@@ -818,7 +820,7 @@ async function buildAthletePage() {
     document.title = `${athleteResults[0].Participant} | Athlete Profile`;
 
     buildPersonalBests(athleteResults);
-    await buildOfficialMedals();
+    await buildOfficialMedals(athleteResults);
     await buildCrownStandards();
     await buildAgeGradeStandards();
     buildRecentResults(athleteResults);
@@ -830,6 +832,7 @@ async function buildAthletePage() {
 
     runWhenIdle(() => {
         document.getElementById('all-results').innerHTML = renderAthleteResultsTable(athleteResults);
+        refreshPaceDisplay();
     });
 }
 

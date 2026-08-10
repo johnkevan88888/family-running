@@ -1,6 +1,6 @@
 # Testing And Release Protocol
 
-This project is a static GitHub Pages site. Excel/VBA remains the private source of truth for calculations and exports CSV files for the website. JavaScript must only render exported data; it must not calculate age grades, rankings, crowns, medal positions, target times, or championship status.
+This project is a static GitHub Pages site. Excel/VBA remains the private source of truth for calculations and exports CSV files for the website. JavaScript must only render exported data; it must not calculate age grades, rankings, crowns, medal positions, target times, records, or championship status.
 
 ## Local Setup
 
@@ -52,6 +52,25 @@ Refresh `vendor/` after deliberately changing a pinned library version in
 pnpm run vendor:sync
 ```
 
+Run the guided routine data updater after saving and closing Excel:
+
+```powershell
+pnpm run data:update
+```
+
+Resume an update stopped at a review checkpoint:
+
+```powershell
+pnpm run data:update -- --resume
+```
+
+This wrapper prepares the complete staged export, preserves the explicit
+promotion checkpoint, runs this full test suite, and treats the second explicit
+`PUBLISH` confirmation as approval for the complete routine-data production
+action. It opens an eligible `[skip netlify]` Pull Request, waits for GitHub
+checks, verifies the exact tested commit, merges through the protected Pull
+Request pathway, deletes the merged branch, and performs update-scoped cleanup.
+
 Run focused export-bundle failure regression tests:
 
 ```bash
@@ -68,6 +87,13 @@ Run browser smoke tests and capture screenshots:
 
 ```bash
 pnpm run test:browser
+```
+
+Build the static preview artifact used by local checks and standard Netlify
+previews:
+
+```bash
+pnpm run preview:build
 ```
 
 Start the local static preview:
@@ -108,7 +134,17 @@ Vendored library validation compares every file in `vendor/` against the build r
 
 CSV validation checks `data/family/`, `data/everyone/`, and shared `data/athlete_results.csv`. Excel/VBA generates one `ExportBundleID` per full export and appends it to every public data CSV. VBA writes `data/export_manifest.csv` last, making it the export-completion and consistency contract. Its exact schema is `ExportBundleID,ExportedAtUTC,SchemaVersion,Scope,RelativePath,DataRowCount`, with schema version `1.0`, scopes limited to `family`, `everyone`, and `shared`, repository-relative paths, and row counts excluding headers. Validation rejects missing manifests, invalid schemas or paths, missing or mixed IDs, bundle mismatches, missing or unlisted files, duplicate manifest paths, inconsistent manifest metadata, and wrong row counts, so partial, stale, or mixed exports cannot pass release checks.
 
-The existing content checks remain in force: required files and headers, parseable CSV structure, matching row lengths, leaderboard files referenced by `webtables.csv`, athlete IDs used by links, official medal exports, parseable dates, numeric fields and times, non-empty Hall of Fame data, and non-empty enabled championship files. Validation also enforces the exact `crown_history.csv` contract, crown order and chronology, transition and previous-holder rules, and final-holder agreement with the All-Time Official Hall of Fame without deriving history in JavaScript. Athlete medals remain Excel-owned exports and are rendered directly from `official_medals.csv`; their rows must match the current exported official leaderboards. Vacant states such as "Championship Vacant" and "No eligible results" are accepted.
+The existing content checks remain in force: required files and headers, parseable CSV structure, matching row lengths, leaderboard files referenced by `webtables.csv`, athlete IDs used by links, official medal exports, parseable dates, numeric fields and times, non-empty Hall of Fame data, and non-empty enabled championship files. Validation also enforces the exact `crown_history.csv` contract, crown order and chronology, transition and previous-holder rules, and final-holder agreement with the All-Time Official Hall of Fame without deriving history in JavaScript. Athlete medals remain Excel-owned exports and are rendered directly from `official_medals.csv`; their rows must match the current exported official leaderboards. When present, `absolute_records.csv` must be a workbook-owned official raw-time export with Men and Women records, source-row audit fields, and no browser-derived record calculation. Vacant states such as "Championship Vacant" and "No eligible results" are accepted.
+
+Analytics configuration tests prove that GoatCounter loads only for the
+production `www.aceofrace.com` and `aceofrace.com` domains, plus the legacy
+`johnkevan88888.github.io/family-running` address. Local runs, Netlify previews,
+unrelated subdomains, and unrelated GitHub Pages paths must not load it. The
+tests also verify that Family and Everyone paths stay distinct, unrelated query
+parameters are discarded, and only public athlete IDs are retained on profile
+paths. They also lock the integration to GoatCounter's current recommended
+loader without the stale subresource-integrity pin that previously caused
+browsers to block the script before it could submit a visit.
 
 Focused regression tests copy `data/` to temporary directories and prove validation rejects a changed CSV bundle ID, a CSV omitted from the manifest, and an incorrect manifest row count. Production CSVs are not mutated by these tests.
 
@@ -121,16 +157,49 @@ absolute, canonical, immediate child of the repository's ignored
 tracked `data/`, descendants of `data/`, relative paths, nested staging paths,
 and ambiguous paths are rejected.
 
+The preview artifact build copies the static runtime pages, JavaScript, styles,
+and public `data/` bundle into `test-artifacts/preview-site`, then fails if a
+required runtime file is absent from the publish directory.
+
+Pull Request release-path tests recognize Netlify's `[skip netlify]` title
+marker for a narrow lightweight data refresh or custom-domain configuration.
+The data route requires at least
+one changed existing CSV under `data/`, requires the complete tracked public
+CSV bundle to be refreshed, permits only optional
+`docs/active-work.md` notes alongside it, rejects added or removed CSVs, and
+compares every changed CSV header against `main` to reject schema changes. The
+domain route requires a valid root `CNAME` and permits only the explicit domain,
+analytics, test, workflow, and documentation allowlist. Other code,
+configuration, schema, export-set, and broader documentation changes fail the
+eligibility gate and must use a standard Deploy Preview.
+
 Browser smoke tests run the site through a local static server for:
 
 - `/?site=family`
 - `/?site=everyone`
 
-Desktop contexts run at 1440 x 900. Mobile contexts run at 390 x 844 with Chromium device emulation enabled, so the page's `<meta name="viewport">` tag is honoured and a page that omits it fails the horizontal overflow check instead of passing at the context width.
-
-They check that each mode loads, uses the expected site title, renders Hall of Fame cards and leaderboards, requests only the selected mode's crown history, preserves the exported crown order and values, handles timeline expansion, empty exports and incomplete legacy identities, preserves the selected site in holder links, exposes athlete links where athlete data exists, opens an athlete profile, preserves the original `site` parameter in the back link, renders athlete medals exported by Excel directly from `data/<site>/official_medals.csv` without requesting leaderboard CSVs for those medal cards, and never renders `ExportBundleID` names or values in tables or cards. They also check the athlete progression chart renders from the vendored Chart.js build on a real time scale, collapsible sections, vacant Hall of Fame states, horizontal overflow, JavaScript exceptions, and failed same-origin network requests.
+Desktop contexts run at 1440 x 900. Mobile contexts run at 390 x 844 with Chromium device emulation enabled, so the page's `<meta name="viewport">` tag is honoured and mobile assertions and screenshots reflect a real phone. Every public page is checked directly for a `width=device-width` viewport tag, an `<html lang>` attribute, and a layout width matching the emulated viewport. That check is deliberately explicit: a page missing the tag lays out at the roughly 980px desktop fallback, which does not overflow, so the horizontal overflow assertion alone would not catch it.
 
 Locally the tests use an installed system Chrome or Edge when one is present. When `CI` is set they use Playwright's own pinned Chromium, so continuous integration always tests the browser version recorded in the lockfile rather than whichever build the runner image happens to ship.
+
+They check that each mode loads, uses the expected site title, renders Hall of Fame cards and leaderboards, requests only the selected mode's crown history, preserves the exported crown order and values, handles timeline expansion, empty exports and incomplete legacy identities, preserves the selected site in holder links, exposes athlete links where athlete data exists, opens an athlete profile, preserves the original `site` parameter in the back link, renders athlete medals exported by Excel directly from `data/<site>/official_medals.csv` without requesting leaderboard CSVs for those medal cards, renders the Records page empty state while tracked data has no absolute-records export, and never renders `ExportBundleID` names or values in tables or cards. They also check the athlete progression chart renders from the vendored Chart.js build on a real time scale, synthetic absolute-records data for Men and Women rendering, selected-site-only CSV requests, linked and unlinked athletes, empty exported record states, collapsible sections, vacant Hall of Fame states, horizontal overflow, JavaScript exceptions, and failed same-origin network requests.
+
+Calculator coverage checks shared navigation, selected-site-only
+`age_grade_standards.csv` requests for the comparison athlete roster,
+Challenger/Standard controls, official-first and unofficial-second result
+grouping, the absence of the duplicate single-athlete race-target builder, the
+manifest-absent comparison state, pace-unit switching, and absence of
+export-bundle metadata. Synthetic workbook-export coverage checks both `Best
+Age Grade` and `Fastest Time` standards in both result classes, Current and All
+Time switching, and one-row/two-badge presentation when both benchmarks share
+the same performance. CSV validation requires both benchmarks independently
+for every available athlete, period, distance, and result class, verifies the
+source performance is best within that period and class, and enforces
+class-aware sort order. Browser coverage preserves exact source details and
+challenger target times and paces, prevents self-comparison, defaults to the
+closest age-grade gap among the exported top-five Current Official Overall
+championship, preserves mode isolation, and checks responsive presentation.
+The browser does not interpolate or calculate age grades or targets.
 
 The macro-enabled source workbook and its dated private backups stay outside Git. Only VBA-generated public CSVs and `data/export_manifest.csv` belong in the repository.
 
@@ -140,6 +209,10 @@ Screenshots are saved to `test-artifacts/screenshots/` for:
 - Family mobile, 390 x 844
 - Everyone desktop, 1440 x 900
 - Everyone mobile, 390 x 844
+
+The same browser pass also saves full-page Calculator screenshots for Family
+and Everyone at both desktop and mobile sizes, plus focused desktop and mobile
+comparison screenshots using synthetic period-labelled workbook-export rows.
 
 Generated screenshots and reports are ignored by Git.
 
@@ -152,31 +225,69 @@ Before approving a Pull Request:
 - Confirm any CSV schema impact is intentional.
 - Confirm any Excel/VBA impact is intentional.
 - Check automated test results.
-- Confirm Netlify's Deploy Preview status is successful.
-- Use the bot-maintained `Family Running preview review links` PR comment as the authoritative review entry point.
-- Open both review links:
+- Confirm the Pull Request is using the correct release pathway.
+- For a standard change, confirm Netlify's Deploy Preview status is successful,
+  use the bot-maintained preview-links comment, and open both review links:
   - `?site=family`
   - `?site=everyone`
+- For a validated lightweight data refresh, confirm the Pull Request title
+  contains `[skip netlify]`, the automated eligibility gate passed, and the
+  exact CSV diff contains only the intended new data and bundle metadata.
+  When using the guided updater, complete this review before typing `PUBLISH`;
+  that confirmation authorizes merge after the remote check succeeds.
+- For a validated custom-domain change, confirm the title contains
+  `[skip netlify]`, the eligibility gate passed, `CNAME` contains only the
+  intended hostname, and the exact diff stays within the domain allowlist.
 - Review desktop and mobile screenshots.
-- Manually check Hall of Fame, All-Time Official Crown Progression, leaderboards, collapsible sections, athlete links, athlete profile pages, and back links.
+- Manually check Hall of Fame, All-Time Official Crown Progression, Records, the Calculator's grouped head-to-head comparison, leaderboards, collapsible sections, athlete links, athlete profile pages, and back links.
+- For record changes, review the private workbook's `AbsoluteRecords` sheet and the staged `absolute_records.csv` files before approving tracked data promotion.
 - Confirm known limitations and rollback approach are documented.
 
 ## Release Gate
 
-No preview, no release.
-
 No passing tests, no release.
 
-No explicit John approval, no release.
+For standard changes, no successful preview and review of both site modes, no
+release.
+
+For validated lightweight data refreshes, no accepted eligibility gate, exact
+CSV diff review, and responsive screenshot review for both site modes, no
+release.
+
+For validated custom-domain changes, no accepted eligibility gate, exact diff
+review, responsive screenshot review, and post-merge production verification,
+no release.
+
+No explicit John approval, no release. In the guided routine-data workflow,
+the exact `PUBLISH` confirmation after local review and tests is explicit John
+approval for the merge; other pathways still require separate PR approval.
 
 ## Proposed Workflow
 
 1. Create a feature branch.
 2. Make the smallest safe change.
 3. Run all local checks.
-4. Open a Pull Request and wait for GitHub checks, a successful Netlify Deploy Preview status, and the automated preview-review-links comment.
-5. John reviews the preview, screenshots, manual test steps, limitations, and rollback plan.
-6. Merge to `main` only after John explicitly approves production.
+4. Choose the Pull Request pathway:
+   - standard changes use an ordinary title and wait for GitHub checks, a
+     successful Netlify Deploy Preview, and the preview-review-links comment;
+   - an eligible existing-schema data refresh uses a title such as
+     `[skip netlify] Refresh August race times` before the Pull Request is
+     opened, then waits for the full GitHub checks and lightweight-review
+     comment without generating a Netlify preview;
+   - an eligible custom-domain change uses a title such as
+     `[skip netlify] Configure aceofrace.com custom domain`, then relies on the
+     full GitHub checks, screenshots, exact diff review, and post-merge
+     production verification because DNS behavior cannot be represented by the
+     Netlify hostname.
+   The guided `pnpm run data:update` command performs these branch, validation,
+   promotion, test, Pull Request, required-check wait, merge, branch deletion,
+   and scoped-cleanup steps for a qualifying routine refresh after `PUBLISH`.
+5. John reviews both site modes through the standard preview, or reviews the
+   exact diff and uploaded responsive screenshots for a validated skip
+   pathway, plus the manual steps, limitations, and rollback plan.
+6. Merge to `main` only after John explicitly approves production. For the
+   guided routine-data workflow, `PUBLISH` supplies this approval and the
+   launcher performs the merge after the required check succeeds.
 7. Verify production after GitHub Pages updates.
 
 ## Pull Request Checks And Preview URLs
@@ -188,7 +299,17 @@ GitHub Actions runs `.github/workflows/pr-checks.yml` for Pull Requests targetin
 - Family: `https://deploy-preview-PR_NUMBER--thunderous-moxie-c5aac5.netlify.app/?site=family`
 - Everyone: `https://deploy-preview-PR_NUMBER--thunderous-moxie-c5aac5.netlify.app/?site=everyone`
 
-The deterministic URLs are available immediately, but they are not ready for review until Netlify's Deploy Preview status succeeds. Review both site modes before approval.
+For the standard pathway, the deterministic URLs are available immediately,
+but they are not ready for review until Netlify's Deploy Preview status
+succeeds. Review both site modes before approval.
+
+For a lightweight data refresh, add `[skip netlify]` to the Pull Request title
+before opening it. Netlify's supported title marker prevents a Deploy Preview
+from being generated. The preview-review-links workflow instead maintains a
+lightweight-review comment, while `Pull Request Checks / Test static site`
+confirms that only existing-schema CSV exports and optional active-work notes
+changed. Every local-style test and the responsive screenshot upload still
+runs. Do not use `[skip ci]`, because GitHub Actions must not be skipped.
 
 Once the workflow exists on `main`, test it manually by opening `PR Preview Review Links` in GitHub Actions, choosing **Run workflow**, selecting the implementation branch, entering the Pull Request number, and running it. Re-running it updates the same marked comment rather than adding another. GitHub does not expose `workflow_dispatch` for the first Pull Request that introduces a workflow because the workflow file is not yet on the default branch.
 
@@ -198,10 +319,10 @@ The Netlify build uses `netlify.toml`, runs `pnpm run preview:build`, and publis
 
 After an approved release reaches GitHub Pages, verify:
 
-- [Family production](https://johnkevan88888.github.io/family-running/?site=family)
-- [Everyone production](https://johnkevan88888.github.io/family-running/?site=everyone)
+- [Family production](https://www.aceofrace.com/?site=family)
+- [Everyone production](https://www.aceofrace.com/?site=everyone)
 
-Check that both modes load, Hall of Fame renders, leaderboards render, athlete links open, and back links preserve the correct mode.
+Check that both modes load, Hall of Fame renders, Calculator comparisons use the selected mode and separate official from unofficial source performances, leaderboards render, athlete links open, and back links preserve the correct mode.
 
 ## Rollback
 
@@ -218,9 +339,14 @@ If production verification fails:
 John will need to configure these manually in GitHub when ready:
 
 - Branch protection for `main`.
-- Required Pull Request review before merge.
+- Required Pull Request review before merge for standard and custom-domain
+  changes. The guided routine-data pathway instead uses its exact `PUBLISH`
+  approval plus the protected required check, so an unconditional review rule
+  would intentionally disable that automatic path.
 - Required automated checks before merge: `Pull Request Checks / Test static site`.
-- Required Netlify Deploy Preview status before merge.
+- Netlify Deploy Preview treated as a process gate for standard changes, but
+  not as an unconditional repository ruleset check because validated
+  lightweight refreshes intentionally do not create one.
 - GitHub Pages production deployment permissions.
 - Optional environment protection requiring John approval before production release.
 

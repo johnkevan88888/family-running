@@ -9,13 +9,19 @@ const runtimeEntries = [
     'index.html',
     'championships.html',
     'hall-of-fame.html',
+    'records.html',
+    'calculator.html',
     'overview.html',
     'athlete.html',
     'site.css',
     'site-navigation.js',
+    'analytics.js',
     'athlete.css',
     'athlete.js',
     'leaderboard.js',
+    'records.js',
+    'calculator.css',
+    'calculator.js',
     'utils.js',
     'vendor',
     'data'
@@ -50,7 +56,7 @@ if (safetyProblems.length) {
     process.exit(1);
 }
 
-for (const requiredFile of ['index.html', 'championships.html', 'hall-of-fame.html', 'overview.html', 'athlete.html', 'vendor/chart.umd.min.js', 'vendor/chartjs-adapter-date-fns.bundle.min.js', 'data/family/webtables.csv', 'data/everyone/webtables.csv']) {
+for (const requiredFile of ['index.html', 'championships.html', 'hall-of-fame.html', 'records.html', 'calculator.html', 'overview.html', 'athlete.html', 'analytics.js', 'records.js', 'calculator.js', 'vendor/chart.umd.min.js', 'vendor/chartjs-adapter-date-fns.bundle.min.js', 'data/family/webtables.csv', 'data/everyone/webtables.csv', 'data/family/absolute_records.csv', 'data/everyone/absolute_records.csv']) {
     try {
         await fs.access(path.join(outputDir, requiredFile));
     } catch {

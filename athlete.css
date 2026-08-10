@@ -303,10 +303,6 @@ body {
 }
 
 .age-grade-standards-intro {
-    align-items: center;
-    display: flex;
-    gap: 14px 20px;
-    justify-content: space-between;
     margin: -8px 0 16px;
 }
 
@@ -316,56 +312,6 @@ body {
     font-weight: 700;
     line-height: 1.35;
     margin: 0;
-}
-
-.pace-unit-control {
-    align-items: center;
-    display: flex;
-    flex: 0 0 auto;
-    gap: 8px;
-}
-
-.pace-unit-label {
-    color: #33495d;
-    font-size: 0.88rem;
-    font-weight: 900;
-}
-
-.pace-unit-options {
-    border: 1px solid #2b5c88;
-    border-radius: 7px;
-    display: inline-flex;
-    overflow: hidden;
-}
-
-.pace-unit-options button {
-    appearance: none;
-    background: white;
-    border: 0;
-    color: #1e3a5f;
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.84rem;
-    font-weight: 900;
-    line-height: 1;
-    min-height: 34px;
-    min-width: 46px;
-    padding: 8px 10px;
-}
-
-.pace-unit-options button + button {
-    border-left: 1px solid #2b5c88;
-}
-
-.pace-unit-options button[aria-pressed="true"] {
-    background: #1e3a5f;
-    color: white;
-}
-
-.pace-unit-options button:focus-visible {
-    box-shadow: inset 0 0 0 3px #ffd700;
-    outline: 2px solid #1e3a5f;
-    outline-offset: 2px;
 }
 
 .age-grade-standards-table-wrap {
@@ -545,7 +491,7 @@ body {
     margin-bottom: 12px;
 }
 
-.crown-standard-facts span {
+.crown-standard-facts > span {
     background: #eef3f7;
     border-radius: 999px;
     color: #1e3a5f;
@@ -555,12 +501,12 @@ body {
     padding: 7px 9px;
 }
 
-.period-current .crown-standard-facts span,
+.period-current .crown-standard-facts > span,
 .period-current .crown-standard-status {
     background: #fff0bd;
 }
 
-.period-all-time .crown-standard-facts span,
+.period-all-time .crown-standard-facts > span,
 .period-all-time .crown-standard-status {
     background: #dff0ff;
 }
@@ -585,7 +531,7 @@ body {
     margin-bottom: 8px;
 }
 
-.crown-standard-time span {
+.crown-standard-time .crown-standard-caption {
     display: block;
     color: #555;
     font-size: 0.92rem;
@@ -625,7 +571,7 @@ body {
     min-width: 0;
 }
 
-.crown-standard-target span {
+.crown-standard-target > span {
     color: #555;
     font-size: 0.84rem;
     font-weight: 800;
@@ -664,11 +610,6 @@ body {
 @media (max-width: 600px) {
     .pb-columns {
         grid-template-columns: 1fr;
-    }
-
-    .age-grade-standards-intro {
-        align-items: flex-start;
-        flex-direction: column;
     }
 
     .crown-standard-target-list {

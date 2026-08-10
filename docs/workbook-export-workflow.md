@@ -5,13 +5,13 @@ website-data bundle in a fresh ignored staging folder. Repository tooling then
 validates and compares that bundle. Promotion to tracked `data/` is a separate,
 explicit action after human review.
 
-The official workbook entry point is:
+The existing core workbook entry point is:
 
 `ExportWebsiteDataIncludingCrownStandards`
 
-The automation wrapper is:
+The complete automation wrapper, including athlete comparison targets, is:
 
-`ExportWebsiteDataIncludingCrownStandardsForAutomation(stagingRoot)`
+`AthleteComparisonExport.ExportWebsiteDataIncludingAthleteComparisonForAutomation(stagingRoot)`
 
 The approved staging parent is the private workbook setting
 `Approved Staging Root` in `Settings!tbSettings`. For the operating release
@@ -54,8 +54,8 @@ Repository validation in `scripts/validate-csv.mjs` is authoritative.
 - Family, Everyone, and shared scopes must all be present.
 
 The staged-workflow validator additionally requires the staged public CSV file
-set to match the currently tracked contract. The current bundle contains 64
-CSV files: 63 manifest entries plus the manifest itself.
+set to match the currently tracked contract. The current export contract
+contains 68 CSV files: 67 manifest entries plus the manifest itself.
 
 ## Workbook guarantees
 
@@ -79,8 +79,62 @@ The workbook exporter:
 
 The complete export includes leaderboard files, `webtables.csv`,
 `siteinfo.csv`, Hall of Fame, official medals, crown history, crown standards,
-age-grade standards including `pace_per_km` and `pace_per_mile`, and shared
+age-grade standards including `pace_per_km` and `pace_per_mile`, absolute
+records, Family and Everyone athlete-comparison targets, and shared
 `athlete_results.csv`.
+
+## Streamlined routine data update
+
+For a simple existing-schema data refresh, such as adding race times, save and
+close Excel and then either double-click `update-website-data.cmd` or run:
+
+```powershell
+pnpm run data:update
+```
+
+The guided updater:
+
+1. confirms that GitHub CLI is logged in and the repository is clean;
+2. fetches current `origin/main` and creates a timestamped `data/refresh-*`
+   branch from it;
+3. generates a fresh complete staged workbook export;
+4. validates and reconciles the bundle without changing tracked data;
+5. lists every meaningful CSV difference and requires the exact word
+   `PROMOTE` before replacing tracked `data/`;
+6. runs the complete repository test and responsive screenshot suite;
+7. confirms that every tracked CSV was refreshed, no header changed, and the
+   tested data-diff fingerprint still matches;
+8. requires the exact word `PUBLISH` as explicit production approval before
+   committing, pushing, and opening a `[skip netlify]` Pull Request;
+9. waits for GitHub checks and re-verifies the PR title, base branch, data
+   branch, and exact tested head commit before merging through the protected
+   Pull Request pathway; and
+10. fast-forwards local `main`, deletes the verified merged branch locally and
+    remotely, and removes only the staged export, promotion backup, and state
+    paths recorded for that update.
+
+This automatic merge authority is limited to the existing fail-closed routine
+data pathway. Code, schema, configuration, export-set, and broader
+documentation changes still use the manual release process.
+
+If the command is stopped at either review point, resume the same staged update
+without copying its path:
+
+```powershell
+pnpm run data:update -- --resume
+```
+
+For a non-interactive preparation that stops before promotion:
+
+```powershell
+pnpm run data:update -- --prepare-only
+```
+
+The updater refuses dirty worktrees, overlapping open data-update Pull
+Requests, incomplete bundles, changed CSV schemas, non-data changes, failed
+validation, changed post-test data, failed local or GitHub tests, mismatched PR
+identity, and non-fast-forward local `main`. Use the manual workflow below for
+schema, export-set, code, configuration, or broader documentation changes.
 
 ## Safe refresh commands
 
@@ -112,16 +166,17 @@ checks the same root against its `Approved Staging Root` setting.
 ### 2. Validate the staged bundle
 
 ```powershell
-pnpm run workbook:validate:staged --staged "<STAGED_EXPORT_ROOT>"
+pnpm run workbook:validate:staged --staged "<STAGED_EXPORT_ROOT>" --approve-new-files "data/family/athlete_comparison_targets.csv,data/everyone/athlete_comparison_targets.csv"
 ```
 
-This runs the existing full CSV and bundle validation and verifies the exact
-public file set.
+This runs the existing full CSV and bundle validation and verifies the public
+file set, with the two new contract files named explicitly until they are
+promoted and tracked.
 
 ### 3. Compare with tracked public data
 
 ```powershell
-pnpm run workbook:compare:staged --staged "<STAGED_EXPORT_ROOT>"
+pnpm run workbook:compare:staged --staged "<STAGED_EXPORT_ROOT>" --approve-new-files "data/family/athlete_comparison_targets.csv,data/everyone/athlete_comparison_targets.csv"
 ```
 
 The comparison ignores only:
@@ -165,6 +220,13 @@ requires:
 pnpm run workbook:promote:staged --staged "<STAGED_EXPORT_ROOT>" --approve --approve-differences
 ```
 
+If the staged bundle intentionally adds new public CSV contract files, name each
+new file explicitly:
+
+```powershell
+pnpm run workbook:promote:staged --staged "<STAGED_EXPORT_ROOT>" --approve --approve-differences --approve-new-files "data/family/athlete_comparison_targets.csv,data/everyone/athlete_comparison_targets.csv"
+```
+
 Promotion refuses to run when tracked `data/` already has local changes. It
 revalidates an isolated candidate, swaps the complete directory, and retains
 the previous local data under ignored `test-artifacts/` for rollback. After
@@ -177,4 +239,8 @@ Never promote by selectively copying CSV files.
 - A failed workbook export leaves no staged bundle.
 - A staged validation or comparison failure never changes tracked data.
 - A failed promotion attempts to restore the previous `data/` directory.
+- A failed GitHub check or merge retains the saved state for `--resume` and
+  does not delete the data branch or its rollback artifacts.
+- Successful merge cleanup removes only paths recorded in that update's state;
+  unrelated ignored test artifacts and older manual backups are retained.
 - The private workbook and its timestamped backups remain outside Git.

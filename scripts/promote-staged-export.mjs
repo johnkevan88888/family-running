@@ -2,9 +2,10 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-    assertExactTrackedCsvSet,
+    assertTrackedCsvSet,
     compareBundles,
     normalizePnpmPathArgument,
+    parseApprovedNewCsvFiles,
     parseCliArguments,
     repoRoot,
     resolveStagedRoot,
@@ -23,7 +24,9 @@ try {
         );
     }
 
-    assertExactTrackedCsvSet(stagedRoot);
+    const approvedNewFiles = parseApprovedNewCsvFiles(options.get('approve-new-files'));
+
+    assertTrackedCsvSet(stagedRoot, { approvedNewFiles });
     requireCleanTrackedData();
 
     const validation = runCsvValidator(stagedRoot);
@@ -145,4 +148,5 @@ function promoteDataDirectory(stagedRoot) {
 
     console.log(`Validated staged bundle promoted to ${trackedData}`);
     console.log(`Previous tracked data retained locally at ${backupData}`);
+    console.log(`PROMOTION_ARTIFACT_ROOT=${operationRoot}`);
 }
