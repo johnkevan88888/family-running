@@ -30,7 +30,14 @@ Preserve the selected `site` parameter when navigating between championship page
 - `leaderboard.js` reads the selected site mode, loads `data/<site>/siteinfo.csv`, `data/<site>/halloffame.csv`, and `data/<site>/webtables.csv`, then renders enabled leaderboard CSVs referenced by `webtables.csv`.
 - `athlete.html` is the athlete profile page.
 - `athlete.js` loads shared athlete result data from `data/athlete_results.csv` and site-specific supporting exports from `data/<site>/`.
-- `utils.js` contains shared CSV loading/parsing and athlete-link helpers.
+- `utils.js` contains the shared CSV loading/parsing, HTML escaping, and
+  athlete-link helpers. `escapeHTML` and `csvRowsToObjects` live here only;
+  do not reintroduce per-file copies. `athleteLink` escapes its own label, so
+  call sites pass raw exported values.
+- `vendor/` holds committed browser libraries (Chart.js and its date adapter).
+  The public site must not load runtime code from a third-party CDN. Refresh
+  `vendor/` only with `pnpm run vendor:sync` after changing a pinned dependency
+  version in `package.json`; `pnpm test` fails if the two disagree.
 - `data/family/` contains CSV exports for the Family mode.
 - `data/everyone/` contains CSV exports for the Everyone mode.
 - `data/athlete_results.csv` is shared profile result data used by athlete pages.
@@ -68,8 +75,14 @@ Preserve the selected `site` parameter when navigating between championship page
 Before presenting a change for review, run the available local checks:
 
 - Repository safety validation.
+- Vendored library validation.
 - CSV validation for both `data/family/` and `data/everyone/`.
 - Browser smoke tests for both `?site=family` and `?site=everyone`.
 - Responsive screenshots for desktop and mobile views.
+
+Every public page must carry `<meta name="viewport" content="width=device-width,
+initial-scale=1">`. The mobile browser tests run with device emulation, so a page
+that omits it lays out at the desktop fallback width and fails the overflow
+check rather than passing silently.
 
 Generated screenshots, reports, browser output, and dependency folders must stay out of Git.

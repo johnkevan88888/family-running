@@ -153,22 +153,13 @@
             meta.innerHTML =
                 `<div class="site-meta-item">
                     <span class="site-meta-icon" aria-hidden="true">&#128197;</span>
-                    <span><strong>Updated</strong> ${escapeAttribute(localTime)}</span>
+                    <span><strong>Updated</strong> ${escapeHTML(localTime)}</span>
                  </div>`;
         } catch (error) {
             if (meta) {
                 meta.innerHTML = '<div class="site-meta-item">Championship data unavailable.</div>';
             }
         }
-    }
-
-    function escapeAttribute(value) {
-        return String(value || '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
     }
 
     window.siteNavigation = {

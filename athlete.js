@@ -187,7 +187,7 @@ spanGaps: true
     });
 }
 
-function renderTable(rows) {
+function renderAthleteResultsTable(rows) {
     if (rows.length === 0) {
         return '<p>No results found.</p>';
     }
@@ -208,11 +208,11 @@ function renderTable(rows) {
         html += `
             <tr>
                 <td>${escapeHTML(row.Date)}</td>
-                <td>${row.Distance}</td>
-                <td>${row.Time}</td>
-                <td>${row.AgeGrade}</td>
+                <td>${escapeHTML(row.Distance)}</td>
+                <td>${escapeHTML(row.Time)}</td>
+                <td>${escapeHTML(row.AgeGrade)}</td>
                 <td>${escapeHTML(row.Event)}</td>
-                <td>${row.TimeClass}</td>
+                <td>${escapeHTML(row.TimeClass)}</td>
             </tr>
         `;
     });
@@ -334,24 +334,12 @@ function formatPBBlock(label, result, isAgeGrade) {
 
     return `
         <div class="pb-block">
-            <div class="pb-label">${label}</div>
-            <div class="pb-value">${mainValue}</div>
-            <div class="pb-sub">${secondaryValue}</div>
+            <div class="pb-label">${escapeHTML(label)}</div>
+            <div class="pb-value">${escapeHTML(mainValue)}</div>
+            <div class="pb-sub">${escapeHTML(secondaryValue)}</div>
             ${result.Event ? `<div class="pb-meta">&#128205; ${escapeHTML(result.Event)}</div>` : ''}
             ${result.Date ? `<div class="pb-meta">&#128197; ${escapeHTML(result.Date)}</div>` : ''}
         </div>
-    `;
-}
-
-function formatPB(result) {
-    if (!result) {
-        return '-';
-    }
-
-    return `
-        <strong>${result.Time}</strong><br>
-        <span>&#128205; ${escapeHTML(result.Event)}</span><br>
-        <span>&#128197; ${escapeHTML(result.Date)}</span>
     `;
 }
 
@@ -720,22 +708,6 @@ function parseOverallTargets(value) {
         .filter(target => target.distance && target.time);
 }
 
-function csvRowsToObjects(rows) {
-    const headers = rows[0].map(header => String(header).trim());
-
-    return rows.slice(1)
-        .filter(row => row.some(cell => cell !== ''))
-        .map(row => {
-            const obj = {};
-
-            headers.forEach((header, index) => {
-                obj[header] = row[index] || '';
-            });
-
-            return obj;
-        });
-}
-
 function renderOfficialMedalHeld(medal) {
     const medalName = medal.Medal || '';
     const medalClass = medalCssClass(medalName);
@@ -787,15 +759,6 @@ function medalCssClass(medal) {
         : '';
 }
 
-function escapeHTML(value) {
-    return String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
-
 function runWhenIdle(callback) {
     if ('requestIdleCallback' in window) {
         requestIdleCallback(callback, { timeout: 1500 });
@@ -816,7 +779,7 @@ function buildRecentResults(results) {
         parseDate(row.Date) >= twelveMonthsAgo
     );
 
-    recentContainer.innerHTML = renderTable(recent);
+    recentContainer.innerHTML = renderAthleteResultsTable(recent);
 }
 
 async function buildAthletePage() {
@@ -866,8 +829,30 @@ async function buildAthletePage() {
     });
 
     runWhenIdle(() => {
-        document.getElementById('all-results').innerHTML = renderTable(athleteResults);
+        document.getElementById('all-results').innerHTML = renderAthleteResultsTable(athleteResults);
     });
 }
 
-buildAthletePage();
+function reportAthletePageFailure() {
+    const name = document.getElementById('athlete-name');
+    const results = document.getElementById('all-results');
+    const recent = document.getElementById('recent-results');
+
+    if (name && name.innerText.trim() === 'Loading...') {
+        name.innerText = 'Profile unavailable';
+    }
+
+    if (recent) {
+        recent.innerHTML = '';
+    }
+
+    if (results) {
+        results.innerHTML =
+            '<p class="load-error" role="alert">This athlete profile could not be loaded. Please refresh to try again.</p>';
+    }
+}
+
+buildAthletePage().catch(error => {
+    console.error('Athlete profile failed to render:', error);
+    reportAthletePageFailure();
+});

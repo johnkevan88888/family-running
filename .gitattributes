@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Vendored library builds must round-trip byte for byte. Without this, checkout
+# on Windows rewrites them to CRLF and `pnpm run validate:vendor` reports drift
+# against the identical build in node_modules.
+vendor/** -text

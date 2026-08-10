@@ -17,6 +17,7 @@ const runtimeEntries = [
     'athlete.js',
     'leaderboard.js',
     'utils.js',
+    'vendor',
     'data'
 ];
 
@@ -49,7 +50,7 @@ if (safetyProblems.length) {
     process.exit(1);
 }
 
-for (const requiredFile of ['index.html', 'championships.html', 'hall-of-fame.html', 'overview.html', 'athlete.html', 'data/family/webtables.csv', 'data/everyone/webtables.csv']) {
+for (const requiredFile of ['index.html', 'championships.html', 'hall-of-fame.html', 'overview.html', 'athlete.html', 'vendor/chart.umd.min.js', 'vendor/chartjs-adapter-date-fns.bundle.min.js', 'data/family/webtables.csv', 'data/everyone/webtables.csv']) {
     try {
         await fs.access(path.join(outputDir, requiredFile));
     } catch {
@@ -83,7 +84,8 @@ function isForbiddenPreviewFile(relativePath) {
     const lowerPath = relativePath.toLowerCase();
 
     return [
-        /\.(xlsm|xlsx|xls|xlsb)$/i.test(lowerName),
+        /\.(xlsm|xlsx|xls|xlsb|xlam)$/i.test(lowerName),
+        /\.(bas|cls|frm|frx)$/i.test(lowerName),
         basename.startsWith('~$'),
         lowerName === '.env',
         /^\.env\./.test(lowerName),

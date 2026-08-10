@@ -2,117 +2,108 @@
 
 ## Task title
 
-PR #18 static navigation review fixes
+Repository audit remediation pass
 
 ## Status
 
-Implementation and local validation are complete on `feat/site-navigation` for
-PR #18 review. No merge, release, deployment, production publication, GitHub
+Implementation and local validation are complete on `fix/audit-remediation-pass`.
+No merge, push, Pull Request, release, deployment, production publication, GitHub
 setting change, private workbook access, or workbook modification has been
 performed.
 
 ## Current approved scope
 
-- Keep normal static page navigation, but make `index.html` the Championships
-  landing page.
-- Keep `championships.html` as a direct-link compatibility page for the full
-  championship standings experience.
-- Add `overview.html` as a descriptive statistics page showing leaderboard
-  participation totals from official results, official results recorded in the
-  latest exported year, official athletes in that year, latest official result
-  date, most active athletes by official results, and the most recent exported
-  official results.
-- Remove the Family/Everyone switch UI. They are separate sites; the current
-  site is shown as a non-clickable badge, and incoming `?site=family` or
-  `?site=everyone` is preserved across same-site navigation and athlete links.
-- Use the order Championships, Hall of Fame, Overview in the shared header.
-- Remove the old Overview championship-exploration section.
-- Use visitor-facing page-intro and header copy; public pages show the useful
-  last-updated date without source/version/process wording at the top.
-- Keep JavaScript display-only. The Overview statistics describe existing public
-  exported official rows and site-scoped athlete IDs; they do not calculate
-  championship rankings, honours, medals, crowns, records, age grades, or
-  workbook-owned outcomes.
+John asked for a repository audit and then approved completing the audit's eight
+prioritised recommendations in order. Vendoring the chart library was explicitly
+chosen from the offered options.
 
-## Files changed in this review-fix pass
+1. Add `<meta name="viewport">` and `lang="en"` to all five public pages, and make
+   the mobile browser tests use device emulation so a missing tag fails.
+2. Vendor Chart.js and its date adapter into `vendor/`, removing the runtime
+   jsDelivr dependency.
+3. Handle rejections on every top-level asynchronous entry point so a failed
+   export load shows a message instead of a permanent placeholder.
+4. Escape every rendered cell in the championship tables and give `athleteLink` a
+   single, consistent escaping contract.
+5. Close the exported-VBA-source gap in repository safety validation and loosen
+   the workbook-backup heuristic.
+6. Record the browser-clock recency question for John's decision.
+7. Delete dead code and consolidate duplicated helpers into `utils.js`.
+8. Make continuous integration use Playwright's pinned Chromium.
 
-- `index.html`
-- `championships.html`
-- `hall-of-fame.html`
-- `overview.html`
-- `athlete.js`
-- `leaderboard.js`
-- `site-navigation.js`
-- `site.css`
-- `scripts/build-preview-artifact.mjs`
+Excel/VBA remains the source of truth. No calculation was moved into JavaScript,
+and no exported CSV or workbook file was altered.
+
+## Files changed
+
+- `index.html`, `championships.html`, `hall-of-fame.html`, `overview.html`,
+  `athlete.html`
+- `utils.js`, `leaderboard.js`, `athlete.js`, `site-navigation.js`, `site.css`
+- `vendor/` (new: pinned Chart.js and date-adapter builds plus their licences)
+- `scripts/sync-vendor.mjs` (new), `scripts/run-all-tests.mjs`,
+  `scripts/build-preview-artifact.mjs`, `scripts/validate-repository-safety.mjs`
 - `tests/browser-smoke.mjs`
-- `docs/active-work.md`
-- `docs/decision-log.md`
+- `package.json`, `pnpm-lock.yaml`, `.gitignore`
+- `AGENTS.md`, `docs/testing-and-release-protocol.md`, `docs/roadmap.md`,
+  `docs/active-work.md`
 
 ## Validation results
 
-- JavaScript syntax checks passed for:
-  - `leaderboard.js`
-  - `site-navigation.js`
-  - `tests/browser-smoke.mjs`
-  - `scripts/build-preview-artifact.mjs`
-- Browser smoke tests passed after writing ignored screenshots to
-  `test-artifacts/screenshots/`.
-- Full `pnpm test` passed:
-  - repository safety validation;
-  - CSV validation for Family and Everyone data;
-  - export-bundle validation regression tests;
-  - staged-export workflow regression tests;
-  - browser smoke tests.
-- `pnpm screenshots:update` passed and regenerated ignored page screenshots.
-- After the navigation review-fix commit, a newer validated public export bundle
-  was promoted into tracked `data/` and `pnpm test` passed again.
-- After the final public-copy cleanup, JavaScript syntax checks and full
-  `pnpm test` passed again.
+- Full `pnpm test` passed: repository safety validation, vendored library
+  validation, CSV validation for Family and Everyone, export-bundle regression
+  tests, staged-export workflow regression tests, and browser smoke tests.
+- `pnpm run preview:build` produced an 81-file artifact including `vendor/`.
+- JavaScript syntax checks passed for `utils.js`, `leaderboard.js`, `athlete.js`,
+  `site-navigation.js`, and `tests/browser-smoke.mjs`.
 
-## Screenshot review
+Behaviour was verified directly rather than assumed:
 
-Inspected the regenerated Hall of Fame, Championships, and Overview screenshots
-for both Family and Everyone modes on desktop and mobile. The shared header is
-readable, the active page is clear, the current-site badge is separate from page
-navigation, and no new overflow, clipping, or unreadable navigation controls
-were observed. The latest screenshots show the top header with only the updated
-date metadata and visitor-facing page introductions.
-
-## Data note
-
-- Grace Chambers and Jim Chambers are not present in the current tracked
-  `data/family/*.csv` public exports, which matches the separate Family site
-  boundary.
-- The current tracked public `data/athlete_results.csv` now contains the
-  expected `07/07/2026` rows for Grace and Jim from Derry City Football Club.
-  The promoted manifest bundle is `20260710T232312092Z-1391E180`, exported on
-  10 July 2026.
+- **Viewport.** With the tag, a 390px emulated context lays out at 390px. With
+  the tag stripped, the same page lays out at 980px. An initial attempt to rely
+  on the existing horizontal-overflow assertion was proven insufficient, because
+  a 980px layout does not overflow; `assertResponsiveViewport` now checks the tag,
+  the `lang` attribute, and the applied layout width directly. Temporarily
+  removing the tag from one page made the suite fail with six explicit errors.
+- **Chart.** The vendored build renders a real Chart instance on a `time` scale
+  with the exported official points plotted, and no console or page errors. The
+  previous CDN build was unreachable under the tests' cross-origin blocking, so
+  this path had never been exercised.
+- **Error handling.** Forcing HTTP 500 on `webtables.csv`, `halloffame.csv`,
+  `crown_history.csv`, and `athlete_results.csv` produced the intended visible
+  message on the championships, Hall of Fame, crown history, overview, and
+  athlete pages instead of a stuck placeholder.
 
 ## Known limitations and follow-up opportunities
 
-- Championship tables remain compact on mobile, matching the existing
-  table-first presentation. A future task could improve table ergonomics without
-  changing exported data or browser-side ownership boundaries.
-- The compatibility `championships.html` page remains in the preview artifact
-  for old direct links, but shared navigation now routes Championships to
-  `index.html`.
+- **Recent Results uses the visitor's browser clock.** `buildRecentResults` in
+  `athlete.js` measures its twelve month window from `new Date()`, so it can
+  disagree with the workbook's Current/12-Month period, and two visitors in
+  different timezones can see different sets. This is recorded as a proposal in
+  `docs/roadmap.md` because the narrow fix is a workbook-owned recency column on
+  `data/athlete_results.csv`, which is John's decision and not repository work.
+  The athlete page also derives personal bests by sorting exported rows in
+  JavaScript, which is a browser-side derivation of the same kind.
+- `championships.html` remains a byte-for-byte duplicate of `index.html` except
+  for its title. It is retained deliberately for old direct links, but the two
+  files will drift; a redirect stub or canonical link is the smaller long-term
+  shape.
+- Remaining lower-priority audit items were not in the approved eight and were
+  left alone: no `404.html`, `robots.txt`, favicon, or meta description; inline
+  `onclick` handlers that would block a Content-Security-Policy; `athlete.html`
+  lacking a `<main>` landmark and carrying two `<h1>` elements; deprecated
+  `border`/`cellpadding` attributes on the athlete results table; tag-pinned
+  rather than SHA-pinned GitHub Actions; continuous integration not running on
+  push to `main`; no linting or formatting configuration; and
+  `package.json` version `0.0.0` against `SiteVersion v1.5`.
 
 ## Handoff notes
 
-- Review the Championships landing, Hall of Fame, Overview statistics page, and
-  athlete profile pages in both `?site=family` and `?site=everyone`.
-- Review Netlify previews after the branch is pushed; no merge or release should
-  occur without explicit approval.
-
-## Recently completed historical work
-
-- The initial static navigation split for PR #18 created separate public pages
-  for Overview, Championships, Hall of Fame, and athlete profiles, with shared
-  navigation and browser smoke coverage.
-- Staging-root portability for private workbook exports was completed and merged
-  previously. The workbook now uses `Settings!tbSettings[Approved Staging Root]`
-  and tracked `data/` was promoted from a validated staged bundle.
-- Export-bundle modernization was completed previously. Workbook exports stage a
-  complete manifest-backed bundle before any explicitly approved promotion to
-  tracked public data.
+- Review the Championships landing, Hall of Fame, Overview, and athlete profile
+  pages in both `?site=family` and `?site=everyone`.
+- Pay particular attention to the mobile screenshots. They now reflect a real
+  phone layout for the first time, so they will differ substantially from the
+  previous set even though no stylesheet rule changed for them.
+- Confirm the vendored `vendor/` licences and pinned versions are acceptable to
+  carry in the repository.
+- Decide the Recent Results recency question recorded in `docs/roadmap.md`.
+- No merge, push, or release should occur without explicit approval.

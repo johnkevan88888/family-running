@@ -2,6 +2,7 @@ node_modules/
 test-artifacts/
 test-results/
 playwright-report/
+output/
 
 *.log
 
@@ -9,7 +10,14 @@ playwright-report/
 *.xlsx
 *.xlsm
 *.xlsb
+*.xlam
 ~$*
+
+# Exported VBA sources are part of the private workbook, not the public site.
+*.bas
+*.cls
+*.frm
+*.frx
 
 .env
 .env.*

@@ -17,6 +17,20 @@ repository history. An item becomes active only when John approves it and
    `crown_standards.csv` crown-target cards. This is a presentation proposal,
    not permission to calculate awards or targets in JavaScript.
 
+3. **Workbook-owned recency flag for athlete Recent Results.** `buildRecentResults`
+   in `athlete.js` selects "Recent Results" using `new Date()`, so the twelve
+   month window is measured against the visitor's own browser clock rather than
+   the workbook's Current/12-Month period. Two visitors in different timezones,
+   or the same visitor before and after midnight, can therefore see different
+   sets, and a result can appear under Recent Results while being outside the
+   Current championship period. The narrowest fix is an Excel/VBA-owned column on
+   `data/athlete_results.csv` marking each row's membership of the current
+   period, with the browser filtering on the exported value instead of computing
+   a date window. This needs a workbook export-contract change, so it is a
+   proposal for John, not repository work. Related: the athlete page also picks
+   personal bests in JavaScript by sorting exported rows, which is a browser-side
+   derivation of the same kind.
+
 ## Later candidate tasks
 
 1. **Non-age-graded records and fastest-time presentation.** The athlete page
