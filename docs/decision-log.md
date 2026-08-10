@@ -302,3 +302,31 @@ Unknown historical details are labelled rather than inferred.
   GitHub. Making the data genuinely private would require authenticated hosting,
   which GitHub Pages does not provide. The Open Graph tags still work, so shared
   links continue to preview correctly in messaging apps.
+
+## Correction: the workbook staging parent is not portable
+
+- **Status:** Correction to an earlier entry; portability is open, not accepted
+- **Date:** 10 August 2026
+- **Decision:** The entry "Workbook exports are staged before public-data
+  promotion" claimed the approved staging parent was "a clearly named value in
+  the workbook's existing `Settings!tbSettings` configuration table, not an
+  absolute repository path embedded in VBA". That is not true and appears never
+  to have been. The workbook holds a hardcoded constant:
+  `Private Const STAGING_PARENT As String = "C:\GitHub\family-running\test-artifacts\workbook-export-staging\"`.
+  Everything else in that entry stands; only the portability claim is withdrawn.
+- **Rationale:** The claim was recorded from repository-side work in commit
+  `d737369`, "Make workbook staging root portable", which changed only
+  documentation, scripts, tests, and re-exported CSVs. The workbook is private
+  and outside Git, so no repository change could implement or verify it, and no
+  test asserts it. The documentation and the workbook drifted apart unnoticed
+  for a month, and the gap surfaced on 10 August when a data update run from a
+  relocated repository failed against a staging parent still pointing at an old
+  OneDrive path.
+- **Consequences:** Moving or re-cloning the repository breaks exporting until
+  the VBA constant is edited by hand. `scripts/run-workbook-staged-export.ps1`
+  now prints the workbook path and the staged root it passes, and includes both
+  in the failure message, so a mismatch names both sides instead of only the
+  expected parent. Making the parent genuinely configurable remains open
+  workbook work. More generally, this repository must not record workbook-side
+  behaviour as an accepted decision when nothing here can verify it; such claims
+  belong in the roadmap as proposals until confirmed against the workbook.

@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { publishedSiteEntries } from './published-site-entries.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outputDir = path.resolve(process.env.PREVIEW_OUTPUT_DIR || path.join(repoRoot, 'test-artifacts', 'preview-site'));
@@ -9,32 +10,9 @@ const outputDir = path.resolve(process.env.PREVIEW_OUTPUT_DIR || path.join(repoR
 // artifact is what GitHub Pages serves in production and what Netlify serves for
 // previews, so anything absent here is simply not on the public web. Repository
 // documentation, scripts, tests, and configuration are deliberately excluded.
-const runtimeEntries = [
-    // Keeps the www.aceofrace.com custom domain bound when Pages publishes this
-    // artifact instead of the repository root. Removing it drops the domain.
-    'CNAME',
-    // Permissive by design; the noindex meta tag on each page does the work.
-    'robots.txt',
-    'index.html',
-    'championships.html',
-    'hall-of-fame.html',
-    'records.html',
-    'calculator.html',
-    'overview.html',
-    'athlete.html',
-    'site.css',
-    'site-navigation.js',
-    'analytics.js',
-    'athlete.css',
-    'athlete.js',
-    'leaderboard.js',
-    'records.js',
-    'calculator.css',
-    'calculator.js',
-    'utils.js',
-    'vendor',
-    'data'
-];
+// The list lives in published-site-entries.mjs because the release-path
+// validator needs the same definition of "reaches visitors".
+const runtimeEntries = publishedSiteEntries;
 
 await fs.rm(outputDir, { recursive: true, force: true });
 await fs.mkdir(outputDir, { recursive: true });

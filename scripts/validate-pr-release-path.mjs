@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { isPublishedPath, isPublishingControlPath } from './published-site-entries.mjs';
 
 const NETLIFY_SKIP_MARKER = /\[skip netlify\]/i;
 const ACTIVE_WORK_PATH = 'docs/active-work.md';
@@ -59,14 +60,42 @@ export function assessReleasePath({
     }
 
     const dataCsvFiles = normalizedFiles.filter(file => DATA_CSV_PATH.test(file));
+
+    // No exported data changed, so this is not a data refresh. It may still skip
+    // the preview, but only if nothing changed can alter what a preview would
+    // show. "Published" is taken from the artifact definition itself, so adding
+    // a page automatically makes it preview-relevant.
+    if (dataCsvFiles.length === 0) {
+        const errors = [];
+        const publishedFiles = normalizedFiles.filter(isPublishedPath);
+        const publishingControlFiles = normalizedFiles.filter(isPublishingControlPath);
+
+        if (normalizedFiles.length === 0) {
+            errors.push('The no-visual-change pathway requires at least one changed file.');
+        }
+
+        if (publishedFiles.length > 0) {
+            errors.push(
+                `The no-visual-change pathway cannot include files published to the site: ${publishedFiles.join(', ')}`
+            );
+        }
+
+        if (publishingControlFiles.length > 0) {
+            errors.push(
+                `The no-visual-change pathway cannot include files that decide what is published or how it is deployed: ${publishingControlFiles.join(', ')}`
+            );
+        }
+
+        return {
+            pathway: 'no-visual-change',
+            errors
+        };
+    }
+
     const disallowedFiles = normalizedFiles.filter(
         file => file !== ACTIVE_WORK_PATH && !DATA_CSV_PATH.test(file)
     );
     const errors = [];
-
-    if (dataCsvFiles.length === 0) {
-        errors.push('The lightweight pathway requires at least one changed CSV under data/.');
-    }
 
     if (expectedDataCsvFiles) {
         const changedSet = new Set(dataCsvFiles);

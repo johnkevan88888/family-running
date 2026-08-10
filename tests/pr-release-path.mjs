@@ -103,12 +103,82 @@ const addedCsv = assessReleasePath({
 });
 assert.match(addedCsv.errors.join('\n'), /both the base and head commits/);
 
+// Documentation and tooling cannot change what a preview would show, so the
+// marker is allowed. This replaced an earlier rule that rejected it purely for
+// lacking a CSV, which forced pointless preview builds on docs-only changes.
 const documentationOnly = assessReleasePath({
     title: '[skip netlify] Update notes',
     changedFiles: ['docs/active-work.md'],
     csvMetadata: new Map()
 });
-assert.match(documentationOnly.errors.join('\n'), /at least one changed CSV/);
+assert.deepEqual(documentationOnly, {
+    pathway: 'no-visual-change',
+    errors: []
+});
+
+const documentationAndTooling = assessReleasePath({
+    title: '[skip netlify] Correct the staging root contract',
+    changedFiles: [
+        'AGENTS.md',
+        'docs/decision-log.md',
+        'docs/workbook-export-workflow.md',
+        'scripts/run-workbook-staged-export.ps1',
+        'tests/pr-release-path.mjs'
+    ],
+    csvMetadata: new Map()
+});
+assert.deepEqual(documentationAndTooling, {
+    pathway: 'no-visual-change',
+    errors: []
+});
+
+// A published file is preview-relevant by definition, marker or not.
+const publishedFileChange = assessReleasePath({
+    title: '[skip netlify] Tweak a heading',
+    changedFiles: ['docs/decision-log.md', 'index.html'],
+    csvMetadata: new Map()
+});
+assert.equal(publishedFileChange.pathway, 'no-visual-change');
+assert.match(publishedFileChange.errors.join('\n'), /published to the site: index\.html/);
+
+const vendoredLibraryChange = assessReleasePath({
+    title: '[skip netlify] Bump chart library',
+    changedFiles: ['vendor/chart.umd.min.js'],
+    csvMetadata: new Map()
+});
+assert.match(vendoredLibraryChange.errors.join('\n'), /published to the site: vendor\/chart\.umd\.min\.js/);
+
+// Not published, but decides what is published or how it is deployed.
+const buildDefinitionChange = assessReleasePath({
+    title: '[skip netlify] Adjust the build',
+    changedFiles: ['scripts/build-preview-artifact.mjs'],
+    csvMetadata: new Map()
+});
+assert.match(
+    buildDefinitionChange.errors.join('\n'),
+    /decide what is published or how it is deployed: scripts\/build-preview-artifact\.mjs/
+);
+
+const deployWorkflowChange = assessReleasePath({
+    title: '[skip netlify] Adjust deployment',
+    changedFiles: ['.github/workflows/deploy-pages.yml'],
+    csvMetadata: new Map()
+});
+assert.match(
+    deployWorkflowChange.errors.join('\n'),
+    /decide what is published or how it is deployed/
+);
+
+// Without the marker nothing changes: a full preview is still required.
+const documentationWithoutMarker = assessReleasePath({
+    title: 'Correct the staging root contract',
+    changedFiles: ['docs/decision-log.md'],
+    csvMetadata: new Map()
+});
+assert.deepEqual(documentationWithoutMarker, {
+    pathway: 'full-preview',
+    errors: []
+});
 
 const incompleteBundle = assessReleasePath({
     title: '[skip netlify] Refresh one export only',

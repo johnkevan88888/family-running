@@ -108,10 +108,29 @@ try {
     $workbook = $excel.Workbooks.Open($WorkbookPath, 0, $false)
 
     $macroName = "'$($workbook.Name)'!AthleteComparisonExport.ExportWebsiteDataIncludingAthleteComparisonForAutomation"
+
+    # Echo both sides of the contract before handing over. The workbook's own
+    # rejection message names only the root it expects, so without this a
+    # mismatch reads as an unexplained refusal rather than a comparison.
+    Write-Output "Workbook:          $WorkbookPath"
+    Write-Output "Passing staged root: $stagedRoot"
+
     $failure = [string]$excel.Run($macroName, $stagedRoot)
 
     if ($failure) {
-        throw $failure
+        throw @"
+$failure
+
+The repository passed this staged export root:
+  $stagedRoot
+Using workbook:
+  $WorkbookPath
+
+If the workbook names a different parent folder above, the two are out of step.
+The staged root is chosen by the repository; the approved parent is configured
+inside the private workbook. Align the workbook's approved parent with the
+repository path, or pass -WorkbookPath to use a different workbook.
+"@
     }
     if (-not (Test-Path -LiteralPath (Join-Path $stagedRoot 'data\export_manifest.csv') -PathType Leaf)) {
         throw 'Workbook reported success without writing the staged export manifest.'

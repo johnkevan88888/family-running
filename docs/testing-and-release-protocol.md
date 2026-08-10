@@ -176,6 +176,16 @@ pnpm run build:site
 SITE_ROOT=test-artifacts/preview-site pnpm run test:browser
 ```
 
+A third `[skip netlify]` pathway covers changes that cannot alter what a preview
+would show. It is allowed when no changed file is published to the site and no
+changed file decides what is published or how it is deployed. "Published" is
+read from `scripts/published-site-entries.mjs`, the same list the artifact build
+copies, so adding a page makes it preview-relevant in the same edit rather than
+requiring a second list to be kept in step. Documentation, tests, and local
+tooling therefore skip the preview; any page, style, script, vendored library,
+`data/` file, build definition, or workflow does not. Omitting the marker always
+requires a full preview, whatever the change.
+
 Pull Request release-path tests recognize Netlify's `[skip netlify]` title
 marker for a narrow lightweight data refresh or custom-domain configuration.
 The data route requires at least
