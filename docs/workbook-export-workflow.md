@@ -13,15 +13,30 @@ The complete automation wrapper, including athlete comparison targets, is:
 
 `AthleteComparisonExport.ExportWebsiteDataIncludingAthleteComparisonForAutomation(stagingRoot)`
 
-The approved staging parent is the private workbook setting
-`Approved Staging Root` in `Settings!tbSettings`. For the operating release
-workspace it is:
+The approved staging parent is a hardcoded VBA constant in the private workbook:
+
+```vba
+Private Const STAGING_PARENT As String = "C:\GitHub\family-running\test-artifacts\workbook-export-staging\"
+```
+
+Note the trailing backslash, which the constant includes. For the operating
+release workspace the path is:
 
 `C:\GitHub\family-running\test-artifacts\workbook-export-staging`
 
-The workbook reads and validates that setting at export time; no repository
-absolute path is embedded in VBA. The supplied export root must be a fresh,
-immediate child of the configured parent after canonical path normalization.
+**This is not portable.** Moving or cloning the repository to a different path
+breaks exporting until that constant is edited by hand, and the workbook's
+rejection message names only the parent it expects, not the root it was given.
+`scripts/run-workbook-staged-export.ps1` prints both so a mismatch is legible.
+
+An earlier version of this document claimed the parent was read from a
+`Settings!tbSettings` setting named `Approved Staging Root`, and that no absolute
+path was embedded in VBA. That was never true of the workbook. See
+`docs/decision-log.md` for the correction. Making it genuinely portable remains
+open workbook work.
+
+The supplied export root must be a fresh, immediate child of the configured
+parent after canonical path normalization.
 The gate rejects relative or ambiguous paths, the repository root, tracked
 `data/`, and every descendant of tracked `data/`.
 
@@ -61,8 +76,8 @@ contains 68 CSV files: 67 manifest entries plus the manifest itself.
 
 The workbook exporter:
 
-1. reads the approved staging parent from `Settings!tbSettings` and accepts
-   only a canonical, fresh immediate child folder of that exact root;
+1. reads the approved staging parent from its `STAGING_PARENT` VBA constant and
+   accepts only a canonical, fresh immediate child folder of that exact root;
 2. creates `data/`, `data/family/`, and `data/everyone/` inside that folder;
 3. calculates the required website-source sheets;
 4. runs the workbook's source-coverage validation;
@@ -160,8 +175,9 @@ pnpm run workbook:export:staged -WorkbookPath "C:\path\source.xlsm"
 ```
 
 The wrapper derives the approved staging parent from the current repository
-root and refuses an alternate `-StagingBase`. The workbook independently
-checks the same root against its `Approved Staging Root` setting.
+root and refuses an alternate `-StagingBase`. The workbook independently checks
+the same root against its hardcoded `STAGING_PARENT` constant, so the two must
+be kept in step by hand.
 
 ### 2. Validate the staged bundle
 
