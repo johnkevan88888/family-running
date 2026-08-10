@@ -217,68 +217,40 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
 async function waitForRenderedChampionship(page, mode) {
     await page.waitForSelector('#site-title', { state: 'visible' });
     await page.waitForSelector('#leaderboards table', { state: 'visible' });
-    await page.waitForFunction(expectedMode => {
-        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
-        const expected = expectedMode === 'everyone'
-            ? 'Age-Graded Running Championships'
-            : 'Family Running Championships';
-
-        return title === expected;
-    }, mode);
+    await waitForAceOfRaceTitle(page);
 }
 
 async function waitForRenderedOverview(page, mode) {
     await page.waitForSelector('#site-title', { state: 'visible' });
     await page.waitForSelector('#overview-dashboard .overview-stat-card', { state: 'visible' });
     await page.waitForSelector('#overview-recent-results .overview-result-card', { state: 'visible' });
-    await page.waitForFunction(expectedMode => {
-        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
-        const expected = expectedMode === 'everyone'
-            ? 'Age-Graded Running Championships'
-            : 'Family Running Championships';
-
-        return title === expected;
-    }, mode);
+    await waitForAceOfRaceTitle(page);
 }
 
 async function waitForRenderedHallOfFame(page, mode) {
     await page.waitForSelector('#site-title', { state: 'visible' });
     await page.waitForSelector('#hall-of-fame .hof-card', { state: 'visible' });
     await page.waitForSelector('#crown-history[data-rendered="true"]');
-    await page.waitForFunction(expectedMode => {
-        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
-        const expected = expectedMode === 'everyone'
-            ? 'Age-Graded Running Championships'
-            : 'Family Running Championships';
-
-        return title === expected;
-    }, mode);
+    await waitForAceOfRaceTitle(page);
 }
 
 async function waitForRenderedRecords(page, mode) {
     await page.waitForSelector('#site-title', { state: 'visible' });
     await page.waitForSelector('#absolute-records[data-rendered="true"]');
-    await page.waitForFunction(expectedMode => {
-        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
-        const expected = expectedMode === 'everyone'
-            ? 'Age-Graded Running Championships'
-            : 'Family Running Championships';
-
-        return title === expected;
-    }, mode);
+    await waitForAceOfRaceTitle(page);
 }
 
 async function waitForRenderedCalculator(page, mode) {
     await page.waitForSelector('#site-title', { state: 'visible' });
     await page.waitForSelector('#comparison-results[data-rendered="true"]');
-    await page.waitForFunction(expectedMode => {
-        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
-        const expected = expectedMode === 'everyone'
-            ? 'Age-Graded Running Championships'
-            : 'Family Running Championships';
+    await waitForAceOfRaceTitle(page);
+}
 
-        return title === expected;
-    }, mode);
+async function waitForAceOfRaceTitle(page) {
+    await page.waitForFunction(() => {
+        const title = document.querySelector('#site-title')?.textContent || '';
+        return title.replace(/\s+/g, ' ').trim() === 'ACE OF RACE';
+    });
 }
 
 async function assertCalculatorPage(page, mode, viewport, requestedPaths) {
@@ -1857,10 +1829,8 @@ async function expectCountAtLeast(page, selector, minimum, label) {
     }
 }
 
-async function expectedSiteName(mode) {
-    const rows = await readCsvObjects(`data/${mode}/siteinfo.csv`);
-    const row = rows.find(candidate => candidate.Label === 'SiteName');
-    return row?.Value || (mode === 'everyone' ? 'Age-Graded Running Championships' : 'Family Running Championships');
+async function expectedSiteName() {
+    return 'ACE OF RACE';
 }
 
 async function hasAthleteData() {

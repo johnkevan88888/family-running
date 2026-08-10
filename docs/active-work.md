@@ -2,17 +2,33 @@
 
 ## Task title
 
-Streamline routine website data updates
+Ace of Race branding initial pass
 
 ## Status
 
-The lightweight `[skip netlify]` pathway and 8 August public data were released
-through PR #25. This follow-up adds a guarded, guided command for routine data
-updates so John no longer needs to copy staging paths between commands or
-manually remember the branch and Pull Request conventions. The command keeps
-the existing staged-review, explicit-promotion, full-test, Pull Request, and
-production-approval gates intact. It does not change workbook calculations,
-CSV schemas, public data, or website behaviour.
+An initial, implementation-ready identity system is complete on
+`feat/ace-of-race-branding`. It renames the public site to Ace of Race while
+preserving Family and Everyone as data modes, and does not change workbook
+calculations, CSV schemas, or public result data.
+
+The pack includes primary, reversed, stacked, monochrome, and mark-only SVG and
+PNG logos; favicon and app-icon exports; a 1200 x 630 social card; square and
+story social assets; a handmade race-day key visual; CSS tokens; messaging and
+voice guidance; an editable Markdown guide; reproducible generation/rendering
+scripts; and a visually verified seven-page PDF brand book.
+
+The site now uses the Ace of Race card-and-track mark, navy/coral/gold/cream
+palette, fixed brand name, tagline, refreshed page metadata, social preview,
+and brand-aware preview packaging. Legacy workbook-exported `SiteName` values
+remain valid export metadata but no longer replace the public wordmark. The
+responsive browser suite passes in both modes, and the Family desktop and
+mobile championship screenshots were visually reviewed without overflow or
+contrast defects. The complete `pnpm test` gate passes, including repository
+safety, both CSV modes, analytics, release-path and updater regressions,
+export-bundle and staged-export workflows, preview packaging, and the browser
+suite. The seven-page PDF reopens successfully, its required text extracts,
+and all social/favicon raster dimensions match their contracts. This is a
+standard preview change and is not released.
 
 ## Overview rolling activity and site-wide date display
 

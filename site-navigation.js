@@ -95,12 +95,13 @@
             <div class="site-header-main">
                 <div class="site-brand">
                     <a class="site-title-link" href="${pageHref('championships', site)}">
-                        <h1 id="site-title">Family Running Championships</h1>
+                        <img class="site-logo-mark" src="assets/brand/ace-of-race-mark.svg" alt="">
+                        <h1 id="site-title">ACE <span class="site-wordmark-secondary">OF RACE</span></h1>
                     </a>
                     <div class="subtitle">
-                        <span id="site-mode-label">${modeLabel} site</span>
+                        <span id="site-mode-label">${modeLabel} championships</span>
                         <span aria-hidden="true"> &middot; </span>
-                        <span>Age-Graded Rankings Across Generations</span>
+                        <span>Every age. Every pace. Every race counts.</span>
                     </div>
                 </div>
                 <div class="site-navigation-panel">
@@ -142,20 +143,14 @@
         }
 
         const meta = document.getElementById('last-updated');
-        const title = document.getElementById('site-title');
-        if (!meta && !title) {
+        if (!meta) {
             return;
         }
 
         try {
             const rows = await fetchCSV(`data/${selectedSite()}/siteinfo.csv`);
             const setting = name => rows.find(row => row[0] === name)?.[1] || '';
-            const siteName = setting('SiteName');
             const lastUpdated = setting('LastUpdatedUTC');
-
-            if (title && siteName) {
-                title.innerText = siteName;
-            }
 
             if (!meta || !lastUpdated) {
                 return;

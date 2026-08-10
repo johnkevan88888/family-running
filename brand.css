@@ -1,0 +1,162 @@
+:root {
+    --aor-navy: #102a43;
+    --aor-navy-deep: #0a1726;
+    --aor-blue: #285e8e;
+    --aor-coral: #ff5a3d;
+    --aor-gold: #f4c542;
+    --aor-cream: #fff8e8;
+    --aor-sky: #b9dcf2;
+    --aor-ink: #142235;
+    --aor-muted: #5e6b78;
+    --aor-display: "Arial Black", "Segoe UI Black", "Helvetica Neue", sans-serif;
+}
+
+body {
+    background: #f7f3ea;
+    color: var(--aor-ink);
+}
+
+.site-header {
+    background-color: var(--aor-navy);
+    background-image:
+        linear-gradient(90deg, rgba(16,42,67,.98) 0%, rgba(16,42,67,.96) 55%, rgba(16,42,67,.82) 100%),
+        url("assets/brand/track-pattern.svg");
+    background-position: center;
+    background-size: cover;
+    border-bottom: 5px solid var(--aor-gold);
+    border-top: 6px solid var(--aor-coral);
+    box-shadow: 0 8px 24px rgba(10,23,38,.22);
+}
+
+.site-title-link {
+    align-items: center;
+    display: inline-flex;
+    gap: 17px;
+}
+
+.site-logo-mark {
+    display: block;
+    flex: 0 0 auto;
+    height: 84px;
+    width: 75px;
+}
+
+#site-title {
+    color: var(--aor-cream);
+    font-family: var(--aor-display);
+    font-size: 3rem;
+    letter-spacing: .02em;
+    line-height: .82;
+    text-transform: uppercase;
+}
+
+.site-wordmark-secondary {
+    display: block;
+    font-size: .48em;
+    letter-spacing: .19em;
+    line-height: 1;
+    margin-left: .08em;
+    margin-top: .5em;
+}
+
+.subtitle {
+    color: var(--aor-sky);
+    font-weight: 750;
+    letter-spacing: .01em;
+    margin-left: 92px;
+    margin-top: -8px;
+}
+
+.site-title-link:focus-visible,
+.site-nav-link:focus-visible,
+.overview-cta:focus-visible,
+.back-link:focus-visible {
+    outline-color: var(--aor-coral);
+}
+
+.site-nav-link:hover,
+.site-nav-link.active {
+    background: var(--aor-gold);
+    border-color: var(--aor-gold);
+    color: var(--aor-navy-deep);
+}
+
+.site-pace-control .pace-unit-options button[aria-pressed="true"] {
+    background: var(--aor-gold);
+    color: var(--aor-navy-deep);
+}
+
+.site-mode-badge {
+    background: var(--aor-coral);
+    border-color: rgba(255,255,255,.45);
+    color: var(--aor-navy-deep);
+}
+
+.page-intro,
+.overview-hero,
+.overview-actions {
+    background: linear-gradient(135deg, #ffffff 0%, var(--aor-cream) 100%);
+    border-left: 7px solid var(--aor-coral);
+    box-shadow: 0 6px 18px rgba(10,23,38,.11);
+}
+
+.page-intro h2,
+.overview-hero h2,
+.overview-actions h2 {
+    background: transparent;
+    color: var(--aor-navy);
+    font-family: var(--aor-display);
+    letter-spacing: -.02em;
+    padding: 0;
+}
+
+h2,
+.leaderboard-section h3 {
+    background: var(--aor-navy);
+}
+
+.distance-title {
+    background: var(--aor-navy-deep);
+    border-left: 8px solid var(--aor-coral);
+}
+
+.distance-subtitle,
+th {
+    background: var(--aor-blue);
+}
+
+a,
+.overview-list a,
+.overview-result-card a {
+    color: #1f5684;
+}
+
+.overview-stat,
+.overview-result-card {
+    border-color: var(--aor-gold);
+}
+
+.site-meta-icon {
+    color: var(--aor-gold);
+}
+
+@media (max-width: 700px) {
+    .site-title-link {
+        gap: 12px;
+    }
+
+    .site-logo-mark {
+        height: 66px;
+        width: 59px;
+    }
+
+    #site-title {
+        font-size: 2.2rem;
+    }
+
+    .subtitle {
+        margin-left: 0;
+        margin-top: 11px;
+    }
+}
+

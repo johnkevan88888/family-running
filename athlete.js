@@ -851,7 +851,7 @@ async function buildAthletePage() {
     }
 
     document.getElementById('athlete-name').innerText = athleteResults[0].Participant;
-    document.title = `${athleteResults[0].Participant} | Athlete Profile`;
+    document.title = `${athleteResults[0].Participant} | Ace of Race`;
 
     buildPersonalBests(athleteResults);
     await buildOfficialMedals(athleteResults);

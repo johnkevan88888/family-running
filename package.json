@@ -2,7 +2,7 @@
   "name": "family-running",
   "version": "0.0.0",
   "private": true,
-  "description": "Static GitHub Pages site for the Family Running Championships.",
+  "description": "Static Ace of Race site for family and age-graded running championships.",
   "packageManager": "pnpm@11.7.0",
   "scripts": {
     "preview": "node scripts/serve-site.mjs",

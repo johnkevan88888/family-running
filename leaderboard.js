@@ -769,13 +769,6 @@ async function loadSiteInfo() {
     const rows = await fetchCSV(`${dataPath}/siteinfo.csv`);
 
     const lastUpdatedRow = rows.find(row => row[0] === 'LastUpdatedUTC');
-    const siteNameRow = rows.find(row => row[0] === 'SiteName');
-
-    if (siteNameRow) {
-        document.getElementById('site-title').innerText =
-            siteNameRow[1];
-    }
-
     if (lastUpdatedRow) {
         const utcDate = new Date(lastUpdatedRow[1]);
 

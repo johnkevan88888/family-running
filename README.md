@@ -1,6 +1,13 @@
-# Family Running Championships
+# Ace of Race
 
-Age-graded running rankings across generations.
+Every age. Every pace. Every race counts.
+
+Ace of Race is a static family running site for age-graded championships,
+records, crowns, athlete history, and head-to-head challenges. It preserves
+separate Family and Everyone views while sharing one public brand.
+
+The complete identity pack lives in [`branding/`](branding/README.md), with the
+shareable brand book in [`output/pdf/`](output/pdf/Ace-of-Race-Brand-Guide.pdf).
 
 ## Update Process
 

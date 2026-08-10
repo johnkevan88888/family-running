@@ -248,3 +248,21 @@ Unknown historical details are labelled rather than inferred.
   display rows, but it still cannot derive age grades or target times. The
   comparison export adds a `Period` dimension owned by Excel/VBA. Legacy rows
   without that field remain readable as All Time during the schema transition.
+
+## Ace of Race is the constant public brand across both data modes
+
+- **Status:** Accepted and implemented; not yet released
+- **Date:** 9 August 2026
+- **Decision:** The public product name is Ace of Race in both query-string
+  modes. Family and Everyone remain visible mode badges and continue to select
+  isolated workbook-exported data, but workbook `SiteName` values no longer
+  replace the shared wordmark after page load.
+- **Rationale:** One stable identity makes the custom domain, navigation,
+  favicon, social previews, and verbal system coherent. Treating Family and
+  Everyone as modes preserves the existing data architecture without creating
+  two competing brands.
+- **Consequences:** Public page titles, metadata, header UI, and share imagery
+  use Ace of Race. The `SiteName` row remains required for export compatibility
+  until the private workbook contract is changed deliberately. Tests assert
+  the constant brand separately from mode isolation, and the preview artifact
+  must include `brand.css` and the production brand assets.
