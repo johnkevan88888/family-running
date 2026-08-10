@@ -158,8 +158,23 @@ tracked `data/`, descendants of `data/`, relative paths, nested staging paths,
 and ambiguous paths are rejected.
 
 The preview artifact build copies the static runtime pages, JavaScript, styles,
-and public `data/` bundle into `test-artifacts/preview-site`, then fails if a
-required runtime file is absent from the publish directory.
+vendored libraries, `CNAME`, and public `data/` bundle into
+`test-artifacts/preview-site`, then fails if a required runtime file is absent
+from the publish directory. It also fails if documentation, scripts, tests,
+workflow files, or repository configuration appear in the artifact, because that
+artifact is the public web root for both Netlify previews and production.
+
+The same artifact is deployed to GitHub Pages by
+`.github/workflows/deploy-pages.yml` on every push to `main`. Pages no longer
+serves the repository root, so files such as `AGENTS.md`, `docs/`, `scripts/`,
+and `package.json` are not readable from the production domain. Anything a
+visitor's browser genuinely needs must be listed in `runtimeEntries`, and the
+suite can prove the published set is complete by serving the artifact directly:
+
+```bash
+pnpm run build:site
+SITE_ROOT=test-artifacts/preview-site pnpm run test:browser
+```
 
 Pull Request release-path tests recognize Netlify's `[skip netlify]` title
 marker for a narrow lightweight data refresh or custom-domain configuration.
@@ -177,6 +192,11 @@ Browser smoke tests run the site through a local static server for:
 
 - `/?site=family`
 - `/?site=everyone`
+
+Every public page is also checked for a `noindex` robots meta tag. The site is
+kept out of search results by that tag rather than by a `robots.txt` Disallow,
+so a new page shipping without it would be indexed while every other page is
+not.
 
 Desktop contexts run at 1440 x 900. Mobile contexts run at 390 x 844 with Chromium device emulation enabled, so the page's `<meta name="viewport">` tag is honoured and mobile assertions and screenshots reflect a real phone. Every public page is checked directly for a `width=device-width` viewport tag, an `<html lang>` attribute, and a layout width matching the emulated viewport. That check is deliberately explicit: a page missing the tag lays out at the roughly 980px desktop fallback, which does not overflow, so the horizontal overflow assertion alone would not catch it.
 

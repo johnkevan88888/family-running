@@ -255,3 +255,50 @@ Unknown historical details are labelled rather than inferred.
   display rows, but it still cannot derive age grades or target times. The
   comparison export adds a `Period` dimension owned by Excel/VBA. Legacy rows
   without that field remain readable as All Time during the schema transition.
+
+## GitHub Pages publishes a built artifact, not the repository root
+
+- **Status:** Accepted and implemented
+- **Date:** 10 August 2026
+- **Decision:** Production is deployed by `.github/workflows/deploy-pages.yml`,
+  which builds the runtime artifact and publishes only that. Pages no longer
+  serves the repository root. `CNAME` is part of the artifact, so the
+  `www.aceofrace.com` custom domain survives the change.
+- **Rationale:** Serving the repository root made every tracked non-runtime file
+  publicly readable at its path on the live site. `AGENTS.md`,
+  `docs/decision-log.md`, `docs/active-work.md`, and `package.json` all returned
+  HTTP 200 on the production domain. Those documents describe the private
+  workbook, the staging and promotion workflow, and known governance gaps. No
+  credential or workbook was ever exposed, but the public surface was wider than
+  intended and easy to widen further by accident.
+- **Consequences:** The published artifact is the definition of the public site.
+  A file that is not in `runtimeEntries` is not on the web, so new runtime files
+  must be added there or they will 404 in production. The build fails if
+  documentation, scripts, tests, workflow files, or repository configuration
+  appear in the artifact, and fails if `CNAME` is missing. Previews and
+  production now build through the same script, so preview fidelity improves.
+  This does not change what the site itself publishes: exported public CSVs
+  under `data/` remain readable by design, because the browser fetches them.
+
+## The public site is excluded from search results
+
+- **Status:** Accepted and implemented
+- **Date:** 10 August 2026
+- **Decision:** Every public page carries
+  `<meta name="robots" content="noindex, follow">`, and `robots.txt` explicitly
+  allows crawling. The site stays fully available to anyone with the link but is
+  not listed in search results.
+- **Rationale:** The site publishes real athletes' names, age categories, event
+  names, and dates. John chose for it to be shareable rather than searchable.
+  Crawling must stay allowed because a crawler has to fetch a page to read its
+  noindex tag; a `Disallow` rule would prevent search engines ever seeing it and
+  would leave already-indexed pages listed as bare URLs. Blocking `/data/` would
+  be worse still, because every page renders from those exported CSVs, so a
+  blocked crawler would index only "Loading..." placeholders.
+- **Consequences:** New public pages must carry the tag; browser smoke tests fail
+  if one does not. This governs search visibility only. It is not access control:
+  the exported CSVs remain fetchable by anyone with the URL, because the browser
+  needs them, and the repository is public so the same data is readable on
+  GitHub. Making the data genuinely private would require authenticated hosting,
+  which GitHub Pages does not provide. The Open Graph tags still work, so shared
+  links continue to preview correctly in messaging apps.
