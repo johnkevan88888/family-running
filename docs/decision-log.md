@@ -255,3 +255,27 @@ Unknown historical details are labelled rather than inferred.
   display rows, but it still cannot derive age grades or target times. The
   comparison export adds a `Period` dimension owned by Excel/VBA. Legacy rows
   without that field remain readable as All Time during the schema transition.
+
+## GitHub Pages publishes a built artifact, not the repository root
+
+- **Status:** Accepted and implemented
+- **Date:** 10 August 2026
+- **Decision:** Production is deployed by `.github/workflows/deploy-pages.yml`,
+  which builds the runtime artifact and publishes only that. Pages no longer
+  serves the repository root. `CNAME` is part of the artifact, so the
+  `www.aceofrace.com` custom domain survives the change.
+- **Rationale:** Serving the repository root made every tracked non-runtime file
+  publicly readable at its path on the live site. `AGENTS.md`,
+  `docs/decision-log.md`, `docs/active-work.md`, and `package.json` all returned
+  HTTP 200 on the production domain. Those documents describe the private
+  workbook, the staging and promotion workflow, and known governance gaps. No
+  credential or workbook was ever exposed, but the public surface was wider than
+  intended and easy to widen further by accident.
+- **Consequences:** The published artifact is the definition of the public site.
+  A file that is not in `runtimeEntries` is not on the web, so new runtime files
+  must be added there or they will 404 in production. The build fails if
+  documentation, scripts, tests, workflow files, or repository configuration
+  appear in the artifact, and fails if `CNAME` is missing. Previews and
+  production now build through the same script, so preview fidelity improves.
+  This does not change what the site itself publishes: exported public CSVs
+  under `data/` remain readable by design, because the browser fetches them.

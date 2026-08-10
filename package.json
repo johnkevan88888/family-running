@@ -7,6 +7,7 @@
   "scripts": {
     "preview": "node scripts/serve-site.mjs",
     "preview:build": "node scripts/build-preview-artifact.mjs",
+    "build:site": "node scripts/build-preview-artifact.mjs",
     "test": "node scripts/run-all-tests.mjs",
     "validate:safety": "node scripts/validate-repository-safety.mjs",
     "validate:csv": "node scripts/validate-csv.mjs",
