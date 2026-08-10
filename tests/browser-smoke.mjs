@@ -11,9 +11,25 @@ const siteRoot = process.env.SITE_ROOT
     : repoRoot;
 const artifactsDir = path.join(repoRoot, 'test-artifacts', 'screenshots');
 const modes = ['family', 'everyone'];
+// `isMobile` makes Chromium honour the page's meta viewport tag. Without it a
+// 390px context lays out at 390px regardless, so mobile assertions and
+// screenshots would not reflect a real phone. A page missing the tag lays out at
+// the ~980px fallback width instead, which `assertResponsiveViewport` checks for
+// directly -- it does not overflow, so the overflow check alone would miss it.
 const viewports = [
-    { name: 'desktop', width: 1440, height: 900 },
-    { name: 'mobile', width: 390, height: 844 }
+    {
+        name: 'desktop',
+        contextOptions: { viewport: { width: 1440, height: 900 } }
+    },
+    {
+        name: 'mobile',
+        contextOptions: {
+            viewport: { width: 390, height: 844 },
+            deviceScaleFactor: 3,
+            isMobile: true,
+            hasTouch: true
+        }
+    }
 ];
 const updateScreenshots = process.argv.includes('--update-screenshots');
 
@@ -60,7 +76,7 @@ if (failures.length) {
 console.log(`Browser smoke tests passed. Screenshots saved in ${path.relative(repoRoot, artifactsDir)}.`);
 
 async function runModeViewportTest(browserInstance, mode, viewport) {
-    const context = await browserInstance.newContext({ viewport });
+    const context = await browserInstance.newContext(viewport.contextOptions);
     const page = await context.newPage();
     const sameOriginFailures = [];
     const consoleErrors = [];
@@ -122,6 +138,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await expectCountAtLeast(page, '#leaderboards table tr', 2, `${mode} landing championship leaderboard rows`);
         await assertSitePaceToggle(page, mode, viewport);
         await assertNavigationBetweenPublicPages(page, mode, viewport);
+        await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} landing championships page`);
         await assertBundleMetadataHidden(page, `${mode}/${viewport.name} landing championships page`);
 
         await page.goto(`${preview.baseUrl}/championships.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
@@ -130,6 +147,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertPrimaryNavigation(page, mode, viewport, 'championships');
         await assertNoModeSwitch(page, mode, viewport, 'championships');
         await expectCountAtLeast(page, '#leaderboards table tr', 2, `${mode} championship leaderboard rows`);
+        await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} championships page`);
         await assertBundleMetadataHidden(page, `${mode}/${viewport.name} championships page`);
 
         await assertLeaderboardDisplayLabels(page, mode, viewport);
@@ -148,6 +166,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertCrownHistory(page, mode, viewport, requestedPaths);
         await assertVisiblePaceUnit(page.locator('#hall-of-fame'), 'km', `${mode}/${viewport.name} Hall of Fame paces`);
         await assertVacantStatesRender(page, mode, viewport);
+        await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} Hall of Fame page`);
         await assertBundleMetadataHidden(page, `${mode}/${viewport.name} Hall of Fame page`);
 
         const recordsRequestStart = requestedPaths.length;
@@ -157,6 +176,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertPrimaryNavigation(page, mode, viewport, 'records');
         await assertNoModeSwitch(page, mode, viewport, 'records');
         await assertAbsoluteRecordsPage(page, mode, viewport, requestedPaths.slice(recordsRequestStart));
+        await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} records page`);
         await assertBundleMetadataHidden(page, `${mode}/${viewport.name} records page`);
 
         const calculatorRequestStart = requestedPaths.length;
@@ -166,6 +186,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertPrimaryNavigation(page, mode, viewport, 'calculator');
         await assertNoModeSwitch(page, mode, viewport, 'calculator');
         await assertCalculatorPage(page, mode, viewport, requestedPaths.slice(calculatorRequestStart));
+        await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} calculator page`);
         await assertBundleMetadataHidden(page, `${mode}/${viewport.name} calculator page`);
 
         const overviewRequestStart = requestedPaths.length;
@@ -176,6 +197,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertNoModeSwitch(page, mode, viewport, 'overview');
         await assertOverviewPage(page, mode, viewport, requestedPaths.slice(overviewRequestStart));
         await assertVisiblePaceUnit(page.locator('#overview-dashboard'), 'km', `${mode}/${viewport.name} Overview paces`);
+        await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} overview page`);
         await assertBundleMetadataHidden(page, `${mode}/${viewport.name} overview page`);
 
         const athleteLinkCount = await page.locator('a[href^="athlete.html?id="]').count();
@@ -185,7 +207,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
 
         await assertDirectAthleteProfile(page, mode, viewport);
 
-        await page.setViewportSize(viewport);
+        await page.setViewportSize(viewport.contextOptions.viewport);
         await capturePageScreenshot(page, mode, viewport, 'championships', waitForRenderedChampionship);
         await capturePageScreenshot(page, mode, viewport, 'hall-of-fame', waitForRenderedHallOfFame);
         await capturePageScreenshot(page, mode, viewport, 'records', waitForRenderedRecords);
@@ -1300,7 +1322,7 @@ async function runCalculatorComparisonUnavailableEdgeCaseTests(browserInstance) 
         .join('\r\n');
 
     for (const viewport of viewports) {
-        const context = await browserInstance.newContext({ viewport });
+        const context = await browserInstance.newContext(viewport.contextOptions);
         const page = await context.newPage();
         const requestedPaths = [];
 
@@ -1360,7 +1382,7 @@ async function runCalculatorComparisonEdgeCaseTests(browserInstance) {
     ].join('\r\n');
 
     for (const viewport of viewports) {
-        const context = await browserInstance.newContext({ viewport });
+        const context = await browserInstance.newContext(viewport.contextOptions);
         const page = await context.newPage();
         const requestedPaths = [];
 
@@ -1555,6 +1577,7 @@ async function assertAthleteNavigation(page, mode, viewport) {
         return name && name !== 'Loading...';
     });
     await waitForNetworkToSettle(page);
+    await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} athlete page`);
     await assertBundleMetadataHidden(page, `${mode}/${viewport.name} athlete page`);
 
     const backHref = await page.locator('.back-link').getAttribute('href');
@@ -1588,7 +1611,104 @@ async function assertDirectAthleteProfile(page, mode, viewport) {
     await waitForNetworkToSettle(page);
     await assertPrimaryNavigation(page, mode, viewport, 'athlete');
     await assertNoModeSwitch(page, mode, viewport, 'athlete');
+    await assertProgressionChart(page, mode, viewport);
+    await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} direct athlete page`);
     await assertBundleMetadataHidden(page, `${mode}/${viewport.name} direct athlete page`);
+}
+
+// The chart library is vendored and same-origin, so unlike the previous CDN
+// build it is reachable under the cross-origin blocking above and this path can
+// actually be exercised.
+async function assertProgressionChart(page, mode, viewport) {
+    const context = `${mode}/${viewport.name}`;
+    const progression = page.locator('#progression');
+
+    const outcome = await page.waitForFunction(() => {
+        const canvas = document.getElementById('age-grade-chart');
+        const text = document.getElementById('progression')?.textContent?.trim() || '';
+
+        if (text) {
+            return { state: 'message', text };
+        }
+
+        if (!canvas || typeof Chart === 'undefined') {
+            return null;
+        }
+
+        const instance = Chart.getChart(canvas);
+
+        if (!instance) {
+            return null;
+        }
+
+        return {
+            state: 'chart',
+            points: instance.data.datasets.reduce(
+                (total, dataset) => total + dataset.data.length,
+                0
+            ),
+            xScaleType: instance.scales.x?.type || ''
+        };
+    }, null, { timeout: 10000 })
+        .then(handle => handle.jsonValue())
+        .catch(() => null);
+
+    if (!outcome) {
+        const text = normalizeText(await progression.textContent());
+        failures.push(
+            `${context}: progression chart neither rendered nor reported a state (section text: "${text}").`
+        );
+        return;
+    }
+
+    if (outcome.state === 'message') {
+        // "No progression data found." is a legitimate exported state. A failure
+        // to load the vendored library is not.
+        if (!outcome.text.startsWith('No progression data found')) {
+            failures.push(`${context}: progression chart reported "${outcome.text}".`);
+        }
+        return;
+    }
+
+    if (outcome.xScaleType !== 'time') {
+        failures.push(
+            `${context}: progression x-axis was "${outcome.xScaleType}", expected the date adapter's "time" scale.`
+        );
+    }
+
+    if (outcome.points < 1) {
+        failures.push(`${context}: progression chart plotted no exported age-grade points.`);
+    }
+}
+
+// Checked explicitly rather than inferred from the overflow assertion: a page
+// missing the tag simply lays out at the ~980px fallback width, which does not
+// overflow and so would otherwise pass unnoticed.
+async function assertResponsiveViewport(page, viewport, context) {
+    const layout = await page.evaluate(() => ({
+        content: document.querySelector('meta[name="viewport"]')?.getAttribute('content') || '',
+        lang: document.documentElement.getAttribute('lang') || '',
+        clientWidth: document.documentElement.clientWidth
+    }));
+
+    if (!/width\s*=\s*device-width/i.test(layout.content)) {
+        failures.push(
+            `${context}: missing a width=device-width viewport meta tag (found "${layout.content}").`
+        );
+    }
+
+    if (!layout.lang) {
+        failures.push(`${context}: <html> has no lang attribute.`);
+    }
+
+    const expectedWidth = viewport.contextOptions.viewport.width;
+
+    if (layout.clientWidth > expectedWidth + 1) {
+        failures.push(
+            `${context}: laid out at ${layout.clientWidth}px inside a ${expectedWidth}px viewport, ` +
+            'so the meta viewport tag is not being applied.'
+        );
+    }
 }
 
 async function assertBundleMetadataHidden(page, context) {
@@ -2192,6 +2312,13 @@ function findChromiumExecutable() {
 
     if (explicitPath) {
         return explicitPath;
+    }
+
+    // CI installs Playwright's pinned Chromium. Returning undefined makes
+    // Playwright use it, instead of silently falling back to whatever browser
+    // version the runner image happens to ship.
+    if (process.env.CI) {
+        return undefined;
     }
 
     const candidates = process.platform === 'win32'

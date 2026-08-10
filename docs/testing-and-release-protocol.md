@@ -38,6 +38,20 @@ Run CSV validation only:
 pnpm run validate:csv
 ```
 
+Check that the committed `vendor/` browser libraries still match the pinned
+dependencies:
+
+```bash
+pnpm run validate:vendor
+```
+
+Refresh `vendor/` after deliberately changing a pinned library version in
+`package.json`:
+
+```bash
+pnpm run vendor:sync
+```
+
 Run the guided routine data updater after saving and closing Excel:
 
 ```powershell
@@ -114,7 +128,9 @@ Local preview URLs:
 
 ## What The Automated Checks Cover
 
-Repository safety validation checks tracked files and fails if a private workbook, Excel temporary file, obvious credential file, or private workbook backup-like file is tracked.
+Repository safety validation checks tracked files and fails if a private workbook, Excel add-in, exported VBA source file (`.bas`, `.cls`, `.frm`, `.frx`), Excel temporary file, obvious credential file, or private workbook backup-like file is tracked.
+
+Vendored library validation compares every file in `vendor/` against the build resolved by the pnpm lockfile, so the committed browser libraries can never drift from a reviewed, pinned dependency version. The public site loads Chart.js and its date adapter from `vendor/`, never from a third-party CDN, which also means the browser smoke tests exercise the athlete progression chart instead of its unavailable-library fallback.
 
 CSV validation checks `data/family/`, `data/everyone/`, and shared `data/athlete_results.csv`. Excel/VBA generates one `ExportBundleID` per full export and appends it to every public data CSV. VBA writes `data/export_manifest.csv` last, making it the export-completion and consistency contract. Its exact schema is `ExportBundleID,ExportedAtUTC,SchemaVersion,Scope,RelativePath,DataRowCount`, with schema version `1.0`, scopes limited to `family`, `everyone`, and `shared`, repository-relative paths, and row counts excluding headers. Validation rejects missing manifests, invalid schemas or paths, missing or mixed IDs, bundle mismatches, missing or unlisted files, duplicate manifest paths, inconsistent manifest metadata, and wrong row counts, so partial, stale, or mixed exports cannot pass release checks.
 
@@ -162,7 +178,11 @@ Browser smoke tests run the site through a local static server for:
 - `/?site=family`
 - `/?site=everyone`
 
-They check that each mode loads, uses the expected site title, renders Hall of Fame cards and leaderboards, requests only the selected mode's crown history, preserves the exported crown order and values, handles timeline expansion, empty exports and incomplete legacy identities, preserves the selected site in holder links, exposes athlete links where athlete data exists, opens an athlete profile, preserves the original `site` parameter in the back link, renders athlete medals exported by Excel directly from `data/<site>/official_medals.csv` without requesting leaderboard CSVs for those medal cards, renders the Records page empty state while tracked data has no absolute-records export, and never renders `ExportBundleID` names or values in tables or cards. They also check synthetic absolute-records data for Men and Women rendering, selected-site-only CSV requests, linked and unlinked athletes, empty exported record states, collapsible sections, vacant Hall of Fame states, horizontal overflow, JavaScript exceptions, and failed same-origin network requests.
+Desktop contexts run at 1440 x 900. Mobile contexts run at 390 x 844 with Chromium device emulation enabled, so the page's `<meta name="viewport">` tag is honoured and mobile assertions and screenshots reflect a real phone. Every public page is checked directly for a `width=device-width` viewport tag, an `<html lang>` attribute, and a layout width matching the emulated viewport. That check is deliberately explicit: a page missing the tag lays out at the roughly 980px desktop fallback, which does not overflow, so the horizontal overflow assertion alone would not catch it.
+
+Locally the tests use an installed system Chrome or Edge when one is present. When `CI` is set they use Playwright's own pinned Chromium, so continuous integration always tests the browser version recorded in the lockfile rather than whichever build the runner image happens to ship.
+
+They check that each mode loads, uses the expected site title, renders Hall of Fame cards and leaderboards, requests only the selected mode's crown history, preserves the exported crown order and values, handles timeline expansion, empty exports and incomplete legacy identities, preserves the selected site in holder links, exposes athlete links where athlete data exists, opens an athlete profile, preserves the original `site` parameter in the back link, renders athlete medals exported by Excel directly from `data/<site>/official_medals.csv` without requesting leaderboard CSVs for those medal cards, renders the Records page empty state while tracked data has no absolute-records export, and never renders `ExportBundleID` names or values in tables or cards. They also check the athlete progression chart renders from the vendored Chart.js build on a real time scale, synthetic absolute-records data for Men and Women rendering, selected-site-only CSV requests, linked and unlinked athletes, empty exported record states, collapsible sections, vacant Hall of Fame states, horizontal overflow, JavaScript exceptions, and failed same-origin network requests.
 
 Calculator coverage checks shared navigation, selected-site-only
 `age_grade_standards.csv` requests for the comparison athlete roster,

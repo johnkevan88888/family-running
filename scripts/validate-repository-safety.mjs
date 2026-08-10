@@ -14,8 +14,12 @@ for (const file of trackedFiles) {
     const lowerName = basename.toLowerCase();
     const lowerPath = normalized.toLowerCase();
 
-    if (/\.(xlsm|xlsx|xls|xlsb)$/i.test(basename)) {
+    if (/\.(xlsm|xlsx|xls|xlsb|xlam)$/i.test(basename)) {
         problems.push(`${file}: tracked Excel workbook file is not allowed`);
+    }
+
+    if (/\.(bas|cls|frm|frx)$/i.test(basename)) {
+        problems.push(`${file}: tracked exported VBA source file is not allowed`);
     }
 
     if (basename.startsWith('~$')) {
@@ -129,5 +133,8 @@ function isWorkbookBackupLikeFile(lowerName, lowerPath) {
     const workbookWords = /(workbook|spreadsheet|excel|family[-_ ]?running|championship|results)/.test(lowerPath);
     const backupWords = /(backup|copy|private|local|source[-_ ]?of[-_ ]?truth)/.test(lowerPath);
 
-    return backupExtension && workbookWords && backupWords;
+    // Either signal is enough. Requiring both let names like
+    // "championship-workbook.zip" through, because "workbook" is only a
+    // workbook word and never a backup word.
+    return backupExtension && (workbookWords || backupWords);
 }

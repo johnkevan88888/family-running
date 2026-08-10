@@ -1,4 +1,5 @@
 const csvCache = new Map();
+const athleteLinkSites = new Set(['family', 'everyone']);
 
 window.dateDisplay = (function () {
     const monthNames = [
@@ -369,13 +370,41 @@ function parseCSVRow(row) {
     return result;
 }
 
+function csvRowsToObjects(rows) {
+    const headers = (rows[0] || []).map(header => String(header).trim());
+
+    return rows.slice(1)
+        .filter(row => row.some(cell => cell !== ''))
+        .map(row => Object.fromEntries(
+            headers.map((header, index) => [header, row[index] || ''])
+        ));
+}
+
+// Shared by every renderer. `?? ''` rather than `|| ''` so a numeric 0 renders
+// as "0" instead of disappearing.
+function escapeHTML(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// Call sites pass raw exported values. Escaping lives here so no caller can
+// forget it and no caller double-escapes.
 function athleteLink(id, name) {
-    if (window.siteNavigation?.athleteHref) {
-        return `<a href="${window.siteNavigation.athleteHref(id)}">${name}</a>`;
-    }
+    const href = window.siteNavigation?.athleteHref
+        ? window.siteNavigation.athleteHref(id)
+        : fallbackAthleteHref(id);
 
+    return `<a href="${escapeHTML(href)}">${escapeHTML(name)}</a>`;
+}
+
+function fallbackAthleteHref(id) {
     const params = new URLSearchParams(window.location.search);
-    const site = params.get('site') || 'family';
+    const requestedSite = String(params.get('site') || '').toLowerCase();
+    const site = athleteLinkSites.has(requestedSite) ? requestedSite : 'family';
 
-    return `<a href="athlete.html?id=${encodeURIComponent(id)}&site=${encodeURIComponent(site)}">${name}</a>`;
+    return `athlete.html?id=${encodeURIComponent(id)}&site=${site}`;
 }

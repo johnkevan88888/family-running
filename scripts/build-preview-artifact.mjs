@@ -23,6 +23,7 @@ const runtimeEntries = [
     'calculator.css',
     'calculator.js',
     'utils.js',
+    'vendor',
     'data'
 ];
 
@@ -55,7 +56,7 @@ if (safetyProblems.length) {
     process.exit(1);
 }
 
-for (const requiredFile of ['index.html', 'championships.html', 'hall-of-fame.html', 'records.html', 'calculator.html', 'overview.html', 'athlete.html', 'analytics.js', 'records.js', 'calculator.js', 'data/family/webtables.csv', 'data/everyone/webtables.csv', 'data/family/absolute_records.csv', 'data/everyone/absolute_records.csv']) {
+for (const requiredFile of ['index.html', 'championships.html', 'hall-of-fame.html', 'records.html', 'calculator.html', 'overview.html', 'athlete.html', 'analytics.js', 'records.js', 'calculator.js', 'vendor/chart.umd.min.js', 'vendor/chartjs-adapter-date-fns.bundle.min.js', 'data/family/webtables.csv', 'data/everyone/webtables.csv', 'data/family/absolute_records.csv', 'data/everyone/absolute_records.csv']) {
     try {
         await fs.access(path.join(outputDir, requiredFile));
     } catch {
@@ -89,7 +90,8 @@ function isForbiddenPreviewFile(relativePath) {
     const lowerPath = relativePath.toLowerCase();
 
     return [
-        /\.(xlsm|xlsx|xls|xlsb)$/i.test(lowerName),
+        /\.(xlsm|xlsx|xls|xlsb|xlam)$/i.test(lowerName),
+        /\.(bas|cls|frm|frx)$/i.test(lowerName),
         basename.startsWith('~$'),
         lowerName === '.env',
         /^\.env\./.test(lowerName),

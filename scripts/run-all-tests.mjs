@@ -6,6 +6,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 
 const checks = [
     ['Repository safety validation', ['scripts/validate-repository-safety.mjs']],
+    ['Vendored library validation', ['scripts/sync-vendor.mjs', '--check']],
     ['CSV validation', ['scripts/validate-csv.mjs']],
     ['Analytics configuration tests', ['tests/analytics-config.mjs']],
     ['PR release-path tests', ['tests/pr-release-path.mjs']],

@@ -221,7 +221,7 @@ function renderAbsoluteRecordGroup(group) {
 function renderAbsoluteRecordCard(record) {
     const empty = isEmptyAbsoluteRecord(record);
     const participant = record.athleteId && !empty
-        ? athleteLink(record.athleteId, escapeRecordHTML(record.participant))
+        ? athleteLink(record.athleteId, record.participant)
         : escapeRecordHTML(record.participant || 'No eligible result');
     const cardClasses = [
         'hof-card',
@@ -348,4 +348,13 @@ function escapeRecordHTML(value) {
         .replace(/'/g, '&#039;');
 }
 
-buildAbsoluteRecords();
+buildAbsoluteRecords().catch(error => {
+    console.error('Absolute records failed to render:', error);
+
+    const container = document.getElementById('absolute-records');
+
+    if (container) {
+        container.innerHTML =
+            '<p class="load-error" role="alert">Records could not be loaded. Please refresh to try again.</p>';
+    }
+});
