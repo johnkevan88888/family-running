@@ -127,6 +127,128 @@ const cases = [
             ];
             await fs.writeFile(comparisonFile, `${rows.join('\r\n')}\r\n`);
         }
+    },
+    // Absolute records are a fixed Men/Women by supported-distance matrix, so a
+    // dropped, duplicated, misfiled, or reordered record is a defect the Records
+    // page cannot show. Each case below breaks exactly one of those rules.
+    {
+        name: 'absolute record row missing from the matrix',
+        expected: 'Missing the Men 10 Mile absolute record row.',
+        mutate: async root => {
+            const lines = await readAbsoluteRecords(root);
+            lines.splice(3, 1);
+            await writeAbsoluteRecords(root, lines);
+            await setManifestRowCount(root, 'data/family/absolute_records.csv', lines.length - 1);
+        }
+    },
+    {
+        name: 'extra absolute record row',
+        expected: 'Unexpected extra record row',
+        mutate: async root => {
+            const lines = await readAbsoluteRecords(root);
+            lines.push(replaceCsvField(replaceCsvField(lines[10], 0, '160'), 2, "Women's bonus record"));
+            await writeAbsoluteRecords(root, lines);
+            await setManifestRowCount(root, 'data/family/absolute_records.csv', lines.length - 1);
+        }
+    },
+    {
+        name: 'duplicate absolute record distance',
+        expected: 'Duplicate absolute record for Men 10 km',
+        mutate: async root => {
+            const lines = await readAbsoluteRecords(root);
+            lines[5] = replaceCsvField(replaceCsvField(lines[5], 4, '10 km'), 5, '10 km');
+            await writeAbsoluteRecords(root, lines);
+        }
+    },
+    {
+        name: 'unsupported absolute record distance',
+        expected: 'Distance "Overall" must be one of: Marathon, Half Marathon, 10 Mile, 10 km, 5 km.',
+        mutate: async root => {
+            const lines = await readAbsoluteRecords(root);
+            lines[1] = replaceCsvField(lines[1], 4, 'Overall');
+            await writeAbsoluteRecords(root, lines);
+        }
+    },
+    {
+        name: 'invalid RecordGroup value',
+        expected: 'RecordGroup "Mens" must be one of: Men, Women.',
+        mutate: async root => {
+            const lines = await readAbsoluteRecords(root);
+            lines[1] = replaceCsvField(lines[1], 1, 'Mens');
+            await writeAbsoluteRecords(root, lines);
+        }
+    },
+    {
+        name: 'RecordGroup disagreeing with Sex',
+        expected: 'RecordGroup "Women" must match Sex "Men".',
+        mutate: async root => {
+            const lines = await readAbsoluteRecords(root);
+            lines[1] = replaceCsvField(lines[1], 1, 'Women');
+            await writeAbsoluteRecords(root, lines);
+        }
+    },
+    {
+        name: 'absolute records exported out of contracted order',
+        expected: 'Expected the Men Marathon record here, found "Men Half Marathon".',
+        mutate: async root => {
+            const lines = await readAbsoluteRecords(root);
+            [lines[1], lines[2]] = [lines[2], lines[1]];
+            await writeAbsoluteRecords(root, lines);
+        }
+    },
+    {
+        name: 'non-increasing absolute record SortOrder',
+        expected: "SortOrder 5 must be greater than the previous row's 10.",
+        mutate: async root => {
+            const lines = await readAbsoluteRecords(root);
+            lines[2] = replaceCsvField(lines[2], 0, '5');
+            await writeAbsoluteRecords(root, lines);
+        }
+    },
+    {
+        name: 'duplicate absolute record SortOrder',
+        expected: 'Duplicate SortOrder 10',
+        mutate: async root => {
+            const lines = await readAbsoluteRecords(root);
+            lines[2] = replaceCsvField(lines[2], 0, '10');
+            await writeAbsoluteRecords(root, lines);
+        }
+    },
+    {
+        name: 'absolute record ResultDistance for another distance',
+        expected: 'ResultDistance "5 km" is not the same distance as Distance "Marathon".',
+        mutate: async root => {
+            const lines = await readAbsoluteRecords(root);
+            lines[1] = replaceCsvField(lines[1], 5, '5 km');
+            await writeAbsoluteRecords(root, lines);
+        }
+    },
+    {
+        name: 'duplicate absolute RecordTitle',
+        expected: 'Duplicate RecordTitle "Men\'s Marathon record"',
+        mutate: async root => {
+            const lines = await readAbsoluteRecords(root);
+            lines[2] = replaceCsvField(lines[2], 2, "Men's Marathon record");
+            await writeAbsoluteRecords(root, lines);
+        }
+    },
+    // "No eligible result" is a real exported state, not a defect. The matrix
+    // rules above must not turn a legitimately vacant record into a failure.
+    {
+        name: 'vacant absolute record still validates',
+        expectPass: true,
+        mutate: async root => {
+            const lines = await readAbsoluteRecords(root);
+            let vacated = lines[5];
+
+            vacated = replaceCsvField(vacated, 6, 'No eligible result');
+            for (const fieldIndex of [7, 8, 9, 10, 12, 13, 14]) {
+                vacated = replaceCsvField(vacated, fieldIndex, '');
+            }
+
+            lines[5] = vacated;
+            await writeAbsoluteRecords(root, lines);
+        }
     }
 ];
 
@@ -139,13 +261,19 @@ for (const testCase of cases) {
         const result = await runValidator(root);
         const output = `${result.stdout}\n${result.stderr}`;
 
-        if (result.code === 0) {
-            throw new Error(`${testCase.name}: validator unexpectedly passed.`);
-        }
-        if (!output.includes(testCase.expected)) {
-            throw new Error(
-                `${testCase.name}: expected output containing "${testCase.expected}".\n${output}`
-            );
+        if (testCase.expectPass) {
+            if (result.code !== 0) {
+                throw new Error(`${testCase.name}: validator unexpectedly failed.\n${output}`);
+            }
+        } else {
+            if (result.code === 0) {
+                throw new Error(`${testCase.name}: validator unexpectedly passed.`);
+            }
+            if (!output.includes(testCase.expected)) {
+                throw new Error(
+                    `${testCase.name}: expected output containing "${testCase.expected}".\n${output}`
+                );
+            }
         }
 
         console.log(`PASS - ${testCase.name}`);
@@ -164,6 +292,34 @@ function replaceCsvField(line, index, value) {
     const fields = line.split(',');
     fields[index] = value;
     return fields.join(',');
+}
+
+function absoluteRecordsPath(root) {
+    return path.join(root, 'data', 'family', 'absolute_records.csv');
+}
+
+async function readAbsoluteRecords(root) {
+    return splitLines(await fs.readFile(absoluteRecordsPath(root), 'utf8'));
+}
+
+async function writeAbsoluteRecords(root, lines) {
+    await fs.writeFile(absoluteRecordsPath(root), `${lines.join('\r\n')}\r\n`);
+}
+
+// Adding or removing a record row also changes the manifest's contracted row
+// count, so keep them in step. Otherwise a matrix test would fail on the row
+// count instead of the rule it exists to prove.
+async function setManifestRowCount(root, relativePath, count) {
+    const file = path.join(root, 'data', 'export_manifest.csv');
+    const lines = splitLines(await fs.readFile(file, 'utf8'));
+    const rowIndex = lines.findIndex(line => line.includes(`,${relativePath},`));
+
+    if (rowIndex < 0) {
+        throw new Error(`Could not find ${relativePath} in the export manifest.`);
+    }
+
+    lines[rowIndex] = lines[rowIndex].replace(/\d+$/, String(count));
+    await fs.writeFile(file, `${lines.join('\r\n')}\r\n`);
 }
 
 function runValidator(validationRoot) {

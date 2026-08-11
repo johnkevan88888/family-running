@@ -158,11 +158,11 @@ window.paceDisplay = (function () {
     }
 
     function renderTimeWithPace(time, ...distanceCandidates) {
-        const timeHTML = `<span class="result-time">${escapePaceHTML(time)}</span>`;
+        const timeHTML = `<span class="result-time">${escapeHTML(time)}</span>`;
         const pacesHTML = renderPacesForTime(time, ...distanceCandidates);
 
         if (!pacesHTML) {
-            return escapePaceHTML(time);
+            return escapeHTML(time);
         }
 
         return `
@@ -191,8 +191,8 @@ window.paceDisplay = (function () {
         if (!perKm || !perMile) return '';
 
         return renderPaceValues(
-            escapePaceHTML(perKm),
-            escapePaceHTML(perMile),
+            escapeHTML(perKm),
+            escapeHTML(perMile),
             className
         );
     }
@@ -298,15 +298,6 @@ window.paceDisplay = (function () {
         return `${minutes}:${String(seconds).padStart(2, '0')}`;
     }
 
-    function escapePaceHTML(value) {
-        return String(value || '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
-
     return {
         formatTimeWithPaceText,
         initialize,
@@ -330,44 +321,87 @@ async function fetchCSV(file) {
             return response.text();
         })
         .then(text => {
-            const trimmed = text.trim();
+            // `Response.text()` strips a UTF-8 byte order mark, but a CSV read
+            // through another path may still carry one.
+            const csvText = text.replace(/^\uFEFF/, '');
 
-            if (!trimmed) {
+            if (!csvText.trim()) {
                 return [];
             }
 
-            return trimmed
-                .split(/\r?\n/)
-                .map(parseCSVRow);
+            try {
+                return parseCSV(csvText);
+            } catch (error) {
+                throw new Error(`${file}: ${error.message}`);
+            }
         });
 
     csvCache.set(file, promise);
     return promise;
 }
 
-function parseCSVRow(row) {
-    const result = [];
-    let current = '';
+// Parses the whole document rather than one line at a time, matching
+// `parseCsv` in scripts/validate-csv.mjs field for field. Splitting on line
+// breaks first cannot be correct: a quoted field is allowed to contain a
+// newline, so the browser would silently see two malformed rows where the
+// repository validator sees one valid one, and the exported value would render
+// wrongly on a file that passed every release check.
+function parseCSV(text) {
+    const rows = [];
+    let row = [];
+    let value = '';
     let insideQuotes = false;
 
-    for (let i = 0; i < row.length; i++) {
-        const char = row[i];
+    for (let index = 0; index < text.length; index += 1) {
+        const character = text[index];
+        const next = text[index + 1];
 
-        if (char === '"' && insideQuotes && row[i + 1] === '"') {
-            current += '"';
-            i += 1;
-        } else if (char === '"') {
-            insideQuotes = !insideQuotes;
-        } else if (char === ',' && !insideQuotes) {
-            result.push(current.trim());
-            current = '';
-        } else {
-            current += char;
+        if (character === '"') {
+            if (insideQuotes && next === '"') {
+                value += '"';
+                index += 1;
+            } else {
+                insideQuotes = !insideQuotes;
+            }
+            continue;
         }
+
+        if (character === ',' && !insideQuotes) {
+            row.push(value.trim());
+            value = '';
+            continue;
+        }
+
+        if ((character === '\r' || character === '\n') && !insideQuotes) {
+            row.push(value.trim());
+            rows.push(row);
+            row = [];
+            value = '';
+
+            if (character === '\r' && next === '\n') {
+                index += 1;
+            }
+            continue;
+        }
+
+        value += character;
     }
 
-    result.push(current.trim());
-    return result;
+    // Fail rather than guess. An unbalanced quote means every field after it is
+    // wrong, and a rejected load leaves a readable error on the page instead of
+    // mangled championship data.
+    if (insideQuotes) {
+        throw new Error('CSV contains an unclosed quoted field.');
+    }
+
+    if (value.length || row.length) {
+        row.push(value.trim());
+        rows.push(row);
+    }
+
+    return rows.filter((candidate, index) =>
+        !(index === rows.length - 1 && candidate.length === 1 && candidate[0] === '')
+    );
 }
 
 function csvRowsToObjects(rows) {

@@ -1,10 +1,29 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseCsv } from './export-bundle-tools.mjs';
+import {
+    findDataBundleProblems,
+    findVendorProblems,
+    resolvePreviewOutputDir
+} from './preview-artifact-contract.mjs';
 import { publishedSiteEntries } from './published-site-entries.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const outputDir = path.resolve(process.env.PREVIEW_OUTPUT_DIR || path.join(repoRoot, 'test-artifacts', 'preview-site'));
+
+// Resolved before anything is deleted. `fs.rm` below is recursive and forced, so
+// an unchecked PREVIEW_OUTPUT_DIR would silently destroy the repository root,
+// tracked `data/`, or any parent directory. The gate is fail-closed: only a
+// canonical absolute path inside the managed, Git-ignored artifact directory is
+// accepted.
+let outputDir;
+
+try {
+    outputDir = resolvePreviewOutputDir(process.env.PREVIEW_OUTPUT_DIR);
+} catch (error) {
+    console.error(`Refusing to build the preview artifact: ${error.message}`);
+    process.exit(1);
+}
 
 // The publishable site: everything the browser needs and nothing else. This
 // artifact is what GitHub Pages serves in production and what Netlify serves for
@@ -77,6 +96,24 @@ if (leakedFiles.length) {
     process.exit(1);
 }
 
+// `data/` and `vendor/` are copied as whole directories, so the whitelist above
+// says nothing about their contents. Both are checked against their own
+// contract instead: `data/` against the export manifest that defines one
+// complete CSV bundle, and `vendor/` against the exact set of pinned browser
+// libraries. Anything else in either directory would be published at its path.
+const contractProblems = [
+    ...findDataBundleProblems(publishedPaths, await readPublishedManifest()),
+    ...findVendorProblems(publishedPaths)
+];
+
+if (contractProblems.length) {
+    console.error('Published artifact does not match the data and vendored-library contract:');
+    for (const problem of contractProblems) {
+        console.error(`- ${problem}`);
+    }
+    process.exit(1);
+}
+
 for (const requiredFile of ['CNAME', 'robots.txt', 'index.html', 'championships.html', 'hall-of-fame.html', 'records.html', 'calculator.html', 'overview.html', 'athlete.html', 'analytics.js', 'records.js', 'calculator.js', 'vendor/chart.umd.min.js', 'vendor/chartjs-adapter-date-fns.bundle.min.js', 'data/family/webtables.csv', 'data/everyone/webtables.csv', 'data/family/absolute_records.csv', 'data/everyone/absolute_records.csv']) {
     try {
         await fs.access(path.join(outputDir, requiredFile));
@@ -87,6 +124,19 @@ for (const requiredFile of ['CNAME', 'robots.txt', 'index.html', 'championships.
 }
 
 console.log(`Preview artifact created at ${path.relative(repoRoot, outputDir)} (${copiedFiles.length} files).`);
+
+// Read from the artifact rather than the repository, so the contract is checked
+// against what would actually be served.
+async function readPublishedManifest() {
+    try {
+        return parseCsv(
+            await fs.readFile(path.join(outputDir, 'data', 'export_manifest.csv'), 'utf8')
+        );
+    } catch {
+        console.error('Published artifact is missing data/export_manifest.csv.');
+        process.exit(1);
+    }
+}
 
 async function listFiles(directory) {
     const entries = await fs.readdir(directory, { withFileTypes: true });

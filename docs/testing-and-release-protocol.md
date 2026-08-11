@@ -83,6 +83,12 @@ Run staged-export workflow regression tests:
 pnpm run test:staged-export
 ```
 
+Run preview artifact safety regression tests:
+
+```bash
+pnpm run test:artifact-safety
+```
+
 Run browser smoke tests and capture screenshots:
 
 ```bash
@@ -134,7 +140,7 @@ Vendored library validation compares every file in `vendor/` against the build r
 
 CSV validation checks `data/family/`, `data/everyone/`, and shared `data/athlete_results.csv`. Excel/VBA generates one `ExportBundleID` per full export and appends it to every public data CSV. VBA writes `data/export_manifest.csv` last, making it the export-completion and consistency contract. Its exact schema is `ExportBundleID,ExportedAtUTC,SchemaVersion,Scope,RelativePath,DataRowCount`, with schema version `1.0`, scopes limited to `family`, `everyone`, and `shared`, repository-relative paths, and row counts excluding headers. Validation rejects missing manifests, invalid schemas or paths, missing or mixed IDs, bundle mismatches, missing or unlisted files, duplicate manifest paths, inconsistent manifest metadata, and wrong row counts, so partial, stale, or mixed exports cannot pass release checks.
 
-The existing content checks remain in force: required files and headers, parseable CSV structure, matching row lengths, leaderboard files referenced by `webtables.csv`, athlete IDs used by links, official medal exports, parseable dates, numeric fields and times, non-empty Hall of Fame data, and non-empty enabled championship files. Validation also enforces the exact `crown_history.csv` contract, crown order and chronology, transition and previous-holder rules, and final-holder agreement with the All-Time Official Hall of Fame without deriving history in JavaScript. Athlete medals remain Excel-owned exports and are rendered directly from `official_medals.csv`; their rows must match the current exported official leaderboards. When present, `absolute_records.csv` must be a workbook-owned official raw-time export with Men and Women records, source-row audit fields, and no browser-derived record calculation. Vacant states such as "Championship Vacant" and "No eligible results" are accepted.
+The existing content checks remain in force: required files and headers, parseable CSV structure, matching row lengths, leaderboard files referenced by `webtables.csv`, athlete IDs used by links, official medal exports, parseable dates, numeric fields and times, non-empty Hall of Fame data, and non-empty enabled championship files. Validation also enforces the exact `crown_history.csv` contract, crown order and chronology, transition and previous-holder rules, and final-holder agreement with the All-Time Official Hall of Fame without deriving history in JavaScript. Athlete medals remain Excel-owned exports and are rendered directly from `official_medals.csv`; their rows must match the current exported official leaderboards. When present, `absolute_records.csv` must be a workbook-owned official raw-time export with Men and Women records, source-row audit fields, and no browser-derived record calculation. It is validated as a complete fixed matrix: exactly one row for each of Men and Women at Marathon, Half Marathon, 10 Mile, 10 km, and 5 km, in that order, with no missing, duplicated, extra, or reordered rows. `RecordGroup` must be `Men` or `Women` and must agree with the row's own `Sex`, `RecordTitle` must be unique, `ResultDistance` must be the same distance as `Distance`, and `SortOrder` must be numeric, unique, and strictly increasing so the exported order is reproducible rather than incidental. Vacant states such as "Championship Vacant" and "No eligible results" are accepted; a vacant record still occupies its place in the matrix but carries no performance to check.
 
 Analytics configuration tests prove that GoatCounter loads only for the
 production `www.aceofrace.com` and `aceofrace.com` domains, plus the legacy
@@ -146,7 +152,7 @@ paths. They also lock the integration to GoatCounter's current recommended
 loader without the stale subresource-integrity pin that previously caused
 browsers to block the script before it could submit a visit.
 
-Focused regression tests copy `data/` to temporary directories and prove validation rejects a changed CSV bundle ID, a CSV omitted from the manifest, and an incorrect manifest row count. Production CSVs are not mutated by these tests.
+Focused regression tests copy `data/` to temporary directories and prove validation rejects a changed CSV bundle ID, a CSV omitted from the manifest, and an incorrect manifest row count. They also prove it rejects a missing, extra, duplicated, misordered, or unsupported absolute record, an invalid `RecordGroup`, a `RecordGroup` that disagrees with its `Sex`, a duplicate or non-increasing `SortOrder`, a duplicate `RecordTitle`, and a `ResultDistance` for another distance, while a legitimately vacant record still validates. Production CSVs are not mutated by these tests.
 
 Staged-export regression tests also prove that a complete copied bundle
 validates, volatile bundle metadata is ignored during reconciliation,
@@ -163,6 +169,30 @@ vendored libraries, `CNAME`, and public `data/` bundle into
 from the publish directory. It also fails if documentation, scripts, tests,
 workflow files, or repository configuration appear in the artifact, because that
 artifact is the public web root for both Netlify previews and production.
+
+The build deletes its output directory recursively before rebuilding it, so
+`PREVIEW_OUTPUT_DIR` is resolved through a fail-closed gate before anything is
+removed. Only a canonical absolute path strictly inside the ignored
+`test-artifacts/` directory is accepted; the repository root, tracked `data/`
+and its descendants, parent and sibling directories, `test-artifacts/` itself,
+relative paths, traversal segments, and surrounding whitespace are all rejected.
+
+`data/` and `vendor/` are copied as whole directories, so the file whitelist
+says nothing about their contents. Each is checked against its own contract
+instead. Published `data/` must be exactly `data/export_manifest.csv` plus every
+path that manifest lists, so a scratch file, an editor backup, an unlisted
+export, or a missing contracted CSV fails the build rather than reaching the
+public web. Published `vendor/` must be exactly the vendored-library set defined
+in `scripts/vendored-library-files.mjs`, the same list `pnpm run validate:vendor`
+checks against the pnpm lockfile, so no file can be published from `vendor/`
+without also being pinned to a reviewed dependency.
+
+Preview artifact safety regression tests cover both gates. They assert every
+rejected output-directory shape, prove the build refuses an out-of-tree
+directory without deleting it by aiming a refused build at a throwaway
+directory containing a canary file, and prove both publication contracts on the
+real tree by adding one stray file to `data/` and one to `vendor/` and removing
+them again.
 
 The same artifact is deployed to GitHub Pages by
 `.github/workflows/deploy-pages.yml` on every push to `main`. Pages no longer
@@ -211,6 +241,15 @@ not.
 Desktop contexts run at 1440 x 900. Mobile contexts run at 390 x 844 with Chromium device emulation enabled, so the page's `<meta name="viewport">` tag is honoured and mobile assertions and screenshots reflect a real phone. Every public page is checked directly for a `width=device-width` viewport tag, an `<html lang>` attribute, and a layout width matching the emulated viewport. That check is deliberately explicit: a page missing the tag lays out at the roughly 980px desktop fallback, which does not overflow, so the horizontal overflow assertion alone would not catch it.
 
 Locally the tests use an installed system Chrome or Edge when one is present. When `CI` is set they use Playwright's own pinned Chromium, so continuous integration always tests the browser version recorded in the lockfile rather than whichever build the runner image happens to ship.
+
+A hostile-value regression test drives markup-bearing text through the exported
+`DisplayDistance` heading, the leaderboard `DisplayTitle`, a table header, and
+both the linked and unlinked participant paths. It proves the values render as
+literal text, that no element is created from them, and that no injected handler
+executes. A CSV-parsing regression test proves the browser parser reads quoted
+commas, escaped quotes, mixed CRLF and LF line endings, and quoted multiline
+fields exactly as `scripts/validate-csv.mjs` does, and fails closed on an
+unclosed quoted field rather than rendering mangled data.
 
 They check that each mode loads, uses the expected site title, renders Hall of Fame cards and leaderboards, requests only the selected mode's crown history, preserves the exported crown order and values, handles timeline expansion, empty exports and incomplete legacy identities, preserves the selected site in holder links, exposes athlete links where athlete data exists, opens an athlete profile, preserves the original `site` parameter in the back link, renders athlete medals exported by Excel directly from `data/<site>/official_medals.csv` without requesting leaderboard CSVs for those medal cards, renders the Records page empty state while tracked data has no absolute-records export, and never renders `ExportBundleID` names or values in tables or cards. They also check the athlete progression chart renders from the vendored Chart.js build on a real time scale, synthetic absolute-records data for Men and Women rendering, selected-site-only CSV requests, linked and unlinked athletes, empty exported record states, collapsible sections, vacant Hall of Fame states, horizontal overflow, JavaScript exceptions, and failed same-origin network requests.
 

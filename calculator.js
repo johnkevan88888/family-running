@@ -30,15 +30,15 @@
                 fetchCSV(currentChampionshipPath)
             ]);
 
-            const standards = rowsToObjects(standardsRows);
-            const athleteResults = rowsToObjects(athleteRows);
-            const manifest = rowsToObjects(manifestRows);
+            const standards = csvRowsToObjects(standardsRows);
+            const athleteResults = csvRowsToObjects(athleteRows);
+            const manifest = csvRowsToObjects(manifestRows);
             state.athletes = buildAthletes(standards, athleteResults);
-            state.defaultRivalry = closestCurrentRivalry(rowsToObjects(currentChampionshipRows));
+            state.defaultRivalry = closestCurrentRivalry(csvRowsToObjects(currentChampionshipRows));
             state.comparisonExportAvailable = manifest.some(row => row.RelativePath === comparisonPath);
 
             if (state.comparisonExportAvailable) {
-                state.comparisonTargets = rowsToObjects(await fetchCSV(comparisonPath));
+                state.comparisonTargets = csvRowsToObjects(await fetchCSV(comparisonPath));
                 state.comparisonPeriods = availableComparisonPeriods(state.comparisonTargets);
                 state.selectedComparisonPeriod = state.comparisonPeriods.includes('Current')
                     ? 'Current'
@@ -443,13 +443,6 @@
 
     function populateSelect(select, options) {
         select.replaceChildren(...options.map(option => new Option(option.label, option.value)));
-    }
-
-    function rowsToObjects(rows) {
-        const headers = rows[0] || [];
-        return rows.slice(1)
-            .filter(row => row.some(value => value !== ''))
-            .map(row => Object.fromEntries(headers.map((header, index) => [header, row[index] || ''])));
     }
 
     function athleteById(id) {

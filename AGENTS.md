@@ -31,9 +31,14 @@ Preserve the selected `site` parameter when navigating between championship page
 - `athlete.html` is the athlete profile page.
 - `athlete.js` loads shared athlete result data from `data/athlete_results.csv` and site-specific supporting exports from `data/<site>/`.
 - `utils.js` contains the shared CSV loading/parsing, HTML escaping, and
-  athlete-link helpers. `escapeHTML` and `csvRowsToObjects` live here only;
-  do not reintroduce per-file copies. `athleteLink` escapes its own label, so
-  call sites pass raw exported values.
+  athlete-link helpers. `escapeHTML`, `csvRowsToObjects`, and `parseCSV` live
+  here only; do not reintroduce per-file copies. `athleteLink` escapes its own
+  label, so call sites pass raw exported values. `parseCSV` parses the whole
+  document rather than one line at a time, matching `parseCsv` in
+  `scripts/validate-csv.mjs`, because a quoted field may contain a comma, an
+  escaped quote, or a newline. Do not reintroduce line-splitting.
+- Every exported CSV value that reaches a page as markup must be escaped,
+  including headings and table headers, not only participant names.
 - The site is deliberately excluded from search results. Every public page
   carries `<meta name="robots" content="noindex, follow">`, and `robots.txt` is
   deliberately permissive so crawlers can fetch pages and read that tag. Do not
@@ -49,10 +54,30 @@ Preserve the selected `site` parameter when navigating between championship page
   the artifact and must stay there or the custom domain is lost. Documentation,
   scripts, tests, workflow files, and repository configuration must never appear
   in the artifact; the build fails if they do.
+- The artifact build deletes its output directory recursively, so
+  `PREVIEW_OUTPUT_DIR` is gated fail-closed by
+  `scripts/preview-artifact-contract.mjs` before anything is removed. Only a
+  canonical absolute path strictly inside `test-artifacts/` is accepted.
+- `data/` and `vendor/` are copied whole, so the `runtimeEntries` whitelist says
+  nothing about their contents and each is checked against its own contract.
+  Published `data/` must be exactly `data/export_manifest.csv` plus the paths
+  that manifest lists. Published `vendor/` must be exactly the set in
+  `scripts/vendored-library-files.mjs`. Anything else fails the build.
 - `vendor/` holds committed browser libraries (Chart.js and its date adapter).
-  The public site must not load runtime code from a third-party CDN. Refresh
-  `vendor/` only with `pnpm run vendor:sync` after changing a pinned dependency
-  version in `package.json`; `pnpm test` fails if the two disagree.
+  The public site must not load runtime code from a third-party CDN for any site
+  functionality. Everything a page needs to render is served from this origin.
+  Refresh `vendor/` only with `pnpm run vendor:sync` after changing a pinned
+  dependency version in `package.json`; `pnpm test` fails if the two disagree.
+  `scripts/vendored-library-files.mjs` is the single list both the sync check
+  and the artifact build read.
+- The GoatCounter analytics loader is the one accepted exception to that rule,
+  decided on 11 August 2026. `analytics.js` loads `https://gc.zgo.at/count.js`
+  on production hostnames only, deliberately without a subresource-integrity
+  pin, because a stale pin against mutable loader content blocks the script and
+  collects nothing. It is analytics, not site functionality: every page renders
+  identically if it never loads. Do not add another exception, and do not extend
+  this one to anything a page needs in order to work. See "Production usage
+  analytics are aggregate and cookie-free" in `docs/decision-log.md`.
 - `data/family/` contains CSV exports for the Family mode.
 - `data/everyone/` contains CSV exports for the Everyone mode.
 - `data/athlete_results.csv` is shared profile result data used by athlete pages.
@@ -92,6 +117,7 @@ Before presenting a change for review, run the available local checks:
 - Repository safety validation.
 - Vendored library validation.
 - CSV validation for both `data/family/` and `data/everyone/`.
+- Preview artifact safety tests.
 - Browser smoke tests for both `?site=family` and `?site=everyone`.
 - Responsive screenshots for desktop and mobile views.
 

@@ -7,17 +7,42 @@ repository history. An item becomes active only when John approves it and
 
 ## Next candidate tasks
 
-1. **Crown-history enhancement.** Define a Phase 2 for All-Time Official crown
+1. **Mobile championship leaderboards are close to unreadable.** On
+   `index.html` and `championships.html` at 390 x 844 with device emulation, the
+   nine-column standings table renders at full width inside a 390px viewport.
+   Every column compresses until text wraps a character or two at a time: an
+   Age Graded Category badge reading "Regional Class" becomes a narrow vertical
+   strip of single letters, participant names such as "David Graham-Kevan" break
+   across four lines, and each row grows several times taller than it needs to
+   be. The Everyone mode is worse than Family simply because it has more rows;
+   its full-page mobile screenshot is roughly 15,800 pixels tall.
+
+   Nothing fails today, which is why this needs recording rather than fixing in
+   passing. There is no horizontal overflow, the viewport tag is correct, and
+   every automated mobile assertion passes, so the suite cannot see it. Only a
+   screenshot review does.
+
+   This is presentation work and must stay presentation work: ranking order,
+   values, medals, age grades, and categories are Excel-owned exports and cannot
+   be recomputed, reordered, or omitted on the basis of a browser-side judgement
+   about what matters. Approaches worth discussing, none of them chosen: a
+   card-per-athlete layout below a breakpoint, as the Records page already uses
+   successfully on mobile; a reduced default column set with the rest available
+   on demand; or letting the table scroll horizontally inside its own container.
+   Deliberately excluded from the 11 August 2026 audit remediation, which was
+   scoped to safety and correctness and must not redesign the site.
+
+2. **Crown-history enhancement.** Define a Phase 2 for All-Time Official crown
    history. The narrowest evidence-backed increment is to consider showing an
    existing holder's crown-improving performances, which the MVP explicitly
    excludes. Any added history must be replayed and exported by Excel/VBA; keep
    Current/12-Month history separate.
-2. **Athlete medal and crown presentation refinement.** Improve the information
+3. **Athlete medal and crown presentation refinement.** Improve the information
    hierarchy and clarity of the existing `official_medals.csv` medal cabinet and
    `crown_standards.csv` crown-target cards. This is a presentation proposal,
    not permission to calculate awards or targets in JavaScript.
 
-3. **Workbook-owned recency flag for athlete Recent Results.** `buildRecentResults`
+4. **Workbook-owned recency flag for athlete Recent Results.** `buildRecentResults`
    in `athlete.js` selects "Recent Results" using `new Date()`, so the twelve
    month window is measured against the visitor's own browser clock rather than
    the workbook's Current/12-Month period. Two visitors in different timezones,

@@ -866,9 +866,12 @@ async function buildLeaderboards() {
                 loaded: false
             });
 
+            // group.distance is the exported DisplayDistance value from
+            // webtables.csv. It reaches the page as markup, so it is escaped
+            // here for the same reason every other exported value is.
             pageHtml += `
                 <button class="distance-toggle" onclick="toggleSection(this)">
-                    ${arrow} ${group.distance}
+                    ${arrow} ${escapeHTML(group.distance)}
                 </button>
                 <div class="distance-content" data-group-id="${groupId}" style="display:${displayStyle};">
             `;

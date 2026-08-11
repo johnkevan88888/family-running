@@ -55,6 +55,8 @@ try {
 
     await runCrownHistoryEdgeCaseTests(browser);
     await runAbsoluteRecordsEdgeCaseTests(browser);
+    await runHostileExportedValueTests(browser);
+    await runCsvParsingContractTests(browser);
     await runCalculatorComparisonUnavailableEdgeCaseTests(browser);
     await runCalculatorComparisonEdgeCaseTests(browser);
 } finally {
@@ -1180,6 +1182,41 @@ async function runCrownHistoryEdgeCaseTests(browserInstance) {
             failures.push('crown-history edge case: unavailable Event rendered an empty field.');
         }
     });
+
+    // A quoted field is allowed to contain a newline, and the file is allowed to
+    // mix CRLF and LF. Both used to split a single exported row into several
+    // malformed ones before the page ever saw it.
+    const multilineRows =
+        `${header}\r\n` +
+        'Overall,All-Time Official,01/01/2020,legacy-runner,Legacy Runner,00:20:00,70.0%,"Legacy ""Road"", Series",,,,,' +
+        '"Initial qualifying holder\nrecorded across two lines"\n' +
+        'Overall,All-Time Official,02/01/2021,current-runner,Current Runner,00:19:00,72.0%,Winter Series,,Legacy Runner,,69.0%,Transferred from Legacy Runner\r\n';
+
+    await withSyntheticCrownHistory(browserInstance, multilineRows, async page => {
+        const entries = page.locator('.crown-history-item');
+
+        if (await entries.count() !== 2) {
+            failures.push(
+                `crown-history edge case: quoted multiline export rendered ${await entries.count()} transitions, expected 2.`
+            );
+            return;
+        }
+
+        const reason = normalizeText(await entries.nth(0).locator('.crown-history-reason').textContent());
+        if (reason !== 'Initial qualifying holder recorded across two lines') {
+            failures.push(`crown-history edge case: quoted multiline field rendered as "${reason}".`);
+        }
+
+        const event = normalizeText(await entries.nth(0).locator('.crown-history-event').textContent());
+        if (!event.includes('Legacy "Road", Series')) {
+            failures.push('crown-history edge case: quoted comma and escaped quotes were not preserved.');
+        }
+
+        const secondReason = normalizeText(await entries.nth(1).locator('.crown-history-reason').textContent());
+        if (secondReason !== 'Transferred from Legacy Runner') {
+            failures.push(`crown-history edge case: the row after an LF break rendered as "${secondReason}".`);
+        }
+    });
 }
 
 async function withSyntheticCrownHistory(browserInstance, csvText, assertion) {
@@ -1307,6 +1344,190 @@ async function withSyntheticAbsoluteRecords(browserInstance, manifestText, recor
         await assertion(page);
     } catch (error) {
         failures.push(`absolute-records edge case: ${error.message}`);
+    } finally {
+        await context.close();
+    }
+}
+
+// Every value on a championship page comes from an exported CSV, so an exported
+// value that reaches the page as markup is the whole attack surface. This drives
+// hostile text through the leaderboard headings, table headers, and both the
+// linked and unlinked participant paths, and proves it is rendered as text and
+// never executed.
+async function runHostileExportedValueTests(browserInstance) {
+    const bundleId = '20990101T010203004Z-A1B2C3D4';
+    const scriptProbe = 'window.__exportedValueScriptRan = true';
+    const hostileDistance = `<img src=x onerror="${scriptProbe}">10 km`;
+    const hostileTitle = `</h4><img src=x onerror="${scriptProbe}">Hostile Champions`;
+    const hostileHeader = `<img src=x onerror="${scriptProbe}">Notes`;
+    const hostileParticipant = `<script>${scriptProbe}</script>Linked Runner`;
+    const hostileUnlinkedParticipant = `<svg onload="${scriptProbe}"></svg>Unlinked Runner`;
+    const webtables = [
+        'SortOrder,TimeClass,DisplayDistance,DisplayTitle,DisplayDescription,FileName,Enabled,ExportBundleID',
+        [
+            '110',
+            'Official',
+            quoteCsvField(hostileDistance),
+            quoteCsvField(hostileTitle),
+            'Hostile description',
+            'hostile-current-official-family.csv',
+            'TRUE',
+            bundleId
+        ].join(',')
+    ].join('\r\n');
+    const leaderboard = [
+        [
+            'Rank',
+            'Participant',
+            'Race Year',
+            'Time Class',
+            'SexAgeEvent',
+            'Time',
+            'Age Graded Score',
+            'Age Graded Category',
+            'Athlete ID',
+            quoteCsvField(hostileHeader),
+            'ExportBundleID'
+        ].join(','),
+        [
+            '1',
+            quoteCsvField(hostileParticipant),
+            '2026',
+            'Official',
+            'M40|10 km',
+            '00:40:00',
+            '70.0%',
+            'Club',
+            'hostile-runner',
+            'first note',
+            bundleId
+        ].join(','),
+        [
+            '2',
+            quoteCsvField(hostileUnlinkedParticipant),
+            '2026',
+            'Official',
+            'M45|10 km',
+            '00:41:00',
+            '69.0%',
+            'Club',
+            '',
+            'second note',
+            bundleId
+        ].join(',')
+    ].join('\r\n');
+
+    const context = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+
+    await page.route('**/data/family/webtables.csv', route =>
+        route.fulfill({ status: 200, contentType: 'text/csv', body: `${webtables}\r\n` })
+    );
+    await page.route('**/data/family/hostile-current-official-family.csv', route =>
+        route.fulfill({ status: 200, contentType: 'text/csv', body: `${leaderboard}\r\n` })
+    );
+
+    try {
+        await page.goto(`${preview.baseUrl}/championships.html?site=family`, { waitUntil: 'domcontentloaded' });
+        await page.locator('.distance-toggle').first().waitFor({ state: 'visible' });
+
+        const toggle = page.locator('.distance-toggle').first();
+        const toggleText = await toggle.textContent();
+
+        if (!toggleText.includes(hostileDistance)) {
+            failures.push('hostile exported value: DisplayDistance was not rendered as literal text in its heading.');
+        }
+        if (await toggle.locator('img').count() !== 0) {
+            failures.push('hostile exported value: DisplayDistance produced an element inside its heading.');
+        }
+
+        await toggle.click();
+        await page.locator('#leaderboards table').first().waitFor({ state: 'visible' });
+        await waitForNetworkToSettle(page);
+
+        const leaderboardText = await page.locator('#leaderboards').textContent();
+
+        for (const [label, expected] of [
+            ['DisplayTitle', hostileTitle],
+            ['table header', hostileHeader],
+            ['linked participant', hostileParticipant],
+            ['unlinked participant', hostileUnlinkedParticipant]
+        ]) {
+            if (!leaderboardText.includes(expected)) {
+                failures.push(`hostile exported value: ${label} was not rendered as literal text.`);
+            }
+        }
+
+        for (const selector of ['#leaderboards img', '#leaderboards script', '#leaderboards svg']) {
+            if (await page.locator(selector).count() !== 0) {
+                failures.push(`hostile exported value: "${selector}" was created from an exported CSV value.`);
+            }
+        }
+
+        // The clinching assertion: the injected handlers never ran. Element
+        // absence alone would not catch a payload that executed and removed
+        // itself.
+        if (await page.evaluate(() => window.__exportedValueScriptRan) !== undefined) {
+            failures.push('hostile exported value: an exported CSV value executed script in the page.');
+        }
+    } catch (error) {
+        failures.push(`hostile exported value: ${error.message}`);
+    } finally {
+        await context.close();
+    }
+}
+
+// The browser and scripts/validate-csv.mjs must read the same bytes the same
+// way. A parser that splits on line breaks first cannot: it corrupts any quoted
+// field containing a newline, so a file that passes every release check would
+// still render wrongly.
+async function runCsvParsingContractTests(browserInstance) {
+    const fixture =
+        'Header A,Header B,Header C\r\n' +
+        'plain,"quoted, with comma","escaped ""quotes"" inside"\r\n' +
+        'lf-row,"multi\nline value",after-lf\n' +
+        'crlf-row,"crlf\r\nmultiline value",after-crlf\r\n';
+    const context = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+
+    try {
+        await page.goto(`${preview.baseUrl}/championships.html?site=family`, { waitUntil: 'domcontentloaded' });
+        await waitForRenderedChampionship(page, 'family');
+
+        const parsed = await page.evaluate(text => parseCSV(text), fixture);
+        const expected = [
+            ['Header A', 'Header B', 'Header C'],
+            ['plain', 'quoted, with comma', 'escaped "quotes" inside'],
+            ['lf-row', 'multi\nline value', 'after-lf'],
+            ['crlf-row', 'crlf\r\nmultiline value', 'after-crlf']
+        ];
+
+        if (JSON.stringify(parsed) !== JSON.stringify(expected)) {
+            failures.push(
+                `csv parsing: browser parse was ${JSON.stringify(parsed)}, expected ${JSON.stringify(expected)}.`
+            );
+        }
+
+        // parseCsv here is the repository validator's algorithm, so this asserts
+        // agreement rather than restating the expectation a second time.
+        if (JSON.stringify(parsed) !== JSON.stringify(parseCsv(fixture))) {
+            failures.push('csv parsing: the browser parser disagreed with the repository validator.');
+        }
+
+        const rejectsUnclosedQuote = await page.evaluate(() => {
+            try {
+                parseCSV('a,"unclosed\r\nb,c\r\n');
+                return false;
+            } catch {
+                return true;
+            }
+        });
+
+        if (!rejectsUnclosedQuote) {
+            failures.push('csv parsing: an unclosed quoted field was accepted instead of failing closed.');
+        }
+    } catch (error) {
+        failures.push(`csv parsing: ${error.message}`);
     } finally {
         await context.close();
     }
@@ -2251,6 +2472,10 @@ function sameOriginRequestPath(url) {
 
 function normalizeText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function quoteCsvField(value) {
+    return `"${String(value).replace(/"/g, '""')}"`;
 }
 
 function parseCsv(text) {
