@@ -242,6 +242,13 @@ Desktop contexts run at 1440 x 900. Mobile contexts run at 390 x 844 with Chromi
 
 Locally the tests use an installed system Chrome or Edge when one is present. When `CI` is set they use Playwright's own pinned Chromium, so continuous integration always tests the browser version recorded in the lockfile rather than whichever build the runner image happens to ship.
 
+A Recent Results window regression test proves the athlete page measures its
+twelve month window from the export's own `LastUpdatedUTC` rather than the
+visitor's clock. Its fixture is deliberately permanent: a synthetic export dated
+1 June 2020 with a result from 1 March 2020, which is inside the exported window
+but years outside any window measured from "now", so the assertion keeps
+discriminating however long after the fixture was written the suite runs.
+
 A hostile-value regression test drives markup-bearing text through the exported
 `DisplayDistance` heading, the leaderboard `DisplayTitle`, a table header, and
 both the linked and unlinked participant paths. It proves the values render as

@@ -2,18 +2,64 @@
 
 ## Task title
 
-None. No implementation task is in progress.
+Three approved open items, delivered as four sequenced Pull Requests.
 
 ## Status
 
-The audit remediation started on 11 August 2026 is merged, deployed, and
-verified in production. The next task should replace this entry with its own
-approved scope before implementation begins.
+In progress. John approved open items 4, 5, and 6 on 11 August 2026, after the
+audit remediation merged. Open items 1, 2, and 3 were **not** approved and
+remain untouched.
 
 This file has a history of going stale, describing work as in progress after it
 had merged. `AGENTS.md` directs agents to read it first, so a stale entry
-actively misleads. Keep it describing the settled state, and treat it as
-describing *no current work* until someone starts something.
+actively misleads. When this task finishes, rewrite it to describe the settled
+state again.
+
+## Approved scope
+
+Four Pull Requests, deliberately sequenced so `brand.css` lands last and styles
+the final markup rather than markup that is about to change.
+
+1. **Recent Results clock** (open item 4). Anchor the athlete page's twelve
+   month window to the exported `LastUpdatedUTC` instead of `new Date()`.
+   *In review.*
+2. **Branding metadata** (open item 5, part one). Bring the favicon, Open Graph
+   tags, meta descriptions, and `assets/brand/` forward from
+   `feat/ace-of-race-branding` onto current `main`, adding `assets/brand/` to
+   `publishedSiteEntries` so the images do not 404. No visual change to any
+   page. *Not started.*
+3. **Mobile leaderboard cards** (open item 6). Below a breakpoint, render each
+   athlete as a card instead of a table row, reusing the pattern the Records
+   page already uses. Every exported column stays visible; ordering and values
+   remain Excel-owned. *Not started.*
+4. **`brand.css` restyle** (open item 5, part two). The site-wide visual
+   redesign, separated so it gets its own preview review rather than being
+   merged alongside safe metadata. *Not started.*
+
+Decisions taken by John when approving: cards rather than reduced columns or
+horizontal scrolling, because it keeps every exported column visible and matches
+the Records page; and metadata before restyle, because they carry very different
+review risk.
+
+### Pull Request 1: Recent Results clock
+
+`buildRecentResults` in `athlete.js` measured its twelve month window from
+`new Date()`, so two visitors in different timezones, or the same visitor either
+side of midnight, could see different sets, and a result could appear there
+while sitting outside the Overview's window. The window now comes from
+`exportedWindowEnd`, which reads `LastUpdatedUTC` from the selected site's
+`siteinfo.csv`, falls back to the athlete's own latest exported result, and only
+then to the visitor's clock. Every step before the last is workbook-owned data.
+This mirrors `buildOverviewStats` in `leaderboard.js`, which has always anchored
+this way, so the two pages now agree.
+
+No upper bound was added. A result dated at or after the export timestamp should
+not exist, but hiding an athlete's newest result on their own page would be a
+worse failure than the asymmetry.
+
+This does not close open item 4. The browser still computes a rolling twelve
+months rather than reading workbook-owned period membership; that remains an
+export-contract proposal, recorded in `docs/roadmap.md`.
 
 ## What is live
 

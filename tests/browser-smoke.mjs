@@ -57,6 +57,7 @@ try {
     await runAbsoluteRecordsEdgeCaseTests(browser);
     await runHostileExportedValueTests(browser);
     await runCsvParsingContractTests(browser);
+    await runRecentResultsWindowTests(browser);
     await runCalculatorComparisonUnavailableEdgeCaseTests(browser);
     await runCalculatorComparisonEdgeCaseTests(browser);
 } finally {
@@ -1528,6 +1529,77 @@ async function runCsvParsingContractTests(browserInstance) {
         }
     } catch (error) {
         failures.push(`csv parsing: ${error.message}`);
+    } finally {
+        await context.close();
+    }
+}
+
+// The athlete page's Recent Results window must be measured from the export's
+// own LastUpdatedUTC, not from the visitor's clock. The fixture discriminates
+// permanently: the export is dated 1 June 2020, so a result from 1 March 2020
+// is inside the exported window but many years outside any window measured from
+// "now". If it renders, the window is anchored to exported data. If it
+// disappears, something has gone back to reading the clock.
+async function runRecentResultsWindowTests(browserInstance) {
+    const bundleId = '20990101T010203004Z-A1B2C3D4';
+    const siteInfo = [
+        'Label,Value,ExportBundleID',
+        `LastUpdatedUTC,2020-06-01T00:00:00Z,${bundleId}`,
+        `SiteName,"Family Running Championships",${bundleId}`
+    ].join('\r\n');
+    const athleteResults = [
+        'AthleteID,Participant,Date,Distance,Time,AgeGrade,Event,TimeClass,ExportBundleID',
+        `window-runner,Window Runner,01/03/2020,5 km,00:20:00,70.0%,Inside The Exported Window,Official,${bundleId}`,
+        `window-runner,Window Runner,01/03/2019,5 km,00:21:00,68.0%,Outside The Exported Window,Official,${bundleId}`
+    ].join('\r\n');
+
+    const context = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+
+    await page.route('**/data/family/siteinfo.csv', route =>
+        route.fulfill({ status: 200, contentType: 'text/csv', body: `${siteInfo}\r\n` })
+    );
+    await page.route('**/data/athlete_results.csv', route =>
+        route.fulfill({ status: 200, contentType: 'text/csv', body: `${athleteResults}\r\n` })
+    );
+
+    try {
+        await page.goto(
+            `${preview.baseUrl}/athlete.html?id=window-runner&site=family`,
+            { waitUntil: 'domcontentloaded' }
+        );
+        // Wait for the section to render at all rather than for a table.
+        // A regression here empties Recent Results, so waiting for a table
+        // would report a timeout instead of the assertion that explains why.
+        await page.waitForFunction(
+            () => (document.querySelector('#recent-results')?.innerHTML.trim().length || 0) > 0
+        );
+        await page.locator('#all-results table').waitFor({ state: 'visible' });
+        await waitForNetworkToSettle(page);
+
+        const recent = normalizeText(await page.locator('#recent-results').textContent());
+
+        if (!recent.includes('Inside The Exported Window')) {
+            failures.push(
+                'recent-results window: a result inside the exported twelve month window was omitted, so the window is being measured from the browser clock.'
+            );
+        }
+        if (recent.includes('Outside The Exported Window')) {
+            failures.push(
+                'recent-results window: a result outside the exported twelve month window was included.'
+            );
+        }
+
+        // Both results must still appear in the full list, so the window is
+        // filtering Recent Results only.
+        const all = normalizeText(await page.locator('#all-results').textContent());
+        for (const event of ['Inside The Exported Window', 'Outside The Exported Window']) {
+            if (!all.includes(event)) {
+                failures.push(`recent-results window: "${event}" is missing from the full results table.`);
+            }
+        }
+    } catch (error) {
+        failures.push(`recent-results window: ${error.message}`);
     } finally {
         await context.close();
     }
