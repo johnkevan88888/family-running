@@ -67,7 +67,8 @@ Unknown historical details are labelled rather than inferred.
 ## Absolute records are workbook-owned raw-time records
 
 - **Status:** Accepted
-- **Date:** 18 July 2026
+- **Date:** 18 July 2026; complete-matrix export enforcement added
+  11 August 2026
 - **Decision:** Absolute records are the fastest official raw times by sex and
   distance, exported separately for Family and Everyone. Excel/VBA owns the
   record selection and exposes the auditable source rows on the private
@@ -80,6 +81,24 @@ Unknown historical details are labelled rather than inferred.
   leaderboards or athlete-result CSVs in JavaScript. Record updates require a
   workbook export, staged review, and explicitly approved public-data
   promotion.
+- **Complete-matrix enforcement, 11 August 2026.** Validation originally checked
+  each row's own fields but nothing about the set, so a dropped, duplicated,
+  misfiled, or reordered record would have passed and the Records page would
+  simply have shown fewer records than exist. A valid export is now the complete
+  fixed matrix: exactly one row for each of Men and Women at Marathon, Half
+  Marathon, 10 Mile, 10 km, and 5 km, in that order. `RecordGroup` must be `Men`
+  or `Women` and must agree with the row's own `Sex`, because `RecordGroup` is
+  the heading the page renders. `RecordTitle` must be unique, `ResultDistance`
+  must be the same distance as `Distance`, and `SortOrder` must be numeric,
+  unique, and strictly increasing so the exported order is reproducible rather
+  than incidental. Vacant records are preserved deliberately: "No eligible
+  result" and "Championship Vacant" still occupy their place in the matrix and
+  carry no performance to check. This constrains what the workbook may export,
+  because it can no longer legitimately ship a partial or reordered set. Unlike
+  the withdrawn staging-parent claim, this repository verifies it: the supported
+  sexes and distances are `absoluteRecordSexes` and `absoluteRecordDistances` in
+  `scripts/validate-csv.mjs`, and adding or removing a supported distance means
+  changing those constants in the same change as the export.
 
 ## Public site navigation uses static page separation
 
@@ -192,8 +211,10 @@ Unknown historical details are labelled rather than inferred.
 
 ## Production usage analytics are aggregate and cookie-free
 
-- **Status:** Accepted
-- **Date:** 22 July 2026
+- **Status:** Accepted; scope of the third-party-runtime prohibition clarified
+  11 August 2026
+- **Date:** 22 July 2026; exception to the no-third-party-runtime rule recorded
+  11 August 2026
 - **Decision:** Production pages use the hosted GoatCounter account
   `familyrunning.goatcounter.com` for aggregate visit statistics. The tracker
   loads only on `www.aceofrace.com`, `aceofrace.com`, and the legacy
@@ -210,6 +231,24 @@ Unknown historical details are labelled rather than inferred.
   add a subresource-integrity pin for mutable external loader content: a stale
   pin blocks the script and prevents all visit collection. Client-side blocking
   means statistics are indicative rather than an exact access log.
+- **Clarification, 11 August 2026.** This entry and `AGENTS.md` contradicted
+  each other for three weeks. `AGENTS.md` stated flatly that the public site
+  must not load runtime code from a third-party CDN, which is what `vendor/`
+  exists to guarantee, while this decision requires exactly that for analytics
+  and forbids pinning it. The 11 August 2026 audit remediation surfaced the
+  contradiction without changing any analytics code, and John resolved it by
+  narrowing the prohibition rather than changing the integration. The rule now
+  reads: no third-party runtime code for site functionality. The GoatCounter
+  loader is the single named exception, because every page renders identically
+  if it never loads. Two consequences are accepted knowingly rather than fixed.
+  Without an integrity pin, whatever `gc.zgo.at` serves executes with full page
+  privileges on the production domain; that is the deliberate trade against a
+  stale pin, which is a certain failure rather than an unlikely one. And because
+  the loader runs only on production hostnames while the browser smoke tests
+  abort every cross-origin request, no automated test exercises it. Neither the
+  vendored-library check nor the published-`vendor/` contract says anything
+  about that host. Do not add a second exception, and do not extend this one to
+  anything a page needs in order to work.
 
 ## Age-grade comparisons group exported benchmarks by result class
 

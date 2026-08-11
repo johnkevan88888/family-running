@@ -15,6 +15,7 @@
     "vendor:sync": "node scripts/sync-vendor.mjs",
     "test:export-bundle": "node tests/export-bundle-validation.mjs",
     "test:staged-export": "node tests/staged-export-workflow.mjs",
+    "test:artifact-safety": "node tests/preview-artifact-safety.mjs",
     "test:browser": "node tests/browser-smoke.mjs",
     "screenshots:update": "node tests/browser-smoke.mjs --update-screenshots",
     "data:update": "node scripts/simple-data-update.mjs",

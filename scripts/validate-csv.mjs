@@ -18,6 +18,12 @@ const manifestHeaders = [
     'DataRowCount'
 ];
 const manifestSchemaVersion = '1.0';
+// The absolute-records export is a fixed matrix: one workbook-owned record per
+// sex and supported distance, in this order. Both lists are also the exported
+// row order, so validation can check completeness, uniqueness, and ordering
+// against one definition rather than three.
+const absoluteRecordSexes = ['Men', 'Women'];
+const absoluteRecordDistances = ['Marathon', 'Half Marathon', '10 Mile', '10 km', '5 km'];
 const errors = [];
 const warnings = [];
 const csvCache = new Map();
@@ -1524,18 +1530,134 @@ function validateAbsoluteRecords(siteDir) {
         'ExportBundleID'
     ]);
 
-    for (const row of toObjects(rows, file)) {
+    const objects = toObjects(rows, file);
+    const seenPairs = new Map();
+    const seenSortOrders = new Map();
+    const seenTitles = new Map();
+    let previousSortOrder = null;
+
+    // The workbook exports one record per sex and supported distance, so the
+    // whole matrix is known in advance. Checking each row against its expected
+    // position makes a dropped, duplicated, extra, or reordered record a
+    // validation failure instead of a silently shorter Records page.
+    const expectedMatrix = absoluteRecordSexes.flatMap(sex =>
+        absoluteRecordDistances.map(distance => ({ sex, distance }))
+    );
+
+    objects.forEach((row, index) => {
+        const expected = expectedMatrix[index];
+        const sex = String(row.Sex || '').trim();
+        const recordGroup = String(row.RecordGroup || '').trim();
+        const distance = String(row.Distance || '').trim();
+        const title = String(row.RecordTitle || '').trim();
+
         validateNumber(row.SortOrder, file, row.__rowNumber, 'SortOrder', { required: true });
-        requireValue(row.RecordGroup, file, row.__rowNumber, 'RecordGroup');
+        validateAllowed(row.RecordGroup, absoluteRecordSexes, file, row.__rowNumber, 'RecordGroup');
         requireValue(row.RecordTitle, file, row.__rowNumber, 'RecordTitle');
-        validateAllowed(row.Sex, ['Men', 'Women'], file, row.__rowNumber, 'Sex');
-        requireValue(row.Distance, file, row.__rowNumber, 'Distance');
+        validateAllowed(row.Sex, absoluteRecordSexes, file, row.__rowNumber, 'Sex');
+        validateAllowed(row.Distance, absoluteRecordDistances, file, row.__rowNumber, 'Distance');
         requireValue(row.ResultDistance, file, row.__rowNumber, 'ResultDistance');
         requireValue(row.Participant, file, row.__rowNumber, 'Participant');
 
+        // RecordGroup is what the Records page uses as a heading, so a row whose
+        // group disagrees with its own Sex would file a men's record under
+        // Women.
+        if (sex && recordGroup && recordGroup !== sex) {
+            addError(
+                file,
+                row.__rowNumber,
+                `RecordGroup "${recordGroup}" must match Sex "${sex}".`
+            );
+        }
+
+        if (sex && distance) {
+            const pairKey = `${sex}|${distance}`;
+            const firstSeen = seenPairs.get(pairKey);
+
+            if (firstSeen) {
+                addError(
+                    file,
+                    row.__rowNumber,
+                    `Duplicate absolute record for ${sex} ${distance}; already exported on row ${firstSeen}.`
+                );
+            } else {
+                seenPairs.set(pairKey, row.__rowNumber);
+            }
+        }
+
+        if (title) {
+            const firstSeen = seenTitles.get(title);
+
+            if (firstSeen) {
+                addError(
+                    file,
+                    row.__rowNumber,
+                    `Duplicate RecordTitle "${title}"; already exported on row ${firstSeen}.`
+                );
+            } else {
+                seenTitles.set(title, row.__rowNumber);
+            }
+        }
+
+        if (!expected) {
+            addError(
+                file,
+                row.__rowNumber,
+                `Unexpected extra record row; only ${expectedMatrix.length} rows are contracted.`
+            );
+        } else if (sex !== expected.sex || distance !== expected.distance) {
+            addError(
+                file,
+                row.__rowNumber,
+                `Expected the ${expected.sex} ${expected.distance} record here, found "${sex} ${distance}".`
+            );
+        }
+
+        // Both the browser and a human reviewer read this export in order, so
+        // the exported order must be reproducible rather than incidental.
+        const sortOrder = Number(String(row.SortOrder || '').trim());
+        if (Number.isFinite(sortOrder)) {
+            const firstSeen = seenSortOrders.get(sortOrder);
+
+            if (firstSeen) {
+                addError(
+                    file,
+                    row.__rowNumber,
+                    `Duplicate SortOrder ${sortOrder}; already exported on row ${firstSeen}.`
+                );
+            } else {
+                seenSortOrders.set(sortOrder, row.__rowNumber);
+            }
+
+            if (previousSortOrder !== null && sortOrder <= previousSortOrder) {
+                addError(
+                    file,
+                    row.__rowNumber,
+                    `SortOrder ${sortOrder} must be greater than the previous row's ${previousSortOrder}.`
+                );
+            }
+
+            previousSortOrder = sortOrder;
+        }
+
+        if (
+            distance &&
+            row.ResultDistance &&
+            canonicalDistanceKey(row.ResultDistance) !== canonicalDistanceKey(distance)
+        ) {
+            addError(
+                file,
+                row.__rowNumber,
+                `ResultDistance "${row.ResultDistance}" is not the same distance as Distance "${distance}".`
+            );
+        }
+
+        // "No eligible result" and "Championship Vacant" are valid exported
+        // states, so a vacant record still has to occupy its place in the matrix
+        // but carries no performance to check.
         const emptyRecord = isVacantParticipant(row.Participant) || isNoEligibleParticipant(row.Participant);
         if (emptyRecord) {
-            continue;
+            return;
         }
 
         validateAthleteId(row['Athlete ID'], file, row.__rowNumber, 'Athlete ID', { required: true });
@@ -1544,6 +1666,12 @@ function validateAbsoluteRecords(siteDir) {
         validateAllowed(row.TimeClass, ['Official'], file, row.__rowNumber, 'TimeClass');
         validatePercent(row.AgeGrade, file, row.__rowNumber, 'AgeGrade');
         validateNumber(row.SourceRow, file, row.__rowNumber, 'SourceRow', { required: true });
+    });
+
+    for (const { sex, distance } of expectedMatrix) {
+        if (!seenPairs.has(`${sex}|${distance}`)) {
+            addError(file, 1, `Missing the ${sex} ${distance} absolute record row.`);
+        }
     }
 }
 

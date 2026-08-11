@@ -42,7 +42,13 @@ export const publishingControlPaths = new Set([
     'package.json',
     'pnpm-lock.yaml',
     'scripts/build-preview-artifact.mjs',
-    'scripts/published-site-entries.mjs'
+    'scripts/published-site-entries.mjs',
+    // The artifact build imports these to decide where it may write and what
+    // `data/` and `vendor/` are allowed to contain, so a change to any of them
+    // can change the published site.
+    'scripts/preview-artifact-contract.mjs',
+    'scripts/vendored-library-files.mjs',
+    'scripts/export-bundle-tools.mjs'
 ]);
 
 const publishingControlPrefixes = ['.github/workflows/'];

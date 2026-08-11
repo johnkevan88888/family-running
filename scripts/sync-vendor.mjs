@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { vendoredLibraryFiles } from './vendored-library-files.mjs';
 
 // Vendored browser libraries are committed so the public site never depends on a
 // third-party CDN at runtime. This script is the only supported way to refresh
@@ -14,29 +15,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const vendorRoot = path.join(repoRoot, 'vendor');
 const checkOnly = process.argv.includes('--check');
 
-const vendoredFiles = [
-    {
-        source: 'chart.js/dist/chart.umd.min.js',
-        target: 'chart.umd.min.js'
-    },
-    {
-        source: 'chart.js/LICENSE.md',
-        target: 'LICENSE-chart.js.md'
-    },
-    {
-        source: 'chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js',
-        target: 'chartjs-adapter-date-fns.bundle.min.js'
-    },
-    {
-        source: 'chartjs-adapter-date-fns/LICENSE.md',
-        target: 'LICENSE-chartjs-adapter-date-fns.md'
-    },
-    {
-        // date-fns is bundled into the adapter build above, so its licence ships too.
-        source: 'date-fns/LICENSE.md',
-        target: 'LICENSE-date-fns.md'
-    }
-];
+const vendoredFiles = vendoredLibraryFiles;
 
 const problems = [];
 

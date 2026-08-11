@@ -95,7 +95,10 @@ export function resolveStagedRoot(value) {
     return stagedRoot;
 }
 
-function resolveCanonicalAbsolutePath(value, description) {
+// Exported so every fail-closed path gate in the repository -- staged export
+// roots and the preview artifact output directory alike -- decides "canonical
+// absolute path" the same way. A second implementation would drift.
+export function resolveCanonicalAbsolutePath(value, description) {
     if (!value || value !== value.trim() || !path.isAbsolute(value)) {
         throw new Error(
             `The ${description} must be a nonblank absolute path without surrounding whitespace.`
@@ -162,7 +165,7 @@ function stripTrailingSeparators(value) {
     return stripped;
 }
 
-function samePath(left, right) {
+export function samePath(left, right) {
     const leftValue = path.resolve(left);
     const rightValue = path.resolve(right);
 
@@ -171,7 +174,7 @@ function samePath(left, right) {
         : leftValue === rightValue;
 }
 
-function sameOrDescendantPath(candidate, parent) {
+export function sameOrDescendantPath(candidate, parent) {
     if (samePath(candidate, parent)) {
         return true;
     }
@@ -465,7 +468,7 @@ function countDataRows(filePath) {
     return Math.max(0, parseCsv(fs.readFileSync(filePath, 'utf8')).length - 1);
 }
 
-function parseCsv(text) {
+export function parseCsv(text) {
     const rows = [];
     let row = [];
     let value = '';
