@@ -58,6 +58,7 @@ try {
     await runHostileExportedValueTests(browser);
     await runCsvParsingContractTests(browser);
     await runRecentResultsWindowTests(browser);
+    await runBrandMetadataTests(browser);
     await runCalculatorComparisonUnavailableEdgeCaseTests(browser);
     await runCalculatorComparisonEdgeCaseTests(browser);
 } finally {
@@ -1600,6 +1601,99 @@ async function runRecentResultsWindowTests(browserInstance) {
         }
     } catch (error) {
         failures.push(`recent-results window: ${error.message}`);
+    } finally {
+        await context.close();
+    }
+}
+
+// Link previews and favicons fail silently: nothing on the page looks wrong when
+// an Open Graph tag is missing or its image 404s, so only a check like this
+// catches it. The asset requests are made from the page itself, so a path that
+// is correct in the repository but absent from the published artifact fails
+// here too.
+async function runBrandMetadataTests(browserInstance) {
+    const pages = [
+        'index.html',
+        'championships.html',
+        'hall-of-fame.html',
+        'records.html',
+        'calculator.html',
+        'overview.html',
+        'athlete.html'
+    ];
+    const requiredMeta = [
+        ['name', 'description'],
+        ['name', 'theme-color'],
+        ['name', 'twitter:card'],
+        ['property', 'og:type'],
+        ['property', 'og:site_name'],
+        ['property', 'og:title'],
+        ['property', 'og:description'],
+        ['property', 'og:image']
+    ];
+    const context = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+
+    try {
+        for (const pagePath of pages) {
+            await page.goto(`${preview.baseUrl}/${pagePath}?site=family`, { waitUntil: 'domcontentloaded' });
+
+            const head = await page.evaluate(() => ({
+                meta: [...document.querySelectorAll('meta')].map(node => ({
+                    key: node.getAttribute('name') || node.getAttribute('property') || '',
+                    content: node.getAttribute('content') || ''
+                })),
+                icons: [...document.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]')]
+                    .map(node => node.getAttribute('href') || '')
+            }));
+
+            for (const [, key] of requiredMeta) {
+                const tag = head.meta.find(entry => entry.key === key);
+
+                if (!tag) {
+                    failures.push(`brand metadata: ${pagePath} is missing its "${key}" tag.`);
+                } else if (!tag.content.trim()) {
+                    failures.push(`brand metadata: ${pagePath} has an empty "${key}" tag.`);
+                }
+            }
+
+            // The site serves both modes from one static file, so Open Graph
+            // text cannot vary by mode. Copy naming one mode would be wrong for
+            // every share of the other.
+            for (const key of ['description', 'og:title', 'og:description']) {
+                const content = head.meta.find(entry => entry.key === key)?.content.toLowerCase() || '';
+
+                if (content.includes('family') || content.includes('everyone')) {
+                    failures.push(
+                        `brand metadata: ${pagePath} "${key}" names a single site mode, but one static file serves both.`
+                    );
+                }
+            }
+
+            if (head.icons.length < 3) {
+                failures.push(`brand metadata: ${pagePath} declares ${head.icons.length} icon links, expected 3.`);
+            }
+
+            for (const href of head.icons) {
+                const response = await page.request.get(new URL(href, `${preview.baseUrl}/`).toString());
+
+                if (!response.ok()) {
+                    failures.push(`brand metadata: ${pagePath} icon "${href}" returned HTTP ${response.status()}.`);
+                }
+            }
+
+            const ogImage = head.meta.find(entry => entry.key === 'og:image')?.content || '';
+            const ogImagePath = ogImage.replace(/^https?:\/\/[^/]+\//, '');
+            const ogResponse = await page.request.get(`${preview.baseUrl}/${ogImagePath}`);
+
+            if (!ogResponse.ok()) {
+                failures.push(
+                    `brand metadata: ${pagePath} og:image "${ogImage}" is not served at ${ogImagePath} (HTTP ${ogResponse.status()}).`
+                );
+            }
+        }
+    } catch (error) {
+        failures.push(`brand metadata: ${error.message}`);
     } finally {
         await context.close();
     }

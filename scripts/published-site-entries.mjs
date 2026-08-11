@@ -30,6 +30,10 @@ export const publishedSiteEntries = [
     'calculator.css',
     'calculator.js',
     'utils.js',
+    // Brand imagery referenced by every page's favicon and Open Graph tags.
+    // Copied whole like `vendor` and `data`, so its contents are contracted in
+    // scripts/preview-artifact-contract.mjs rather than left unchecked.
+    'assets',
     'vendor',
     'data'
 ];

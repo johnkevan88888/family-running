@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseCsv } from './export-bundle-tools.mjs';
 import {
+    findAssetProblems,
     findDataBundleProblems,
     findVendorProblems,
     resolvePreviewOutputDir
@@ -96,25 +97,27 @@ if (leakedFiles.length) {
     process.exit(1);
 }
 
-// `data/` and `vendor/` are copied as whole directories, so the whitelist above
-// says nothing about their contents. Both are checked against their own
-// contract instead: `data/` against the export manifest that defines one
-// complete CSV bundle, and `vendor/` against the exact set of pinned browser
-// libraries. Anything else in either directory would be published at its path.
+// `data/`, `vendor/`, and `assets/` are copied as whole directories, so the
+// whitelist above says nothing about their contents. Each is checked against
+// its own contract instead: `data/` against the export manifest that defines
+// one complete CSV bundle, `vendor/` against the exact set of pinned browser
+// libraries, and `assets/` against the brand-image shape it is allowed to take.
+// Anything else in any of them would be published at its path.
 const contractProblems = [
     ...findDataBundleProblems(publishedPaths, await readPublishedManifest()),
-    ...findVendorProblems(publishedPaths)
+    ...findVendorProblems(publishedPaths),
+    ...findAssetProblems(publishedPaths)
 ];
 
 if (contractProblems.length) {
-    console.error('Published artifact does not match the data and vendored-library contract:');
+    console.error('Published artifact does not match its published-content contracts:');
     for (const problem of contractProblems) {
         console.error(`- ${problem}`);
     }
     process.exit(1);
 }
 
-for (const requiredFile of ['CNAME', 'robots.txt', 'index.html', 'championships.html', 'hall-of-fame.html', 'records.html', 'calculator.html', 'overview.html', 'athlete.html', 'analytics.js', 'records.js', 'calculator.js', 'vendor/chart.umd.min.js', 'vendor/chartjs-adapter-date-fns.bundle.min.js', 'data/family/webtables.csv', 'data/everyone/webtables.csv', 'data/family/absolute_records.csv', 'data/everyone/absolute_records.csv']) {
+for (const requiredFile of ['CNAME', 'robots.txt', 'index.html', 'championships.html', 'hall-of-fame.html', 'records.html', 'calculator.html', 'overview.html', 'athlete.html', 'analytics.js', 'records.js', 'calculator.js', 'assets/brand/ace-of-race-mark.svg', 'assets/brand/favicon-32.png', 'assets/brand/apple-touch-icon.png', 'assets/brand/og-image.png', 'vendor/chart.umd.min.js', 'vendor/chartjs-adapter-date-fns.bundle.min.js', 'data/family/webtables.csv', 'data/everyone/webtables.csv', 'data/family/absolute_records.csv', 'data/everyone/absolute_records.csv']) {
     try {
         await fs.access(path.join(outputDir, requiredFile));
     } catch {
