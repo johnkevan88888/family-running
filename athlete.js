@@ -769,12 +769,19 @@ function runWhenIdle(callback) {
     setTimeout(callback, 0);
 }
 
-function buildRecentResults(results) {
+// The twelve month window is measured from the export's own timestamp, never
+// from the visitor's clock. Measuring from `new Date()` meant two visitors in
+// different timezones, or the same visitor either side of midnight, could see
+// different "recent" sets, and a result could appear here while sitting outside
+// the Overview's window, which has always anchored to `LastUpdatedUTC`. Both
+// pages now measure from the same exported value.
+//
+// Deliberately no upper bound. A result dated at or after the export timestamp
+// should not exist, but if one ever did, hiding the athlete's newest result on
+// their own page would be a worse failure than the asymmetry.
+function buildRecentResults(results, windowEnd) {
     const recentContainer = document.getElementById('recent-results');
-
-    const today = new Date();
-    const twelveMonthsAgo = new Date(today);
-    twelveMonthsAgo.setFullYear(today.getFullYear() - 1);
+    const twelveMonthsAgo = window.dateDisplay.subtractMonths(windowEnd, 12);
 
     const recent = results.filter(row =>
         parseDate(row.Date) >= twelveMonthsAgo
@@ -782,6 +789,26 @@ function buildRecentResults(results) {
 
     recentContainer.innerHTML = renderAthleteResultsTable(recent);
     refreshPaceDisplay();
+}
+
+// Mirrors buildOverviewStats in leaderboard.js: the exported publication
+// timestamp first, then the athlete's own latest exported result, and only then
+// the visitor's clock. Every step before the last is workbook-owned data.
+async function exportedWindowEnd(results) {
+    const siteInfoRows = await fetchCSV(`data/${site}/siteinfo.csv`).catch(() => []);
+    const publishedAt = siteInfoRows.find(row => row[0] === 'LastUpdatedUTC')?.[1] || '';
+    const publishedDate = window.dateDisplay?.parse(String(publishedAt).split('T')[0]);
+
+    if (publishedDate) {
+        return publishedDate;
+    }
+
+    for (const row of results) {
+        const resultDate = window.dateDisplay?.parse(row.Date);
+        if (resultDate) return resultDate;
+    }
+
+    return new Date();
 }
 
 async function buildAthletePage() {
@@ -823,7 +850,7 @@ async function buildAthletePage() {
     await buildOfficialMedals(athleteResults);
     await buildCrownStandards();
     await buildAgeGradeStandards();
-    buildRecentResults(athleteResults);
+    buildRecentResults(athleteResults, await exportedWindowEnd(athleteResults));
     document.getElementById('all-results').innerHTML = '<p>Loading full results...</p>';
 
     runWhenIdle(() => {

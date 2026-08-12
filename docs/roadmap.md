@@ -42,18 +42,24 @@ repository history. An item becomes active only when John approves it and
    `crown_standards.csv` crown-target cards. This is a presentation proposal,
    not permission to calculate awards or targets in JavaScript.
 
-4. **Workbook-owned recency flag for athlete Recent Results.** `buildRecentResults`
-   in `athlete.js` selects "Recent Results" using `new Date()`, so the twelve
-   month window is measured against the visitor's own browser clock rather than
-   the workbook's Current/12-Month period. Two visitors in different timezones,
-   or the same visitor before and after midnight, can therefore see different
-   sets, and a result can appear under Recent Results while being outside the
-   Current championship period. The narrowest fix is an Excel/VBA-owned column on
+4. **Workbook-owned recency flag for athlete Recent Results.** Partially
+   addressed on 11 August 2026. `buildRecentResults` in `athlete.js` used
+   `new Date()`, so the twelve month window was measured against the visitor's
+   own browser clock: two visitors in different timezones, or the same visitor
+   either side of midnight, could see different sets. It now anchors to the
+   exported `LastUpdatedUTC`, the same value the Overview has always used, so
+   the two pages agree and every visitor sees the same set.
+
+   What remains needs the workbook. Anchoring to the export makes the window
+   deterministic, but the browser still computes a rolling twelve months rather
+   than reading the workbook's own Current/12-Month period membership, so a
+   result can still sit inside one and outside the other if those definitions
+   diverge. The complete fix is an Excel/VBA-owned column on
    `data/athlete_results.csv` marking each row's membership of the current
    period, with the browser filtering on the exported value instead of computing
-   a date window. This needs a workbook export-contract change, so it is a
-   proposal for John, not repository work. Related: the athlete page also picks
-   personal bests in JavaScript by sorting exported rows, which is a browser-side
+   a window at all. That is an export-contract change, so it stays a proposal
+   for John, not repository work. Related: the athlete page also picks personal
+   bests in JavaScript by sorting exported rows, which is a browser-side
    derivation of the same kind.
 
 ## Later candidate tasks
