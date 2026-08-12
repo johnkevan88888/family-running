@@ -246,6 +246,17 @@ Desktop contexts run at 1440 x 900. Mobile contexts run at 390 x 844 with Chromi
 
 Locally the tests use an installed system Chrome or Edge when one is present. When `CI` is set they use Playwright's own pinned Chromium, so continuous integration always tests the browser version recorded in the lockfile rather than whichever build the runner image happens to ship.
 
+A mobile leaderboard card regression test covers the narrow-viewport
+championship layout in both site modes. Below the 700px breakpoint each
+standings row renders as a card, so the test asserts the header row is hidden,
+rows render as blocks, each labelled cell carries its column name through
+`content: attr(data-label)`, and the rank and participant heading cells do not
+repeat theirs. Its most important assertion is content parity: the card fields
+must exactly equal the table's own column headers, so a future change cannot
+quietly drop a column and pass as a layout improvement. The same checks run at
+1440px in reverse, proving the desktop table still renders as a real table with
+its header row and no injected labels.
+
 A brand metadata regression test checks every public page for its description,
 theme colour, Open Graph, and Twitter card tags and its three icon links, then
 requests each icon and the Open Graph image to prove they are actually served

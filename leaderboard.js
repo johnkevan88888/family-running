@@ -673,19 +673,30 @@ function renderLeaderboardTable(rows) {
         ['3', '&#129353;']
     ]);
 
-    let html = '<table>';
+    // Real <thead>/<tbody>, and every cell carries its column name in
+    // data-label. Below the mobile breakpoint site.css turns each row into a
+    // card and reads that label back with content: attr(data-label), so the
+    // markup stays one semantic table for desktop and for screen readers while
+    // narrow viewports get a readable layout. Nine columns inside 390px
+    // otherwise wrap a character or two at a time.
+    let html = '<table><thead><tr>';
 
-    rows.forEach((row, rowIndex) => {
+    headers.forEach((header, cellIndex) => {
+        if (cellIndex === athleteIdIndex || header === 'ExportBundleID') {
+            return;
+        }
+
+        html += `<th>${escapeHTML(header)}</th>`;
+    });
+
+    html += '</tr></thead><tbody>';
+
+    rows.slice(1).forEach(row => {
         html += '<tr>';
         const rowObject = Object.fromEntries(headers.map((header, index) => [header, row[index] || '']));
 
         headers.forEach((header, cellIndex) => {
             if (cellIndex === athleteIdIndex || header === 'ExportBundleID') {
-                return;
-            }
-
-            if (rowIndex === 0) {
-                html += `<th>${escapeHTML(header)}</th>`;
                 return;
             }
 
@@ -732,13 +743,20 @@ function renderLeaderboardTable(rows) {
             if (category === 'national class') cell = '<span class="national">National Class</span>';
             if (category === 'world class') cell = '<span class="world">World Class</span>';
 
-            html += `<td>${cell}</td>`;
+            // Marked by index rather than by header text, so the card layout
+            // never depends on an exported string staying spelled the same.
+            const cellClasses = [
+                cellIndex === rankIndex ? 'cell-rank' : '',
+                cellIndex === participantIndex ? 'cell-participant' : ''
+            ].filter(Boolean).join(' ');
+
+            html += `<td${cellClasses ? ` class="${cellClasses}"` : ''} data-label="${escapeHTML(header)}">${cell}</td>`;
         });
 
         html += '</tr>';
     });
 
-    html += '</table>';
+    html += '</tbody></table>';
     return html;
 }
 

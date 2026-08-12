@@ -59,6 +59,7 @@ try {
     await runCsvParsingContractTests(browser);
     await runRecentResultsWindowTests(browser);
     await runBrandMetadataTests(browser);
+    await runMobileLeaderboardCardTests(browser);
     await runCalculatorComparisonUnavailableEdgeCaseTests(browser);
     await runCalculatorComparisonEdgeCaseTests(browser);
 } finally {
@@ -1696,6 +1697,130 @@ async function runBrandMetadataTests(browserInstance) {
         failures.push(`brand metadata: ${error.message}`);
     } finally {
         await context.close();
+    }
+}
+
+// Below the mobile breakpoint the championship standings render as one card per
+// athlete. The important property is not that it looks like a card but that
+// nothing was lost doing it: every exported column still reaches the reader, and
+// the desktop table is untouched. The old cramped table never failed a check,
+// because it fits 390px without overflowing, so these assertions are about
+// content parity rather than layout.
+async function runMobileLeaderboardCardTests(browserInstance) {
+    for (const mode of modes) {
+        const mobile = await browserInstance.newContext({
+            viewport: { width: 390, height: 844 },
+            deviceScaleFactor: 3,
+            isMobile: true,
+            hasTouch: true
+        });
+        const page = await mobile.newPage();
+
+        try {
+            await page.goto(`${preview.baseUrl}/championships.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+            await waitForRenderedChampionship(page, mode);
+            await waitForNetworkToSettle(page);
+
+            const layout = await page.evaluate(() => {
+                const table = document.querySelector('.leaderboard-section table');
+                const row = table.querySelector('tbody tr');
+
+                return {
+                    thead: getComputedStyle(table.querySelector('thead')).display,
+                    row: getComputedStyle(row).display,
+                    headers: [...table.querySelectorAll('thead th')].map(th => th.textContent.trim()),
+                    labels: [...row.querySelectorAll('td')].map(td => td.dataset.label || ''),
+                    labelled: [...row.querySelectorAll('td')].map(td => ({
+                        label: td.dataset.label || '',
+                        before: getComputedStyle(td, '::before').content,
+                        heading: td.classList.contains('cell-rank') || td.classList.contains('cell-participant'),
+                        empty: td.textContent.trim() === ''
+                    })),
+                    overflows: document.documentElement.scrollWidth > window.innerWidth
+                };
+            });
+
+            if (layout.thead !== 'none') {
+                failures.push(`mobile leaderboard cards (${mode}): the header row is still displayed.`);
+            }
+            if (layout.row !== 'block') {
+                failures.push(`mobile leaderboard cards (${mode}): rows did not become cards.`);
+            }
+            if (layout.overflows) {
+                failures.push(`mobile leaderboard cards (${mode}): the card layout overflows horizontally.`);
+            }
+
+            // Content parity: the card shows exactly the columns the table has.
+            // A card layout that quietly drops columns would be a regression
+            // dressed as an improvement.
+            if (layout.labels.join('|') !== layout.headers.join('|')) {
+                failures.push(
+                    `mobile leaderboard cards (${mode}): card fields ${layout.labels.join(', ')} do not match table columns ${layout.headers.join(', ')}.`
+                );
+            }
+
+            for (const cell of layout.labelled) {
+                if (cell.heading) {
+                    if (cell.before !== 'none') {
+                        failures.push(
+                            `mobile leaderboard cards (${mode}): the "${cell.label}" heading cell repeats its label.`
+                        );
+                    }
+                    continue;
+                }
+
+                if (cell.empty) {
+                    continue;
+                }
+
+                if (!cell.before.includes(cell.label)) {
+                    failures.push(
+                        `mobile leaderboard cards (${mode}): "${cell.label}" renders without its column label.`
+                    );
+                }
+            }
+        } catch (error) {
+            failures.push(`mobile leaderboard cards (${mode}): ${error.message}`);
+        } finally {
+            await mobile.close();
+        }
+
+        // The same markup must still be a table on a wide viewport. Scoping the
+        // card layout to a media query is the whole point.
+        const desktop = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
+        const desktopPage = await desktop.newPage();
+
+        try {
+            await desktopPage.goto(`${preview.baseUrl}/championships.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+            await waitForRenderedChampionship(desktopPage, mode);
+            await waitForNetworkToSettle(desktopPage);
+
+            const desktopLayout = await desktopPage.evaluate(() => {
+                const table = document.querySelector('.leaderboard-section table');
+
+                return {
+                    thead: getComputedStyle(table.querySelector('thead')).display,
+                    row: getComputedStyle(table.querySelector('tbody tr')).display,
+                    before: getComputedStyle(table.querySelector('tbody td'), '::before').content
+                };
+            });
+
+            if (desktopLayout.thead === 'none') {
+                failures.push(`mobile leaderboard cards (${mode}): the desktop table lost its header row.`);
+            }
+            if (desktopLayout.row !== 'table-row') {
+                failures.push(
+                    `mobile leaderboard cards (${mode}): the desktop table stopped rendering as rows (${desktopLayout.row}).`
+                );
+            }
+            if (desktopLayout.before !== 'none') {
+                failures.push(`mobile leaderboard cards (${mode}): desktop cells repeat their column label.`);
+            }
+        } catch (error) {
+            failures.push(`mobile leaderboard cards (${mode}) desktop: ${error.message}`);
+        } finally {
+            await desktop.close();
+        }
     }
 }
 

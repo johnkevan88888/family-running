@@ -1259,6 +1259,104 @@
         width: 34px;
     }
 
+    /* Championship standings become one card per athlete below this width.
+       The nine-column table technically fits 390px without overflowing, which
+       is why no automated check ever caught it, but every value wrapped a
+       character or two at a time: "Regional Class" became a vertical strip of
+       single letters and a hyphenated name broke across four lines.
+
+       This is presentation only. The markup is still one semantic table, so
+       desktop and screen readers are unaffected, every exported column stays
+       visible, and the exported order is untouched. Nothing is hidden or
+       reordered on the browser's judgement about what matters. */
+    .leaderboard-section table,
+    .leaderboard-section tbody,
+    .leaderboard-section tbody tr,
+    .leaderboard-section tbody td {
+        display: block;
+    }
+
+    /* The column names move into each cell's data-label instead. */
+    .leaderboard-section thead {
+        display: none;
+    }
+
+    .leaderboard-section table {
+        border-collapse: separate;
+        font-size: 0.95rem;
+        table-layout: auto;
+    }
+
+    .leaderboard-section tbody tr {
+        background: #ffffff;
+        border: 1px solid #dfe6ee;
+        border-radius: 10px;
+        box-shadow: 0 2px 6px rgba(15,36,56,0.06);
+        margin-bottom: 12px;
+        padding: 10px 14px;
+        position: relative;
+    }
+
+    /* Rank and participant become the card's heading rather than two more
+       label/value rows. The name is what a reader scans for, and a uniform
+       list of eight labelled rows buries it. */
+    .leaderboard-section tbody td.cell-participant {
+        display: block;
+        font-size: 1.06rem;
+        font-weight: 750;
+        padding: 0 62px 8px 0;
+    }
+
+    .leaderboard-section tbody td.cell-rank {
+        display: block;
+        padding: 0;
+        position: absolute;
+        right: 14px;
+        top: 10px;
+        text-align: right;
+    }
+
+    .leaderboard-section tbody td.cell-participant::before,
+    .leaderboard-section tbody td.cell-rank::before {
+        content: none;
+    }
+
+    .leaderboard-section tbody td {
+        align-items: baseline;
+        border: 0;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: minmax(84px, 38%) 1fr;
+        overflow-wrap: anywhere;
+        padding: 6px 0;
+        text-align: left;
+        width: auto;
+    }
+
+    .leaderboard-section tbody td:first-child {
+        width: auto;
+    }
+
+    /* Separators between the labelled rows only, not under the heading. */
+    .leaderboard-section tbody td:not(.cell-rank):not(.cell-participant) + td {
+        border-top: 1px solid #f0f3f7;
+    }
+
+    .leaderboard-section tbody td::before {
+        color: #5e6b78;
+        content: attr(data-label);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    /* A vacant or partially exported row leaves real empty cells. Showing a
+       label with nothing beside it would be noise, so drop the whole cell. */
+    .leaderboard-section tbody td:empty {
+        display: none;
+    }
+
     .medal {
         font-size: 1.45em;
     }
