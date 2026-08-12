@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
     defaultPreviewOutputDir,
+    findAssetProblems,
     findDataBundleProblems,
     findVendorProblems,
     managedArtifactRoot,
@@ -230,11 +231,43 @@ assert.deepEqual(findVendorProblems(['index.html']).length, 5);
 
 console.log('PASS - published vendor/ must be exactly the vendored library set');
 
+const assetBundle = [
+    'index.html',
+    'assets/brand/ace-of-race-mark.svg',
+    'assets/brand/favicon-32.png',
+    'assets/brand/apple-touch-icon.png',
+    'assets/brand/og-image.png'
+];
+
+assert.deepEqual(findAssetProblems(assetBundle), []);
+assert.deepEqual(
+    findAssetProblems([...assetBundle, 'assets/brand/tracker.js']),
+    ['Published assets/ contains "assets/brand/tracker.js", which is not one of: .svg, .png, .jpg, .jpeg, .webp, .ico, .avif.']
+);
+assert.deepEqual(
+    findAssetProblems([...assetBundle, 'assets/brand/notes.md']),
+    ['Published assets/ contains "assets/brand/notes.md", which is not one of: .svg, .png, .jpg, .jpeg, .webp, .ico, .avif.']
+);
+assert.deepEqual(
+    findAssetProblems([...assetBundle, 'assets/brand/README']),
+    ['Published assets/ contains "assets/brand/README", which is not one of: .svg, .png, .jpg, .jpeg, .webp, .ico, .avif.']
+);
+assert.deepEqual(
+    findAssetProblems([...assetBundle, 'assets/private/workbook-notes.png']),
+    ['Published assets/ contains "assets/private/workbook-notes.png", which is outside assets/brand/.']
+);
+// Missing assets are caught by the build's required-file list rather than here,
+// so an incomplete set is not a contract problem.
+assert.deepEqual(findAssetProblems(['index.html']), []);
+
+console.log('PASS - published assets/ must be brand images only');
+
 // Wiring proof for both contracts: a real build of the real tree, with one
 // stray file added to each directory and removed again afterwards.
 const buildOutputDir = path.join(managedArtifactRoot, `preview-site-safety-${process.pid}`);
 const strayDataFile = path.join(trackedDataRoot, '__artifact-contract-probe__.csv');
 const strayVendorFile = path.join(repoRoot, 'vendor', '__artifact-contract-probe__.js');
+const strayAssetFile = path.join(repoRoot, 'assets', 'brand', '__artifact-contract-probe__.js');
 
 try {
     await fs.writeFile(strayDataFile, 'Header,ExportBundleID\r\nValue,PROBE\r\n', 'utf8');
@@ -255,6 +288,15 @@ try {
     assert.match(strayVendor.output, /not one of the vendored libraries/);
 
     await fs.rm(strayVendorFile, { force: true });
+    await fs.writeFile(strayAssetFile, 'window.__probe = true;\n', 'utf8');
+
+    const strayAsset = await runBuild({ PREVIEW_OUTPUT_DIR: buildOutputDir });
+
+    assert.notEqual(strayAsset.code, 0, 'The build published a script from the brand assets directory.');
+    assert.match(strayAsset.output, /assets\/brand\/__artifact-contract-probe__\.js/);
+    assert.match(strayAsset.output, /is not one of/);
+
+    await fs.rm(strayAssetFile, { force: true });
 
     const clean = await runBuild({ PREVIEW_OUTPUT_DIR: buildOutputDir });
 
@@ -262,13 +304,14 @@ try {
 } finally {
     await fs.rm(strayDataFile, { force: true });
     await fs.rm(strayVendorFile, { force: true });
+    await fs.rm(strayAssetFile, { force: true });
     await fs.rm(buildOutputDir, { recursive: true, force: true });
 }
 
 // The probes are deliberately created inside tracked directories, so leaving one
 // behind would look like an export defect to the next person. Prove they are
 // gone rather than trusting the cleanup above.
-for (const probe of [strayDataFile, strayVendorFile]) {
+for (const probe of [strayDataFile, strayVendorFile, strayAssetFile]) {
     assert.equal(
         await pathExists(probe),
         false,

@@ -177,22 +177,26 @@ removed. Only a canonical absolute path strictly inside the ignored
 and its descendants, parent and sibling directories, `test-artifacts/` itself,
 relative paths, traversal segments, and surrounding whitespace are all rejected.
 
-`data/` and `vendor/` are copied as whole directories, so the file whitelist
-says nothing about their contents. Each is checked against its own contract
-instead. Published `data/` must be exactly `data/export_manifest.csv` plus every
-path that manifest lists, so a scratch file, an editor backup, an unlisted
-export, or a missing contracted CSV fails the build rather than reaching the
-public web. Published `vendor/` must be exactly the vendored-library set defined
-in `scripts/vendored-library-files.mjs`, the same list `pnpm run validate:vendor`
-checks against the pnpm lockfile, so no file can be published from `vendor/`
-without also being pinned to a reviewed dependency.
+`data/`, `vendor/`, and `assets/` are copied as whole directories, so the file
+whitelist says nothing about their contents. Each is checked against its own
+contract instead. Published `data/` must be exactly `data/export_manifest.csv`
+plus every path that manifest lists, so a scratch file, an editor backup, an
+unlisted export, or a missing contracted CSV fails the build rather than
+reaching the public web. Published `vendor/` must be exactly the
+vendored-library set defined in `scripts/vendored-library-files.mjs`, the same
+list `pnpm run validate:vendor` checks against the pnpm lockfile, so no file can
+be published from `vendor/` without also being pinned to a reviewed dependency.
+Published `assets/` must be brand imagery only: everything under
+`assets/brand/`, and only vector or raster image formats, so a stylesheet,
+script, or document cannot be served from the public web root by being dropped
+into the assets folder.
 
 Preview artifact safety regression tests cover both gates. They assert every
 rejected output-directory shape, prove the build refuses an out-of-tree
 directory without deleting it by aiming a refused build at a throwaway
-directory containing a canary file, and prove both publication contracts on the
-real tree by adding one stray file to `data/` and one to `vendor/` and removing
-them again.
+directory containing a canary file, and prove all three publication contracts on
+the real tree by adding one stray file to `data/`, one to `vendor/`, and one to
+`assets/brand/` and removing them again.
 
 The same artifact is deployed to GitHub Pages by
 `.github/workflows/deploy-pages.yml` on every push to `main`. Pages no longer
@@ -241,6 +245,14 @@ not.
 Desktop contexts run at 1440 x 900. Mobile contexts run at 390 x 844 with Chromium device emulation enabled, so the page's `<meta name="viewport">` tag is honoured and mobile assertions and screenshots reflect a real phone. Every public page is checked directly for a `width=device-width` viewport tag, an `<html lang>` attribute, and a layout width matching the emulated viewport. That check is deliberately explicit: a page missing the tag lays out at the roughly 980px desktop fallback, which does not overflow, so the horizontal overflow assertion alone would not catch it.
 
 Locally the tests use an installed system Chrome or Edge when one is present. When `CI` is set they use Playwright's own pinned Chromium, so continuous integration always tests the browser version recorded in the lockfile rather than whichever build the runner image happens to ship.
+
+A brand metadata regression test checks every public page for its description,
+theme colour, Open Graph, and Twitter card tags and its three icon links, then
+requests each icon and the Open Graph image to prove they are actually served
+rather than only referenced. It also fails if the description, `og:title`, or
+`og:description` names a single site mode: one static file serves both Family
+and Everyone, so mode-specific share copy would be wrong for every share of the
+other mode.
 
 A Recent Results window regression test proves the athlete page measures its
 twelve month window from the export's own `LastUpdatedUTC` rather than the

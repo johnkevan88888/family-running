@@ -148,6 +148,41 @@ export function findVendorProblems(publishedPaths) {
     return problems.sort();
 }
 
+// `assets/` is the third directory copied whole, so the same gap applies: the
+// file whitelist says nothing about what is inside it. These are hand-curated
+// brand images rather than generated or dependency-derived files, so the
+// contract is a shape rather than an exact list -- images and vector art only,
+// under `assets/brand/`. A stylesheet, script, or document appearing here would
+// be served from the public web root without ever passing a review that
+// expected it to.
+const allowedAssetExtensions = ['.svg', '.png', '.jpg', '.jpeg', '.webp', '.ico', '.avif'];
+
+export function findAssetProblems(publishedPaths) {
+    const published = publishedPaths
+        .map(normalizeArtifactPath)
+        .filter(entry => entry === 'assets' || entry.startsWith('assets/'));
+    const problems = [];
+
+    for (const relativePath of published) {
+        if (!relativePath.startsWith('assets/brand/')) {
+            problems.push(
+                `Published assets/ contains "${relativePath}", which is outside assets/brand/.`
+            );
+            continue;
+        }
+
+        const extension = relativePath.slice(relativePath.lastIndexOf('.')).toLowerCase();
+
+        if (!relativePath.includes('.') || !allowedAssetExtensions.includes(extension)) {
+            problems.push(
+                `Published assets/ contains "${relativePath}", which is not one of: ${allowedAssetExtensions.join(', ')}.`
+            );
+        }
+    }
+
+    return problems.sort();
+}
+
 function normalizeArtifactPath(value) {
     return String(value || '')
         .trim()

@@ -22,12 +22,12 @@ the final markup rather than markup that is about to change.
 
 1. **Recent Results clock** (open item 4). Anchor the athlete page's twelve
    month window to the exported `LastUpdatedUTC` instead of `new Date()`.
-   *In review.*
+   *Merged as Pull Request #41 on 11 August 2026.*
 2. **Branding metadata** (open item 5, part one). Bring the favicon, Open Graph
    tags, meta descriptions, and `assets/brand/` forward from
    `feat/ace-of-race-branding` onto current `main`, adding `assets/brand/` to
    `publishedSiteEntries` so the images do not 404. No visual change to any
-   page. *Not started.*
+   page. *In review.*
 3. **Mobile leaderboard cards** (open item 6). Below a breakpoint, render each
    athlete as a card instead of a table row, reusing the pattern the Records
    page already uses. Every exported column stays visible; ordering and values
@@ -60,6 +60,44 @@ worse failure than the asymmetry.
 This does not close open item 4. The browser still computes a rolling twelve
 months rather than reading workbook-owned period membership; that remains an
 export-contract proposal, recorded in `docs/roadmap.md`.
+
+### Pull Request 2: Branding metadata
+
+Adds the description, theme colour, Open Graph, Twitter card, and favicon
+metadata to all seven public pages, and publishes the four brand images those
+tags reference. Nothing visible on any page changes and no existing text was
+edited.
+
+Three deliberate departures from `feat/ace-of-race-branding`, each recorded
+because the branch is being partially superseded rather than merged:
+
+1. **`<title>` was left alone.** The branch renames every page title to
+   "Ace of Race | Family running championships". Titles are visible in tabs,
+   bookmarks, and history, so that rename belongs with the visual redesign in
+   Pull Request 4, not in a change that is otherwise invisible.
+2. **The share copy was made mode-neutral.** The branch's `og:title` and
+   description both say "family championships", but one static file serves both
+   `?site=family` and `?site=everyone`, and Open Graph tags cannot vary by query
+   parameter. Every Everyone-mode share would have been labelled Family. The
+   neutral wording keeps the branch's own tagline, "Every age. Every pace. Every
+   race counts.", and drops only the mode-specific framing. A browser test now
+   fails if "family" or "everyone" reappears in that copy.
+3. **Only referenced assets were published.** `track-pattern.svg` is used only
+   by `brand.css`, so it comes with Pull Request 4. `icon-512.png` is referenced
+   by nothing at all and is also 512 x 576 rather than square, despite its name,
+   so it was left on the branch.
+
+Adding `assets` to `publishedSiteEntries` created a third copied-whole
+directory, which would have reintroduced exactly the gap Pull Request #39 closed
+for `data/` and `vendor/`. `findAssetProblems` closes it in the same change:
+published `assets/` must be under `assets/brand/` and in an image format, so a
+script or document dropped there cannot reach the public web root.
+
+Known limitation carried into review: `og-image.png` is 1200 x 630, which is
+correct, but 984 KB, which is roughly five times heavier than it needs to be for
+that size. It is the branch's own artwork, so it was published unmodified rather
+than re-encoded. Recompressing it is worth doing before the site is shared
+widely, particularly on mobile data.
 
 ## What is live
 

@@ -58,11 +58,18 @@ Preserve the selected `site` parameter when navigating between championship page
   `PREVIEW_OUTPUT_DIR` is gated fail-closed by
   `scripts/preview-artifact-contract.mjs` before anything is removed. Only a
   canonical absolute path strictly inside `test-artifacts/` is accepted.
-- `data/` and `vendor/` are copied whole, so the `runtimeEntries` whitelist says
-  nothing about their contents and each is checked against its own contract.
-  Published `data/` must be exactly `data/export_manifest.csv` plus the paths
-  that manifest lists. Published `vendor/` must be exactly the set in
-  `scripts/vendored-library-files.mjs`. Anything else fails the build.
+- `data/`, `vendor/`, and `assets/` are copied whole, so the `runtimeEntries`
+  whitelist says nothing about their contents and each is checked against its
+  own contract. Published `data/` must be exactly `data/export_manifest.csv`
+  plus the paths that manifest lists. Published `vendor/` must be exactly the
+  set in `scripts/vendored-library-files.mjs`. Published `assets/` must be brand
+  imagery only, under `assets/brand/` and in an image format. Anything else
+  fails the build. Adding a fourth copied-whole directory means adding its
+  contract in the same change.
+- Open Graph and description metadata must stay mode-neutral. One static file
+  serves both `?site=family` and `?site=everyone`, so share copy naming one mode
+  is wrong for every share of the other. Browser tests fail on "family" or
+  "everyone" appearing in `description`, `og:title`, or `og:description`.
 - `vendor/` holds committed browser libraries (Chart.js and its date adapter).
   The public site must not load runtime code from a third-party CDN for any site
   functionality. Everything a page needs to render is served from this origin.
