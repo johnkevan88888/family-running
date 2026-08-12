@@ -31,7 +31,7 @@ the final markup rather than markup that is about to change.
 3. **Mobile leaderboard cards** (open item 6). Below a breakpoint, render each
    athlete as a card instead of a table row, reusing the pattern the Records
    page already uses. Every exported column stays visible; ordering and values
-   remain Excel-owned. *Not started.*
+   remain Excel-owned. *In review.*
 4. **`brand.css` restyle** (open item 5, part two). The site-wide visual
    redesign, separated so it gets its own preview review rather than being
    merged alongside safe metadata. *Not started.*
@@ -98,6 +98,34 @@ correct, but 984 KB, which is roughly five times heavier than it needs to be for
 that size. It is the branch's own artwork, so it was published unmodified rather
 than re-encoded. Recompressing it is worth doing before the site is shared
 widely, particularly on mobile data.
+
+### Pull Request 3: Mobile leaderboard cards
+
+Below the existing 700px breakpoint, each championship standings row renders as
+a card: the participant name as the card heading with the rank or medal at the
+top right, and the remaining columns as labelled rows. Previously the
+nine-column table was squeezed into 390px, so "Regional Class" became a vertical
+strip of single letters and a hyphenated name broke across four lines.
+
+The markup stays one semantic table. `renderLeaderboardTable` now emits a real
+`<thead>` and `<tbody>` and gives each `<td>` a `data-label`; the card layout is
+entirely a media query in `site.css` that hides the header row and reads the
+labels back with `content: attr(data-label)`. Desktop and screen readers are
+therefore unaffected, and nothing is hidden, reordered, or summarised on the
+browser's judgement about which exported columns matter. The rank and
+participant cells are marked by column index rather than by header text, so the
+layout never depends on an exported string staying spelled the same.
+
+The honest trade: the Championships page at 390px is now about 8,570 CSS pixels
+tall against roughly 4,450 before. Cards are inherently taller than table rows.
+Making the name the card heading rather than another labelled row saved about
+770 pixels of that and made the list scannable, but the page is still close to
+twice as long. Readability was the approved goal, so this is the intended
+outcome rather than a regression, and it is recorded here so nobody has to
+rediscover it.
+
+Not in scope: the athlete profile page's own results tables use six columns and
+were left alone, since the approved item was the championship leaderboard.
 
 ## What is live
 
