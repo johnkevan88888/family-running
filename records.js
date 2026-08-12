@@ -191,20 +191,13 @@ function groupAbsoluteRecords(records) {
         group.records.push(record);
     }
 
-    return groups.sort(compareAbsoluteRecordGroups);
-}
-
-function compareAbsoluteRecordGroups(a, b) {
-    return absoluteRecordGroupSortValue(a.title) - absoluteRecordGroupSortValue(b.title);
-}
-
-function absoluteRecordGroupSortValue(title) {
-    const value = String(title || '').trim().toLowerCase();
-
-    if (value === 'women') return 10;
-    if (value === 'men') return 20;
-
-    return 999;
+    // Groups appear in the order the exported rows first introduce them. The
+    // records above are already sorted by the workbook-owned SortOrder, so this
+    // preserves the exported order rather than imposing one. A browser-owned
+    // group sort used to put Women before Men, which reversed the export and
+    // meant changing the workbook could not correct the page. Audit finding
+    // P2-01.
+    return groups;
 }
 
 function renderAbsoluteRecordGroup(group) {

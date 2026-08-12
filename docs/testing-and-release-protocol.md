@@ -227,8 +227,14 @@ one changed existing CSV under `data/`, requires the complete tracked public
 CSV bundle to be refreshed, permits only optional
 `docs/active-work.md` notes alongside it, rejects added or removed CSVs, and
 compares every changed CSV header against `main` to reject schema changes. The
-domain route requires a valid root `CNAME` and permits only the explicit domain,
-analytics, test, workflow, and documentation allowlist. Other code,
+domain route requires the root `CNAME` to contain exactly the approved
+production hostname, `www.aceofrace.com`, compared case-insensitively, and
+permits only the explicit domain, analytics, test, workflow, and documentation
+allowlist. A syntax check alone previously let any valid hostname take the
+preview-skipping route and self-approve it; a genuine domain migration must now
+change `CUSTOM_DOMAIN_CANONICAL_HOST` in
+`scripts/validate-pr-release-path.mjs`, its tests, this document, and the DNS
+plan together, through the standard preview pathway. Other code,
 configuration, schema, export-set, and broader documentation changes fail the
 eligibility gate and must use a standard Deploy Preview.
 
@@ -245,6 +251,13 @@ not.
 Desktop contexts run at 1440 x 900. Mobile contexts run at 390 x 844 with Chromium device emulation enabled, so the page's `<meta name="viewport">` tag is honoured and mobile assertions and screenshots reflect a real phone. Every public page is checked directly for a `width=device-width` viewport tag, an `<html lang>` attribute, and a layout width matching the emulated viewport. That check is deliberately explicit: a page missing the tag lays out at the roughly 980px desktop fallback, which does not overflow, so the horizontal overflow assertion alone would not catch it.
 
 Locally the tests use an installed system Chrome or Edge when one is present. When `CI` is set they use Playwright's own pinned Chromium, so continuous integration always tests the browser version recorded in the lockfile rather than whichever build the runner image happens to ship.
+
+The Records page renders its groups in exported order rather than imposing one.
+Browser coverage derives the expected group sequence from the exported
+`SortOrder` in the CSV under test instead of restating the workbook-owned
+matrix, so changing the export changes the expectation. The page and its test
+previously both forced Women before Men, which reversed the export and meant a
+workbook change could not correct the page.
 
 A mobile leaderboard card regression test covers the narrow-viewport
 championship layout in both site modes. Below the 700px breakpoint each

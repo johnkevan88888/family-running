@@ -112,6 +112,31 @@ Validation on 12 August: `git diff --check` passed; every non-browser stage of
 browser suite passed separately for both modes at desktop and mobile sizes,
 with responsive screenshots regenerated under ignored `test-artifacts/`.
 
+## Audit findings remediated on 12 August 2026
+
+John approved P2-01 and P2-02 for implementation. Both remove a case where the
+repository overrode something it does not own.
+
+- **P2-01.** `records.js` sorted record groups Women before Men, reversing the
+  workbook-owned export order that the validator requires, and its browser test
+  reimplemented the same override so the test protected it. The page now keeps
+  the order in which groups first appear after the exported `SortOrder` sort,
+  and the test derives the expected sequence from the export under test instead
+  of restating the matrix. The visible effect is that the Records page now
+  renders Men before Women, matching the export.
+- **P2-02.** The custom-domain release gate checked only that `CNAME` was
+  syntactically a hostname, so any valid hostname could take the
+  preview-skipping route and self-approve it. It now requires exactly
+  `www.aceofrace.com`, compared case-insensitively so a case variant of the same
+  host is still accepted.
+
+Both were verified by reverting them: restoring the group override fails the
+Records assertions in all four mode/viewport combinations plus the synthetic
+edge case, and removing the hostname pin fails the release-path tests.
+
+P2-03 and P2-04 remain open below. The full record stays in
+[Audit of Pull Requests #19 to #32](pr-19-32-audit.md).
+
 ## Open items
 
 None of these are approved work. Each needs John's explicit scope before
@@ -122,28 +147,20 @@ starting.
    exporting until that constant is edited by hand. Documented in
    `docs/workbook-export-workflow.md`; the fix is a workbook change, not
    repository work.
-2. **The Records page reverses the workbook-owned group order.** The export and
-   validator require Men then Women, but `records.js` and its browser test force
-   Women then Men. Remove the browser-owned group sort and preserve exported
-   `SortOrder`. Audit finding P2-01.
-3. **The custom-domain release gate accepts any valid hostname.** It checks
-   `CNAME` syntax but does not require the approved `www.aceofrace.com` value,
-   so an unintended valid hostname can qualify for `[skip netlify]`. Audit
-   finding P2-02.
-4. **The guided routine-data updater can merge before screenshot review.**
+2. **The guided routine-data updater can merge before screenshot review.**
    `PUBLISH` is entered before the Pull Request and CI screenshot artifact
    exist; after the required check passes the updater merges immediately, with
    no post-PR review confirmation. Audit finding P2-04.
-5. **The repository is public.** `data/athlete_results.csv` carries real names,
+3. **The repository is public.** `data/athlete_results.csv` carries real names,
    age categories, event names, and dates, and is readable and indexable on
    GitHub regardless of the site's `noindex`. Closing that route needs a private
    repository, which needs a paid GitHub plan for Pages to keep working.
-6. **Workbook-owned recency for Recent Results.** #41 removed the visitor-clock
+4. **Workbook-owned recency for Recent Results.** #41 removed the visitor-clock
    dependency, but the browser still computes a rolling twelve months rather
    than reading the workbook's own Current/12-Month period membership. The
    complete fix is an Excel/VBA-owned column on `data/athlete_results.csv`.
    Recorded in `docs/roadmap.md`.
-7. **The athlete page derives personal bests in JavaScript.**
+5. **The athlete page derives personal bests in JavaScript.**
    `buildPersonalBests` in `athlete.js` selects each distance's fastest time and
    best age grade from exported rows in the browser, while the Calculator solves
    the same problem by reading workbook-owned `athlete_comparison_targets.csv`,
@@ -152,7 +169,7 @@ starting.
    and the Family pairwise export does not cover every direct profile route.
    Prefer a dedicated shared workbook-owned PB export over a cross-mode fallback
    or continued browser calculation. Audit finding P2-03.
-8. **`og-image.png` is oversized.** 1200 x 630 is correct, but 984 KB is roughly
+6. **`og-image.png` is oversized.** 1200 x 630 is correct, but 984 KB is roughly
    five times heavier than it needs to be. It is published unmodified because it
    is John's artwork. Worth recompressing before the site is shared widely.
 
