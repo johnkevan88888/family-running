@@ -92,6 +92,26 @@ visible; and branding metadata before the visual restyle, because the two carry
 very different review risk. The second of those is why the restyle could be
 parked without holding anything else up.
 
+## Audit completed on 12 August 2026
+
+Pull Requests #19 to #32 have now been audited. The durable report is
+[Audit of Pull Requests #19 to #32](pr-19-32-audit.md). It records the review
+method, a Pull Request-by-Pull Request disposition, historical issues already
+remediated, and four open P2 findings. No remediation is approved merely by
+being documented there.
+
+The personal-best reconciliation found no current visible disagreement: all 70
+distinct Family and all 96 distinct Everyone All Time benchmark keys select the
+same source performance in JavaScript and the workbook export. The architecture
+conflict remains because the selectors are independent, their tie-breaking can
+diverge, and the Family pairwise export does not cover direct profile routes for
+eight result-bearing athletes outside the Family roster.
+
+Validation on 12 August: `git diff --check` passed; every non-browser stage of
+`pnpm test` passed before the command wrapper's two-minute limit; and the final
+browser suite passed separately for both modes at desktop and mobile sizes,
+with responsive screenshots regenerated under ignored `test-artifacts/`.
+
 ## Open items
 
 None of these are approved work. Each needs John's explicit scope before
@@ -102,30 +122,37 @@ starting.
    exporting until that constant is edited by hand. Documented in
    `docs/workbook-export-workflow.md`; the fix is a workbook change, not
    repository work.
-2. **Pull Requests #19 to #32 have never been audited.** The records page, the
-   age-grade calculator, the analytics integration, and the guided data-update
-   workflow all postdate the original audit, roughly 12,500 lines. Three
-   separate unreviewed areas have now yielded real defects on inspection: #39
-   found five in already-audited code, the branding branch carried two, and the
-   personal-bests derivation below was found by accident.
-3. **The repository is public.** `data/athlete_results.csv` carries real names,
+2. **The Records page reverses the workbook-owned group order.** The export and
+   validator require Men then Women, but `records.js` and its browser test force
+   Women then Men. Remove the browser-owned group sort and preserve exported
+   `SortOrder`. Audit finding P2-01.
+3. **The custom-domain release gate accepts any valid hostname.** It checks
+   `CNAME` syntax but does not require the approved `www.aceofrace.com` value,
+   so an unintended valid hostname can qualify for `[skip netlify]`. Audit
+   finding P2-02.
+4. **The guided routine-data updater can merge before screenshot review.**
+   `PUBLISH` is entered before the Pull Request and CI screenshot artifact
+   exist; after the required check passes the updater merges immediately, with
+   no post-PR review confirmation. Audit finding P2-04.
+5. **The repository is public.** `data/athlete_results.csv` carries real names,
    age categories, event names, and dates, and is readable and indexable on
    GitHub regardless of the site's `noindex`. Closing that route needs a private
    repository, which needs a paid GitHub plan for Pages to keep working.
-4. **Workbook-owned recency for Recent Results.** #41 removed the visitor-clock
+6. **Workbook-owned recency for Recent Results.** #41 removed the visitor-clock
    dependency, but the browser still computes a rolling twelve months rather
    than reading the workbook's own Current/12-Month period membership. The
    complete fix is an Excel/VBA-owned column on `data/athlete_results.csv`.
    Recorded in `docs/roadmap.md`.
-5. **The athlete page derives personal bests in JavaScript.**
+7. **The athlete page derives personal bests in JavaScript.**
    `buildPersonalBests` in `athlete.js` selects each distance's fastest time and
    best age grade from exported rows in the browser, while the Calculator solves
    the same problem by reading workbook-owned `athlete_comparison_targets.csv`,
    which already exports Best Age Grade and Fastest Time per distance and result
-   class. The same concept therefore has two sources of truth that can disagree.
-   Probably fixed by rendering the athlete page from the export the Calculator
-   already uses, but it needs checking whether that export covers every athlete.
-6. **`og-image.png` is oversized.** 1200 x 630 is correct, but 984 KB is roughly
+   class. Current public rows agree, but the same concept still has two selectors
+   and the Family pairwise export does not cover every direct profile route.
+   Prefer a dedicated shared workbook-owned PB export over a cross-mode fallback
+   or continued browser calculation. Audit finding P2-03.
+8. **`og-image.png` is oversized.** 1200 x 630 is correct, but 984 KB is roughly
    five times heavier than it needs to be. It is published unmodified because it
    is John's artwork. Worth recompressing before the site is shared widely.
 
