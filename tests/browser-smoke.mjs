@@ -875,8 +875,11 @@ async function assertAbsoluteRecordsPage(page, mode, viewport, requestedPaths) {
     const groupLabels = await page.$$eval('.absolute-records-group h3', nodes =>
         nodes.map(node => node.textContent.trim())
     );
-    if (groupLabels.join('|') !== 'Women|Men') {
-        failures.push(`${context}: records page groups were ${groupLabels.join(', ')}, expected Women, Men.`);
+    const expectedGroups = expectedAbsoluteRecordGroups(rows);
+    if (groupLabels.join('|') !== expectedGroups.join('|')) {
+        failures.push(
+            `${context}: records page groups were ${groupLabels.join(', ')}, expected ${expectedGroups.join(', ')} in exported order.`
+        );
     }
 
     const displayRows = sortAbsoluteRecordRowsForDisplay(rows);
@@ -886,26 +889,27 @@ async function assertAbsoluteRecordsPage(page, mode, viewport, requestedPaths) {
     }
 }
 
+// Display order is exported order, nothing more. This used to reimplement the
+// page's Women-before-Men group override, which meant the test protected the
+// very behaviour that reversed the workbook's export. Audit finding P2-01.
 function sortAbsoluteRecordRowsForDisplay(rows) {
-    return [...rows].sort((a, b) => {
-        const groupDifference = absoluteRecordGroupDisplayOrder(a.RecordGroup) -
-            absoluteRecordGroupDisplayOrder(b.RecordGroup);
-
-        if (groupDifference !== 0) {
-            return groupDifference;
-        }
-
-        return Number(a.SortOrder || 999) - Number(b.SortOrder || 999);
-    });
+    return [...rows].sort((a, b) => Number(a.SortOrder || 999) - Number(b.SortOrder || 999));
 }
 
-function absoluteRecordGroupDisplayOrder(group) {
-    const value = String(group || '').trim().toLowerCase();
+// Derived from the export rather than restated, so this cannot become a second
+// hardcoded copy of the workbook-owned matrix.
+function expectedAbsoluteRecordGroups(rows) {
+    const groups = [];
 
-    if (value === 'women') return 10;
-    if (value === 'men') return 20;
+    for (const row of sortAbsoluteRecordRowsForDisplay(rows)) {
+        const group = String(row.RecordGroup || '').trim();
 
-    return 999;
+        if (group && !groups.includes(group)) {
+            groups.push(group);
+        }
+    }
+
+    return groups;
 }
 
 async function assertRenderedAbsoluteRecord(card, row, mode, context) {
@@ -1267,12 +1271,14 @@ async function runAbsoluteRecordsEdgeCaseTests(browserInstance) {
         const groups = await page.$$eval('.absolute-records-group h3', nodes =>
             nodes.map(node => node.textContent.trim())
         );
-        if (groups.join('|') !== 'Women|Men') {
-            failures.push(`absolute-records edge case: groups were ${groups.join(', ')}, expected Women, Men.`);
+        // The fixture exports SortOrder 10 and 20 for Men and 110 for Women, so
+        // exported order is Men then Women. Card indexes below follow from that.
+        if (groups.join('|') !== 'Men|Women') {
+            failures.push(`absolute-records edge case: groups were ${groups.join(', ')}, expected Men, Women.`);
         }
 
         await assertRenderedAbsoluteRecord(
-            cards.nth(1),
+            cards.nth(0),
             {
                 RecordTitle: "Men's 5 km record",
                 Distance: '5 km',
@@ -1289,14 +1295,14 @@ async function runAbsoluteRecordsEdgeCaseTests(browserInstance) {
             'absolute-records edge case linked record'
         );
 
-        const emptyText = normalizeText(await cards.nth(2).textContent());
+        const emptyText = normalizeText(await cards.nth(1).textContent());
         if (!emptyText.includes('No eligible result') || !emptyText.includes("Men's 10 km record")) {
             failures.push('absolute-records edge case: empty exported record did not render its vacant state.');
         }
-        if (await cards.nth(2).locator('a').count() !== 0) {
+        if (await cards.nth(1).locator('a').count() !== 0) {
             failures.push('absolute-records edge case: empty exported record rendered an athlete link.');
         }
-        if (await cards.nth(0).locator('a').count() !== 0) {
+        if (await cards.nth(2).locator('a').count() !== 0) {
             failures.push('absolute-records edge case: missing athlete ID rendered an athlete link.');
         }
 

@@ -76,6 +76,33 @@ const invalidCustomDomain = assessReleasePath({
 });
 assert.match(invalidCustomDomain.errors.join('\n'), /valid hostname/);
 
+// A syntax check alone let any valid hostname take the preview-skipping route
+// and self-approve it. Audit finding P2-02.
+const unapprovedCustomDomain = assessReleasePath({
+    title: '[skip netlify] Configure custom domain',
+    changedFiles: ['CNAME'],
+    cnameContents: 'championships.example.com\n'
+});
+assert.match(unapprovedCustomDomain.errors.join('\n'), /must be exactly www\.aceofrace\.com/);
+
+const apexCustomDomain = assessReleasePath({
+    title: '[skip netlify] Configure custom domain',
+    changedFiles: ['CNAME'],
+    cnameContents: 'aceofrace.com\n'
+});
+assert.match(apexCustomDomain.errors.join('\n'), /must be exactly www\.aceofrace\.com/);
+
+// Hostnames are case-insensitive, so only a genuinely different host is rejected.
+const mixedCaseCustomDomain = assessReleasePath({
+    title: '[skip netlify] Configure custom domain',
+    changedFiles: ['CNAME'],
+    cnameContents: 'WWW.AceOfRace.com\n'
+});
+assert.deepEqual(mixedCaseCustomDomain, {
+    pathway: 'custom-domain-configuration',
+    errors: []
+});
+
 const broadCustomDomainChange = assessReleasePath({
     title: '[skip netlify] Configure custom domain',
     changedFiles: ['CNAME', 'leaderboard.js'],

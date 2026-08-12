@@ -20,6 +20,13 @@ const CUSTOM_DOMAIN_ALLOWED_PATHS = new Set([
     'tests/pr-release-path.mjs'
 ]);
 const DOMAIN_NAME = /^(?=.{1,253}$)(?!-)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
+// The one approved production hostname. The custom-domain pathway lets a change
+// skip the Netlify preview, so a syntax check alone would let a Pull Request
+// point the site at any valid hostname and self-approve that route. A genuine
+// domain migration should change this constant, its tests, the documentation,
+// and the DNS plan together, through the standard preview pathway. Audit
+// finding P2-02.
+const CUSTOM_DOMAIN_CANONICAL_HOST = 'www.aceofrace.com';
 
 export function assessReleasePath({
     title,
@@ -45,6 +52,12 @@ export function assessReleasePath({
 
         if (!DOMAIN_NAME.test(domain)) {
             errors.push('CNAME must contain one valid hostname without a protocol or path.');
+        } else if (domain.toLowerCase() !== CUSTOM_DOMAIN_CANONICAL_HOST) {
+            // Hostnames are case-insensitive, so only a genuinely different host
+            // is rejected here.
+            errors.push(
+                `CNAME must be exactly ${CUSTOM_DOMAIN_CANONICAL_HOST}; "${domain}" is a different host and needs a standard Deploy Preview or a separately approved domain migration.`
+            );
         }
 
         if (disallowedFiles.length > 0) {
