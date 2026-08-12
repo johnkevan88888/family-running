@@ -27,14 +27,14 @@ the final markup rather than markup that is about to change.
    tags, meta descriptions, and `assets/brand/` forward from
    `feat/ace-of-race-branding` onto current `main`, adding `assets/brand/` to
    `publishedSiteEntries` so the images do not 404. No visual change to any
-   page. *In review.*
+   page. *Merged as Pull Request #42 on 11 August 2026.*
 3. **Mobile leaderboard cards** (open item 6). Below a breakpoint, render each
    athlete as a card instead of a table row, reusing the pattern the Records
    page already uses. Every exported column stays visible; ordering and values
-   remain Excel-owned. *In review.*
+   remain Excel-owned. *Merged as Pull Request #43 on 11 August 2026.*
 4. **`brand.css` restyle** (open item 5, part two). The site-wide visual
    redesign, separated so it gets its own preview review rather than being
-   merged alongside safe metadata. *Not started.*
+   merged alongside safe metadata. *In review.*
 
 Decisions taken by John when approving: cards rather than reduced columns or
 horizontal scrolling, because it keeps every exported column visible and matches
@@ -126,6 +126,40 @@ rediscover it.
 
 Not in scope: the athlete profile page's own results tables use six columns and
 were left alone, since the approved item was the championship leaderboard.
+
+### Pull Request 4: Ace of Race restyle
+
+The visual identity from `feat/ace-of-race-branding`: navy header over the track
+pattern with gold and coral edges, the Ace of Race mark and wordmark, a cream
+page background, and the brand palette across headings, navigation, badges, and
+cards. `brand.css` loads after `site.css` and overrides colour, typography, and
+edge treatment only. It contains no layout, so the mobile card structure from
+Pull Request 3 and everything the responsive tests prove are untouched; the only
+additions for that layout are three colour rules.
+
+Page titles are renamed to "Ace of Race", which also fixes a pre-existing defect
+rather than inheriting it. `<title>` was static, so an Everyone-mode tab read
+"Family Running Championships". The new titles are mode-neutral by construction.
+
+**The source branch dropped exported data and its test coverage; this does
+not.** Its `site-navigation.js` change replaced the heading with a hardcoded
+wordmark and deleted the code that fills it from the workbook-exported
+`SiteName`, and its `tests/browser-smoke.mjs` change removed 56 lines including
+five identical render gates that assert a page rendered *for the requested
+mode*. Those gates are how the suite distinguishes "finished loading" from
+"finished loading the right site". Here the exported `SiteName` moves to
+`#site-name` in the subtitle, stays visible, stays per-mode, and the five gates
+follow it. They were byte-identical, so they are now one
+`waitForExportedSiteName` helper rather than five copies.
+
+Also carried forward: `assets/brand/track-pattern.svg`, referenced by the header
+background, and `brand.css` added to `publishedSiteEntries`.
+
+Left on the source branch deliberately: its `.gitignore` addition of `tmp/`,
+unrelated to branding; its `scripts/build-preview-artifact.mjs` edits, long
+superseded; and its stale `docs/active-work.md` and `docs/decision-log.md`
+changes. After this merges, `feat/ace-of-race-branding` is fully superseded and
+can be deleted.
 
 ## What is live
 

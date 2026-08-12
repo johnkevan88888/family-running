@@ -70,6 +70,15 @@ Preserve the selected `site` parameter when navigating between championship page
   serves both `?site=family` and `?site=everyone`, so share copy naming one mode
   is wrong for every share of the other. Browser tests fail on "family" or
   "everyone" appearing in `description`, `og:title`, or `og:description`.
+- `brand.css` loads after `site.css` on every page and carries the Ace of Race
+  visual identity. It overrides colour, typography, and edge treatment only. Do
+  not put layout or responsive structure there: the mobile standings card layout
+  lives in `site.css` and is what the content-parity tests check.
+- `#site-title` is the fixed brand wordmark. The workbook-exported `SiteName`,
+  which differs per mode, is displayed in `#site-name` in the subtitle. Keep it
+  displayed and keep the id: every page wait in the browser suite gates on it to
+  confirm a page rendered for the requested site mode, not merely that it
+  finished.
 - `vendor/` holds committed browser libraries (Chart.js and its date adapter).
   The public site must not load runtime code from a third-party CDN for any site
   functionality. Everything a page needs to render is served from this origin.

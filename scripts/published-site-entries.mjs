@@ -21,6 +21,8 @@ export const publishedSiteEntries = [
     'overview.html',
     'athlete.html',
     'site.css',
+    // Loaded after site.css on every page; overrides colour and typography only.
+    'brand.css',
     'site-navigation.js',
     'analytics.js',
     'athlete.css',

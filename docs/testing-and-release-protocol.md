@@ -246,6 +246,12 @@ Desktop contexts run at 1440 x 900. Mobile contexts run at 390 x 844 with Chromi
 
 Locally the tests use an installed system Chrome or Edge when one is present. When `CI` is set they use Playwright's own pinned Chromium, so continuous integration always tests the browser version recorded in the lockfile rather than whichever build the runner image happens to ship.
 
+Every page wait gates on the workbook-exported `SiteName` appearing in
+`#site-name`, which is how the suite knows a page rendered for the requested
+site mode rather than merely finishing. `#site-title` is the fixed Ace of Race
+wordmark and is asserted separately. Moving the exported name out of the heading
+during the restyle moved that gate with it rather than removing it.
+
 A mobile leaderboard card regression test covers the narrow-viewport
 championship layout in both site modes. Below the 700px breakpoint each
 standings row renders as a card, so the test asserts the header row is hidden,

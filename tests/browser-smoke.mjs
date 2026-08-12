@@ -137,7 +137,8 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await waitForNetworkToSettle(page);
 
         const siteName = await expectedSiteName(mode);
-        await expectText(page, '#site-title', siteName, `${mode} site title`);
+        await expectText(page, '#site-name', siteName, `${mode} exported site name`);
+        await expectText(page, '#site-title', 'Ace of Race', `${mode} brand wordmark`);
         await assertPrimaryNavigation(page, mode, viewport, 'championships');
         await assertNoModeSwitch(page, mode, viewport, 'championships');
         await expectCountAtLeast(page, '#leaderboards table tr', 2, `${mode} landing championship leaderboard rows`);
@@ -244,68 +245,38 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
 async function waitForRenderedChampionship(page, mode) {
     await page.waitForSelector('#site-title', { state: 'visible' });
     await page.waitForSelector('#leaderboards table', { state: 'visible' });
-    await page.waitForFunction(expectedMode => {
-        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
-        const expected = expectedMode === 'everyone'
-            ? 'Age-Graded Running Championships'
-            : 'Family Running Championships';
+    await waitForExportedSiteName(page, mode);
 
-        return title === expected;
-    }, mode);
 }
 
 async function waitForRenderedOverview(page, mode) {
     await page.waitForSelector('#site-title', { state: 'visible' });
     await page.waitForSelector('#overview-dashboard .overview-stat-card', { state: 'visible' });
     await page.waitForSelector('#overview-recent-results .overview-result-card', { state: 'visible' });
-    await page.waitForFunction(expectedMode => {
-        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
-        const expected = expectedMode === 'everyone'
-            ? 'Age-Graded Running Championships'
-            : 'Family Running Championships';
+    await waitForExportedSiteName(page, mode);
 
-        return title === expected;
-    }, mode);
 }
 
 async function waitForRenderedHallOfFame(page, mode) {
     await page.waitForSelector('#site-title', { state: 'visible' });
     await page.waitForSelector('#hall-of-fame .hof-card', { state: 'visible' });
     await page.waitForSelector('#crown-history[data-rendered="true"]');
-    await page.waitForFunction(expectedMode => {
-        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
-        const expected = expectedMode === 'everyone'
-            ? 'Age-Graded Running Championships'
-            : 'Family Running Championships';
+    await waitForExportedSiteName(page, mode);
 
-        return title === expected;
-    }, mode);
 }
 
 async function waitForRenderedRecords(page, mode) {
     await page.waitForSelector('#site-title', { state: 'visible' });
     await page.waitForSelector('#absolute-records[data-rendered="true"]');
-    await page.waitForFunction(expectedMode => {
-        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
-        const expected = expectedMode === 'everyone'
-            ? 'Age-Graded Running Championships'
-            : 'Family Running Championships';
+    await waitForExportedSiteName(page, mode);
 
-        return title === expected;
-    }, mode);
 }
 
 async function waitForRenderedCalculator(page, mode) {
     await page.waitForSelector('#site-title', { state: 'visible' });
     await page.waitForSelector('#comparison-results[data-rendered="true"]');
-    await page.waitForFunction(expectedMode => {
-        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
-        const expected = expectedMode === 'everyone'
-            ? 'Age-Graded Running Championships'
-            : 'Family Running Championships';
+    await waitForExportedSiteName(page, mode);
 
-        return title === expected;
-    }, mode);
 }
 
 async function assertCalculatorPage(page, mode, viewport, requestedPaths) {
@@ -2497,6 +2468,23 @@ async function expectCountAtLeast(page, selector, minimum, label) {
     if (count < minimum) {
         throw new Error(`${label} count was ${count}, expected at least ${minimum}.`);
     }
+}
+
+// Every page wait gates on the workbook-exported SiteName appearing, which is
+// how the suite knows a page finished rendering *for the requested mode* rather
+// than merely finishing. It used to be the heading; the Ace of Race restyle made
+// the heading a fixed wordmark and moved the exported name into the subtitle, so
+// this follows it there. Five copies of this block were identical, so they are
+// one helper now.
+async function waitForExportedSiteName(page, mode) {
+    await page.waitForFunction(expectedMode => {
+        const name = document.querySelector('#site-name')?.textContent?.trim() || '';
+        const expected = expectedMode === 'everyone'
+            ? 'Age-Graded Running Championships'
+            : 'Family Running Championships';
+
+        return name === expected;
+    }, mode);
 }
 
 async function expectedSiteName(mode) {

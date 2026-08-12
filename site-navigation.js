@@ -95,12 +95,19 @@
             <div class="site-header-main">
                 <div class="site-brand">
                     <a class="site-title-link" href="${pageHref('championships', site)}">
-                        <h1 id="site-title">Family Running Championships</h1>
+                        <img class="site-logo-mark" src="assets/brand/ace-of-race-mark.svg" alt="">
+                        <h1 id="site-title">Ace <span class="site-wordmark-secondary">of Race</span></h1>
                     </a>
                     <div class="subtitle">
                         <span id="site-mode-label">${modeLabel} site</span>
                         <span aria-hidden="true"> &middot; </span>
-                        <span>Age-Graded Rankings Across Generations</span>
+                        <!-- The workbook-exported SiteName, which differs per
+                             mode. It moved here from the heading when the
+                             heading became the brand wordmark; it is still
+                             displayed, still per-mode, and still what the
+                             browser tests use to confirm a page rendered for
+                             the right site. -->
+                        <span id="site-name">Age-Graded Rankings Across Generations</span>
                     </div>
                 </div>
                 <div class="site-navigation-panel">
@@ -142,8 +149,8 @@
         }
 
         const meta = document.getElementById('last-updated');
-        const title = document.getElementById('site-title');
-        if (!meta && !title) {
+        const siteNameElement = document.getElementById('site-name');
+        if (!meta && !siteNameElement) {
             return;
         }
 
@@ -153,8 +160,8 @@
             const siteName = setting('SiteName');
             const lastUpdated = setting('LastUpdatedUTC');
 
-            if (title && siteName) {
-                title.innerText = siteName;
+            if (siteNameElement && siteName) {
+                siteNameElement.innerText = siteName;
             }
 
             if (!meta || !lastUpdated) {
