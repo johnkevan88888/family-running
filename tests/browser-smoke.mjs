@@ -60,6 +60,7 @@ try {
     await runRecentResultsWindowTests(browser);
     await runBrandMetadataTests(browser);
     await runMobileLeaderboardCardTests(browser);
+    await runDocumentTitleTests(browser);
     await runCalculatorComparisonUnavailableEdgeCaseTests(browser);
     await runCalculatorComparisonEdgeCaseTests(browser);
 } finally {
@@ -1827,6 +1828,78 @@ async function runMobileLeaderboardCardTests(browserInstance) {
         } finally {
             await desktop.close();
         }
+    }
+}
+
+// The browser tab is the one place the site named a mode without honouring it:
+// every <title> is static, so an Everyone-mode tab read "Family Running
+// Championships" while the header showed the exported Everyone name. Nothing
+// visible on the page was wrong, which is why it went unnoticed.
+async function runDocumentTitleTests(browserInstance) {
+    const pages = [
+        'index.html',
+        'championships.html',
+        'hall-of-fame.html',
+        'records.html',
+        'calculator.html',
+        'overview.html'
+    ];
+    const context = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+
+    try {
+        for (const mode of modes) {
+            const siteName = await expectedSiteName(mode);
+            const otherName = await expectedSiteName(mode === 'family' ? 'everyone' : 'family');
+
+            for (const pagePath of pages) {
+                await page.goto(`${preview.baseUrl}/${pagePath}?site=${mode}`, { waitUntil: 'domcontentloaded' });
+                await page.waitForFunction(
+                    expected => document.title.includes(expected),
+                    siteName,
+                    { timeout: 10000 }
+                ).catch(() => {});
+
+                const title = await page.title();
+
+                if (!title.includes(siteName)) {
+                    failures.push(
+                        `document title (${mode}): ${pagePath} is "${title}", which does not name the exported site "${siteName}".`
+                    );
+                }
+                if (title.includes(otherName)) {
+                    failures.push(
+                        `document title (${mode}): ${pagePath} is "${title}", which names the other site mode "${otherName}".`
+                    );
+                }
+            }
+        }
+
+        // The athlete page carries no site name at all, so it was never wrong
+        // and must not gain one. Its title is the athlete, which is what a
+        // bookmark or history entry should say.
+        await page.goto(`${preview.baseUrl}/athlete.html?id=carolyn-kevan&site=everyone`, { waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => document.title.includes('Athlete Profile'), null, { timeout: 10000 })
+            .catch(() => {});
+
+        const athleteTitle = await page.title();
+
+        if (!athleteTitle.includes('Athlete Profile')) {
+            failures.push(`document title: athlete page is "${athleteTitle}", expected it to name the profile.`);
+        }
+        for (const mode of modes) {
+            const siteName = await expectedSiteName(mode);
+
+            if (athleteTitle.includes(siteName)) {
+                failures.push(
+                    `document title: athlete page is "${athleteTitle}", which should not name a site mode.`
+                );
+            }
+        }
+    } catch (error) {
+        failures.push(`document title: ${error.message}`);
+    } finally {
+        await context.close();
     }
 }
 

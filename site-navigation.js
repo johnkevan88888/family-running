@@ -136,6 +136,27 @@
         });
     }
 
+    // Each page's <title> is static, so it named one site mode whatever the
+    // visitor selected: an Everyone-mode tab read "Family Running
+    // Championships" while the header correctly showed the exported name. Only
+    // the site-name portion is replaced, so each page keeps its own prefix and
+    // the tab agrees with the header. Repeat application is harmless.
+    //
+    // The athlete page is skipped deliberately: its title is "Name | Athlete
+    // Profile", which names no site mode and is already correct.
+    function applyExportedSiteNameToDocumentTitle(siteName) {
+        if (currentPage() === 'athlete') {
+            return;
+        }
+
+        const separator = ' | ';
+        const separatorIndex = document.title.lastIndexOf(separator);
+
+        document.title = separatorIndex >= 0
+            ? `${document.title.slice(0, separatorIndex)}${separator}${siteName}`
+            : siteName;
+    }
+
     async function loadSiteMetadata() {
         if (typeof fetchCSV !== 'function') {
             return;
@@ -155,6 +176,10 @@
 
             if (title && siteName) {
                 title.innerText = siteName;
+            }
+
+            if (siteName) {
+                applyExportedSiteNameToDocumentTitle(siteName);
             }
 
             if (!meta || !lastUpdated) {
