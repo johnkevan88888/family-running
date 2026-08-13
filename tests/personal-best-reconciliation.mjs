@@ -9,6 +9,7 @@
 import {
     compareExportAgainstRendered,
     findModeDisagreements,
+    roundsToOneDecimal,
     selectionKey,
     summariseSelection,
     toCsvValue
@@ -18,6 +19,7 @@ const failures = [];
 
 runComparisonTests();
 runModeComparisonTests();
+runRoundingTests();
 runCsvQuotingTests();
 
 if (failures.length) {
@@ -158,6 +160,43 @@ function runComparisonTests() {
     );
 
     check(
+        'an AgeGradeExact that does not round to AgeGrade is a schema problem',
+        () => {
+            const exported = exportFixture();
+            exported.rows[0].AgeGrade = '53.9%';
+            exported.rows[0].AgeGradeExact = '54.213847%';
+
+            const result = compareExportAgainstRendered(exported, rendered);
+            assert(
+                result.schemaProblems.some(problem => problem.includes('does not round to AgeGrade')),
+                'expected a rounding problem'
+            );
+        }
+    );
+
+    check(
+        'an AgeGradeExact that does round to AgeGrade is accepted',
+        () => {
+            const exported = exportFixture();
+            exported.rows[0].AgeGradeExact = '53.94182%';
+            exported.rows[1].AgeGradeExact = '52.8471%';
+
+            const result = compareExportAgainstRendered(exported, rendered);
+            assertEqual(result.counts.schemaProblems, 0, 'schema problem count');
+            assert(result.clean, 'expected a clean comparison');
+        }
+    );
+
+    check(
+        'an absent AgeGradeExact is left to CSV validation rather than failed here',
+        () => {
+            const exported = exportFixture();
+            const result = compareExportAgainstRendered(exported, rendered);
+            assertEqual(result.counts.schemaProblems, 0, 'schema problem count');
+        }
+    );
+
+    check(
         'a missing or unexpected column is a schema problem',
         () => {
             const exported = exportFixture();
@@ -232,6 +271,28 @@ function runModeComparisonTests() {
         'an absent selection summarises as no value rather than throwing',
         () => {
             assertEqual(summariseSelection(undefined), 'no value', 'summary of a missing selection');
+        }
+    );
+}
+
+function runRoundingTests() {
+    check(
+        'the rounding check follows one-decimal-place rounding, including the halfway case',
+        () => {
+            assert(roundsToOneDecimal('53.94182%', '53.9%'), 'rounds down');
+            assert(roundsToOneDecimal('53.9612%', '54.0%'), 'rounds up');
+            assert(roundsToOneDecimal('67.15%', '67.2%'), 'halfway rounds up');
+            assert(roundsToOneDecimal('53.9', '53.9'), 'bare numbers without a percent sign');
+            assert(!roundsToOneDecimal('54.213847%', '53.9%'), 'a genuine mismatch is rejected');
+        }
+    );
+
+    check(
+        'an unparseable age grade is rejected rather than treated as zero',
+        () => {
+            assert(!roundsToOneDecimal('', '53.9%'), 'empty exact value');
+            assert(!roundsToOneDecimal('not a number', '53.9%'), 'non-numeric exact value');
+            assert(!roundsToOneDecimal('53.9%', 'not a number'), 'non-numeric displayed value');
         }
     );
 }

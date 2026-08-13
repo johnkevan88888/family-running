@@ -53,7 +53,7 @@ const EXPORT_PERIOD = 'All Time';
 
 const EXPORT_COLUMNS = [
     'AthleteId', 'Distance', 'TimeClass', 'Period', 'BenchmarkType',
-    'Time', 'AgeGrade', 'Date', 'Event', 'SourceRow', 'SortOrder', 'ExportBundleID'
+    'Time', 'AgeGrade', 'AgeGradeExact', 'Date', 'Event', 'SourceRow', 'SortOrder', 'ExportBundleID'
 ];
 
 // Composite map key. A unit separator cannot occur in an athlete id, a
@@ -501,6 +501,18 @@ export function compareExportAgainstRendered(exported, renderedSelections) {
         if (row.Period !== EXPORT_PERIOD) {
             schemaProblems.push(`Line ${row.__line}: Period is "${row.Period}", expected "${EXPORT_PERIOD}"`);
         }
+
+        // Settled decision 1 breaks ties on the unrounded age grade, so the two
+        // columns disagreeing means the number that decided a tie is not the
+        // number the page shows. Checked only when present: whether the column
+        // is populated at all belongs to CSV validation, which owns the export
+        // schema. The page cannot confirm this either way, which is exactly why
+        // the export has to carry it.
+        if (row.AgeGradeExact && !roundsToOneDecimal(row.AgeGradeExact, row.AgeGrade)) {
+            schemaProblems.push(
+                `Line ${row.__line}: AgeGradeExact "${row.AgeGradeExact}" does not round to AgeGrade "${row.AgeGrade}"`
+            );
+        }
     }
 
     for (const [key, selection] of renderedSelections) {
@@ -642,10 +654,12 @@ async function writeSpecimen(target, renderedSelections) {
             benchmarkType,
             selection.time,
             selection.ageGrade,
-            // The page renders a formatted date, so the raw exported value is not
-            // recoverable from the DOM. Left empty rather than guessed at: the
-            // workbook owns this column and a plausible-looking wrong date would
-            // be worse than an obviously absent one.
+            // AgeGradeExact and Date are both left empty, for the same reason.
+            // The page shows an age grade rounded to one decimal place and a
+            // formatted date; neither underlying value is recoverable from the
+            // DOM. The workbook owns both, and copying the rounded age grade
+            // here would fabricate a precision that does not exist.
+            '',
             '',
             selection.event,
             '',
@@ -669,6 +683,17 @@ function compareSelectionOrder([leftKey], [rightKey]) {
         || SUPPORTED_DISTANCES.indexOf(left[1]) - SUPPORTED_DISTANCES.indexOf(right[1])
         || TIME_CLASSES.indexOf(left[2]) - TIME_CLASSES.indexOf(right[2])
         || BENCHMARK_TYPES.indexOf(left[3]) - BENCHMARK_TYPES.indexOf(right[3]);
+}
+
+export function roundsToOneDecimal(exact, displayed) {
+    const exactNumber = Number(String(exact).replace('%', '').trim());
+    const displayedNumber = Number(String(displayed).replace('%', '').trim());
+
+    if (!Number.isFinite(exactNumber) || !Number.isFinite(displayedNumber)) {
+        return false;
+    }
+
+    return Math.abs(Math.round(exactNumber * 10) / 10 - displayedNumber) < 1e-9;
 }
 
 export function toCsvValue(value) {
