@@ -27,16 +27,16 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 11.7.0
           run_install: false
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -56,18 +56,23 @@ jobs:
           echo "CNAME: $(cat test-artifacts/preview-site/CNAME)"
 
       - name: Configure Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
-      # Deliberately still v3. From v4 this action excludes hidden files, and
-      # the build writes `.nojekyll` into the artifact to stop Pages running
-      # Jekyll over the published site. Bumping it without opting that file back
-      # in would silently drop the only dotfile we publish. v5 adds an
-      # `include-hidden-files` input, so a future bump should set it rather than
-      # assume the default is safe.
+      # include-hidden-files is required, not optional tidiness. From v4 this
+      # action excludes dotfiles by default, and the build writes `.nojekyll`
+      # into the artifact to stop Pages running Jekyll over the published site.
+      # It is the only dotfile published, so leaving the default would silently
+      # drop it. The action excludes `.git` and `.github` regardless of this
+      # setting, so nothing unwanted is pulled in.
+      #
+      # Verify after deploying: https://www.aceofrace.com/.nojekyll must return
+      # 200. If it 404s, this input stopped working and Jekyll is processing the
+      # site.
       - name: Upload published artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: test-artifacts/preview-site
+          include-hidden-files: true
 
   deploy:
     name: Deploy published site
