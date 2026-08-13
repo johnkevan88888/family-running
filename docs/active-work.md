@@ -6,23 +6,34 @@ None. No implementation task is in progress.
 
 ## Status
 
-The three open items John approved on 11 August 2026 are delivered. Two are
-merged and live; the third was split, and its visual half is parked. The next
-task should replace this entry with its own approved scope before implementation
-begins.
+Everything approved so far is delivered and merged. The Ace of Race visual
+restyle is the one approved item that never shipped: it was split off, and its
+Pull Request has since been closed rather than parked. The next task should
+replace this entry with its own approved scope before implementation begins.
 
 This file has a history of going stale, describing work as in progress after it
 had merged. `AGENTS.md` directs agents to read it first, so a stale entry
 actively misleads. Keep it describing the settled state, and treat it as
 describing *no current work* until someone starts something.
 
+Reconciled against `git log`, `gh pr list --state all`, and
+`git ls-remote --heads origin` on 13 August 2026. It had drifted in four ways:
+it described the closed #44 as an open draft on a branch that no longer exists,
+it listed a `<title>` fix as parked that #52 had already shipped, it omitted
+#50, #51, and #52 from what shipped, and it repeated a coverage figure from the
+audit that re-measurement does not support. Verify it this way again rather
+than trusting it.
+
 ## What shipped
 
 Pull Requests #39 to #43 merged on 11 August 2026, all deployed and verified in
 production. #39 is the audit remediation described under "Earlier releases"
-below; the three items John approved afterwards were:
+below. The three items John approved afterwards are listed next; their
+bracketed numbers refer to the open-items list as it stood on 11 August 2026,
+which has since changed and no longer matches the numbering under "Open items"
+further down.
 
-- **#41 Recent Results clock** (open item 4, partially addressed).
+- **#41 Recent Results clock** (then item 4, partially addressed).
   `buildRecentResults` in `athlete.js` measured its twelve month window from
   `new Date()`, so two visitors in different timezones, or the same visitor
   either side of midnight, could see different sets. It now reads
@@ -31,47 +42,73 @@ below; the three items John approved afterwards were:
   mirroring `buildOverviewStats`. No upper bound was added deliberately: hiding
   an athlete's newest result on their own page would be worse than the
   asymmetry.
-- **#42 Branding metadata** (open item 5, part one). Description, theme colour,
+- **#42 Branding metadata** (then item 5, part one). Description, theme colour,
   Open Graph, Twitter card, and favicon metadata on all seven pages, plus four
   brand images. The only visible effect is the browser-tab icon and working
   link previews; no page content or text changed.
-- **#43 Mobile leaderboard cards** (open item 6). Below the 700px breakpoint
+- **#43 Mobile leaderboard cards** (then item 6). Below the 700px breakpoint
   each standings row renders as a card, with the participant name as the
   heading and the rank or medal at the top right. The markup stays one semantic
   table; the layout is a media query reading `data-label` back through
   `content: attr(...)`. Desktop is unchanged.
 
-## Parked
+Three more merged on 13 August 2026:
 
-**Pull Request #44, the Ace of Race restyle**, is open as a **draft** and must
-not be merged. John's decision on 11 August 2026: the restyle needs more work
-before it ships.
+- **#50 and #51 workflow action bumps.** `actions/deploy-pages` to v5, then the
+  remaining workflow actions off Node 20. No site behaviour changed.
+- **#52 Mode-aware page title.** Each `<title>` was fixed markup, so an
+  Everyone-mode tab read "Family Running Championships" while the header showed
+  the exported Everyone name. `site-navigation.js` now replaces the site-name
+  portion of the title with the exported `SiteName`, keeping each page's own
+  prefix. The athlete page is deliberately excluded: its title names the
+  athlete and no site mode, which was already correct.
 
-It is implemented and fully validated on `feat/ace-of-race-restyle`, so the work
-is not lost. It contains the navy header over the track pattern with gold and
-coral edges, the Ace of Race mark and wordmark, a cream page background, the
-brand palette across headings, navigation, badges, and cards, and the page-title
-rename to "Ace of Race".
+## Not shipped: the Ace of Race restyle
 
-Two things in it are worth preserving whatever happens to the design, because
-they are corrections rather than styling:
+**Pull Request #44 is closed**, not open, and its branch
+`feat/ace-of-race-restyle` no longer exists on origin. John's decision on
+11 August 2026 was that the restyle needed more work before it shipped. His
+instruction on 13 August 2026 is that if it is redone it must start from
+scratch; #44 is reference material, not a base. Redoing it is candidate work
+and is **not approved**.
 
-1. The source branch's `site-navigation.js` change deletes the code that fills
-   the heading from the workbook-exported `SiteName`, and its
-   `tests/browser-smoke.mjs` change removes five identical render gates that
-   assert a page rendered *for the requested site mode* rather than merely
-   finishing. #44 keeps the exported name visible as `#site-name` in the
-   subtitle and moves those gates to follow it, collapsed into one
+Because the branch is gone, the closed work is recoverable only through
+GitHub's Pull Request ref:
+
+```bash
+git fetch origin refs/pull/44/head
+```
+
+That resolves to `bc14896`, verified on 13 August 2026. It holds the navy
+header over the track pattern with gold and coral edges, the Ace of Race mark
+and wordmark, a cream page background, the brand palette across headings,
+navigation, badges, and cards, and a page-title rename to "Ace of Race".
+
+Of the two corrections #44 carried, one has since shipped by a different route
+and one is still only a warning:
+
+1. **Shipped.** `<title>` was mode-blind. #44 would have fixed it by renaming
+   the site to "Ace of Race", making the static title mode-neutral. #52 fixed
+   it instead by substituting the exported `SiteName`, which keeps the
+   workbook's own name visible. Nothing here is outstanding.
+2. **Still a hazard.** On `feat/ace-of-race-branding`, `site-navigation.js`
+   deletes the code that fills the heading from the exported `SiteName`, and
+   `tests/browser-smoke.mjs` removes five identical render gates that assert a
+   page rendered *for the requested site mode* rather than merely finishing.
+   Main has both today; the heading fill is in `site-navigation.js` from around
+   line 166. A restyle built on that branch would regress them, so a redo must
+   keep the exported name visible and keep the gates. #44's approach was to
+   show it as `#site-name` in the subtitle and collapse the gates into one
    `waitForExportedSiteName` helper.
-2. `<title>` is currently mode-blind: it is static, so an Everyone-mode tab
-   reads "Family Running Championships". #44's rename fixes that by being
-   mode-neutral. If the restyle is redesigned from scratch, that fix should
-   survive.
 
-`feat/ace-of-race-branding` is therefore **not** yet superseded and should not
-be deleted. It still holds the original wordmark approach and `icon-512.png`,
-which nothing references and which is 512 x 576 rather than square despite its
-name.
+`feat/ace-of-race-branding` is therefore still not superseded and must not be
+deleted. Verified on 13 August 2026: it is the only place
+`assets/brand/track-pattern.svg` and `assets/brand/icon-512.png` exist, because
+main's `assets/brand/` holds only `ace-of-race-mark.svg`,
+`apple-touch-icon.png`, `favicon-32.png`, and `og-image.png`. No Pull Request
+was ever opened against that branch, so unlike #44 there is no `refs/pull/*`
+copy and deleting it is irreversible. `icon-512.png` is referenced by nothing
+and is 512 x 576 rather than square despite its name.
 
 ## Decisions taken on 11 August 2026
 
@@ -104,8 +141,25 @@ The personal-best reconciliation found no current visible disagreement: all 70
 distinct Family and all 96 distinct Everyone All Time benchmark keys select the
 same source performance in JavaScript and the workbook export. The architecture
 conflict remains because the selectors are independent, their tie-breaking can
-diverge, and the Family pairwise export does not cover direct profile routes for
-eight result-bearing athletes outside the Family roster.
+diverge, and the Family pairwise export does not cover every direct profile
+route.
+
+**Correction to the audit's coverage figures, 13 August 2026.** The audit says
+Family "omits eight result-bearing athletes outside the Family roster" and that
+Everyone's one athlete without benchmark rows "has no public result to select".
+Both were re-measured against the current export and neither is quite right.
+`data/athlete_results.csv` holds 19 distinct athletes, all of them
+result-bearing. Family's `athlete_comparison_targets.csv` names 12 of them, all
+as challengers, and carries benchmark rows for 11; **seven** are absent
+entirely. Everyone names all 19 and carries benchmark rows for 18. The single
+athlete with no benchmark rows in either mode is `jess-graham-kevan`, who does
+have a public result: one 1 Mile run. 1 Mile is not one of the five distances
+either the export or the athlete page supports, which is why no benchmark
+exists and why that profile renders five empty personal-best cards today. The
+audit's "eight" is seven absent plus that athlete, which are two different
+sets. The figure in
+[Audit of Pull Requests #19 to #32](pr-19-32-audit.md) has been left as
+written, because it is a dated record; this note is the correction.
 
 Validation on 12 August: `git diff --check` passed; every non-browser stage of
 `pnpm test` passed before the command wrapper's two-minute limit; and the final
@@ -233,9 +287,11 @@ escaped `DisplayDistance`, published-content contracts for `data/` and
 `vendor/`, and a shared full-text CSV parser matching the repository validator.
 Pull Request #38 was closed rather than merged, superseded by #39.
 
-The Pages source is `build_type: workflow`. Production has been verified since
-#43: both modes load, the card layout is live, brand assets return 200, and
-`AGENTS.md` returns 404.
+The Pages source is `build_type: workflow`. The last recorded production
+verification was after #43: both modes load, the card layout is live, brand
+assets return 200, and `AGENTS.md` returns 404. #50, #51, and #52 have deployed
+since and no production check is recorded for them, so the mode-aware title has
+not been confirmed live.
 
 ## Environment notes
 
