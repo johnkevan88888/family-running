@@ -58,6 +58,12 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
+      # Deliberately still v3. From v4 this action excludes hidden files, and
+      # the build writes `.nojekyll` into the artifact to stop Pages running
+      # Jekyll over the published site. Bumping it without opting that file back
+      # in would silently drop the only dotfile we publish. v5 adds an
+      # `include-hidden-files` input, so a future bump should set it rather than
+      # assume the default is safe.
       - name: Upload published artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -73,6 +79,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
+      # v5 is a Node 24 runtime bump. v4 targeted Node 20, which GitHub now
+      # forces onto Node 24 with a deprecation warning on every deployment.
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
