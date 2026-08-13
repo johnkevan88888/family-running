@@ -177,15 +177,23 @@ starting.
    than reading the workbook's own Current/12-Month period membership. The
    complete fix is an Excel/VBA-owned column on `data/athlete_results.csv`.
    Recorded in `docs/roadmap.md`.
-4. **The athlete page derives personal bests in JavaScript.**
+4. **The athlete page derives personal bests in JavaScript.** Audit finding
+   P2-03. **Blocked on the workbook, not on repository work.**
    `buildPersonalBests` in `athlete.js` selects each distance's fastest time and
-   best age grade from exported rows in the browser, while the Calculator solves
-   the same problem by reading workbook-owned `athlete_comparison_targets.csv`,
-   which already exports Best Age Grade and Fastest Time per distance and result
-   class. Current public rows agree, but the same concept still has two selectors
-   and the Family pairwise export does not cover every direct profile route.
-   Prefer a dedicated shared workbook-owned PB export over a cross-mode fallback
-   or continued browser calculation. Audit finding P2-03.
+   best age grade in the browser, while the Calculator reads workbook-owned
+   `athlete_comparison_targets.csv` for the same two benchmarks. Current public
+   rows agree on every key, but the agreement is contingent rather than
+   enforced.
+
+   The repository cannot close this. The fix needs a workbook-owned export;
+   generating that file here would be the second source of truth, pointing the
+   page at an export that does not exist would empty a working section, and
+   keeping the JavaScript selectors as a fallback is the silent fallback the
+   audit warns against. The design, the measured coverage gap, and the exact
+   current behaviour the workbook must replicate or supersede are written up in
+   [Proposed workbook-owned personal-best export](personal-best-export-proposal.md).
+   That proposal needs John's decision and a workbook change before any
+   repository work starts.
 5. **`og-image.png` is oversized.** 1200 x 630 is correct, but 984 KB is roughly
    five times heavier than it needs to be. It is published unmodified because it
    is John's artwork. Worth recompressing before the site is shared widely.
