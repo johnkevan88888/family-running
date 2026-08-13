@@ -281,6 +281,15 @@ quietly drop a column and pass as a layout improvement. The same checks run at
 1440px in reverse, proving the desktop table still renders as a real table with
 its header row and no injected labels.
 
+A document-title regression test checks every static public page in both modes.
+Each `<title>` is fixed markup, so an Everyone-mode tab used to read "Family
+Running Championships" while the header showed the exported Everyone name.
+`site-navigation.js` now replaces the site-name portion with the exported
+`SiteName`, keeping each page's own prefix, and the test fails if a title omits
+the selected mode's exported name or names the other mode. The athlete page is
+asserted separately: its title names the athlete and no site mode, which was
+already correct and must stay that way.
+
 A brand metadata regression test checks every public page for its description,
 theme colour, Open Graph, and Twitter card tags and its three icon links, then
 requests each icon and the Open Graph image to prove they are actually served
