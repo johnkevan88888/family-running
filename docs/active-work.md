@@ -114,8 +114,9 @@ with responsive screenshots regenerated under ignored `test-artifacts/`.
 
 ## Audit findings remediated on 12 August 2026
 
-John approved P2-01 and P2-02 for implementation. Both remove a case where the
-repository overrode something it does not own.
+John approved P2-01, P2-02, and P2-04 for implementation. All three remove a
+case where the repository overrode, or claimed authority it did not have over,
+something outside its control.
 
 - **P2-01.** `records.js` sorted record groups Women before Men, reversing the
   workbook-owned export order that the validator requires, and its browser test
@@ -130,11 +131,31 @@ repository overrode something it does not own.
   `www.aceofrace.com`, compared case-insensitively so a case variant of the same
   host is still accepted.
 
-Both were verified by reverting them: restoring the group override fails the
-Records assertions in all four mode/viewport combinations plus the synthetic
-edge case, and removing the hostname pin fails the release-path tests.
+- **P2-04.** The guided routine-data updater asked for `PUBLISH` before the Pull
+  Request existed, then merged as soon as the required check passed. `PUBLISH`
+  therefore could not be approval of the exact committed diff or the responsive
+  screenshots, neither of which existed yet, while the release documentation
+  said both were reviewed before approval. The updater now stops after the
+  check, prints the Pull Request, its `gh pr diff` command, and the run holding
+  the screenshot artifact, and requires a separate exact `MERGE`. After that
+  confirmation it re-reads GitHub and re-verifies Pull Request identity, that
+  the head commit is still the validated one, and that the required check still
+  succeeds, so a push during the review pause is refused rather than merged.
+  Declining leaves the Pull Request open and the update resumable from the new
+  `checked` phase. `--approve-merge` exists for non-interactive use, alongside
+  the existing `--approve-promote` and `--approve-publish`.
 
-P2-03 and P2-04 remain open below. The full record stays in
+All three were verified by reverting them: restoring the group override fails
+the Records assertions in all four mode/viewport combinations plus the synthetic
+edge case, removing the hostname pin fails the release-path tests, and
+bypassing the merge confirmation fails the updater's main-flow assertions.
+
+The P2-04 change was documented across the release protocol, the workbook export
+workflow, the preview-deployment notes, and a dated correction on the
+"Main is PR-gated" decision-log entry, which had described `PUBLISH` as the
+merge approval.
+
+P2-03 remains open below. The full record stays in
 [Audit of Pull Requests #19 to #32](pr-19-32-audit.md).
 
 ## Open items
@@ -147,20 +168,16 @@ starting.
    exporting until that constant is edited by hand. Documented in
    `docs/workbook-export-workflow.md`; the fix is a workbook change, not
    repository work.
-2. **The guided routine-data updater can merge before screenshot review.**
-   `PUBLISH` is entered before the Pull Request and CI screenshot artifact
-   exist; after the required check passes the updater merges immediately, with
-   no post-PR review confirmation. Audit finding P2-04.
-3. **The repository is public.** `data/athlete_results.csv` carries real names,
+2. **The repository is public.** `data/athlete_results.csv` carries real names,
    age categories, event names, and dates, and is readable and indexable on
    GitHub regardless of the site's `noindex`. Closing that route needs a private
    repository, which needs a paid GitHub plan for Pages to keep working.
-4. **Workbook-owned recency for Recent Results.** #41 removed the visitor-clock
+3. **Workbook-owned recency for Recent Results.** #41 removed the visitor-clock
    dependency, but the browser still computes a rolling twelve months rather
    than reading the workbook's own Current/12-Month period membership. The
    complete fix is an Excel/VBA-owned column on `data/athlete_results.csv`.
    Recorded in `docs/roadmap.md`.
-5. **The athlete page derives personal bests in JavaScript.**
+4. **The athlete page derives personal bests in JavaScript.**
    `buildPersonalBests` in `athlete.js` selects each distance's fastest time and
    best age grade from exported rows in the browser, while the Calculator solves
    the same problem by reading workbook-owned `athlete_comparison_targets.csv`,
@@ -169,7 +186,7 @@ starting.
    and the Family pairwise export does not cover every direct profile route.
    Prefer a dedicated shared workbook-owned PB export over a cross-mode fallback
    or continued browser calculation. Audit finding P2-03.
-6. **`og-image.png` is oversized.** 1200 x 630 is correct, but 984 KB is roughly
+5. **`og-image.png` is oversized.** 1200 x 630 is correct, but 984 KB is roughly
    five times heavier than it needs to be. It is published unmodified because it
    is John's artwork. Worth recompressing before the site is shared widely.
 

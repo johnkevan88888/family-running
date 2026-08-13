@@ -28,6 +28,11 @@ const acceptedPhases = new Set([
     'tested',
     'committed',
     'published',
+    // The Pull Request exists and its required check has passed, but nobody has
+    // confirmed the merge yet. This phase is the review checkpoint: PUBLISH is
+    // given before the Pull Request exists, so it cannot be approval of a diff
+    // and screenshots that were not yet produced. Audit finding P2-04.
+    'checked',
     'merged',
     'no-changes'
 ]);
@@ -38,6 +43,7 @@ export function parseUpdateArguments(argv) {
         prepareOnly: false,
         approvePromote: false,
         approvePublish: false,
+        approveMerge: false,
         workbookPath: null,
         help: false
     };
@@ -56,6 +62,8 @@ export function parseUpdateArguments(argv) {
             options.approvePromote = true;
         } else if (argument === '--approve-publish') {
             options.approvePublish = true;
+        } else if (argument === '--approve-merge') {
+            options.approveMerge = true;
         } else if (argument === '--help' || argument === '-h') {
             options.help = true;
         } else if (argument === '--workbook') {
@@ -222,7 +230,7 @@ async function main() {
 
     if (options.resume) {
         state = loadState();
-        if (!['published', 'merged', 'no-changes'].includes(state.phase)) {
+        if (!['published', 'checked', 'merged', 'no-changes'].includes(state.phase)) {
             ensureCurrentBranch(tools.git, state.branch);
             console.log(`Resuming data update on ${state.branch}.`);
         } else {
@@ -286,7 +294,7 @@ async function main() {
     ) {
         const approved = options.approvePublish || await confirmExactWord(
             'PUBLISH',
-            'Publish will commit and push the validated CSV bundle, open a lightweight Pull Request, wait for GitHub checks, merge it to production, delete the data branch, and clean up this update.'
+            'Publish will commit and push the validated CSV bundle, open a lightweight Pull Request, and wait for GitHub checks and screenshots. It does not merge: the run stops afterwards so you can review the exact diff and screenshots, and merging needs a separate MERGE confirmation.'
         );
 
         if (!approved) {
@@ -307,7 +315,16 @@ async function main() {
     }
 
     if (state.phase === 'published') {
-        state = await waitForChecksAndMerge(state, tools);
+        state = await waitForRequiredChecks(state, tools);
+    }
+
+    if (state.phase === 'checked') {
+        state = await confirmReviewedMerge(state, tools, options);
+
+        if (state.phase !== 'merged') {
+            printResumeInstructions(state);
+            return;
+        }
     }
 
     if (state.phase === 'merged') {
@@ -532,7 +549,11 @@ function pushAndOpenPullRequest(state, tools) {
     return state;
 }
 
-async function waitForChecksAndMerge(state, tools) {
+// Waits for the required check and stops there. Merging is a separate step
+// behind its own confirmation, because the artifacts a reviewer is supposed to
+// inspect -- the committed diff and the uploaded responsive screenshots -- do
+// not exist until this has finished. Audit finding P2-04.
+async function waitForRequiredChecks(state, tools) {
     let pullRequest = await waitForRequiredCheckRegistration(state, tools.gh);
 
     requireDataPullRequestIdentity(pullRequest, state);
@@ -577,7 +598,52 @@ async function waitForChecksAndMerge(state, tools) {
         throw new Error(`Automatic merge refused:\n- ${checkErrors.join('\n- ')}`);
     }
 
-    console.log('All required checks passed. Merging the approved data Pull Request...');
+    state.phase = 'checked';
+    state.checkedAt = new Date().toISOString();
+    state.checkRunUrl = requiredCheckDetailsUrl(pullRequest);
+    saveState(state);
+    return state;
+}
+
+async function confirmReviewedMerge(state, tools, options) {
+    printReviewCheckpoint(state);
+
+    const approved = options.approveMerge || await confirmExactWord(
+        'MERGE',
+        'Review the exact Pull Request diff and the uploaded Family and Everyone screenshots above. MERGE publishes this data to production.'
+    );
+
+    if (!approved) {
+        return state;
+    }
+
+    // Re-read GitHub after the human pause rather than trusting what was true
+    // before it. Identity pins the head commit to the validated one, so a push
+    // during review is refused rather than merged.
+    const pullRequest = loadPullRequest(state, tools.gh);
+
+    requireDataPullRequestIdentity(pullRequest, state);
+
+    if (pullRequest.state === 'MERGED') {
+        return recordMergedPullRequest(state, pullRequest);
+    }
+    if (pullRequest.state !== 'OPEN') {
+        throw new Error(
+            `The data Pull Request is ${pullRequest.state || 'in an unknown state'} and cannot be merged automatically.`
+        );
+    }
+
+    const checkErrors = assessRequiredDataChecks(pullRequest);
+
+    if (checkErrors.length > 0) {
+        throw new Error(`Automatic merge refused:\n- ${checkErrors.join('\n- ')}`);
+    }
+
+    return mergeReviewedPullRequest(state, tools);
+}
+
+function mergeReviewedPullRequest(state, tools) {
+    console.log('Merging the reviewed data Pull Request...');
     runCommand(
         tools.gh,
         [
@@ -594,7 +660,8 @@ async function waitForChecksAndMerge(state, tools) {
         { label: 'Merge data Pull Request' }
     );
 
-    pullRequest = loadPullRequest(state, tools.gh);
+    const pullRequest = loadPullRequest(state, tools.gh);
+
     requireDataPullRequestIdentity(pullRequest, state);
 
     if (pullRequest.state !== 'MERGED') {
@@ -604,6 +671,33 @@ async function waitForChecksAndMerge(state, tools) {
     }
 
     return recordMergedPullRequest(state, pullRequest);
+}
+
+function printReviewCheckpoint(state) {
+    console.log('');
+    console.log('All required checks passed. Nothing has been merged yet.');
+    console.log('');
+    console.log('Review before merging:');
+    console.log(`- Pull Request:      ${state.pullRequestUrl}`);
+    console.log(`- Exact CSV diff:    gh pr diff ${state.pullRequestUrl}`);
+
+    if (state.checkRunUrl) {
+        console.log(`- Screenshots:       ${state.checkRunUrl}`);
+        console.log('                     download the responsive-screenshots artifact from that run');
+    } else {
+        console.log('- Screenshots:       open the Test static site check on the Pull Request and');
+        console.log('                     download its responsive-screenshots artifact');
+    }
+
+    console.log('- Confirm Family and Everyone both render correctly at desktop and mobile sizes.');
+}
+
+function requiredCheckDetailsUrl(pullRequest) {
+    const checks = Array.isArray(pullRequest?.statusCheckRollup)
+        ? pullRequest.statusCheckRollup
+        : [];
+
+    return checks.find(check => check?.name === REQUIRED_CHECK)?.detailsUrl || '';
 }
 
 async function waitForRequiredCheckRegistration(state, gh) {
@@ -972,6 +1066,13 @@ function saveState(state) {
 
 function printResumeInstructions(state) {
     console.log('');
+
+    if (state.phase === 'checked') {
+        console.log(`Reviewed data Pull Request left open: ${state.pullRequestUrl}`);
+        console.log('Nothing has been merged. Resume and type MERGE with: update-website-data.cmd --resume');
+        return;
+    }
+
     console.log(`Prepared update retained on ${state.branch}.`);
     console.log('Resume later with: update-website-data.cmd --resume');
 }
@@ -1100,10 +1201,16 @@ Usage:
   pnpm run data:update -- --workbook "C:\\path\\source.xlsm"
 
 The guided command creates a data branch, exports and validates the workbook,
-requires confirmation before promotion, runs all tests, and requires PUBLISH
-confirmation before opening a [skip netlify] Pull Request, waiting for GitHub
-checks, merging to production, deleting the data branch, and removing only the
-saved artifacts for that update.`);
+requires PROMOTE confirmation before promotion, runs all tests, and requires
+PUBLISH confirmation before opening a [skip netlify] Pull Request and waiting
+for GitHub checks and screenshots.
+
+It then stops. Merging to production needs a separate MERGE confirmation after
+you have reviewed the exact Pull Request diff and the uploaded Family and
+Everyone screenshots, which do not exist until PUBLISH has finished. Resume the
+paused update with --resume; the merge re-verifies the Pull Request identity,
+head commit, and required check before publishing, then deletes the data branch
+and removes only the saved artifacts for that update.`);
 }
 
 function captureDataFingerprint(git) {

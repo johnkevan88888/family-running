@@ -193,6 +193,24 @@ Unknown historical details are labelled rather than inferred.
   The tested data diff is fingerprinted before approval. Code, schema,
   configuration, export-set, and broader documentation changes cannot use this
   automatic authority.
+- **Correction, 12 August 2026.** The paragraph above described `PUBLISH` as
+  approval to merge. That was accurate but unsound, and audit finding P2-04
+  identified why: `PUBLISH` is typed before the Pull Request is created, so it
+  could not be approval of the exact committed diff or the responsive
+  screenshots, neither of which exists at that point. Meanwhile this protocol
+  told John that both are reviewed before approval. The code proved screenshots
+  were *generated*, never that anyone looked at them. The guided pathway now
+  splits the two: `PUBLISH` authorizes committing, pushing, opening the Pull
+  Request, and waiting for its required check; the run then stops, prints the
+  Pull Request, its exact diff command, and the run holding the screenshot
+  artifact, and requires a separate exact `MERGE` before publishing. `MERGE` is
+  the production approval, and after it the updater re-reads GitHub to
+  re-verify Pull Request identity, that the head commit is still the validated
+  one, and that the required check still succeeds, so a push during the review
+  pause is refused rather than merged. Declining leaves the Pull Request open
+  and the update resumable. The custom-domain route also now requires the exact
+  approved hostname rather than any syntactically valid one, which was audit
+  finding P2-02.
 
 ## Crown history is exported, not reconstructed in the browser
 

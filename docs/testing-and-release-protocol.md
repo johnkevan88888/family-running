@@ -65,11 +65,22 @@ pnpm run data:update -- --resume
 ```
 
 This wrapper prepares the complete staged export, preserves the explicit
-promotion checkpoint, runs this full test suite, and treats the second explicit
-`PUBLISH` confirmation as approval for the complete routine-data production
-action. It opens an eligible `[skip netlify]` Pull Request, waits for GitHub
-checks, verifies the exact tested commit, merges through the protected Pull
-Request pathway, deletes the merged branch, and performs update-scoped cleanup.
+`PROMOTE` checkpoint, and runs this full test suite. `PUBLISH` then commits and
+pushes the validated bundle, opens an eligible `[skip netlify]` Pull Request,
+and waits for GitHub checks and screenshot generation.
+
+It stops there. `PUBLISH` is given before the Pull Request exists, so it cannot
+be approval of a diff and screenshots that have not been produced yet. The run
+prints the Pull Request, the `gh pr diff` command for the exact CSV diff, and
+the check run holding the responsive-screenshot artifact, then requires a
+separate `MERGE` confirmation. A declined merge leaves the Pull Request open and
+the update resumable with `--resume`.
+
+After `MERGE` the updater re-reads GitHub rather than trusting what was true
+before the pause: it re-verifies the Pull Request identity, that the head commit
+is still the exact validated commit, and that the required check still succeeds,
+then merges through the protected Pull Request pathway, deletes the merged
+branch, and performs update-scoped cleanup.
 
 Run focused export-bundle failure regression tests:
 
@@ -345,8 +356,8 @@ Before approving a Pull Request:
 - For a validated lightweight data refresh, confirm the Pull Request title
   contains `[skip netlify]`, the automated eligibility gate passed, and the
   exact CSV diff contains only the intended new data and bundle metadata.
-  When using the guided updater, complete this review before typing `PUBLISH`;
-  that confirmation authorizes merge after the remote check succeeds.
+  When using the guided updater, this review happens at its `MERGE`
+  checkpoint, after the Pull Request and its screenshot artifact exist.
 - For a validated custom-domain change, confirm the title contains
   `[skip netlify]`, the eligibility gate passed, `CNAME` contains only the
   intended hostname, and the exact diff stays within the domain allowlist.
@@ -371,7 +382,8 @@ review, responsive screenshot review, and post-merge production verification,
 no release.
 
 No explicit John approval, no release. In the guided routine-data workflow,
-the exact `PUBLISH` confirmation after local review and tests is explicit John
+`PUBLISH` approves opening the Pull Request and the exact `MERGE` confirmation,
+typed after reviewing its diff and uploaded screenshots, is explicit John
 approval for the merge; other pathways still require separate PR approval.
 
 ## Proposed Workflow
@@ -392,14 +404,15 @@ approval for the merge; other pathways still require separate PR approval.
      production verification because DNS behavior cannot be represented by the
      Netlify hostname.
    The guided `pnpm run data:update` command performs these branch, validation,
-   promotion, test, Pull Request, required-check wait, merge, branch deletion,
-   and scoped-cleanup steps for a qualifying routine refresh after `PUBLISH`.
+   promotion, test, Pull Request, and required-check wait steps for a qualifying
+   routine refresh after `PUBLISH`, then stops for review before its separate
+   `MERGE` confirmation, branch deletion, and scoped cleanup.
 5. John reviews both site modes through the standard preview, or reviews the
    exact diff and uploaded responsive screenshots for a validated skip
    pathway, plus the manual steps, limitations, and rollback plan.
 6. Merge to `main` only after John explicitly approves production. For the
-   guided routine-data workflow, `PUBLISH` supplies this approval and the
-   launcher performs the merge after the required check succeeds.
+   guided routine-data workflow, `MERGE` supplies this approval, typed after
+   reviewing the Pull Request diff and the uploaded screenshots.
 7. Verify production after GitHub Pages updates.
 
 ## Pull Request Checks And Preview URLs
@@ -452,7 +465,7 @@ John will need to configure these manually in GitHub when ready:
 
 - Branch protection for `main`.
 - Required Pull Request review before merge for standard and custom-domain
-  changes. The guided routine-data pathway instead uses its exact `PUBLISH`
+  changes. The guided routine-data pathway instead uses its exact `MERGE`
   approval plus the protected required check, so an unconditional review rule
   would intentionally disable that automatic path.
 - Required automated checks before merge: `Pull Request Checks / Test static site`.
