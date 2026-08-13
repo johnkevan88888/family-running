@@ -13,6 +13,7 @@ const checks = [
     ['Simple data-update workflow tests', ['tests/simple-data-update.mjs']],
     ['Export bundle validation regression tests', ['tests/export-bundle-validation.mjs']],
     ['Staged export workflow regression tests', ['tests/staged-export-workflow.mjs']],
+    ['Personal-best reconciliation tests', ['tests/personal-best-reconciliation.mjs']],
     ['Preview artifact safety tests', ['tests/preview-artifact-safety.mjs']],
     ['Preview artifact build', ['scripts/build-preview-artifact.mjs']],
     ['Browser smoke tests', ['tests/browser-smoke.mjs']]
