@@ -90,10 +90,11 @@ must still run.
 For routine workbook updates, `pnpm run data:update` is the preferred guided
 entry point. It prepares the complete export, preserves the staged review and
 promotion boundary, runs the full local suite, verifies lightweight-path
-eligibility, and requires `PUBLISH` as explicit approval for the complete
-routine-data production action. It then opens the correctly titled Pull
-Request, waits for GitHub checks, verifies the PR branch, title, and head
-commit, merges through the protected pathway, and performs scoped cleanup.
+eligibility, and requires `PUBLISH` before opening the correctly titled Pull
+Request and waiting for GitHub checks. It then stops for review and requires a
+separate `MERGE` confirmation, after which it re-verifies the PR branch, title,
+head commit, and required check, merges through the protected pathway, and
+performs scoped cleanup.
 
 The `Pull Request Checks / Test static site` job fails closed if the marker is
 used outside the data-refresh or custom-domain allowlists. Remove
@@ -155,5 +156,6 @@ CSV diff review, and Family and Everyone responsive screenshot review, no
 release.
 
 No explicit John approval, no release. For the guided routine-data command,
-typing `PUBLISH` after the local review and full test suite is that explicit
-approval; every other pathway retains a separate Pull Request approval.
+typing `MERGE` after reviewing the Pull Request diff and its uploaded
+screenshots is that explicit approval; every other pathway retains a separate
+Pull Request approval.

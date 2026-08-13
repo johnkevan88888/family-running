@@ -119,11 +119,14 @@ The guided updater:
 6. runs the complete repository test and responsive screenshot suite;
 7. confirms that every tracked CSV was refreshed, no header changed, and the
    tested data-diff fingerprint still matches;
-8. requires the exact word `PUBLISH` as explicit production approval before
-   committing, pushing, and opening a `[skip netlify]` Pull Request;
-9. waits for GitHub checks and re-verifies the PR title, base branch, data
-   branch, and exact tested head commit before merging through the protected
-   Pull Request pathway; and
+8. requires the exact word `PUBLISH` before committing, pushing, and opening a
+   `[skip netlify]` Pull Request;
+9. waits for GitHub checks, then stops and prints the Pull Request, its exact
+   diff command, and the run holding the responsive-screenshot artifact;
+10. requires the exact word `MERGE` as explicit production approval, then
+    re-verifies the PR title, base branch, data branch, exact tested head
+    commit, and required check before merging through the protected Pull
+    Request pathway; and
 10. fast-forwards local `main`, deletes the verified merged branch locally and
     remotely, and removes only the staged export, promotion backup, and state
     paths recorded for that update.

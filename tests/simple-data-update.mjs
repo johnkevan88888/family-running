@@ -31,6 +31,78 @@ assert.match(updater, /\['branch', '--delete', state\.branch\]/i);
 assert.match(updater, /fs\.rmSync\(resolveStagedRoot\(state\.stagedRoot\), \{ recursive: true \}\)/i);
 assert.match(promoter, /PROMOTION_ARTIFACT_ROOT=/i);
 
+// Audit finding P2-04. PUBLISH is given before the Pull Request exists, so it
+// cannot be approval of a diff and screenshots that have not been produced yet.
+// Waiting for checks and merging must therefore be separate steps, with a
+// second confirmation and a fresh re-verification between them.
+function functionSource(source, signature) {
+    const start = source.indexOf(signature);
+    assert.notEqual(start, -1, `Could not find ${signature}`);
+
+    // Tracked files use CRLF, so match the closing brace at column zero
+    // regardless of line ending.
+    const end = /\r?\n\}\r?\n/.exec(source.slice(start));
+    assert.notEqual(end, null, `Could not find the end of ${signature}`);
+
+    return source.slice(start, start + end.index);
+}
+
+const waitBody = functionSource(updater, 'async function waitForRequiredChecks');
+assert.doesNotMatch(
+    waitBody,
+    /'merge'/,
+    'Waiting for the required check must not merge; merging needs its own confirmation.'
+);
+assert.match(waitBody, /state\.phase = 'checked'/);
+
+// The split is only worth anything if the main flow actually routes through the
+// confirmation, so assert that it does and that it cannot merge directly.
+const mainBody = functionSource(updater, 'async function main()');
+assert.match(mainBody, /state = await waitForRequiredChecks\(state, tools\)/);
+assert.match(mainBody, /state = await confirmReviewedMerge\(state, tools, options\)/);
+assert.doesNotMatch(
+    mainBody,
+    /mergeReviewedPullRequest/,
+    'The main flow must reach a merge only through confirmReviewedMerge.'
+);
+assert.match(
+    mainBody,
+    /if \(state\.phase !== 'merged'\) \{[\s\S]*?printResumeInstructions\(state\)[\s\S]*?return;/,
+    'A declined merge must leave the Pull Request open and explain how to resume.'
+);
+
+const confirmBody = functionSource(updater, 'async function confirmReviewedMerge');
+assert.match(confirmBody, /confirmExactWord\(\s*'MERGE'/);
+assert.match(confirmBody, /options\.approveMerge/);
+assert.match(confirmBody, /printReviewCheckpoint\(state\)/);
+
+// The re-verification must happen after the human pause, not before it, so a
+// push during review is refused rather than merged.
+const approvalIndex = confirmBody.indexOf('const approved');
+const reloadIndex = confirmBody.indexOf('loadPullRequest(state, tools.gh)');
+const identityIndex = confirmBody.indexOf('requireDataPullRequestIdentity');
+const checksIndex = confirmBody.indexOf('assessRequiredDataChecks');
+
+assert.ok(approvalIndex >= 0 && reloadIndex > approvalIndex, 'The Pull Request must be re-read after MERGE.');
+assert.ok(identityIndex > approvalIndex, 'Identity must be re-verified after MERGE.');
+assert.ok(checksIndex > approvalIndex, 'Required checks must be re-verified after MERGE.');
+
+// The PUBLISH prompt must no longer promise a merge it does not perform.
+assert.match(updater, /'PUBLISH',\s*\n?\s*'[^']*does not merge/i);
+assert.doesNotMatch(updater, /'PUBLISH',\s*\n?\s*'[^']*merge it to production/i);
+
+// A paused, reviewed update must be resumable and must say nothing was merged.
+assert.match(updater, /\['published', 'checked', 'merged', 'no-changes'\]/);
+assert.match(updater, /Nothing has been merged\. Resume and type MERGE/);
+
+assert.equal(validateUpdateState({
+    version: 1,
+    phase: 'checked',
+    branch: 'data/refresh-20260808-213045',
+    stagedRoot: path.resolve('test-artifacts', 'workbook-export-staging', 'run-1'),
+    promotionRoot: path.resolve('test-artifacts', 'workbook-export-promotion', 'run-1')
+}).phase, 'checked');
+
 const date = new Date('2026-08-08T21:30:45.123Z');
 
 assert.equal(createDataBranchName(date), 'data/refresh-20260808-213045');
@@ -44,9 +116,12 @@ assert.deepEqual(parseUpdateArguments(['--resume', '--approve-publish']), {
     prepareOnly: false,
     approvePromote: false,
     approvePublish: true,
+    approveMerge: false,
     workbookPath: null,
     help: false
 });
+assert.equal(parseUpdateArguments(['--approve-merge']).approveMerge, true);
+assert.equal(parseUpdateArguments(['--approve-publish']).approveMerge, false);
 assert.equal(
     parseUpdateArguments(['--workbook', 'C:\\Private\\source.xlsm']).workbookPath,
     'C:\\Private\\source.xlsm'
