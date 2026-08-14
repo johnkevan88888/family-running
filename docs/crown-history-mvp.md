@@ -76,7 +76,8 @@ Contract details:
   exported change. They are not populated by looking at another website row.
 - Rows are exported in the crown order above and, within each crown, in stable
   ascending effective chronology. Same-day changes must use the workbook's
-  authoritative result and tie-break order.
+  authoritative result and tie-break order, which is
+  [Workbook Tie-Break Rules](tie-break-rules.md).
 - CSV fields containing commas or quotes must use normal CSV quoting.
 
 For `Distance=Overall`, the schema identifies the crown but has no separate

@@ -284,8 +284,21 @@ starting.
    audit warns against. The design, the measured coverage gap, and the exact
    current behaviour the workbook must replicate or supersede are written up in
    [Proposed workbook-owned personal-best export](personal-best-export-proposal.md).
-   That proposal needs John's decision and a workbook change before any
-   repository work starts.
+
+   **The design is now settled; the export is not built.** John decided the four
+   open semantics questions on 13 August 2026: the workbook applies the tie-break
+   already written in `docs/athlete-comparison-export-contract.md` rather than
+   the browser's accidental date-only behaviour, absent results get no
+   placeholder rows, a performance that is both benchmarks exports as two rows,
+   and `Period` is carried with `All Time` as its only value. Those are recorded
+   under "Settled semantics" in the proposal, along with a divergence found the
+   same day: the browser skips the **first** criterion of both documented
+   tie-break rules and resolves on date alone, so the two paths differ today in
+   rule even though no current key exercises it.
+
+   What remains is a workbook change, and it is John's to start. Settling the
+   contract is not approval to build it, and the repository work listed in the
+   proposal stays unapproved until an export exists.
 5. **`og-image.png` is oversized.** 1200 x 630 is correct, but 984 KB is roughly
    five times heavier than it needs to be. It is published unmodified because it
    is John's artwork. Worth recompressing before the site is shared widely.
