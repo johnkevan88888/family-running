@@ -13,10 +13,15 @@ The four questions this document originally left open were decided by John on
 contract the workbook can be built against; it is not approval to build it, and
 it is not approval for the repository work listed at the end.
 
-Decision 1 was refined the same day, after measurement: ties are compared on the
-workbook's unrounded age grade before any tie-break applies. That adds one
-column, `AgeGradeExact`, so the comparison the workbook makes is one the
-repository can check rather than one it has to trust.
+Decision 1 was worked out over the same day and ended up larger than a decision
+about this export. Ties are compared on the workbook's unrounded age grade
+before anything else, which adds one column, `AgeGradeExact`, so the comparison
+the workbook makes is one the repository can check rather than one it has to
+trust. Older now wins over more recent, reversing the previous rule. And because
+the same chain governs `athlete_comparison_targets.csv` and the workbook's
+overall-crown comparison as well as this export, it is stated once in
+[Workbook Tie-Break Rules](tie-break-rules.md) and referenced from all three
+rather than repeated.
 
 This document exists because P2-03 cannot be fixed inside this repository, and
 the next step the audit recommends is a design that crosses into the private
@@ -70,14 +75,12 @@ is part of the problem.
   rule. It is the most likely place for the browser and the workbook to disagree
   without anyone noticing.
 
-  The divergence is present today, not merely possible. The Calculator's export
-  already has a written tie-break under "Recommended tie-breaking" in
-  [the athlete comparison export contract](athlete-comparison-export-contract.md):
-  for `Best Age Grade`, prefer the faster time, then the most recent date, then
-  the earlier workbook source row; for `Fastest Time`, prefer the higher age
-  grade, then the most recent date, then the earlier source row. The browser
-  skips each rule's **first** criterion entirely and resolves on date alone. Two
-  results at one distance with equal age grades but different times would
+  The divergence is present today, not merely possible. The workbook's rules are
+  written down in [Workbook Tie-Break Rules](tie-break-rules.md); the browser
+  matches them at no point. It skips each chain's first criterion entirely -
+  full-precision age grade, or raw time - and resolves on date, and it resolves
+  date the opposite way, taking the most recent where the rules take the oldest.
+  Two results at one distance with equal age grades but different times would
   therefore select differently in the Calculator and on the athlete's own
   profile. No such tie exists in current data, which is why nothing has failed.
 
@@ -133,15 +136,25 @@ recognisably the same family of thing.
 Decided by John on 13 August 2026. These four are the contract the workbook
 should be built against.
 
-1. **Ties are compared on the accurate age grade first, then the tie-break
-   already written down.** Before any tie-break applies, the workbook compares
-   the unrounded age grade it holds internally, exported as `AgeGradeExact`. Two
-   performances that tie at the exported one decimal place will almost never tie
-   at full working precision, so the tie-break itself should very rarely decide
-   anything. Where it does apply, it is the `Best Age Grade` and `Fastest Time`
-   rules from "Recommended tie-breaking" in
-   [the athlete comparison export contract](athlete-comparison-export-contract.md),
-   unchanged, rather than the browser's accidental date-only behaviour.
+1. **Selection follows [Workbook Tie-Break Rules](tie-break-rules.md).** That
+   document is the single statement of the chain, written once because the same
+   rules govern this export, `athlete_comparison_targets.csv`, and the
+   workbook's overall-crown comparison. For this export the chain resolves to:
+   highest age grade at full working precision, then older date, then fastest
+   raw time, then earlier workbook source row for `Best Age Grade`; and lowest
+   raw time, then highest age grade at full working precision, then older date,
+   then earlier source row for `Fastest Time`. The distance criterion in the
+   shared chain is inert here, because this export is keyed by distance.
+
+   Two parts of that were settled on 13 August 2026 and changed what the
+   workbook had been asked for. Ties are compared on the unrounded age grade
+   before anything else, which is why `AgeGradeExact` is in the schema above.
+   And **older wins over more recent**, reversing the earlier rule, on the basis
+   that a best is set the first time it is achieved rather than the last time it
+   is equalled. That reversal was applied to the comparison export in the same
+   change, deliberately: adopting it here alone would have left the Calculator
+   and the athlete page disagreeing about the same performance, which is the
+   defect this proposal exists to close.
 
    Rejected alternative: matching the current browser output. That would ask the
    workbook to reproduce an emergent property of two unrelated pieces of code,
