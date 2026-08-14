@@ -86,15 +86,28 @@ have moved to the revised schema, this compatibility path can be removed.
   higher-ranked athlete is The Standard. This selects an initial view only; it
   does not calculate or change any age grade.
 
-## Recommended tie-breaking
+## Tie-breaking
 
 Apply tie-breaking within the same result class to keep repeated exports
-deterministic:
+deterministic. The rules are [Workbook Tie-Break Rules](tie-break-rules.md), and
+they are stated there rather than here because the same chain now governs this
+export, the proposed `data/personal_bests.csv`, and the workbook's own
+overall-crown comparison.
 
-- For `Best Age Grade`, prefer the faster time when age grades tie, then the
-  most recent date, then the earlier workbook source row.
-- For `Fastest Time`, prefer the higher age grade when times tie, then the most
-  recent date, then the earlier workbook source row.
+**Changed on 13 August 2026.** This section previously read:
+
+> - For `Best Age Grade`, prefer the faster time when age grades tie, then the
+>   most recent date, then the earlier workbook source row.
+> - For `Fastest Time`, prefer the higher age grade when times tie, then the most
+>   recent date, then the earlier workbook source row.
+
+Two things changed. Ties are now compared on the workbook's unrounded age grade
+before any of these criteria apply, and **older wins over more recent** rather
+than the reverse. The order of the remaining criteria changed with it; the full
+chain is in the linked document.
+
+No currently exported row changes. There is no tie in the current results for
+any of this to decide, measured on 13 August 2026.
 
 ## Validation
 
