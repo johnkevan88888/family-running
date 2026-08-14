@@ -2,9 +2,10 @@
 
 ## Status
 
-- **Status:** Schema and semantics settled 13 August 2026. The export does not
-  exist, and no repository work is approved.
-- **Date:** Proposed 12 August 2026; open questions settled 13 August 2026.
+- **Status:** Schema and semantics settled 13 to 14 August 2026. The export does
+  not exist, and no repository work is approved.
+- **Date:** Proposed 12 August 2026; open questions settled 13 August 2026;
+  tie-break reversed to older-wins 14 August 2026.
 - **Addresses:** audit finding P2-03 in
   [Audit of Pull Requests #19 to #32](pr-19-32-audit.md)
 
@@ -13,11 +14,12 @@ The four questions this document originally left open were decided by John on
 contract the workbook can be built against; it is not approval to build it, and
 it is not approval for the repository work listed at the end.
 
-Decision 1 was worked out over the same day and ended up larger than a decision
-about this export. Ties are compared on the workbook's unrounded age grade
-before anything else, which adds one column, `AgeGradeExact`, so the comparison
-the workbook makes is one the repository can check rather than one it has to
-trust. Older now wins over more recent, reversing the previous rule. And because
+Decision 1 was worked out over two days and ended up larger than a decision
+about this export. On 13 August 2026, ties are compared on the workbook's
+unrounded age grade before anything else, which adds one column,
+`AgeGradeExact`, so the comparison the workbook makes is one the repository can
+check rather than one it has to trust. On 14 August 2026, older now wins over
+more recent, reversing the previous rule. And because
 the same chain governs `athlete_comparison_targets.csv` and the workbook's
 overall-crown comparison as well as this export, it is stated once in
 [Workbook Tie-Break Rules](tie-break-rules.md) and referenced from all three
@@ -146,15 +148,15 @@ should be built against.
    then earlier source row for `Fastest Time`. The distance criterion in the
    shared chain is inert here, because this export is keyed by distance.
 
-   Two parts of that were settled on 13 August 2026 and changed what the
-   workbook had been asked for. Ties are compared on the unrounded age grade
-   before anything else, which is why `AgeGradeExact` is in the schema above.
-   And **older wins over more recent**, reversing the earlier rule, on the basis
-   that a best is set the first time it is achieved rather than the last time it
-   is equalled. That reversal was applied to the comparison export in the same
-   change, deliberately: adopting it here alone would have left the Calculator
-   and the athlete page disagreeing about the same performance, which is the
-   defect this proposal exists to close.
+   Two parts of that changed what the workbook had been asked for, and they were
+   settled a day apart. On 13 August 2026, ties are compared on the unrounded age
+   grade before anything else, which is why `AgeGradeExact` is in the schema
+   above. On 14 August 2026, **older wins over more recent**, reversing the
+   earlier rule, on the basis that a best is set the first time it is achieved
+   rather than the last time it is equalled. That reversal was applied to the
+   comparison export in the same change, deliberately: adopting it here alone
+   would have left the Calculator and the athlete page disagreeing about the same
+   performance, which is the defect this proposal exists to close.
 
    Rejected alternative: matching the current browser output. That would ask the
    workbook to reproduce an emergent property of two unrelated pieces of code,

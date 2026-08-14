@@ -2,10 +2,37 @@
 
 ## Task title
 
-Personal-best reconciliation harness. Approved by John on 13 August 2026,
-delivered and awaiting review.
+None. No implementation task is in progress.
 
 ## Status
+
+Everything approved so far is delivered and merged. #54 settled the
+personal-best export contract and #55 delivered the reconciliation harness, both
+on 14 August 2026; they are described under "What shipped" below. The critical
+path is now a workbook change, which is John's to start, not repository work.
+
+The Ace of Race visual restyle is the one approved item that never shipped: it
+was split off, and its Pull Request has since been closed rather than parked.
+
+## Merged on 14 August 2026
+
+### #54 The personal-best export contract
+
+The four open questions in
+[Proposed workbook-owned personal-best export](personal-best-export-proposal.md)
+were settled, fixing the contract the workbook can be built against. Settling it
+is not approval to build it, and the repository work that document lists stays
+unapproved until an export exists.
+
+The tie-break outgrew this export and is now stated once in
+[Workbook Tie-Break Rules](tie-break-rules.md), because the same chain governs
+`athlete_comparison_targets.csv`, the proposed `data/personal_bests.csv`, and
+the workbook's overall-crown comparison. Older wins over more recent, reversing
+what the comparison contract previously said; ties are compared on the unrounded
+age grade first, which is why `AgeGradeExact` is in the schema. No exported row
+changes: there is no tie in the current results for any of it to decide.
+
+### #55 The reconciliation harness
 
 `scripts/reconcile-personal-bests.mjs` compares a draft workbook personal-best
 export against what `athlete.html` renders today, so a disagreement is a
@@ -30,10 +57,6 @@ refuses to write one anywhere inside `data/`.
 points launch the same browser. A second copy would have drifted, and a
 reconciliation that reads the page has to launch what the test suite launches or
 its result means nothing. No behaviour changed; the full suite passes.
-
-Everything else approved so far is delivered and merged. The Ace of Race visual
-restyle is the one approved item that never shipped: it was split off, and its
-Pull Request has since been closed rather than parked.
 
 ### Measured on 13 August 2026
 
