@@ -2,14 +2,52 @@
 
 ## Task title
 
-None. No implementation task is in progress.
+Personal-best reconciliation harness. Approved by John on 13 August 2026,
+delivered and awaiting review.
 
 ## Status
 
-Everything approved so far is delivered and merged. The Ace of Race visual
+`scripts/reconcile-personal-bests.mjs` compares a draft workbook personal-best
+export against what `athlete.html` renders today, so a disagreement is a
+decision taken deliberately rather than something an athlete later notices about
+their own profile. It exists before the export does, because a trial export can
+then be checked the moment it lands instead of waiting on new tooling.
+
+It reads the rendered page rather than recomputing anything. The defect it
+serves to close is that one concept has two selectors; a third selector living
+in a reconciliation script would repeat the mistake. It drives the real page in
+the real browser and reads the Personal Bests cards out of the DOM.
+
+Two modes: `--export <path>` compares and exits non-zero on any difference,
+`--emit-current <path>` writes current rendered selections in the proposed
+schema. The specimen is a record of present browser behaviour for the workbook
+to replicate or knowingly supersede. It is not an export: it carries
+`NOT-AN-EXPORT-RENDERED-SPECIMEN` as its `ExportBundleID`, and the script
+refuses to write one anywhere inside `data/`.
+
+`loadPlaywright` and `findChromiumExecutable` moved out of
+`tests/browser-smoke.mjs` into `scripts/browser-runtime.mjs` so both entry
+points launch the same browser. A second copy would have drifted, and a
+reconciliation that reads the page has to launch what the test suite launches or
+its result means nothing. No behaviour changed; the full suite passes.
+
+Everything else approved so far is delivered and merged. The Ace of Race visual
 restyle is the one approved item that never shipped: it was split off, and its
-Pull Request has since been closed rather than parked. The next task should
-replace this entry with its own approved scope before implementation begins.
+Pull Request has since been closed rather than parked.
+
+### Measured on 13 August 2026
+
+Both from the harness itself, against the current export:
+
+- **Personal bests render identically in Family and Everyone.** All 96
+  selections across 19 athletes match in both modes. This was the premise behind
+  exporting the file as `shared` rather than per-site, and it had not previously
+  been checked. The script re-checks it on every run unless `--site` pins one
+  mode.
+- **96 rendered selections exist across 19 athletes**, against a theoretical
+  maximum of 380 (19 athletes x 5 distances x 2 result classes x 2 benchmark
+  types). Most cards are legitimately empty, which is why settled decision 2
+  exports no placeholder rows.
 
 This file has a history of going stale, describing work as in progress after it
 had merged. `AGENTS.md` directs agents to read it first, so a stale entry
