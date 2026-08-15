@@ -128,6 +128,26 @@ const cases = [
             await fs.writeFile(comparisonFile, `${rows.join('\r\n')}\r\n`);
         }
     },
+    // A workbook status marker on the participant renames the athlete's key in
+    // every exported table at once, so the bundle stays internally consistent
+    // and every reference check still resolves. Mutating one athlete across the
+    // whole bundle is the only mutation that reproduces that, and the guard has
+    // to fail on it anyway.
+    {
+        name: 'workbook marker leaked into the athlete key',
+        expected: 'AthleteID "*john-kevan" must be lowercase letters and digits separated by single hyphens.',
+        mutate: async root => {
+            for (const file of await listBundleCsvFiles(root)) {
+                const text = await fs.readFile(file, 'utf8');
+
+                if (!text.includes('john-kevan')) {
+                    continue;
+                }
+
+                await fs.writeFile(file, text.replace(/\bjohn-kevan\b/g, '*john-kevan'));
+            }
+        }
+    },
     // Absolute records are a fixed Men/Women by supported-distance matrix, so a
     // dropped, duplicated, misfiled, or reordered record is a defect the Records
     // page cannot show. Each case below breaks exactly one of those rules.
@@ -292,6 +312,17 @@ function replaceCsvField(line, index, value) {
     const fields = line.split(',');
     fields[index] = value;
     return fields.join(',');
+}
+
+async function listBundleCsvFiles(root) {
+    const entries = await fs.readdir(path.join(root, 'data'), {
+        recursive: true,
+        withFileTypes: true
+    });
+
+    return entries
+        .filter(entry => entry.isFile() && entry.name.endsWith('.csv'))
+        .map(entry => path.join(entry.parentPath || entry.path, entry.name));
 }
 
 function absoluteRecordsPath(root) {
