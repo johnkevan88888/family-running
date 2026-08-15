@@ -24,6 +24,15 @@ const manifestSchemaVersion = '1.0';
 // against one definition rather than three.
 const absoluteRecordSexes = ['Men', 'Women'];
 const absoluteRecordDistances = ['Marathon', 'Half Marathon', '10 Mile', '10 km', '5 km'];
+// The workbook annotates participants with status markers, and a marker that
+// reaches AthleteID silently renames the athlete. Nothing downstream notices:
+// every exported table carries the same renamed key, so all the reference
+// checks resolve and the bundle validates, while `athlete.html?id=...` links
+// published earlier stop matching anyone. Only a format rule applied where the
+// ID is minted catches that, which is why this guards data/athlete_results.csv
+// rather than each referencing column. A malformed ID anywhere else already
+// fails the "does not exist in data/athlete_results.csv" check.
+const athleteIdPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const errors = [];
 const warnings = [];
 const csvCache = new Map();
@@ -53,8 +62,16 @@ for (const row of athleteObjects) {
     validatePercent(row.AgeGrade, 'data/athlete_results.csv', rowNumber, 'AgeGrade', { required: true });
 
     if (row.AthleteID) {
-        if (athleteIds.has(row.AthleteID)) {
-            // Multiple rows per athlete are expected.
+        // Multiple rows per athlete are expected, so only the first sighting of
+        // an ID is checked. A marker that leaks into the key repeats on every
+        // one of that athlete's result rows, and one report per athlete is the
+        // difference between a readable failure and hundreds of duplicates.
+        if (!athleteIds.has(row.AthleteID) && !athleteIdPattern.test(row.AthleteID)) {
+            addError(
+                'data/athlete_results.csv',
+                rowNumber,
+                `AthleteID "${row.AthleteID}" must be lowercase letters and digits separated by single hyphens.`
+            );
         }
         athleteIds.add(row.AthleteID);
     }
