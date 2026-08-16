@@ -94,7 +94,7 @@ they are stated there rather than here because the same chain now governs this
 export, the proposed `data/personal_bests.csv`, and the workbook's own
 overall-crown comparison.
 
-**Changed on 13 August 2026.** This section previously read:
+**Changed on 14 August 2026.** This section previously read:
 
 > - For `Best Age Grade`, prefer the faster time when age grades tie, then the
 >   most recent date, then the earlier workbook source row.

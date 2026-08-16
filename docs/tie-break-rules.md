@@ -1,6 +1,6 @@
 # Workbook Tie-Break Rules
 
-- **Status:** Decided by John on 13 August 2026. Supersedes the earlier rule in
+- **Status:** Decided by John on 14 August 2026. Supersedes the earlier rule in
   [the athlete comparison export contract](athlete-comparison-export-contract.md),
   which preferred the **most recent** date.
 - **Applies to:** every workbook selection of one performance from several
@@ -47,7 +47,7 @@ counterpart here.
 
 ## Why older wins
 
-Reversed from the previous rule on 13 August 2026. A best is set the first time
+Reversed from the previous rule on 14 August 2026. A best is set the first time
 it is achieved; equalling it later does not move the achievement. The earlier
 wording preferred the most recent date, which read naturally for a leaderboard
 but wrongly for a personal best.
@@ -81,7 +81,7 @@ is why the chain continues past raw time rather than ending there.
 The distance criterion looks inert, and inside a distance-keyed selection it is:
 `data/personal_bests.csv` and `athlete_comparison_targets.csv` both fix the
 distance as part of the key, so every candidate already shares it. Measured on
-13 August 2026, 0 of 48 athlete/distance/class groups span more than one
+14 August 2026, 0 of 48 athlete/distance/class groups span more than one
 distance, and none contain a distance spelling variant.
 
 It does real work in the **Overall** category, which selects one performance

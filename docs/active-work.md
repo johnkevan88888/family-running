@@ -2,10 +2,38 @@
 
 ## Task title
 
-Personal-best reconciliation harness. Approved by John on 13 August 2026,
-delivered and awaiting review.
+None. No implementation task is in progress.
 
 ## Status
+
+Everything approved so far is delivered and merged. #54 settled the
+personal-best export contract and #55 delivered the reconciliation harness, both
+on 14 August 2026; #57 to #60 followed on 15 and 16 August. All of it is
+described below, and production was verified on 16 August 2026. The critical
+path is now a workbook change, which is John's to start, not repository work.
+
+The Ace of Race visual restyle is the one approved item that never shipped: it
+was split off, and its Pull Request has since been closed rather than parked.
+
+## Merged on 14 August 2026
+
+### #54 The personal-best export contract
+
+The four open questions in
+[Proposed workbook-owned personal-best export](personal-best-export-proposal.md)
+were settled, fixing the contract the workbook can be built against. Settling it
+is not approval to build it, and the repository work that document lists stays
+unapproved until an export exists.
+
+The tie-break outgrew this export and is now stated once in
+[Workbook Tie-Break Rules](tie-break-rules.md), because the same chain governs
+`athlete_comparison_targets.csv`, the proposed `data/personal_bests.csv`, and
+the workbook's overall-crown comparison. Older wins over more recent, reversing
+what the comparison contract previously said; ties are compared on the unrounded
+age grade first, which is why `AgeGradeExact` is in the schema. No exported row
+changes: there is no tie in the current results for any of it to decide.
+
+### #55 The reconciliation harness
 
 `scripts/reconcile-personal-bests.mjs` compares a draft workbook personal-best
 export against what `athlete.html` renders today, so a disagreement is a
@@ -31,10 +59,6 @@ points launch the same browser. A second copy would have drifted, and a
 reconciliation that reads the page has to launch what the test suite launches or
 its result means nothing. No behaviour changed; the full suite passes.
 
-Everything else approved so far is delivered and merged. The Ace of Race visual
-restyle is the one approved item that never shipped: it was split off, and its
-Pull Request has since been closed rather than parked.
-
 ### Measured on 13 August 2026
 
 Both from the harness itself, against the current export:
@@ -48,6 +72,55 @@ Both from the harness itself, against the current export:
   maximum of 380 (19 athletes x 5 distances x 2 result classes x 2 benchmark
   types). Most cards are legitimately empty, which is why settled decision 2
   exports no placeholder rows.
+
+## Merged on 15 and 16 August 2026
+
+Four Pull Requests landed after #55 and are recorded here so this section is not
+stale by omission.
+
+- **#58 Athlete ID format guard.** `scripts/validate-csv.mjs` now requires every
+  `AthleteID` in `data/athlete_results.csv` to be lowercase letters and digits
+  separated by single hyphens. The workbook annotates participants with status
+  markers, and a marker reaching the ID silently renames the athlete without
+  anything downstream noticing: every exported table carries the same renamed
+  key, so the reference checks resolve and the bundle validates, while
+  `athlete.html?id=...` links published earlier stop matching anyone. The guard
+  is applied where the ID is minted rather than at each referencing column, and
+  reports once per athlete rather than once per result row.
+- **#57, #59, and #60 routine data refreshes**, on 15, 15, and 16 August 2026.
+  `data/` now carries `ExportBundleID` `20260816T181341410Z-0452E180` with
+  `LastUpdatedUTC` of `2026-08-16T18:13:48Z`.
+
+## Production verified on 16 August 2026
+
+The first recorded production check since #43. It covers everything that
+deployed in between, including the #52 mode-aware title, which had never been
+confirmed live.
+
+- **Both modes load and are correctly named.** Family renders
+  "Family Running Championships"; Everyone renders
+  "Age-Graded Running Championships" in the tab, the header, and the subtitle.
+  That is #52 working: the tab no longer says Family in Everyone mode. Page
+  prefixes survive the substitution, as in
+  "Hall of Fame | Age-Graded Running Championships". The athlete page is
+  correctly excluded and reads "Carolyn Kevan | Athlete Profile".
+- **Mode is preserved everywhere checked.** Every navigation link carries
+  `?site=everyone`, the athlete back link resolves to `index.html?site=everyone`,
+  and the Records page's athlete links carry `?site=family`.
+- **Leaderboards, Hall of Fame, Records, and Calculator all render**, with no
+  stuck "Loading" text and no error text on any page checked. Records shows Men
+  before Women, which is the P2-01 remediation live: the page keeps exported
+  order rather than the old browser-side override.
+- **The Calculator separates official from unofficial** into labelled sections
+  and shows both badges on one row where a single performance sets both
+  standards, as the contract describes.
+- **The published-content contract holds.** `AGENTS.md`, `package.json`,
+  `docs/tie-break-rules.md`, and `scripts/reconcile-personal-bests.mjs` all
+  return 404; `data/athlete_results.csv` and `CNAME` return 200.
+  `data/personal_bests.csv` returns 404 because it does not exist yet, which is
+  the expected state.
+
+## Keeping this file honest
 
 This file has a history of going stale, describing work as in progress after it
 had merged. `AGENTS.md` directs agents to read it first, so a stale entry
