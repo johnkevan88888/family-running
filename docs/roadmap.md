@@ -97,14 +97,20 @@ repository history. An item becomes active only when John approves it and
    - **Published profile links dead-end.** An `athlete.html?id=...` link shared
      earlier renders "Athlete not found" once the athlete is gone.
 
-   **It does not remove them from GitHub.** This repository is public, verified
-   16 August 2026, and every past commit of `data/athlete_results.csv` still
-   carries the athlete's name, age category, event names, and dates, readable
-   and indexable regardless of the site's `noindex`. Removing a participant from
-   the current export removes them from the website only. If a deactivation is
-   ever prompted by someone asking to be taken off, the export change alone does
-   not achieve that; closing the remaining route is the separate open item about
-   the repository being public.
+   **It does not remove them from GitHub, and John has accepted that.** This
+   repository is public, verified 16 August 2026, and every past commit of
+   `data/athlete_results.csv` still carries the athlete's name, age category,
+   event names, and dates, readable and indexable regardless of the site's
+   `noindex`. Removing a participant from the current export removes them from
+   the website only.
+
+   That was raised before the decision, and John's answer on 16 August 2026 was
+   that the repository is acceptable as it stands and the requirement is display
+   only. **Scope this as display, not erasure.** Nothing here should attempt to
+   scrub git history, and the separate open item about the repository being
+   public is not a prerequisite. If a deactivation is ever prompted by someone
+   asking to be taken off the record entirely rather than off the site, that is
+   a different request and this design does not answer it.
 
    Operationally, expect a large multi-file diff as ranks shift. The guided
    updater's separate `MERGE` confirmation is the right place to review it.
