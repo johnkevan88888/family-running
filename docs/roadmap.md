@@ -62,6 +62,73 @@ repository history. An item becomes active only when John approves it and
    bests in JavaScript by sorting exported rows, which is a browser-side
    derivation of the same kind.
 
+5. **Retroactive removal of deactivated participants.** The private Participants
+   sheet holds a `ProfileStatus` column. John's intent, stated 16 August 2026, is
+   that deactivating a participant removes every mention of them from the site,
+   retroactively as well as going forward, and that no new result of theirs is
+   published.
+
+   **The repository needs no work for this, and no `ProfileStatus` export.** If
+   the workbook stops exporting a participant everywhere, the site never learns
+   they existed. Validation is satisfied by that: every referenced athlete ID
+   must exist in `data/athlete_results.csv`, so removing them from the shared
+   results file and from every file referencing it leaves no dangling reference.
+   Removing them from only some files fails validation, which is the desirable
+   direction for the check to fail in.
+
+   It is recorded here rather than in `docs/decision-log.md` because it is
+   workbook-side behaviour this repository cannot verify, and the decision log's
+   own correction of 10 August 2026 says such claims belong in the roadmap as
+   proposals until confirmed against the workbook.
+
+   Three consequences are worth having written down before it is used:
+
+   - **It edits other people's history.** Ranks are positional, so removing an
+     athlete promotes everyone below them and changes the medals in
+     `official_medals.csv`. Measured on 16 August 2026 in Family, of 21
+     result-bearing athletes: three hold an absolute record, five hold an
+     official medal, two appear in the Hall of Fame, and four appear across the
+     eight `crown_history.csv` rows. Deactivating one of those few rewrites
+     pages about other people; deactivating any of the other sixteen is
+     contained.
+   - **Crown history replays differently.** `crown_history.csv` is rebuilt from
+     presently valid official results, so a transition recorded as one athlete
+     taking a crown from another changes when the previous holder is removed.
+   - **Published profile links dead-end.** An `athlete.html?id=...` link shared
+     earlier renders "Athlete not found" once the athlete is gone.
+
+   **It does not remove them from GitHub, and John has accepted that.** This
+   repository is public, verified 16 August 2026, and every past commit of
+   `data/athlete_results.csv` still carries the athlete's name, age category,
+   event names, and dates, readable and indexable regardless of the site's
+   `noindex`. Removing a participant from the current export removes them from
+   the website only.
+
+   That was raised before the decision, and John's answer on 16 August 2026 was
+   that the repository is acceptable as it stands and the requirement is display
+   only. **Scope this as display, not erasure.** Nothing here should attempt to
+   scrub git history, and the separate open item about the repository being
+   public is not a prerequisite. If a deactivation is ever prompted by someone
+   asking to be taken off the record entirely rather than off the site, that is
+   a different request and this design does not answer it.
+
+   Operationally, expect a large multi-file diff as ranks shift. The guided
+   updater's separate `MERGE` confirmation is the right place to review it.
+
+6. **Visual marking of estimated dates of birth.** The private Participants
+   sheet holds a `DOBStatus` column. Because age grade is computed from age, an
+   estimated date of birth makes the age grade, the age-graded category, the
+   resulting rank, and every target derived from them estimates too, and the
+   site currently presents every age grade with identical confidence.
+
+   The design was agreed with John on 16 August 2026 and is written up in
+   [Proposed workbook-owned DOB status export](dob-status-export-proposal.md):
+   a shared `data/athlete_dob_status.csv` carrying one row per athlete, joined
+   in the browser wherever an age grade renders. Unlike the item above, this
+   does need repository work, but only after the workbook exports the file. One
+   question is still open there: the exact `DOBStatus` vocabulary, which
+   validation has to pin to a closed set.
+
 ## Later candidate tasks
 
 1. **Non-age-graded records and fastest-time presentation.** The athlete page

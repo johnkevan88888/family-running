@@ -375,6 +375,26 @@ starting.
 5. **`og-image.png` is oversized.** 1200 x 630 is correct, but 984 KB is roughly
    five times heavier than it needs to be. It is published unmodified because it
    is John's artwork. Worth recompressing before the site is shared widely.
+6. **Estimated dates of birth are not marked.** The private Participants sheet
+   holds a `DOBStatus` column and nothing about it reaches the site, so every age
+   grade is presented with identical confidence whether or not the date of birth
+   behind it is known. Age grade is computed from age, so an estimate propagates
+   into the score, the category, the rank, and the medals that follow. Design
+   agreed 16 August 2026 and written up in
+   [Proposed workbook-owned DOB status export](dob-status-export-proposal.md).
+   **Blocked on the workbook**, and one question is still open there: the exact
+   `DOBStatus` vocabulary, which validation has to pin to a closed set.
+7. **Deactivated participants are still displayed.** The Participants sheet
+   holds a `ProfileStatus` column. John's decision, 16 August 2026, is that
+   deactivation removes every mention of a participant from the site,
+   retroactively and going forward, and publishes no new result of theirs.
+   **This needs no repository work and no export**: the workbook stops exporting
+   them and the site never learns they existed. Recorded in `docs/roadmap.md`
+   with the consequences worth knowing first, chiefly that ranks are positional,
+   so removing one athlete changes other athletes' medals and crown history.
+   The git-history exposure was raised and **accepted**: the repository stays
+   public and the requirement is display only, so scope it as display rather
+   than erasure.
 
 ## Notes worth carrying
 
