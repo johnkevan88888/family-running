@@ -120,6 +120,41 @@ confirmed live.
   `data/personal_bests.csv` returns 404 because it does not exist yet, which is
   the expected state.
 
+## Leaderboard rank-sequence guard, 21 August 2026
+
+Approved by John on 21 August 2026, ahead of any deactivation work. No merge
+state is asserted here deliberately: `git log` carries that, and this file has
+gone stale before by claiming one.
+
+`validateRankSequence` in `scripts/validate-csv.mjs` requires each enabled
+leaderboard to carry a complete standings sequence. It exists because ranks
+are positional: deactivating a participant means recalculating the standings
+without them, and a workbook that deletes their rows after ranking instead
+leaves a hole, 1, 2, 4, 5.
+
+Nothing else here would have noticed. `Rank` was otherwise only checked as a
+number, read once to find the Rank 1 champion for the Hall of Fame
+cross-check, and read for places 1 to 3 to derive expected medals. A gap
+below third place published silently, and a missing place inside the top
+three removed a medal from the championship rather than reassigning it,
+because the expected medals are derived from those same rows and agree with
+the omission.
+
+Standard competition ranking is accepted, so a genuine tie reads as
+1, 2, 2, 4 rather than being reported as a gap. Whether the workbook emits
+ties at all is its own business; the guard only requires that whatever it
+emits is a sequence. Vacant and "No eligible results" rows are skipped
+through the existing helpers, and a malformed `Rank` is left to
+`validateNumber` rather than reported twice.
+
+Verified by reverting it: with the call commented out, the new
+"rank gap left by removing a ranked row" case fails as
+"validator unexpectedly passed", which confirms the guard is what catches a
+gap and that nothing else did. Measured before writing it: of the 48
+leaderboard files across both sites, 41 carry a contiguous 1 to N sequence
+and 7 are the single-row "No eligible results" vacant state. No tie exists
+in current data.
+
 ## Keeping this file honest
 
 This file has a history of going stale, describing work as in progress after it
