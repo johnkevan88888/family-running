@@ -1819,6 +1819,62 @@ function validateLeaderboardFile(siteDir, fileName, webtableRowNumber) {
         validatePercent(row['Age Graded Score'], file, row.__rowNumber, 'Age Graded Score');
         validateAthleteId(row['Athlete ID'], file, row.__rowNumber, 'Athlete ID', { required: true });
     }
+
+    validateRankSequence(file, objects);
+}
+
+// Standings positions have to be a complete sequence. Removing a participant
+// from a leaderboard after the ranking was computed leaves a hole -- 1, 2, 4, 5
+// -- and nothing else here would notice: Rank is otherwise only checked as a
+// number, read once to find the Rank 1 champion for the Hall of Fame
+// cross-check, and read for places 1 to 3 to derive medals. A gap below third
+// place therefore publishes silently, and a missing place inside the top three
+// removes a medal from the championship rather than reassigning it, because the
+// expected medals are derived from these same rows and agree with the omission.
+//
+// Standard competition ranking is accepted, so a genuine tie reads as
+// 1, 2, 2, 4 rather than being reported as a gap. The workbook owns whether it
+// emits ties at all; this only requires that whatever it emits is a sequence.
+function validateRankSequence(file, objects) {
+    const ranked = objects.filter(
+        row => !isNoEligibleRow(row) && !isVacantParticipant(row.Participant)
+    );
+
+    if (ranked.length === 0) {
+        return;
+    }
+
+    const ranks = ranked.map(row => Number(String(row.Rank ?? '').trim()));
+
+    // A malformed Rank is already reported per row by validateNumber. Checking
+    // the sequence around one would only add noise about positions that cannot
+    // be established in the first place.
+    if (ranks.some(rank => !Number.isInteger(rank) || rank < 1)) {
+        return;
+    }
+
+    for (let index = 0; index < ranked.length; index += 1) {
+        const rank = ranks[index];
+        const position = index + 1;
+
+        // A row either repeats the rank above it as a tie, or takes the
+        // position its offset implies.
+        if (index > 0 && rank === ranks[index - 1]) {
+            continue;
+        }
+
+        if (rank !== position) {
+            const tieNote = index > 0
+                ? `, or repeat Rank ${ranks[index - 1]} to record a tie`
+                : '';
+
+            addError(
+                file,
+                ranked[index].__rowNumber,
+                `Rank ${rank} is out of sequence: standings row ${position} must be Rank ${position}${tieNote}. A gap usually means rows were removed after ranking instead of the standings being recalculated without them.`
+            );
+        }
+    }
 }
 
 function validateEveryCsvInFolder(siteDir) {

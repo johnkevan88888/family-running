@@ -148,6 +148,63 @@ const cases = [
             }
         }
     },
+    // Removing a participant from a leaderboard after the ranking was computed
+    // leaves a hole in the standings. Nothing else reads Rank closely enough to
+    // notice one below third place, which is exactly where a deactivated
+    // participant would usually leave it.
+    {
+        name: 'rank gap left by removing a ranked row',
+        expected: 'Rank 6 is out of sequence: standings row 5 must be Rank 5',
+        mutate: async root => {
+            const leaderboard = path.join(root, 'data', 'family', 'overall-alltime-all-family.csv');
+            const lines = splitLines(await fs.readFile(leaderboard, 'utf8'));
+            const rowIndex = lines.findIndex(line => line.startsWith('5,'));
+
+            if (rowIndex < 0) {
+                throw new Error('Could not find the Rank 5 standings row.');
+            }
+
+            lines.splice(rowIndex, 1);
+            await fs.writeFile(leaderboard, `${lines.join('\r\n')}\r\n`);
+
+            // Correct the manifest too, so the row count is not what fails and
+            // the case proves the rank check specifically.
+            const manifestFile = path.join(root, 'data', 'export_manifest.csv');
+            const manifestLines = splitLines(await fs.readFile(manifestFile, 'utf8'));
+            const manifestIndex = manifestLines.findIndex(
+                line => line.includes(',data/family/overall-alltime-all-family.csv,')
+            );
+
+            if (manifestIndex < 0) {
+                throw new Error('Could not find the leaderboard manifest row.');
+            }
+
+            manifestLines[manifestIndex] = manifestLines[manifestIndex]
+                .replace(/(\d+)$/, value => String(Number(value) - 1));
+            await fs.writeFile(manifestFile, `${manifestLines.join('\r\n')}\r\n`);
+        }
+    },
+    // A tie is not a gap. Competition ranking repeats the position and then
+    // skips, so this has to pass, or the guard would forbid the workbook
+    // recording two athletes level on age grade.
+    {
+        name: 'tied ranks are accepted rather than read as a gap',
+        expectPass: true,
+        mutate: async root => {
+            const leaderboard = path.join(root, 'data', 'family', 'overall-alltime-all-family.csv');
+            const lines = splitLines(await fs.readFile(leaderboard, 'utf8'));
+            const rowIndex = lines.findIndex(line => line.startsWith('5,'));
+
+            if (rowIndex < 0) {
+                throw new Error('Could not find the Rank 5 standings row.');
+            }
+
+            // 1, 2, 3, 4, 4, 6 -- the fifth row ties with the fourth, and the
+            // sixth keeps the position its offset implies.
+            lines[rowIndex] = replaceCsvField(lines[rowIndex], 0, '4');
+            await fs.writeFile(leaderboard, `${lines.join('\r\n')}\r\n`);
+        }
+    },
     // Absolute records are a fixed Men/Women by supported-distance matrix, so a
     // dropped, duplicated, misfiled, or reordered record is a defect the Records
     // page cannot show. Each case below breaks exactly one of those rules.
