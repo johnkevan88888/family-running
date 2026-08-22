@@ -80,17 +80,21 @@ The workbook exporter:
    accepts only a canonical, fresh immediate child folder of that exact root;
 2. creates `data/`, `data/family/`, and `data/everyone/` inside that folder;
 3. calculates the required website-source sheets;
-4. runs the workbook's source-coverage validation;
-5. exports every enabled Family and Everyone leaderboard plus shared and
+4. requires every participant `ProfileStatus` to be exactly `Active` or
+   `Inactive`, rejects unresolved result eligibility, and filters inactive
+   athletes before any public selection or ranking;
+5. runs the workbook's source-coverage validation;
+6. exports every enabled Family and Everyone leaderboard plus shared and
    supporting exports;
-6. writes UTF-8 CSV without a byte-order mark, using stable workbook order;
-7. adds one bundle ID to every public CSV row;
-8. rejects missing sources, blank or errored export ranges, duplicate output
+7. writes UTF-8 CSV without a byte-order mark, using stable workbook order;
+8. adds one bundle ID to every public CSV row;
+9. rejects missing sources, blank or errored export ranges, duplicate output
    paths, malformed IDs, missing planned files, unregistered CSVs, and wrong
    row counts;
-9. runs post-export workbook validation;
-10. writes the manifest last; and
-11. deletes the incomplete staging folder if any step fails.
+10. scans every staged CSV and rejects any inactive athlete name or ID;
+11. runs post-export workbook validation;
+12. writes the manifest last; and
+13. deletes the incomplete staging folder if any step fails.
 
 The complete export includes leaderboard files, `webtables.csv`,
 `siteinfo.csv`, Hall of Fame, official medals, crown history, crown standards,

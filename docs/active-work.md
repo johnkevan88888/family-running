@@ -2,15 +2,56 @@
 
 ## Task title
 
-None. No implementation task is in progress.
+Workbook-owned athlete deactivation implementation and validation.
 
 ## Status
 
-Everything approved so far is delivered and merged. #54 settled the
-personal-best export contract and #55 delivered the reconciliation harness, both
-on 14 August 2026; #57 to #60 followed on 15 and 16 August. All of it is
-described below, and production was verified on 16 August 2026. The critical
-path is now a workbook change, which is John's to start, not repository work.
+John approved the athlete-deactivation requirements and explicitly authorized
+inspection and modification of the named private working copy on 21 August
+2026. A timestamped backup was created outside the repository and verified
+byte-for-byte before any edit. The working copy now implements the approved
+contract in worksheet formulas and VBA; the backup remains unchanged.
+
+`ProfileStatus` is a closed `Active`/`Inactive` list. Result eligibility fails
+closed, and inactive athletes are excluded before every public leaderboard,
+Hall of Fame, record, history, standard, target, comparison, and athlete-profile
+export is selected or ranked. Workbook validation now rejects blank or unknown
+statuses, incorrect source wiring, and any inactive athlete ID or name found in
+the staged CSV tree. No JavaScript change and no public `ProfileStatus` column
+are required.
+
+The full authorized workbook export completed with bundle ID
+`20260822T013004265Z-1DF86180`. Repository staged-bundle validation passed all
+68 public CSV files. The two existing inactive participants had references in
+12 tracked public files and have zero references in the staged bundle. The 13
+meaningful file differences are the expected Everyone-mode removals,
+re-ranking, dependent standards/targets, and manifest row-count updates; every
+Family-mode file is unchanged. Workbook visual review found no layout
+regression, and the saved validation sheet reports post-export PASS with zero
+issues.
+
+The exact validated bundle has been promoted into tracked `data/` on the local
+`codex/athlete-deactivation` review branch. The promotion tool retained the
+previous tracked data in an ignored recovery folder. The branch is prepared for
+Pull Request review, but nothing has been merged, published, or deployed.
+Publication remains a separate review and approval step under the workbook
+export workflow.
+
+Final repository verification on 21 August 2026: the complete `pnpm test` suite
+passed repository safety, vendored libraries, both-mode CSV validation, export
+bundle and staged-workflow regressions, preview-artifact safety, the preview
+build, and browser smoke tests. The same browser suite then passed against an
+ignored preview populated with the staged export when its expected values were
+also sourced from that staged bundle. Family and Everyone desktop/mobile
+screenshots were reviewed. A focused browser check confirmed that both inactive
+athletes' old profile URLs render `Athlete not found` and preserve the selected
+site mode. The complete suite, focused profile check, and screenshot review all
+passed again after local data promotion.
+
+Everything approved before this requirements task is delivered and merged. #54
+settled the personal-best export contract and #55 delivered the reconciliation
+harness, both on 14 August 2026; #57 to #60 followed on 15 and 16 August. All of
+it is described below, and production was verified on 16 August 2026.
 
 The Ace of Race visual restyle is the one approved item that never shipped: it
 was split off, and its Pull Request has since been closed rather than parked.
@@ -419,17 +460,20 @@ starting.
    [Proposed workbook-owned DOB status export](dob-status-export-proposal.md).
    **Blocked on the workbook**, and one question is still open there: the exact
    `DOBStatus` vocabulary, which validation has to pin to a closed set.
-7. **Deactivated participants are still displayed.** The Participants sheet
-   holds a `ProfileStatus` column. John's decision, 16 August 2026, is that
-   deactivation removes every mention of a participant from the site,
+7. **Athlete deactivation is implemented in the private workbook but not yet
+   released.**
+   The Participants sheet holds a `ProfileStatus` column. John's decision,
+   confirmed as an implementation requirement on 21 August 2026, is that
+   deactivation removes every mention of a participant from the current site,
    retroactively and going forward, and publishes no new result of theirs.
-   **This needs no repository work and no export**: the workbook stops exporting
-   them and the site never learns they existed. Recorded in `docs/roadmap.md`
-   with the consequences worth knowing first, chiefly that ranks are positional,
-   so removing one athlete changes other athletes' medals and crown history.
-   The git-history exposure was raised and **accepted**: the repository stays
-   public and the requirement is display only, so scope it as display rather
-   than erasure.
+   [The approved requirements](athlete-deactivation-requirements.md) replace the
+   earlier roadmap proposal. The authorized working copy now excludes inactive
+   athletes before recalculating every public output and rejects any inactive
+   name or ID in a staged bundle. This needs no website code and no public status
+   export. Git-history exposure remains accepted; the scope is display, not
+   erasure. The validated export is promoted only on the local review branch;
+   the current website remains unchanged until a separately approved data
+   release.
 
 ## Notes worth carrying
 

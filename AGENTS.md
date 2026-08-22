@@ -12,7 +12,7 @@ This repository is a static GitHub Pages website for the Family Running Champion
 
 - Excel is the private source of truth for championship data and calculations.
 - The website consumes CSV files exported from Excel/VBA.
-- Do not modify, copy, upload, commit, inspect, or publish the private Excel workbook.
+- Do not modify, copy, upload, commit, inspect, or publish the private Excel workbook, unless explicit permission is given. In which case, ensure a backup copy is made before any changes are made.
 - JavaScript must not calculate age grades, rankings, championship status, crown standards, target times, or medal positions. Those values must remain Excel/VBA-owned and arrive in exported CSVs.
 
 ## Required Site Modes
