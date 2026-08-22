@@ -387,3 +387,27 @@ Unknown historical details are labelled rather than inferred.
   workbook work. More generally, this repository must not record workbook-side
   behaviour as an accepted decision when nothing here can verify it; such claims
   belong in the roadmap as proposals until confirmed against the workbook.
+
+## Athlete profile status gates every public export upstream
+
+- **Status:** Accepted and implemented in the private workbook; public data not
+  yet released
+- **Date:** 21 August 2026
+- **Decision:** `Participants[ProfileStatus]` uses the closed values `Active`
+  and `Inactive`. Only athletes resolving exactly to `Active` may enter any
+  website-source selection, ranking, record, medal, Hall of Fame, crown,
+  standard, target, comparison, or profile-result export. Blank, unknown, or
+  unresolved statuses fail the complete export. `ProfileStatus` itself remains
+  private and is not added to CSVs or browser code.
+- **Rationale:** Filtering after a leaderboard or award is calculated leaves
+  rank gaps and stale medals, holders, records, or targets. Filtering only in
+  JavaScript also publishes the data it is meant to suppress. Eligibility must
+  therefore be applied in the Excel/VBA source of truth before every dependent
+  calculation.
+- **Consequences:** The workbook validates the status vocabulary and the
+  eligibility wiring before export, then scans the staged CSV tree for every
+  inactive athlete name and ID before the manifest is finalized. Deactivation
+  removes the athlete retroactively from the current complete bundle and may
+  legitimately promote or re-rank other athletes. Historical Git commits are
+  not rewritten. A data promotion and publication remain separate explicit
+  approvals.
