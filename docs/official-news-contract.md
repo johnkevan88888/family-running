@@ -9,7 +9,10 @@
   Family rows and 64 Everyone rows and is promoted into tracked `data/`. The
   hardened CSV contract, complete local suite, artifact build, and both-mode
   desktop/mobile checks pass as of 23 August 2026. Publication remains a
-  separate explicit approval.
+  separate explicit approval. Athlete, year, and distance filters plus a
+  latest-first `Show older` refinement were approved later on 23 August 2026;
+  that presentation-only refinement is implemented and the complete local
+  suite and real-data responsive review pass.
 - **Scope:** Official-result milestones and their reconstructed championship
   effect. This is not an editorial news system.
 
@@ -456,6 +459,37 @@ The browser may format ordinary presentation around validated values. It must
 not compare performances, subtract times or percentages, calculate rank gains,
 replay a rolling window, choose a milestone type, or repair a missing export.
 
+### Presentation filters and progressive reveal
+
+The page may help visitors navigate a long selected-mode feed without changing
+the exported News contract:
+
+- Athlete, Year, and Distance controls are optional presentation filters and
+  default to all values.
+- Filter choices are derived only from the already loaded selected-site News
+  rows. Athlete filtering uses the exported athlete identity, Year uses the
+  exported `ResultDate`, and Distance uses the exported canonical `Distance`.
+- Filters combine, so an entry is shown only when it matches every active
+  control. Matching entries retain their workbook-exported newest-first
+  `SortOrder`.
+- The initial view contains the 12 newest matching entries. `Show older`
+  reveals the next 12 matching entries in the same order.
+- Changing any filter resets the view to the 12 newest matching entries.
+  `Reset filters` clears all three controls and restores the first 12 newest
+  entries.
+- The page reports `Showing X of Y milestones`, provides a clear no-matches
+  state, and hides or disables `Show older` when every matching entry is
+  visible.
+- Filter controls are not shown in the header-only or failed-load states.
+- Filtering and progressive reveal must not trigger another CSV request,
+  switch site modes, alter athlete links, or discard the loaded rows.
+
+These controls may compare exported identity, date, and distance fields solely
+to decide which existing cards are visible. They must not derive a milestone,
+improvement, rank, eligibility state, or new ordering. Clearing all filters and
+revealing all batches must reproduce the selected site's complete exported feed
+in its original order.
+
 ## Browser and responsive coverage
 
 Browser smoke tests should cover both modes at desktop and mobile sizes and
@@ -470,6 +504,14 @@ prove that the page:
 - handles quoted commas, escaped quotes, and multiline event text through the
   shared whole-document CSV parser;
 - shows the header-only and failed-load states without calculating a fallback;
+- starts with the 12 newest matches, reports `Showing X of Y milestones`, and
+  reveals the next 12 matching rows in order through `Show older`;
+- offers Athlete, Year, and canonical Distance choices from the loaded selected-
+  mode rows, combines all three filters, resets the visible batch after a
+  filter change, supports `Reset filters`, and renders a no-matches state;
+- hides the filtering interface for header-only and failed-load states and
+  performs filtering and progressive reveal without another data request or a
+  row from the other site mode;
 - exposes no `SourceRow`, `SortOrder`, exact-age-grade, or `ExportBundleID`
   values;
 - has no JavaScript exceptions, failed same-origin requests, or horizontal page

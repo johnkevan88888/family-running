@@ -65,6 +65,7 @@ const viewports = [
     }
 ];
 const updateScreenshots = process.argv.includes('--update-screenshots');
+const newsBatchSize = 12;
 
 const { chromium } = loadPlaywright();
 await fs.mkdir(artifactsDir, { recursive: true });
@@ -295,10 +296,10 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
     }
 }
 
-// The News export is workbook-owned and is not promoted to tracked data until
-// the first complete 72-file bundle is approved. Exercise the exact public CSV
-// contract in memory so the page, navigation, responsive layout, and screenshot
-// coverage can land without inventing a browser-side history calculation.
+// The News export is workbook-owned. Exercise the exact public CSV contract in
+// memory so every presentation state, the longer-history controls, navigation,
+// responsive layout, and screenshots are deterministic without inventing a
+// browser-side history calculation.
 async function runNewsPageTests(browserInstance) {
     for (const mode of modes) {
         for (const viewport of viewports) {
@@ -403,7 +404,8 @@ async function runNewsPageTests(browserInstance) {
 async function assertNewsFixtureRendered(page, mode, fixture) {
     const label = `${mode} News fixture`;
     const cards = page.locator('.news-timeline > .news-timeline-item .news-card');
-    const expectedMilestones = fixture.rows.map(row => row.MilestoneType);
+    const initiallyVisibleRows = fixture.rows.slice(0, newsBatchSize);
+    const expectedMilestones = initiallyVisibleRows.map(row => row.MilestoneType);
     const cardCount = await cards.count();
 
     if (cardCount !== expectedMilestones.length) {
@@ -590,6 +592,291 @@ async function assertNewsFixtureRendered(page, mode, fixture) {
             failures.push(`${label}: rendered hidden ${field} value "${value}".`);
         }
     }
+
+    await assertNewsControlsAndProgressiveLoading(page, mode, fixture);
+}
+
+async function assertNewsControlsAndProgressiveLoading(page, mode, fixture) {
+    const label = `${mode} News filters`;
+    const controls = page.locator('#official-news-controls');
+    const athleteFilter = page.locator('#news-athlete-filter');
+    const yearFilter = page.locator('#news-year-filter');
+    const distanceFilter = page.locator('#news-distance-filter');
+    const reset = page.locator('#news-reset-filters');
+    const showOlder = page.locator('#news-show-older');
+    const cards = page.locator('.news-timeline > .news-timeline-item .news-card');
+
+    if (!await controls.isVisible()) {
+        failures.push(`${label}: controls were not visible after a populated export loaded.`);
+    }
+
+    for (const [locator, defaultLabel, selector] of [
+        [athleteFilter, 'All athletes', '#news-athlete-filter'],
+        [yearFilter, 'All years', '#news-year-filter'],
+        [distanceFilter, 'All distances', '#news-distance-filter']
+    ]) {
+        if (await locator.count() !== 1) {
+            failures.push(`${label}: expected one ${selector} control.`);
+            continue;
+        }
+
+        if (await locator.inputValue() !== '') {
+            failures.push(`${label}: ${selector} did not default to its unfiltered value.`);
+        }
+
+        const firstOption = normalizeText(await locator.locator('option').first().textContent());
+        if (firstOption !== defaultLabel) {
+            failures.push(`${label}: ${selector} default option was "${firstOption}", expected "${defaultLabel}".`);
+        }
+    }
+
+    await assertNewsFilterOptions(
+        athleteFilter,
+        fixture.rows.map(row => row.AthleteID),
+        `${label} athlete options`
+    );
+    await assertNewsFilterOptions(
+        yearFilter,
+        fixture.rows.map(row => row.ResultDate.slice(-4)),
+        `${label} year options`
+    );
+    await assertNewsFilterOptions(
+        distanceFilter,
+        fixture.rows.map(row => row.Distance),
+        `${label} distance options`
+    );
+
+    await expectText(
+        page,
+        '#news-result-summary',
+        `Showing ${newsBatchSize} of ${fixture.rows.length} milestones.`,
+        `${label} initial summary`
+    );
+    await expectText(
+        page,
+        '#news-show-older',
+        `Show ${newsBatchSize} older milestones`,
+        `${label} initial batch control`
+    );
+    await assertNewsRenderedRowOrder(page, fixture.rows.slice(0, newsBatchSize), mode, `${label} initial batch`);
+
+    await showOlder.click();
+    await waitForNewsCardCount(page, Math.min(newsBatchSize * 2, fixture.rows.length));
+    await expectText(
+        page,
+        '#news-result-summary',
+        `Showing ${newsBatchSize * 2} of ${fixture.rows.length} milestones.`,
+        `${label} second-batch summary`
+    );
+    await expectText(
+        page,
+        '#news-show-older',
+        `Show ${fixture.rows.length - newsBatchSize * 2} older milestones`,
+        `${label} final partial-batch control`
+    );
+    await assertNewsRenderedRowOrder(page, fixture.rows.slice(0, newsBatchSize * 2), mode, `${label} second batch`);
+
+    await showOlder.click();
+    await waitForNewsCardCount(page, fixture.rows.length);
+    await expectText(
+        page,
+        '#news-result-summary',
+        `Showing ${fixture.rows.length} of ${fixture.rows.length} milestones.`,
+        `${label} complete-history summary`
+    );
+    if (!await showOlder.isHidden()) {
+        failures.push(`${label}: Show older remained visible after every matching milestone was rendered.`);
+    }
+    await assertNewsRenderedRowOrder(page, fixture.rows, mode, `${label} complete history`);
+
+    // Changing a filter after expanding the full history must reset batching.
+    // This distance deliberately has more than one page of matches, so a
+    // stale visibleEntryCount would render all of them and fail here.
+    const distance = '5 km';
+    const distanceMatches = fixture.rows.filter(row => row.Distance === distance);
+    await distanceFilter.selectOption(distance);
+    await waitForNewsCardCount(page, newsBatchSize);
+    await expectText(
+        page,
+        '#news-result-summary',
+        `Showing ${newsBatchSize} of ${distanceMatches.length} matching milestones.`,
+        `${label} reset distance summary`
+    );
+    await expectText(
+        page,
+        '#news-show-older',
+        `Show ${distanceMatches.length - newsBatchSize} older milestones`,
+        `${label} filtered partial-batch control`
+    );
+    await assertNewsRenderedRowOrder(
+        page,
+        distanceMatches.slice(0, newsBatchSize),
+        mode,
+        `${label} reset distance batch`
+    );
+    const renderedDistances = (await cards.locator('.news-result-context strong').allTextContents()).map(normalizeText);
+    if (renderedDistances.some(value => value !== distance)) {
+        failures.push(`${label}: distance filter rendered ${renderedDistances.join(', ')}, expected only ${distance}.`);
+    }
+
+    await showOlder.click();
+    await waitForNewsCardCount(page, distanceMatches.length);
+    await expectText(
+        page,
+        '#news-result-summary',
+        `Showing ${distanceMatches.length} of ${distanceMatches.length} matching milestones.`,
+        `${label} complete distance summary`
+    );
+    if (!await showOlder.isHidden()) {
+        failures.push(`${label}: Show older remained visible after every distance match was rendered.`);
+    }
+    await assertNewsRenderedRowOrder(page, distanceMatches, mode, `${label} complete distance results`);
+
+    await reset.click();
+    await waitForNewsCardCount(page, newsBatchSize);
+    await assertNewsFiltersReset(page, fixture, `${label} reset after distance filter`);
+
+    const targetAthlete = fixture.rows[0];
+    await athleteFilter.selectOption(targetAthlete.AthleteID);
+    await waitForNewsCardCount(page, 1);
+    await expectText(
+        page,
+        '#news-result-summary',
+        'Showing 1 of 1 matching milestones.',
+        `${label} athlete summary`
+    );
+    await assertNewsRenderedRowOrder(page, [targetAthlete], mode, `${label} athlete result`);
+    if (!await showOlder.isHidden()) {
+        failures.push(`${label}: Show older was visible when the athlete filter had one complete match.`);
+    }
+
+    await reset.click();
+    await waitForNewsCardCount(page, newsBatchSize);
+    await assertNewsFiltersReset(page, fixture, `${label} reset after athlete filter`);
+
+    const year = '2025';
+    const yearMatches = fixture.rows.filter(row => row.ResultDate.endsWith(year));
+    await yearFilter.selectOption(year);
+    await waitForNewsCardCount(page, yearMatches.length);
+    await expectText(
+        page,
+        '#news-result-summary',
+        `Showing ${yearMatches.length} of ${yearMatches.length} matching milestones.`,
+        `${label} year summary`
+    );
+    await assertNewsRenderedRowOrder(page, yearMatches, mode, `${label} year results`);
+    const renderedYears = (await cards.locator('.news-date').allTextContents()).map(value => normalizeText(value).slice(-4));
+    if (renderedYears.some(value => value !== year)) {
+        failures.push(`${label}: year filter rendered ${renderedYears.join(', ')}, expected only ${year}.`);
+    }
+
+    await reset.click();
+    await waitForNewsCardCount(page, newsBatchSize);
+    await assertNewsFiltersReset(page, fixture, `${label} reset after year filter`);
+
+    await athleteFilter.selectOption(targetAthlete.AthleteID);
+    await yearFilter.selectOption(year);
+    await distanceFilter.selectOption('Marathon');
+    await waitForNewsCardCount(page, 0);
+    await expectText(
+        page,
+        '#news-result-summary',
+        'No matching milestones.',
+        `${label} combined no-match summary`
+    );
+    await expectText(
+        page,
+        '#official-result-news',
+        'No official result milestones match these filters.',
+        `${label} combined no-match state`
+    );
+    if (!await showOlder.isHidden()) {
+        failures.push(`${label}: Show older was visible for a combined filter with no matches.`);
+    }
+
+    await reset.click();
+    await waitForNewsCardCount(page, newsBatchSize);
+    await assertNewsFiltersReset(page, fixture, `${label} final reset`);
+    await assertNewsRenderedRowOrder(page, fixture.rows.slice(0, newsBatchSize), mode, `${label} reset latest batch`);
+
+    const currentUrl = new URL(page.url());
+    if (currentUrl.searchParams.get('site') !== mode) {
+        failures.push(`${label}: filter interactions changed the selected site in "${page.url()}".`);
+    }
+    const renderedAthleteLinks = page.locator('.news-card h3 a');
+    for (let index = 0; index < await renderedAthleteLinks.count(); index += 1) {
+        const href = await renderedAthleteLinks.nth(index).getAttribute('href');
+        if (new URL(href, preview.baseUrl).searchParams.get('site') !== mode) {
+            failures.push(`${label}: filtered athlete link "${href}" lost the selected site mode.`);
+        }
+    }
+}
+
+async function assertNewsFilterOptions(locator, values, label) {
+    const expected = [...new Set(values)].sort((a, b) => a.localeCompare(b));
+    const actual = (await locator.locator('option').evaluateAll(options =>
+        options.map(option => option.value).filter(Boolean)
+    )).sort((a, b) => a.localeCompare(b));
+
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+        failures.push(`${label}: values were ${actual.join(', ')}, expected ${expected.join(', ')}.`);
+    }
+}
+
+async function assertNewsFiltersReset(page, fixture, label) {
+    for (const selector of ['#news-athlete-filter', '#news-year-filter', '#news-distance-filter']) {
+        if (await page.locator(selector).inputValue() !== '') {
+            failures.push(`${label}: ${selector} was not cleared.`);
+        }
+    }
+
+    await expectText(
+        page,
+        '#news-result-summary',
+        `Showing ${newsBatchSize} of ${fixture.rows.length} milestones.`,
+        `${label} summary`
+    );
+    await expectText(
+        page,
+        '#news-show-older',
+        `Show ${newsBatchSize} older milestones`,
+        `${label} Show older control`
+    );
+}
+
+async function assertNewsRenderedRowOrder(page, expectedRows, mode, label) {
+    const cards = page.locator('.news-timeline > .news-timeline-item .news-card');
+    const cardCount = await cards.count();
+
+    if (cardCount !== expectedRows.length) {
+        failures.push(`${label}: rendered ${cardCount} cards, expected ${expectedRows.length}.`);
+        return;
+    }
+
+    for (let index = 0; index < expectedRows.length; index += 1) {
+        const link = cards.nth(index).locator('h3 a');
+        const href = await link.getAttribute('href');
+        const params = new URL(href, preview.baseUrl).searchParams;
+        const actualName = normalizeText(await link.textContent());
+        const expectedName = normalizeText(expectedRows[index].AthleteName);
+
+        if (params.get('id') !== expectedRows[index].AthleteID || actualName !== expectedName) {
+            failures.push(
+                `${label}: card ${index + 1} was ${params.get('id')} / "${actualName}", ` +
+                `expected ${expectedRows[index].AthleteID} / "${expectedName}".`
+            );
+        }
+        if (params.get('site') !== mode) {
+            failures.push(`${label}: card ${index + 1} link "${href}" did not preserve ${mode}.`);
+        }
+    }
+}
+
+async function waitForNewsCardCount(page, expectedCount) {
+    await page.waitForFunction(count =>
+        document.querySelectorAll('.news-timeline > .news-timeline-item .news-card').length === count,
+        expectedCount
+    );
 }
 
 async function runNewsEmptyAndUnavailableTests(browserInstance) {
@@ -671,6 +958,15 @@ async function runNewsEmptyAndUnavailableTests(browserInstance) {
             }
             if (await page.locator('.news-card').count() !== 0) {
                 failures.push(`${label}: rendered News cards despite the ${testCase.name} state.`);
+            }
+            if (!await page.locator('#official-news-controls').isHidden()) {
+                failures.push(`${label}: filter controls remained visible in the ${testCase.name} state.`);
+            }
+            if (!await page.locator('#news-show-older').isHidden()) {
+                failures.push(`${label}: Show older remained visible in the ${testCase.name} state.`);
+            }
+            if (normalizeText(await page.locator('#news-result-summary').textContent())) {
+                failures.push(`${label}: retained a result summary in the ${testCase.name} state.`);
             }
 
             const newsRequests = requestedPaths.filter(path => path.endsWith('/official_result_news.csv'));
@@ -913,6 +1209,59 @@ function newsFixture(mode) {
             ExportBundleID: bundleId
         }
     ];
+    const historySpecs = [
+        ['19/08/2026', '5 km'],
+        ['18/08/2026', '5 km'],
+        ['17/08/2026', '5 km'],
+        ['16/08/2026', '5 km'],
+        ['15/08/2026', '5 km'],
+        ['14/08/2026', '5 km'],
+        ['13/08/2026', '5 km'],
+        ['12/08/2026', '5 km'],
+        ['31/12/2025', '5 km'],
+        ['30/11/2025', '5 km'],
+        ['31/10/2025', '5 km'],
+        ['30/09/2025', '5 km'],
+        ['31/08/2025', '5 km'],
+        ['31/07/2025', '10 km'],
+        ['30/06/2025', 'Half Marathon'],
+        ['31/05/2025', 'Marathon'],
+        ['31/12/2024', '10 Mile'],
+        ['30/11/2024', '1 Mile'],
+        ['31/10/2024', '5 km'],
+        ['30/09/2024', '10 km'],
+        ['31/08/2024', 'Half Marathon'],
+        ['31/07/2024', 'Marathon']
+    ];
+
+    for (const [index, [resultDate, distance]] of historySpecs.entries()) {
+        const sortOrder = index + 5;
+        const row = {
+            SortOrder: String(sortOrder),
+            SourceRow: String(688 - sortOrder),
+            AthleteID: `${mode}-news-history-${sortOrder}`,
+            AthleteName: `${modeLabel} History Runner ${sortOrder}`,
+            ResultDate: resultDate,
+            Distance: distance,
+            Time: `00:30:${String(sortOrder).padStart(2, '0')}`,
+            AgeGrade: '65.0%',
+            AgeGradeExact: '65.000001%',
+            Event: `History checkpoint ${sortOrder}`,
+            TimeClass: 'Official',
+            MilestoneType: 'First Official Result',
+            CurrentOverallRankAfter: String(sortOrder),
+            AllTimeOverallRankAfter: String(sortOrder + 5),
+            ExportBundleID: bundleId
+        };
+
+        if (distance !== '1 Mile') {
+            row.CurrentDistanceRankAfter = String(sortOrder);
+            row.AllTimeDistanceRankAfter = String(sortOrder + 3);
+        }
+
+        rows.push(row);
+    }
+
     const dataRows = rows.map(row =>
         newsExportHeaders.map(header => quoteCsvField(row[header] || '')).join(',')
     );

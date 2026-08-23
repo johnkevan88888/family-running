@@ -5,6 +5,17 @@
         ? window.siteNavigation.selectedSite()
         : (requestedSite === 'everyone' ? 'everyone' : 'family');
     const newsPath = `data/${selectedSite}/official_result_news.csv`;
+    const newsPageSize = 12;
+    const distanceDisplayOrder = [
+        'Marathon',
+        'Half Marathon',
+        '10 Mile',
+        '10 km',
+        '5 km',
+        '1 Mile'
+    ];
+    let allEntries = [];
+    let visibleEntryCount = newsPageSize;
 
     const milestonePresentations = {
         'First Official Result': {
@@ -34,39 +45,223 @@
     };
 
     async function buildOfficialResultNews() {
-        const container = document.getElementById('official-result-news');
-        const status = document.getElementById('official-news-status');
-        if (!container || !status) return;
+        const elements = getNewsElements();
+        if (Object.values(elements).some(element => !element)) return;
 
         try {
             const rows = await fetchCSV(newsPath);
             const entries = csvRowsToObjects(rows);
 
             if (!entries.length) {
-                container.innerHTML = '';
-                showStatus(status, 'No official result milestones have been exported.', 'empty');
-                container.dataset.rendered = 'true';
+                allEntries = [];
+                elements.container.innerHTML = '';
+                hideNewsControls(elements);
+                showStatus(
+                    elements.status,
+                    'No official result milestones have been exported.',
+                    'empty'
+                );
+                elements.container.dataset.rendered = 'true';
                 return;
             }
 
-            // The workbook exports newest first in authoritative SortOrder.
-            // Rendering the array as received preserves that order exactly.
-            container.innerHTML = `
-                <ol class="news-timeline" role="list">
-                    ${entries.map(renderNewsEntry).join('')}
-                </ol>
-            `;
-            status.hidden = true;
-            container.dataset.rendered = 'true';
+            allEntries = entries;
+            visibleEntryCount = newsPageSize;
+            populateNewsFilters(elements, entries);
+            bindNewsControls(elements);
+            elements.controls.hidden = false;
+            elements.status.hidden = true;
+            renderFilteredNews(elements);
         } catch (error) {
-            container.innerHTML = '';
+            allEntries = [];
+            elements.container.innerHTML = '';
+            hideNewsControls(elements);
             showStatus(
-                status,
+                elements.status,
                 'Official result milestones are unavailable right now.',
                 'error'
             );
-            container.dataset.rendered = 'true';
+            elements.container.dataset.rendered = 'true';
         }
+    }
+
+    function getNewsElements() {
+        return {
+            container: document.getElementById('official-result-news'),
+            status: document.getElementById('official-news-status'),
+            controls: document.getElementById('official-news-controls'),
+            athleteFilter: document.getElementById('news-athlete-filter'),
+            yearFilter: document.getElementById('news-year-filter'),
+            distanceFilter: document.getElementById('news-distance-filter'),
+            resetFilters: document.getElementById('news-reset-filters'),
+            resultSummary: document.getElementById('news-result-summary'),
+            showOlder: document.getElementById('news-show-older')
+        };
+    }
+
+    function populateNewsFilters(elements, entries) {
+        const athletes = new Map();
+        const years = new Set();
+        const distances = new Set();
+
+        for (const entry of entries) {
+            if (!athletes.has(entry.AthleteID)) {
+                athletes.set(entry.AthleteID, entry.AthleteName);
+            }
+
+            const year = resultYear(entry.ResultDate);
+            if (year) years.add(year);
+            if (entry.Distance) distances.add(entry.Distance);
+        }
+
+        populateNewsSelect(
+            elements.athleteFilter,
+            'All athletes',
+            [...athletes].map(([value, label]) => ({ value, label })).sort((left, right) =>
+                left.label.localeCompare(right.label) || left.value.localeCompare(right.value)
+            )
+        );
+        populateNewsSelect(
+            elements.yearFilter,
+            'All years',
+            [...years]
+                .sort((left, right) => Number(right) - Number(left))
+                .map(year => ({ value: year, label: year }))
+        );
+        populateNewsSelect(
+            elements.distanceFilter,
+            'All distances',
+            [...distances]
+                .sort((left, right) => {
+                    const leftIndex = distanceDisplayOrder.indexOf(left);
+                    const rightIndex = distanceDisplayOrder.indexOf(right);
+                    const safeLeftIndex = leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex;
+                    const safeRightIndex = rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex;
+                    return safeLeftIndex - safeRightIndex || left.localeCompare(right);
+                })
+                .map(distance => ({ value: distance, label: distance }))
+        );
+    }
+
+    function populateNewsSelect(select, defaultLabel, options) {
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = defaultLabel;
+        const optionElements = options.map(option => {
+            const element = document.createElement('option');
+            element.value = option.value;
+            element.textContent = option.label;
+            return element;
+        });
+
+        select.replaceChildren(defaultOption, ...optionElements);
+    }
+
+    function bindNewsControls(elements) {
+        for (const filter of [
+            elements.athleteFilter,
+            elements.yearFilter,
+            elements.distanceFilter
+        ]) {
+            filter.addEventListener('change', () => {
+                visibleEntryCount = newsPageSize;
+                renderFilteredNews(elements);
+            });
+        }
+
+        elements.resetFilters.addEventListener('click', () => {
+            elements.athleteFilter.value = '';
+            elements.yearFilter.value = '';
+            elements.distanceFilter.value = '';
+            visibleEntryCount = newsPageSize;
+            renderFilteredNews(elements);
+            elements.athleteFilter.focus();
+        });
+
+        elements.showOlder.addEventListener('click', () => {
+            const previouslyVisible = Math.min(
+                visibleEntryCount,
+                filteredNewsEntries(elements).length
+            );
+            visibleEntryCount += newsPageSize;
+            renderFilteredNews(elements);
+
+            const firstNewEntry = elements.container
+                .querySelectorAll('.news-timeline-item')[previouslyVisible];
+            firstNewEntry?.querySelector('h3 a')?.focus();
+        });
+    }
+
+    function renderFilteredNews(elements) {
+        const filteredEntries = filteredNewsEntries(elements);
+        const visibleEntries = filteredEntries.slice(0, visibleEntryCount);
+        const filtersActive = hasActiveNewsFilters(elements);
+
+        if (!filteredEntries.length) {
+            elements.container.innerHTML = `
+                <div class="news-filter-empty">
+                    No official result milestones match these filters.
+                </div>
+            `;
+            elements.resultSummary.textContent = 'No matching milestones.';
+        } else {
+            // Filtering and batching retain the workbook's authoritative order.
+            // The browser only selects which exported rows are visible.
+            elements.container.innerHTML = `
+                <ol class="news-timeline" role="list">
+                    ${visibleEntries.map(renderNewsEntry).join('')}
+                </ol>
+            `;
+            elements.resultSummary.textContent = filtersActive
+                ? `Showing ${visibleEntries.length} of ${filteredEntries.length} matching milestones.`
+                : `Showing ${visibleEntries.length} of ${filteredEntries.length} milestones.`;
+        }
+
+        elements.resetFilters.disabled = !filtersActive;
+        updateShowOlderButton(elements.showOlder, filteredEntries.length - visibleEntries.length);
+        elements.container.dataset.rendered = 'true';
+    }
+
+    function filteredNewsEntries(elements) {
+        const athleteId = elements.athleteFilter.value;
+        const year = elements.yearFilter.value;
+        const distance = elements.distanceFilter.value;
+
+        return allEntries.filter(entry =>
+            (!athleteId || entry.AthleteID === athleteId) &&
+            (!year || resultYear(entry.ResultDate) === year) &&
+            (!distance || entry.Distance === distance)
+        );
+    }
+
+    function hasActiveNewsFilters(elements) {
+        return Boolean(
+            elements.athleteFilter.value ||
+            elements.yearFilter.value ||
+            elements.distanceFilter.value
+        );
+    }
+
+    function updateShowOlderButton(button, remainingCount) {
+        if (remainingCount <= 0) {
+            button.hidden = true;
+            return;
+        }
+
+        const nextCount = Math.min(newsPageSize, remainingCount);
+        button.textContent = `Show ${nextCount} older ${nextCount === 1 ? 'milestone' : 'milestones'}`;
+        button.hidden = false;
+    }
+
+    function hideNewsControls(elements) {
+        elements.controls.hidden = true;
+        elements.showOlder.hidden = true;
+        elements.resultSummary.textContent = '';
+    }
+
+    function resultYear(value) {
+        const match = String(value || '').trim().match(/(\d{4})$/);
+        return match ? match[1] : '';
     }
 
     function renderNewsEntry(row, index) {

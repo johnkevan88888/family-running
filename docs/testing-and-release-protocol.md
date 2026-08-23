@@ -220,6 +220,19 @@ bundle metadata, no script or same-origin request failure, and no horizontal
 page overflow. Responsive screenshots for both modes must include a combined
 milestone and an entry with all four rank movements visible.
 
+The approved News navigation refinement is presentation-only. Browser coverage
+must also prove that Athlete, Year, and canonical Distance controls are built
+from the loaded selected-mode rows; all three filters combine; a filter change
+resets the view to the 12 newest matching entries; and `Reset filters` clears
+all controls and restores the first 12 newest entries. The initial view must
+contain the 12 newest matches, `Show older` must reveal the next 12 without
+reordering them, and the control must disappear or become unavailable after all
+matches are visible. The `Showing X of Y milestones` summary, no-matches state,
+keyboard-operable labelled controls, hidden controls in header-only/error
+states, and desktop/mobile layout must be covered. Filtering and progressive
+reveal must not request another CSV, leak the other mode's rows, or calculate
+any milestone, improvement, position, or rank.
+
 Analytics configuration tests prove that GoatCounter loads only for the
 production `www.aceofrace.com` and `aceofrace.com` domains, plus the legacy
 `johnkevan88888.github.io/family-running` address. Local runs, Netlify previews,

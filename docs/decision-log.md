@@ -245,7 +245,10 @@ Unknown historical details are labelled rather than inferred.
   workbook's strict rolling rule, `result date > D - 365 days` and
   `result date <= D`; All-Time snapshots contain every earlier replayed
   Official result. The browser displays the exported milestone, deltas, and
-  before/after ranks without recalculating them.
+  before/after ranks without recalculating them. Athlete, year, and distance
+  filters and a latest-first `Show older` control may select and progressively
+  reveal already exported rows while preserving `SortOrder`; they remain
+  presentation behavior and do not create a second replay or ranking path.
 - **Rationale:** Exact milestone selection and historical positions depend on
   full-precision age grades, source order, site eligibility, the workbook's
   rolling-window rule, and the same ranking logic as the live Official tables.
@@ -268,7 +271,9 @@ Unknown historical details are labelled rather than inferred.
   blank rules, display behavior, and acceptance plan are in
   [Official Result News Contract](official-news-contract.md). Promotion and
   local validation do not publish the feature; release remains a separate
-  explicit approval.
+  explicit approval. Filtering and progressive reveal require no workbook or
+  schema change: clearing filters and revealing all batches must reproduce the
+  complete selected-mode export in its authoritative order.
 
 ## Production usage analytics are aggregate and cookie-free
 

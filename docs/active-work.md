@@ -2,7 +2,7 @@
 
 ## Task title
 
-Official Results News first draft.
+Official Results News filters and progressive history.
 
 ## Status
 
@@ -20,6 +20,22 @@ repository validator requires the exact 32-column export, both mode-specific
 manifest paths, the complete Official leaderboard matrix, source agreement,
 milestone chains, rank-field arithmetic, 1 Mile's Overall-only movement, and
 genuine source-time precision through milliseconds.
+
+John approved the next presentation refinement on 23 August 2026: optional
+athlete, year, and distance filters plus a latest-first initial batch with a
+`Show older` control. The controls operate only on the already loaded selected-
+site News rows. The page starts with the 12 newest matches; each filter change
+resets the view to the 12 newest matching entries, and `Show older` reveals the
+next 12 without changing their exported order. `Reset filters` clears all three
+controls and restores the first 12 newest entries. Filter choices, the `Showing
+X of Y milestones` summary, and progressive reveal are browser presentation
+only: they do not select milestones, compare results, recalculate improvements
+or ranks, or require a workbook/data-schema change. The implementation is
+complete. The full `pnpm test` suite passes, including long filtered histories,
+filter-reset batching, combined no-match, header-only/error, both-mode desktop
+and mobile, and overflow coverage. Real-data review confirmed the Everyone
+5 km history moves from 12 of 43 to 24 of 43 after one reveal, and the mobile
+controls render without overflow or browser warnings/errors.
 
 The private source workbook was copied and hash-verified before inspection. The
 unchanged backup is

@@ -56,6 +56,48 @@
         </div>
 
         <div
+            id="official-news-controls"
+            class="news-controls"
+            role="group"
+            aria-label="Filter official result milestones"
+            hidden>
+            <div class="news-filter-grid">
+                <label for="news-athlete-filter">
+                    <span>Athlete</span>
+                    <select id="news-athlete-filter">
+                        <option value="">All athletes</option>
+                    </select>
+                </label>
+                <label for="news-year-filter">
+                    <span>Year</span>
+                    <select id="news-year-filter">
+                        <option value="">All years</option>
+                    </select>
+                </label>
+                <label for="news-distance-filter">
+                    <span>Distance</span>
+                    <select id="news-distance-filter">
+                        <option value="">All distances</option>
+                    </select>
+                </label>
+            </div>
+            <div class="news-filter-footer">
+                <p
+                    id="news-result-summary"
+                    class="news-result-summary"
+                    role="status"
+                    aria-live="polite"></p>
+                <button
+                    id="news-reset-filters"
+                    class="news-reset-filters"
+                    type="button"
+                    disabled>
+                    Reset filters
+                </button>
+            </div>
+        </div>
+
+        <div
             id="official-news-status"
             class="news-status"
             role="status"
@@ -63,6 +105,16 @@
             Loading official result milestones...
         </div>
         <div id="official-result-news"></div>
+        <div class="news-more-row">
+            <button
+                id="news-show-older"
+                class="news-show-older"
+                type="button"
+                aria-controls="official-result-news"
+                hidden>
+                Show older milestones
+            </button>
+        </div>
     </section>
 </main>
 

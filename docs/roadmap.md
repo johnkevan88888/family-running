@@ -35,6 +35,14 @@ export-contract, repository, and public-runtime change must use the manual
 standard-preview release path and explicit approval rather than the routine
 existing-schema data pathway.
 
+John approved a presentation-only follow-up on 23 August 2026: Athlete, Year,
+and Distance filters plus a 12-entry latest-first initial batch and `Show older`
+control. It operates on the existing selected-mode export, preserves exported
+order, and does not change the workbook, CSV schema, milestone selection,
+improvements, or historical ranks. It is implemented on the same branch; the
+complete suite and real-data desktop/mobile review pass. This remains local
+review-ready work, not a release.
+
 ## Next candidate tasks
 
 1. **Mobile championship leaderboards are close to unreadable.** On
