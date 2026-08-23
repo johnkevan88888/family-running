@@ -1,9 +1,39 @@
 # Roadmap Proposals
 
-Nothing in this file is committed or approved work. The order is a suggested
+Items under "Next candidate tasks", "Later candidate tasks", and "Explicitly
+deferred ideas" are not committed or approved work. Their order is a suggested
 priority for product discussion, based only on current documentation, code, and
 repository history. An item becomes active only when John approves it and
-`docs/active-work.md` is replaced with its exact scope.
+`docs/active-work.md` is replaced with its exact scope. An approved first draft
+is recorded separately below so its status is not confused with either a
+candidate idea or a completed release.
+
+## Approved first draft
+
+**Official Results News.** Product semantics were approved on 23 August 2026
+and are fixed in
+[Official Result News Contract](official-news-contract.md). The first draft is
+workbook-owned: Excel/VBA replays each mode's presently valid Official results,
+selects first results and strict full-precision age-grade or raw-time personal
+bests per athlete/distance, applies the strict historical 365-day Current
+window before each result, and exports before/after Current and All-Time
+distance/Overall ranks. Genuine source times and improvements retain precision
+through milliseconds and use `HH:MM:SS[.fff]`, even when the public
+`athlete_results.csv` time is rounded. Same-day results use authoritative
+`SourceRow` order; the browser only displays the result.
+
+This is approved scope, not completed release work. The workbook draft has
+produced a staged 72-file export with authoritative row counts of 43 for Family
+and 64 for Everyone. The staged validator passed, and reconciliation against
+tracked data found only `data/family/official_result_news.csv`,
+`data/everyone/official_result_news.csv`, and the manifest. The approved bundle
+is now the tracked 72-file contract. The hardened 59-case failure suite, staged
+validation, complete post-promotion suite, both-mode browser checks, artifact
+checks, and responsive screenshot review pass. Release remains a separate
+explicit decision. The coordinated workbook,
+export-contract, repository, and public-runtime change must use the manual
+standard-preview release path and explicit approval rather than the routine
+existing-schema data pathway.
 
 ## Next candidate tasks
 

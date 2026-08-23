@@ -227,6 +227,49 @@ Unknown historical details are labelled rather than inferred.
   must not infer missing history, synthetic vacancies, prior holders, or
   Current/12-Month crown events.
 
+## Official Results News is a workbook-owned historical replay
+
+- **Status:** Accepted and implemented locally; approved 72-file data bundle
+  promoted and complete validation passed; not released
+- **Date:** 23 August 2026
+- **Decision:** Excel/VBA independently reconstructs Family and Everyone
+  Official-result milestone history from the presently valid result set. A
+  milestone is a first Official result at one of the six contracted distances,
+  a strict full-precision age-grade personal best at that athlete/distance, a
+  strict Official raw-time personal best at that athlete/distance, or both.
+  Genuine source-time precision is preserved through milliseconds for raw
+  times and improvements, formatted `HH:MM:SS[.fff]`; the coarser public
+  `athlete_results.csv` time must not force News values to whole seconds.
+  Same-day replay is ascending result date then authoritative `SourceRow`.
+  Current rank snapshots apply expiries before the result and use the
+  workbook's strict rolling rule, `result date > D - 365 days` and
+  `result date <= D`; All-Time snapshots contain every earlier replayed
+  Official result. The browser displays the exported milestone, deltas, and
+  before/after ranks without recalculating them.
+- **Rationale:** Exact milestone selection and historical positions depend on
+  full-precision age grades, source order, site eligibility, the workbook's
+  rolling-window rule, and the same ranking logic as the live Official tables.
+  Public result rows and current leaderboard snapshots do not carry enough
+  information to reproduce those decisions safely.
+- **Consequences:** The first draft adds required site-specific
+  `data/family/official_result_news.csv` and
+  `data/everyone/official_result_news.csv` exports. The workbook draft produced
+  a staged 72-file bundle with authoritative row counts of 43 for Family and 64
+  for Everyone. The staged validator passed, and reconciliation against tracked
+  data found only the two new News CSVs plus the manifest. After explicit
+  approval, that bundle became the tracked 72-file contract and passed the
+  complete repository, artifact, browser, and responsive validation suite.
+  Corrections, deactivation, or eligibility changes may legitimately rewrite
+  older News because this is a replay of current valid history, not an archive
+  of previously published pages. Current-window expiries and administrative
+  changes do not create standalone entries. The workbook must compare the
+  replay's final Current and All-Time state with the same bundle's complete
+  Official leaderboards before it may write the manifest. The exact schema,
+  blank rules, display behavior, and acceptance plan are in
+  [Official Result News Contract](official-news-contract.md). Promotion and
+  local validation do not publish the feature; release remains a separate
+  explicit approval.
+
 ## Production usage analytics are aggregate and cookie-free
 
 - **Status:** Accepted; scope of the third-party-runtime prohibition clarified

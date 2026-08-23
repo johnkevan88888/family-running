@@ -10,6 +10,40 @@ const siteRoot = process.env.SITE_ROOT
     : repoRoot;
 const artifactsDir = path.join(repoRoot, 'test-artifacts', 'screenshots');
 const modes = ['family', 'everyone'];
+const newsExportHeaders = [
+    'SortOrder',
+    'SourceRow',
+    'AthleteID',
+    'AthleteName',
+    'ResultDate',
+    'Distance',
+    'Time',
+    'AgeGrade',
+    'AgeGradeExact',
+    'Event',
+    'TimeClass',
+    'MilestoneType',
+    'PreviousBestTime',
+    'TimeImprovementSeconds',
+    'TimeImprovement',
+    'PreviousBestAgeGrade',
+    'PreviousBestAgeGradeExact',
+    'AgeGradeImprovementExact',
+    'AgeGradeImprovement',
+    'CurrentDistanceRankBefore',
+    'CurrentDistanceRankAfter',
+    'CurrentDistancePlacesGained',
+    'CurrentOverallRankBefore',
+    'CurrentOverallRankAfter',
+    'CurrentOverallPlacesGained',
+    'AllTimeDistanceRankBefore',
+    'AllTimeDistanceRankAfter',
+    'AllTimeDistancePlacesGained',
+    'AllTimeOverallRankBefore',
+    'AllTimeOverallRankAfter',
+    'AllTimeOverallPlacesGained',
+    'ExportBundleID'
+];
 // `isMobile` makes Chromium honour the page's meta viewport tag. Without it a
 // 390px context lays out at 390px regardless, so mobile assertions and
 // screenshots would not reflect a real phone. A page missing the tag lays out at
@@ -52,6 +86,9 @@ try {
         }
     }
 
+    await runNewsPageTests(browser);
+    await runNewsEmptyAndUnavailableTests(browser);
+    await runNewsInvalidSiteFallbackTest(browser);
     await runCrownHistoryEdgeCaseTests(browser);
     await runAbsoluteRecordsEdgeCaseTests(browser);
     await runHostileExportedValueTests(browser);
@@ -256,6 +293,635 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
 
         await context.close();
     }
+}
+
+// The News export is workbook-owned and is not promoted to tracked data until
+// the first complete 72-file bundle is approved. Exercise the exact public CSV
+// contract in memory so the page, navigation, responsive layout, and screenshot
+// coverage can land without inventing a browser-side history calculation.
+async function runNewsPageTests(browserInstance) {
+    for (const mode of modes) {
+        for (const viewport of viewports) {
+            const label = `${mode}/${viewport.name} News`;
+            const selectedFile = `data/${mode}/official_result_news.csv`;
+            const otherMode = mode === 'family' ? 'everyone' : 'family';
+            const otherFile = `data/${otherMode}/official_result_news.csv`;
+            const fixture = newsFixture(mode);
+            const context = await browserInstance.newContext(viewport.contextOptions);
+            const page = await context.newPage();
+            const requestedPaths = [];
+            const consoleErrors = [];
+            const pageErrors = [];
+            const sameOriginFailures = [];
+
+            page.setDefaultTimeout(10000);
+            page.setDefaultNavigationTimeout(10000);
+            page.on('request', request => {
+                if (isSameOrigin(request.url())) {
+                    requestedPaths.push(sameOriginRequestPath(request.url()));
+                }
+            });
+            page.on('console', message => {
+                const locationUrl = message.location().url;
+
+                if (message.type() === 'error' && (!locationUrl || isSameOrigin(locationUrl))) {
+                    consoleErrors.push(message.text());
+                }
+            });
+            page.on('pageerror', error => pageErrors.push(error.message));
+            page.on('requestfailed', request => {
+                if (isSameOrigin(request.url())) {
+                    sameOriginFailures.push(
+                        `${request.url()} failed: ${request.failure()?.errorText || 'unknown error'}`
+                    );
+                }
+            });
+            page.on('response', response => {
+                if (isSameOrigin(response.url()) && response.status() >= 400) {
+                    sameOriginFailures.push(`${response.url()} returned HTTP ${response.status()}`);
+                }
+            });
+
+            await page.route(`**/${selectedFile}`, route => route.fulfill({
+                status: 200,
+                contentType: 'text/csv; charset=utf-8',
+                body: fixture.csv
+            }));
+
+            try {
+                await page.goto(`${preview.baseUrl}/news.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+                await waitForRenderedNews(page, mode);
+                await waitForNetworkToSettle(page);
+
+                await assertPrimaryNavigation(page, mode, viewport, 'news');
+                await assertNoModeSwitch(page, mode, viewport, 'news');
+                await assertResponsiveViewport(page, viewport, label);
+                await assertNoHorizontalOverflow(page, label);
+                await assertBundleMetadataHidden(page, label);
+                await assertNewsFixtureRendered(page, mode, fixture);
+
+                const newsRequests = requestedPaths.filter(path => path.endsWith('/official_result_news.csv'));
+                if (newsRequests.length !== 1 || newsRequests[0] !== selectedFile) {
+                    failures.push(
+                        `${label}: requested News exports ${newsRequests.join(', ') || '(none)'}, expected only ${selectedFile}.`
+                    );
+                }
+                if (requestedPaths.includes(otherFile)) {
+                    failures.push(`${label}: requested the other mode's News export ${otherFile}.`);
+                }
+                if (requestedPaths.includes('data/athlete_results.csv')) {
+                    failures.push(`${label}: requested athlete_results.csv as a News fallback.`);
+                }
+
+                await page.screenshot({
+                    path: path.join(artifactsDir, `${mode}-news-${viewport.name}.png`),
+                    fullPage: true
+                });
+
+                if (updateScreenshots) {
+                    console.log(`Updated ${mode} ${viewport.name} News screenshot`);
+                }
+            } catch (error) {
+                failures.push(`${label}: ${error.message}`);
+            } finally {
+                for (const error of consoleErrors) {
+                    failures.push(`${label}: console error: ${error}`);
+                }
+                for (const error of pageErrors) {
+                    failures.push(`${label}: JavaScript exception: ${error}`);
+                }
+                for (const error of sameOriginFailures) {
+                    failures.push(`${label}: same-origin request failure: ${error}`);
+                }
+
+                await context.close();
+            }
+        }
+    }
+}
+
+async function assertNewsFixtureRendered(page, mode, fixture) {
+    const label = `${mode} News fixture`;
+    const cards = page.locator('.news-timeline > .news-timeline-item .news-card');
+    const expectedMilestones = fixture.rows.map(row => row.MilestoneType);
+    const cardCount = await cards.count();
+
+    if (cardCount !== expectedMilestones.length) {
+        throw new Error(`${label} rendered ${cardCount} cards, expected ${expectedMilestones.length}.`);
+    }
+
+    for (let index = 0; index < expectedMilestones.length; index += 1) {
+        const badge = normalizeText(await cards.nth(index).locator('.news-milestone-badge').textContent());
+        if (!badge.includes(expectedMilestones[index])) {
+            failures.push(
+                `${label}: card ${index + 1} was not kept in exported order; badge was "${badge}", ` +
+                `expected "${expectedMilestones[index]}".`
+            );
+        }
+    }
+
+    const introText = normalizeText(await page.locator('.news-intro').textContent()).toLowerCase();
+    for (const expected of [
+        'official results only',
+        'milestones are personal to each athlete and supported distance',
+        'currently valid result history',
+        'rolling 365-day window',
+        'raw-time personal best can show no position change'
+    ]) {
+        if (!introText.includes(expected)) {
+            failures.push(`${label}: introductory caveats omitted "${expected}".`);
+        }
+    }
+
+    const combined = cards.nth(0);
+    const rawTime = cards.nth(1);
+    const ageGrade = cards.nth(2);
+    const firstMile = cards.nth(3);
+    const combinedText = normalizeText(await combined.textContent());
+    const rawTimeText = normalizeText(await rawTime.textContent());
+    const ageGradeText = normalizeText(await ageGrade.textContent());
+    const firstMileText = normalizeText(await firstMile.textContent());
+
+    for (const expected of [
+        '22 August 2026',
+        fixture.rows[0].AthleteName,
+        '5 km',
+        fixture.rows[0].Event.replace(/\s+/g, ' '),
+        'Official time 00:19:59.125',
+        'Age grade 78.4%',
+        'Previous77.9%',
+        'New78.4%',
+        '+0.52 pp',
+        'Previous00:20:00.875',
+        'New00:19:59.125',
+        '00:00:01.750 faster'
+    ]) {
+        if (!combinedText.includes(expected)) {
+            failures.push(`${label}: combined milestone omitted exported text "${expected}".`);
+        }
+    }
+
+    if (await combined.locator('[data-news-injection]').count() !== 0) {
+        failures.push(`${label}: hostile exported markup created an element instead of rendering as text.`);
+    }
+
+    const athleteLink = combined.locator('h3 a');
+    const athleteHref = await athleteLink.getAttribute('href');
+    const athleteParams = new URL(athleteHref, preview.baseUrl).searchParams;
+    if (
+        athleteParams.get('id') !== fixture.rows[0].AthleteID ||
+        athleteParams.get('site') !== mode
+    ) {
+        failures.push(`${label}: athlete link "${athleteHref}" did not preserve exported ID and site mode.`);
+    }
+
+    const combinedMovement = (await combined.locator('.news-rank-row').allTextContents()).map(normalizeText);
+    for (const expected of [
+        'Distance #5 to #3 Up 2 places',
+        'Overall #8 to #8 No rank change',
+        'Distance Unranked to #9 Entered the table',
+        'Overall #20 to #19 Up 1 place'
+    ]) {
+        if (!combinedMovement.includes(expected)) {
+            failures.push(`${label}: combined milestone omitted rank state "${expected}".`);
+        }
+    }
+
+    for (const expected of [
+        'Official time 00:39:59.9',
+        'Previous00:40:00.0',
+        'New00:39:59.9',
+        '00:00:00.1 faster',
+        'No rank change'
+    ]) {
+        if (!rawTimeText.includes(expected)) {
+            failures.push(`${label}: raw-time milestone omitted exported text "${expected}".`);
+        }
+    }
+    if (rawTimeText.includes('Age-grade personal best')) {
+        failures.push(`${label}: raw-time-only milestone invented an age-grade improvement.`);
+    }
+    if (await rawTime.locator('.news-result-context span').count() !== 0) {
+        failures.push(`${label}: blank Event rendered a placeholder field.`);
+    }
+
+    for (const expected of [
+        'Age-grade personal best',
+        'Previous74.2%',
+        'New74.2%',
+        '+<0.01 pp',
+        'Unranked to #7',
+        'Unranked to #11'
+    ]) {
+        if (!ageGradeText.includes(expected)) {
+            failures.push(`${label}: age-grade milestone omitted exported text "${expected}".`);
+        }
+    }
+    if (ageGradeText.includes('Raw-time personal best')) {
+        failures.push(`${label}: age-grade-only milestone invented a raw-time improvement.`);
+    }
+
+    if (
+        !firstMileText.includes('1 Mile') ||
+        !firstMileText.includes('Established the first official age-grade and raw-time baselines')
+    ) {
+        failures.push(`${label}: first 1 Mile result did not render its exported distance and baseline explanation.`);
+    }
+    if (await firstMile.locator('.news-improvement').count() !== 0) {
+        failures.push(`${label}: first result fabricated a numeric improvement.`);
+    }
+
+    const mileRankLabels = (await firstMile.locator('.news-rank-row dt').allTextContents()).map(normalizeText);
+    if (mileRankLabels.join('|') !== 'Overall|Overall') {
+        failures.push(
+            `${label}: 1 Mile rendered unavailable Distance ranks (${mileRankLabels.join(', ') || 'none'}).`
+        );
+    }
+    for (const expected of ['Unranked to #5', 'Unranked to #8']) {
+        if (!firstMileText.includes(expected)) {
+            failures.push(`${label}: 1 Mile omitted Overall movement "${expected}".`);
+        }
+    }
+
+    const bodyText = normalizeText(await page.locator('body').textContent());
+    const hiddenFields = [
+        'SortOrder',
+        'SourceRow',
+        'AgeGradeExact',
+        'TimeImprovementSeconds',
+        'PreviousBestAgeGradeExact',
+        'AgeGradeImprovementExact',
+        'ExportBundleID'
+    ];
+
+    for (const field of hiddenFields) {
+        if (bodyText.includes(field)) {
+            failures.push(`${label}: rendered hidden audit/exact field name "${field}".`);
+        }
+    }
+
+    // A display duration necessarily contains its seconds delta as a substring
+    // (for example 1.75 inside 00:00:01.750). Compare whole rendered text nodes
+    // so every hidden value is covered without falsely rejecting its approved
+    // formatted display counterpart.
+    const renderedTextNodes = new Set(await page.evaluate(() => {
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        const values = [];
+        let node;
+
+        while ((node = walker.nextNode())) {
+            const value = String(node.nodeValue || '').replace(/\s+/g, ' ').trim();
+            if (value) values.push(value);
+        }
+
+        return values;
+    }));
+    const hiddenValues = new Map();
+
+    for (const row of fixture.rows) {
+        for (const field of hiddenFields) {
+            const value = normalizeText(row[field]);
+            if (value) hiddenValues.set(value, field);
+        }
+    }
+
+    for (const [value, field] of hiddenValues) {
+        if (renderedTextNodes.has(value)) {
+            failures.push(`${label}: rendered hidden ${field} value "${value}".`);
+        }
+    }
+}
+
+async function runNewsEmptyAndUnavailableTests(browserInstance) {
+    const cases = [
+        {
+            mode: 'family',
+            viewport: viewports[0],
+            status: 200,
+            body: `${newsExportHeaders.join(',')}\r\n`,
+            expectedText: 'No official result milestones have been exported.',
+            expectedClass: 'news-status-empty',
+            name: 'header-only'
+        },
+        {
+            mode: 'everyone',
+            viewport: viewports[1],
+            status: 503,
+            body: 'temporarily unavailable',
+            expectedText: 'Official result milestones are unavailable right now.',
+            expectedClass: 'news-status-error',
+            name: 'failed-load'
+        }
+    ];
+
+    for (const testCase of cases) {
+        const { mode, viewport } = testCase;
+        const label = `${mode}/${viewport.name} News ${testCase.name}`;
+        const selectedFile = `data/${mode}/official_result_news.csv`;
+        const otherMode = mode === 'family' ? 'everyone' : 'family';
+        const context = await browserInstance.newContext(viewport.contextOptions);
+        const page = await context.newPage();
+        const requestedPaths = [];
+        const pageErrors = [];
+        const sameOriginFailures = [];
+
+        page.on('request', request => {
+            if (isSameOrigin(request.url())) {
+                requestedPaths.push(sameOriginRequestPath(request.url()));
+            }
+        });
+        page.on('pageerror', error => pageErrors.push(error.message));
+        page.on('requestfailed', request => {
+            if (isSameOrigin(request.url())) {
+                sameOriginFailures.push(
+                    `${request.url()} failed: ${request.failure()?.errorText || 'unknown error'}`
+                );
+            }
+        });
+        page.on('response', response => {
+            if (!isSameOrigin(response.url()) || response.status() < 400) return;
+
+            const pathName = sameOriginRequestPath(response.url());
+            const expectedFailure =
+                pathName === selectedFile &&
+                testCase.status >= 400 &&
+                response.status() === testCase.status;
+
+            if (!expectedFailure) {
+                sameOriginFailures.push(`${response.url()} returned HTTP ${response.status()}`);
+            }
+        });
+        await page.route(`**/${selectedFile}`, route => route.fulfill({
+            status: testCase.status,
+            contentType: 'text/csv; charset=utf-8',
+            body: testCase.body
+        }));
+
+        try {
+            await page.goto(`${preview.baseUrl}/news.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+            await waitForRenderedNews(page, mode);
+            await waitForNetworkToSettle(page);
+
+            await expectText(page, '#official-news-status', testCase.expectedText, label);
+            if (!await page.locator('#official-news-status').evaluate(
+                (node, expectedClass) => node.classList.contains(expectedClass),
+                testCase.expectedClass
+            )) {
+                failures.push(`${label}: status did not use ${testCase.expectedClass}.`);
+            }
+            if (await page.locator('.news-card').count() !== 0) {
+                failures.push(`${label}: rendered News cards despite the ${testCase.name} state.`);
+            }
+
+            const newsRequests = requestedPaths.filter(path => path.endsWith('/official_result_news.csv'));
+            if (newsRequests.length !== 1 || newsRequests[0] !== selectedFile) {
+                failures.push(
+                    `${label}: requested News exports ${newsRequests.join(', ') || '(none)'}, expected only ${selectedFile}.`
+                );
+            }
+            if (requestedPaths.includes(`data/${otherMode}/official_result_news.csv`)) {
+                failures.push(`${label}: fell back to the other mode's News export.`);
+            }
+            if (requestedPaths.includes('data/athlete_results.csv')) {
+                failures.push(`${label}: fell back to athlete_results.csv.`);
+            }
+
+            await assertResponsiveViewport(page, viewport, label);
+            await assertNoHorizontalOverflow(page, label);
+        } catch (error) {
+            failures.push(`${label}: ${error.message}`);
+        } finally {
+            for (const error of pageErrors) {
+                failures.push(`${label}: JavaScript exception: ${error}`);
+            }
+            for (const error of sameOriginFailures) {
+                failures.push(`${label}: unexpected same-origin request failure: ${error}`);
+            }
+            await context.close();
+        }
+    }
+}
+
+// news.js has a deliberately narrow fallback for the unlikely case where the
+// shared navigation script cannot initialise. An invalid query value must not
+// be interpolated into the data path or select Everyone by resemblance.
+async function runNewsInvalidSiteFallbackTest(browserInstance) {
+    const context = await browserInstance.newContext(viewports[0].contextOptions);
+    const page = await context.newPage();
+    const fixture = newsFixture('family');
+    const requestedPaths = [];
+    const label = 'News invalid-site fallback';
+    const sameOriginFailures = [];
+    const pageErrors = [];
+
+    page.on('request', request => {
+        if (isSameOrigin(request.url())) {
+            requestedPaths.push(sameOriginRequestPath(request.url()));
+        }
+    });
+    page.on('requestfailed', request => {
+        if (isSameOrigin(request.url())) {
+            sameOriginFailures.push(
+                `${request.url()} failed: ${request.failure()?.errorText || 'unknown error'}`
+            );
+        }
+    });
+    page.on('response', response => {
+        if (isSameOrigin(response.url()) && response.status() >= 400) {
+            sameOriginFailures.push(`${response.url()} returned HTTP ${response.status()}`);
+        }
+    });
+    page.on('pageerror', error => pageErrors.push(error.message));
+    await page.route('**/site-navigation.js', route => route.fulfill({
+        status: 200,
+        contentType: 'text/javascript; charset=utf-8',
+        body: '/* shared navigation intentionally unavailable for fallback coverage */'
+    }));
+    await page.route('**/data/family/official_result_news.csv', route => route.fulfill({
+        status: 200,
+        contentType: 'text/csv; charset=utf-8',
+        body: fixture.csv
+    }));
+
+    try {
+        await page.goto(`${preview.baseUrl}/news.html?site=..%2Feveryone`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#official-result-news[data-rendered="true"]', { state: 'attached' });
+        await page.locator('.news-card').first().waitFor({ state: 'visible' });
+        await waitForNetworkToSettle(page);
+
+        const newsRequests = requestedPaths.filter(path => path.endsWith('/official_result_news.csv'));
+        if (
+            newsRequests.length !== 1 ||
+            newsRequests[0] !== 'data/family/official_result_news.csv'
+        ) {
+            failures.push(
+                `${label}: invalid query requested ${newsRequests.join(', ') || '(none)'} instead of the Family fallback.`
+            );
+        }
+
+        const href = await page.locator('.news-card h3 a').first().getAttribute('href');
+        if (new URL(href, preview.baseUrl).searchParams.get('site') !== 'family') {
+            failures.push(`${label}: athlete link "${href}" did not use the safe Family fallback.`);
+        }
+    } catch (error) {
+        failures.push(`${label}: ${error.message}`);
+    } finally {
+        for (const error of pageErrors) {
+            failures.push(`${label}: JavaScript exception: ${error}`);
+        }
+        for (const error of sameOriginFailures) {
+            failures.push(`${label}: same-origin request failure: ${error}`);
+        }
+        await context.close();
+    }
+}
+
+async function waitForRenderedNews(page, mode) {
+    await page.waitForSelector('#official-result-news[data-rendered="true"]', { state: 'attached' });
+    await page.waitForSelector('#site-title', { state: 'visible' });
+    await page.waitForFunction(expectedMode => {
+        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
+        const expected = expectedMode === 'everyone'
+            ? 'Age-Graded Running Championships'
+            : 'Family Running Championships';
+
+        return title === expected;
+    }, mode);
+}
+
+async function assertNoHorizontalOverflow(page, label) {
+    const dimensions = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth
+    }));
+
+    if (dimensions.scrollWidth > dimensions.clientWidth + 1) {
+        failures.push(
+            `${label}: page has horizontal overflow (${dimensions.scrollWidth}px > ${dimensions.clientWidth}px).`
+        );
+    }
+}
+
+function newsFixture(mode) {
+    const modeLabel = mode === 'everyone' ? 'Everyone' : 'Family';
+    const bundleId = `${mode}-synthetic-news-bundle-20260823`;
+    const rows = [
+        {
+            SortOrder: '1',
+            SourceRow: '704',
+            AthleteID: `${mode}-news-combined`,
+            AthleteName: `${modeLabel} Ada & <b data-news-injection>Runner</b>`,
+            ResultDate: '22/08/2026',
+            Distance: '5 km',
+            Time: '00:19:59.125',
+            AgeGrade: '78.4%',
+            AgeGradeExact: '78.432109%',
+            Event: `Harbour, "Gold" <img data-news-injection src=x>\nSecond line`,
+            TimeClass: 'Official',
+            MilestoneType: 'Age Grade + Raw-Time PB',
+            PreviousBestTime: '00:20:00.875',
+            TimeImprovementSeconds: '1.75',
+            TimeImprovement: '00:00:01.750',
+            PreviousBestAgeGrade: '77.9%',
+            PreviousBestAgeGradeExact: '77.912345%',
+            AgeGradeImprovementExact: '0.519764%',
+            AgeGradeImprovement: '+0.52 pp',
+            CurrentDistanceRankBefore: '5',
+            CurrentDistanceRankAfter: '3',
+            CurrentDistancePlacesGained: '2',
+            CurrentOverallRankBefore: '8',
+            CurrentOverallRankAfter: '8',
+            CurrentOverallPlacesGained: '0',
+            AllTimeDistanceRankAfter: '9',
+            AllTimeOverallRankBefore: '20',
+            AllTimeOverallRankAfter: '19',
+            AllTimeOverallPlacesGained: '1',
+            ExportBundleID: bundleId
+        },
+        {
+            SortOrder: '2',
+            SourceRow: '703',
+            AthleteID: `${mode}-news-time`,
+            AthleteName: `${modeLabel} Ben`,
+            ResultDate: '22/08/2026',
+            Distance: '10 km',
+            Time: '00:39:59.9',
+            AgeGrade: '71.0%',
+            AgeGradeExact: '70.950001%',
+            Event: '',
+            TimeClass: 'Official',
+            MilestoneType: 'Raw-Time PB',
+            PreviousBestTime: '00:40:00.0',
+            TimeImprovementSeconds: '0.1',
+            TimeImprovement: '00:00:00.1',
+            CurrentDistanceRankBefore: '4',
+            CurrentDistanceRankAfter: '4',
+            CurrentDistancePlacesGained: '0',
+            CurrentOverallRankBefore: '7',
+            CurrentOverallRankAfter: '7',
+            CurrentOverallPlacesGained: '0',
+            AllTimeDistanceRankBefore: '6',
+            AllTimeDistanceRankAfter: '6',
+            AllTimeDistancePlacesGained: '0',
+            AllTimeOverallRankBefore: '9',
+            AllTimeOverallRankAfter: '9',
+            AllTimeOverallPlacesGained: '0',
+            ExportBundleID: bundleId
+        },
+        {
+            SortOrder: '3',
+            SourceRow: '699',
+            AthleteID: `${mode}-news-age-grade`,
+            AthleteName: `${modeLabel} Casey`,
+            ResultDate: '21/08/2026',
+            Distance: 'Half Marathon',
+            Time: '01:30:00',
+            AgeGrade: '74.2%',
+            AgeGradeExact: '74.20004%',
+            Event: 'Riverside Half',
+            TimeClass: 'Official',
+            MilestoneType: 'Age Grade PB',
+            PreviousBestAgeGrade: '74.2%',
+            PreviousBestAgeGradeExact: '74.20001%',
+            AgeGradeImprovementExact: '0.00003%',
+            AgeGradeImprovement: '+<0.01 pp',
+            CurrentDistanceRankAfter: '7',
+            CurrentOverallRankAfter: '11',
+            AllTimeDistanceRankBefore: '12',
+            AllTimeDistanceRankAfter: '10',
+            AllTimeDistancePlacesGained: '2',
+            AllTimeOverallRankBefore: '30',
+            AllTimeOverallRankAfter: '29',
+            AllTimeOverallPlacesGained: '1',
+            ExportBundleID: bundleId
+        },
+        {
+            SortOrder: '4',
+            SourceRow: '688',
+            AthleteID: `${mode}-news-first-mile`,
+            AthleteName: `${modeLabel} Drew`,
+            ResultDate: '20/08/2026',
+            Distance: '1 Mile',
+            Time: '00:05:01.250',
+            AgeGrade: '69.8%',
+            AgeGradeExact: '69.812345%',
+            Event: 'Track opener',
+            TimeClass: 'Official',
+            MilestoneType: 'First Official Result',
+            CurrentOverallRankAfter: '5',
+            AllTimeOverallRankAfter: '8',
+            ExportBundleID: bundleId
+        }
+    ];
+    const dataRows = rows.map(row =>
+        newsExportHeaders.map(header => quoteCsvField(row[header] || '')).join(',')
+    );
+
+    return {
+        bundleId,
+        rows,
+        csv: `${newsExportHeaders.join(',')}\r\n${dataRows.join('\r\n')}\r\n`
+    };
 }
 
 async function waitForRenderedChampionship(page, mode) {
@@ -772,6 +1438,7 @@ async function assertPrimaryNavigation(page, mode, viewport, activePage) {
         : 'Championships';
     const expected = new Map([
         [championshipsLabel, 'index.html'],
+        ['News', 'news.html'],
         ['Hall of Fame', 'hall-of-fame.html'],
         ['Records', 'records.html'],
         ['Head to Head', 'calculator.html'],
@@ -937,6 +1604,7 @@ async function capturePageScreenshot(page, mode, viewport, pageKey, waitForPage)
 }
 
 function pageFileForKey(pageKey) {
+    if (pageKey === 'news') return 'news.html';
     if (pageKey === 'hall-of-fame') return 'hall-of-fame.html';
     if (pageKey === 'overview') return 'overview.html';
     if (pageKey === 'records') return 'records.html';
@@ -1742,6 +2410,7 @@ async function runBrandMetadataTests(browserInstance) {
     const pages = [
         'index.html',
         'championships.html',
+        'news.html',
         'hall-of-fame.html',
         'records.html',
         'calculator.html',
@@ -1959,6 +2628,7 @@ async function runDocumentTitleTests(browserInstance) {
     const pages = [
         'index.html',
         'championships.html',
+        'news.html',
         'hall-of-fame.html',
         'records.html',
         'calculator.html',

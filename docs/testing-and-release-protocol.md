@@ -153,6 +153,73 @@ CSV validation checks `data/family/`, `data/everyone/`, and shared `data/athlete
 
 The existing content checks remain in force: required files and headers, parseable CSV structure, matching row lengths, leaderboard files referenced by `webtables.csv`, athlete IDs used by links, official medal exports, parseable dates, numeric fields and times, non-empty Hall of Fame data, and non-empty enabled championship files. Validation also enforces the exact `crown_history.csv` contract, crown order and chronology, transition and previous-holder rules, and final-holder agreement with the All-Time Official Hall of Fame without deriving history in JavaScript. Athlete medals remain Excel-owned exports and are rendered directly from `official_medals.csv`; their rows must match the current exported official leaderboards. When present, `absolute_records.csv` must be a workbook-owned official raw-time export with Men and Women records, source-row audit fields, and no browser-derived record calculation. It is validated as a complete fixed matrix: exactly one row for each of Men and Women at Marathon, Half Marathon, 10 Mile, 10 km, and 5 km, in that order, with no missing, duplicated, extra, or reordered rows. `RecordGroup` must be `Men` or `Women` and must agree with the row's own `Sex`, `RecordTitle` must be unique, `ResultDistance` must be the same distance as `Distance`, and `SortOrder` must be numeric, unique, and strictly increasing so the exported order is reproducible rather than incidental. Vacant states such as "Championship Vacant" and "No eligible results" are accepted; a vacant record still occupies its place in the matrix but carries no performance to check.
 
+### Official Results News first-draft acceptance record
+
+This is the acceptance record for the approved first draft in
+[Official Result News Contract](official-news-contract.md). The workbook draft
+produced a 72-file export with authoritative row counts of 43 for Family and 64
+for Everyone. Staged validation passed, reconciliation against tracked data
+found only the two new News CSVs plus the manifest, and John approved promotion
+on 23 August 2026. The complete post-promotion suite, browser checks, artifact
+checks, and responsive review pass. Promotion and local validation do not
+publish the feature; release remains a separate explicit approval.
+
+The tracked News export includes
+`data/family/official_result_news.csv` and
+`data/everyone/official_result_news.csv`. Both files are required even when one
+is header-only, have their own site scopes, and join the atomic bundle in the
+same release. The tracked public bundle contains 72 CSV files: 71 manifest
+entries plus
+`data/export_manifest.csv`.
+
+Focused CSV validation must require the exact ordered News header and enforce
+the complete contract: one selected-site file, literal `Official`, the six
+canonical distances, contiguous newest-first `SortOrder`, unique positive
+`SourceRow`, descending dates and reverse source order within a date,
+source-result identity, full-precision/display age-grade agreement, the four
+closed milestone types, exact previous-best and delta population rules,
+strictly improving age-grade and raw-time chains, `HH:MM:SS[.fff]` raw times
+and improvements that retain genuine source precision through milliseconds,
+and every valid/invalid rank triplet blank pattern. `TimeImprovementSeconds`
+may therefore be a positive decimal value to at most three places. Validation
+must match the documented rounding relationship when public
+`athlete_results.csv` exposes a coarser time; it must not reject or round away a
+valid precise News value. It must cover first results, combined milestones, a
+sub-second raw-time improvement, a positive exact age-grade improvement whose
+one-decimal displays are equal, unranked-to-ranked movement, zero rank
+movement, unavailable 1 Mile distance tables, quoted and multiline event text,
+and a valid header-only file. Failure fixtures must reject unofficial or
+unsupported results, duplicates, missing bundle registration, malformed
+chronology, invented first-result baselines, zero or negative improvements,
+wrong delta arithmetic, partial rank triplets, and a mode or source mismatch.
+Age-grade subtraction and two-decimal display rounding must be checked with
+exact fixed-decimal arithmetic, including half-up boundary cases. Cross-mode
+validation must require every Family milestone to match the same public source
+result and non-rank values in Everyone while allowing mode-specific order and
+rank triplets.
+
+The repository may validate exported arithmetic and public-source agreement,
+but it must not generate milestones or ranks. Before the manifest is written,
+workbook post-export validation must replay date/`SourceRow` order, preserve
+source time through millisecond precision, apply the
+strict historical Current rule (`result date > D - 365 days` and
+`result date <= D`), and compare its complete terminal Current and All-Time
+state with all 12 Official leaderboard files in each mode. This workbook check
+is required because rounded public rows cannot independently prove exact
+milestone completeness or historical ranking.
+
+Browser smoke coverage must open the eventual News page in Family and Everyone
+at 1440 x 900 and 390 x 844. It must prove selected-mode-only requests,
+mode-preserving navigation and athlete links, exact exported order including
+same-day rows, all four milestone types, first/tiny/combined improvements,
+fractional raw-time values and improvements, unranked, unchanged, gained-place,
+unavailable-table, header-only, and failed-load states. It must also prove
+there is no fallback calculation from
+`athlete_results.csv`, no leaked `SourceRow`, exact age grade, `SortOrder`, or
+bundle metadata, no script or same-origin request failure, and no horizontal
+page overflow. Responsive screenshots for both modes must include a combined
+milestone and an entry with all four rank movements visible.
+
 Analytics configuration tests prove that GoatCounter loads only for the
 production `www.aceofrace.com` and `aceofrace.com` domains, plus the legacy
 `johnkevan88888.github.io/family-running` address. Local runs, Netlify previews,
@@ -371,7 +438,15 @@ Before approving a Pull Request:
   `[skip netlify]`, the eligibility gate passed, `CNAME` contains only the
   intended hostname, and the exact diff stays within the domain allowlist.
 - Review desktop and mobile screenshots.
-- Manually check Hall of Fame, All-Time Official Crown Progression, Records, the Calculator's grouped head-to-head comparison, leaderboards, collapsible sections, athlete links, athlete profile pages, and back links.
+- Manually check Hall of Fame, All-Time Official Crown Progression, Official
+  Results News when it is part of the change, Records, the Calculator's grouped
+  head-to-head comparison, leaderboards, collapsible sections, athlete links,
+  athlete profile pages, and back links.
+- For the first News export, review representative workbook replay chains,
+  same-day ordering, exact age-grade deltas, millisecond-preserving raw-time
+  values and improvements, the strict 365-day Current boundary, all four
+  before/after rank contexts, the two new manifest rows, and final-state
+  agreement with every Official leaderboard before data promotion.
 - For record changes, review the private workbook's `AbsoluteRecords` sheet and the staged `absolute_records.csv` files before approving tracked data promotion.
 - Confirm known limitations and rollback approach are documented.
 
@@ -381,6 +456,14 @@ No passing tests, no release.
 
 For standard changes, no successful preview and review of both site modes, no
 release.
+
+The first Official Results News release changes the workbook, export set, CSV
+contract, published runtime, and browser behavior. It must use the standard
+preview pathway; it is not eligible for the existing-schema lightweight data
+route. The 72-file staged bundle and staged validator have passed, but that is
+only one release gate. No completed focused failure coverage, successful full
+suite, both-mode browser and responsive screenshot review, tracked-data
+promotion, and explicit approval, no News release.
 
 For validated lightweight data refreshes, no accepted eligibility gate, exact
 CSV diff review, and responsive screenshot review for both site modes, no
@@ -456,7 +539,7 @@ After an approved release reaches GitHub Pages, verify:
 - [Family production](https://www.aceofrace.com/?site=family)
 - [Everyone production](https://www.aceofrace.com/?site=everyone)
 
-Check that both modes load, Hall of Fame renders, Calculator comparisons use the selected mode and separate official from unofficial source performances, leaderboards render, athlete links open, and back links preserve the correct mode.
+Check that both modes load, Hall of Fame renders, Calculator comparisons use the selected mode and separate official from unofficial source performances, leaderboards render, athlete links open, and back links preserve the correct mode. After the Official Results News first draft is released, also open News in both modes, confirm each mode requests only its own export, verify representative milestone and movement text, and check that a News athlete link preserves the selected mode.
 
 ## Rollback
 

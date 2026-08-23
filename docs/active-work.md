@@ -2,9 +2,62 @@
 
 ## Task title
 
-Header refinement, Head-to-Head rename, and workbook-locked age-grade calculator.
+Official Results News first draft.
 
 ## Status
+
+Implemented locally on 23 August 2026 on `codex/news-official-results` in the
+isolated worktree
+`C:\GitHub\family-running\test-artifacts\worktrees\news-official-results`.
+The separate worktree preserves the uncommitted Gallery work in the primary
+checkout.
+
+The static News page loads only
+`data/<selected-site>/official_result_news.csv`, preserves `?site=`, renders the
+workbook's exported order, improvements, and before/after Current and All-Time
+distance/Overall positions, and performs no PB or ranking calculation. The
+repository validator requires the exact 32-column export, both mode-specific
+manifest paths, the complete Official leaderboard matrix, source agreement,
+milestone chains, rank-field arithmetic, 1 Mile's Overall-only movement, and
+genuine source-time precision through milliseconds.
+
+The private source workbook was copied and hash-verified before inspection. The
+unchanged backup is
+`C:\GitHub\_private_workbooks\backups\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX BACKUP BEFORE OFFICIAL NEWS 20260823-163247.xlsm`
+with SHA-256
+`4B1D11EA6946F0A8A58691B767610CA417D12DE7BAC5F0C9EAD43B368C439AB9`.
+All News changes were made in the separate draft
+`C:\GitHub\_private_workbooks\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX OFFICIAL NEWS DRAFT 20260823-164900.xlsm`;
+the named working copy was not modified. The draft replay agrees with all 24
+final Official leaderboard exports and produced 43 Family milestones and 64
+Everyone milestones.
+
+A hardened replacement 72-file workbook export succeeded at
+`test-artifacts/workbook-export-staging/run-20260823-173218-385`. Its staged
+bundle and CSV validation passed. Reconciliation found every existing CSV
+semantically unchanged; the only meaningful differences are the two new News
+CSVs and the two new rows in `data/export_manifest.csv`. Exact fixed-decimal
+age-grade validation, millisecond time comparison, duplicate public-source
+detection, and Family-to-Everyone source agreement are covered by the passing
+59-case export-bundle regression suite. Repository safety, vendored-library and
+syntax checks, focused frontend rendering, preview-artifact publication, and
+both-mode desktop/mobile browser coverage have passed. The four responsive
+screenshots were reviewed with no overflow or presentation defect found.
+
+John approved promotion on 23 August 2026. The validated bundle is now the
+tracked 72-file `data/` contract. The previous tracked data is retained in the
+ignored recovery folder
+`test-artifacts/workbook-export-promotion/20260823215439556/previous-data`.
+The complete `pnpm test` suite passes against the promoted data: repository,
+vendor, CSV, 59 export-bundle regressions, staged workflow, reconciliation,
+artifact safety/build, and both-mode browser checks. The final artifact contains
+107 files. A separate real-data visual check rendered all 43 Family and 64
+Everyone entries with no mobile overflow or browser warning/error. Nothing has
+been pushed, merged, published, or deployed.
+
+## Prior work: header refinement and workbook-locked age-grade calculator
+
+### Status
 
 Completed locally on 23 August 2026 on `codex/header-layout`. The shared header
 places Updated at the top right, groups navigation at the left, aligns Pace at

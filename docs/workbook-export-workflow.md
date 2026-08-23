@@ -71,7 +71,13 @@ Repository validation in `scripts/validate-csv.mjs` is authoritative.
 
 The staged-workflow validator additionally requires the staged public CSV file
 set to match the currently tracked contract. The current export contract
-contains 70 CSV files: 69 manifest entries plus the manifest itself.
+contains 72 CSV files: 71 manifest entries plus the manifest itself.
+
+The approved [Official Result News contract](official-news-contract.md) requires
+the site-specific
+`data/family/official_result_news.csv` and
+`data/everyone/official_result_news.csv` files in every complete export. A mode
+with no milestones still exports the exact header-only file.
 
 ## Workbook guarantees
 
@@ -97,12 +103,33 @@ The workbook exporter:
 12. writes the manifest last; and
 13. deletes the incomplete staging folder if any step fails.
 
+For the Official Results News first draft, those guarantees extend to a
+workbook-owned replay for each mode. The exporter must filter to currently
+  eligible Official results, normalize the six contracted distances, process
+  ascending result date and `SourceRow`, use full-precision age grade for strict
+  milestones, preserve genuine raw-time source precision through milliseconds,
+  and apply Current expiries before each result with the authoritative strict
+  rule `result date > D - 365 days` and `result date <= D`. Raw times and time
+  improvements use `HH:MM:SS[.fff]`; they must not be coerced to whole seconds
+  merely because the public `athlete_results.csv` export may round. It must
+  export the milestone, exact/display improvements, and four applicable
+  before/after rank triplets without delegating calculation to the website.
+  Before registering either file or writing the manifest, post-export
+  validation must compare the
+replay's complete final Current and All-Time state with all 12 Official
+leaderboards for that mode. A mode with no milestones still produces its exact
+header-only file.
+
 The complete export includes leaderboard files, `webtables.csv`,
 `siteinfo.csv`, Hall of Fame, official medals, crown history, crown standards,
 age-grade standards including `pace_per_km` and `pace_per_mile`, absolute
 records, Family and Everyone athlete-comparison targets, Family and Everyone
 `age_grade_calculator.csv` calculation contracts, and shared
 `athlete_results.csv`.
+
+That list also includes Family and Everyone `official_result_news.csv`. The two
+files must always be generated and promoted as one complete-bundle change;
+neither may be copied selectively.
 
 ## Streamlined routine data update
 
@@ -140,6 +167,13 @@ The guided updater:
 This automatic merge authority is limited to the existing fail-closed routine
 data pathway. Code, schema, configuration, export-set, and broader
 documentation changes still use the manual release process.
+
+The first Official Results News delivery changes the workbook, export set,
+schema contract, validation, and public runtime. It therefore uses the manual
+standard-preview process below and is not eligible for the routine
+`[skip netlify]` data pathway. Later race-result refreshes may use the routine
+path only after the two News files are established tracked members of the
+existing-schema bundle and all News checks are part of the normal suite.
 
 If the command is stopped at either review point, resume the same staged update
 without copying its path:
@@ -191,17 +225,16 @@ be kept in step by hand.
 ### 2. Validate the staged bundle
 
 ```powershell
-pnpm run workbook:validate:staged --staged "<STAGED_EXPORT_ROOT>" --approve-new-files "data/family/age_grade_calculator.csv,data/everyone/age_grade_calculator.csv"
+pnpm run workbook:validate:staged --staged "<STAGED_EXPORT_ROOT>"
 ```
 
 This runs the existing full CSV and bundle validation and verifies the public
-file set, with the two new contract files named explicitly until they are
-promoted and tracked.
+file set, including both required Official Results News exports.
 
 ### 3. Compare with tracked public data
 
 ```powershell
-pnpm run workbook:compare:staged --staged "<STAGED_EXPORT_ROOT>" --approve-new-files "data/family/age_grade_calculator.csv,data/everyone/age_grade_calculator.csv"
+pnpm run workbook:compare:staged --staged "<STAGED_EXPORT_ROOT>"
 ```
 
 The comparison ignores only:
@@ -223,6 +256,11 @@ Review:
 - every meaningful changed file;
 - Family and Everyone output;
 - representative age-grade pace values;
+- both Official Results News files, including representative first, age-grade,
+  raw-time, combined, same-day, 1 Mile, unchanged-rank, Current-boundary, and
+  genuine sub-second source cases when News is in scope;
+- workbook evidence that the replay's final Current and All-Time state agrees
+  with all 12 Official leaderboard files in each mode; and
 - repository tests and responsive browser screenshots.
 
 Unexpected data differences are blockers. Do not change workbook-owned
@@ -246,10 +284,10 @@ pnpm run workbook:promote:staged --staged "<STAGED_EXPORT_ROOT>" --approve --app
 ```
 
 If the staged bundle intentionally adds new public CSV contract files, name each
-new file explicitly:
+new file explicitly. For example:
 
 ```powershell
-pnpm run workbook:promote:staged --staged "<STAGED_EXPORT_ROOT>" --approve --approve-differences --approve-new-files "data/family/age_grade_calculator.csv,data/everyone/age_grade_calculator.csv"
+pnpm run workbook:promote:staged --staged "<STAGED_EXPORT_ROOT>" --approve --approve-differences --approve-new-files "data/family/<new-file>.csv,data/everyone/<new-file>.csv"
 ```
 
 Promotion refuses to run when tracked `data/` already has local changes. It

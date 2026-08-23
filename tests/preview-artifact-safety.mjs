@@ -13,6 +13,7 @@ import {
     managedArtifactRoot,
     resolvePreviewOutputDir
 } from '../scripts/preview-artifact-contract.mjs';
+import { publishedSiteEntries } from '../scripts/published-site-entries.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const buildScript = path.join(repoRoot, 'scripts', 'build-preview-artifact.mjs');
@@ -147,6 +148,16 @@ console.log('PASS - the build refuses an out-of-tree output directory before del
 // `data/` and `vendor/` are copied as whole directories, so the build's
 // file-by-file whitelist says nothing about their contents. Whatever is in them
 // is published at its path on the public web.
+
+const newsRuntimeEntries = ['news.html', 'news.js', 'news.css'];
+
+assert.deepEqual(
+    newsRuntimeEntries.filter(entry => !publishedSiteEntries.includes(entry)),
+    [],
+    'The official-results News page is incomplete in the published runtime contract.'
+);
+
+console.log('PASS - the News page is complete in the published runtime contract');
 
 const manifest = [
     ['ExportBundleID', 'ExportedAtUTC', 'SchemaVersion', 'Scope', 'RelativePath', 'DataRowCount'],
@@ -301,6 +312,14 @@ try {
     const clean = await runBuild({ PREVIEW_OUTPUT_DIR: buildOutputDir });
 
     assert.equal(clean.code, 0, `The unmodified tree failed its own contract:\n${clean.output}`);
+
+    for (const entry of newsRuntimeEntries) {
+        assert.equal(
+            await pathExists(path.join(buildOutputDir, entry)),
+            true,
+            `The preview artifact is missing the News runtime file "${entry}".`
+        );
+    }
 } finally {
     await fs.rm(strayDataFile, { force: true });
     await fs.rm(strayVendorFile, { force: true });
@@ -319,7 +338,7 @@ for (const probe of [strayDataFile, strayVendorFile, strayAssetFile]) {
     );
 }
 
-console.log('PASS - the artifact build enforces both contracts on the real tree');
+console.log('PASS - the artifact build enforces both contracts and publishes the News page');
 console.log('Preview artifact safety tests passed.');
 
 function runBuild(env) {

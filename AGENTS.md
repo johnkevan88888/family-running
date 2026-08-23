@@ -30,6 +30,24 @@ Preserve the selected `site` parameter when navigating between championship page
 - `leaderboard.js` reads the selected site mode, loads `data/<site>/siteinfo.csv`, `data/<site>/halloffame.csv`, and `data/<site>/webtables.csv`, then renders enabled leaderboard CSVs referenced by `webtables.csv`.
 - `athlete.html` is the athlete profile page.
 - `athlete.js` loads shared athlete result data from `data/athlete_results.csv` and site-specific supporting exports from `data/<site>/`.
+- Official Results News has an approved contract and first-draft workbook and
+  repository implementation. The approved 72-file export is tracked with
+  authoritative milestone counts of 43 for Family and 64 for Everyone;
+  reconciliation found only the two new News CSVs plus the manifest, and the
+  complete local validation suite passes. The feature is not yet released.
+  [The contract](docs/official-news-contract.md) requires Excel/VBA to replay
+  presently valid Official results independently for Family and Everyone. The
+  browser may load and display only the selected mode's
+  `data/<site>/official_result_news.csv`; it must not identify milestones,
+  calculate improvements, replay the 365-day Current window, or reconstruct
+  before/after ranks from `athlete_results.csv` or leaderboard snapshots. Until
+  the authoritative export is present, the page must fail closed without a
+  calculated fallback.
+- News raw times and time improvements preserve genuine source precision
+  through milliseconds and use `HH:MM:SS[.fff]`. The public
+  `athlete_results.csv` export may round a source time, so neither validation
+  nor browser display may replace the more precise News value with that rounded
+  public value or coerce it to whole seconds.
 - `utils.js` contains the shared CSV loading/parsing, HTML escaping, and
   athlete-link helpers. `escapeHTML`, `csvRowsToObjects`, and `parseCSV` live
   here only; do not reintroduce per-file copies. `athleteLink` escapes its own
@@ -89,6 +107,11 @@ Preserve the selected `site` parameter when navigating between championship page
 - `data/everyone/` contains CSV exports for the Everyone mode.
 - `data/athlete_results.csv` is shared profile result data used by athlete pages.
 - `data/<site>/age_grade_calculator.csv` is the workbook-owned input and conformance contract for the dedicated calculator. The browser must validate it through `age-grade-contract.js` before enabling time entry.
+- The tracked export contract currently contains 72 CSV files. Official
+  Results News adds
+  `data/family/official_result_news.csv` and
+  `data/everyone/official_result_news.csv`. A header-only News export is valid
+  for a mode with no milestones.
 - `data/export_manifest.csv` is the completion and consistency contract for one full website-data export.
 
 ## Export Bundle Contract
@@ -125,6 +148,11 @@ Before presenting a change for review, run the available local checks:
 - Repository safety validation.
 - Vendored library validation.
 - CSV validation for both `data/family/` and `data/everyone/`.
+- For the Official Results News first draft, focused validation of both
+  site-specific exports, their exact age-grade and millisecond-preserving
+  raw-time milestone chains, 365-day Current and All-Time rank triplets, bundle
+  registration, and workbook final-state agreement with all Official
+  leaderboards.
 - Preview artifact safety tests.
 - Browser smoke tests for both `?site=family` and `?site=everyone`.
 - Responsive screenshots for desktop and mobile views.
