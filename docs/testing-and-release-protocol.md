@@ -233,6 +233,24 @@ states, and desktop/mobile layout must be covered. Filtering and progressive
 reveal must not request another CSV, leak the other mode's rows, or calculate
 any milestone, improvement, position, or rank.
 
+The later compact-card refinement remains presentation-only. Browser coverage
+must prove that a populated desktop card reads left to right as Result, the
+exported PB improvement or first-result baseline, then Championship movement;
+that mobile preserves the same information and order in a compact vertical
+flow; and that visual arrow connectors are hidden from assistive technology.
+Both layouts must retain the existing milestone, improvement, movement,
+filtering, progressive-reveal, and no-overflow assertions. No workbook, schema,
+calculation, or content fixture changes are required for this refinement.
+
+The compact-card acceptance run passed on 23 August 2026. The full `pnpm test`
+suite passed, including browser smoke coverage for both modes at 1440 x 900,
+the 720px intermediate probe, and 390 x 844 mobile. Responsive screenshots were
+reviewed with no horizontal overflow. All tested real-data cards remained
+within the 320px desktop and 850px mobile height ceilings; the visible history
+was about 55% shorter on desktop and 37% shorter on mobile than the preceding
+layout. This local acceptance does not merge or release the change. The Pull
+Request preview still requires the validated branch update to be pushed.
+
 Analytics configuration tests prove that GoatCounter loads only for the
 production `www.aceofrace.com` and `aceofrace.com` domains, plus the legacy
 `johnkevan88888.github.io/family-running` address. Local runs, Netlify previews,

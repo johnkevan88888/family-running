@@ -274,9 +274,10 @@
         const athlete = athleteLink(row.AthleteID, row.AthleteName);
         const currentMovement = renderRankPeriod(row, 'Current', index);
         const allTimeMovement = renderRankPeriod(row, 'AllTime', index);
+        const milestoneDetails = renderMilestoneDetails(row, presentation);
         const movement = currentMovement || allTimeMovement
             ? `
-                <section class="news-rank-section" aria-labelledby="news-ranks-${index}">
+                <section class="news-rank-section news-flow-stage news-flow-ranks" aria-labelledby="news-ranks-${index}">
                     <h4 id="news-ranks-${index}">Championship movement</h4>
                     <div class="news-rank-periods">
                         ${currentMovement}
@@ -289,35 +290,44 @@
         return `
             <li class="news-timeline-item">
                 <article class="news-card news-card-${presentation.className}">
-                    <header class="news-card-header">
-                        <div>
-                            <div class="news-date">${escapeHTML(formatNewsDate(row.ResultDate))}</div>
-                            <h3>${athlete}</h3>
-                        </div>
-                        <div class="news-milestone-badge">
-                            <span class="news-milestone-icon" aria-hidden="true">${presentation.icon}</span>
-                            ${escapeHTML(row.MilestoneType)}
-                        </div>
-                    </header>
+                    <div class="news-flow">
+                        <section class="news-flow-stage news-flow-result" aria-label="Official result">
+                            <header class="news-card-header">
+                                <div class="news-card-heading">
+                                    <div class="news-date">${escapeHTML(formatNewsDate(row.ResultDate))}</div>
+                                    <h3>${athlete}</h3>
+                                    <div class="news-result-context">
+                                        <strong>${escapeHTML(row.Distance)}</strong>
+                                        ${row.Event ? `<span>${escapeHTML(row.Event)}</span>` : ''}
+                                    </div>
+                                </div>
+                                <div class="news-milestone-badge">
+                                    <span class="news-milestone-icon" aria-hidden="true">${presentation.icon}</span>
+                                    ${escapeHTML(row.MilestoneType)}
+                                </div>
+                            </header>
 
-                    <div class="news-result-context">
-                        <strong>${escapeHTML(row.Distance)}</strong>
-                        ${row.Event ? `<span>${escapeHTML(row.Event)}</span>` : ''}
+                            <dl class="news-result-metrics">
+                                <div>
+                                    <dt>Official time</dt>
+                                    <dd>${escapeHTML(row.Time)}</dd>
+                                </div>
+                                <div>
+                                    <dt>Age grade</dt>
+                                    <dd>${escapeHTML(row.AgeGrade)}</dd>
+                                </div>
+                            </dl>
+                        </section>
+
+                        <span class="news-flow-arrow news-flow-arrow-improvement" aria-hidden="true">&#8594;</span>
+                        <section class="news-flow-stage news-flow-improvement" aria-label="Milestone details">
+                            ${milestoneDetails}
+                        </section>
+                        ${movement ? `
+                            <span class="news-flow-arrow news-flow-arrow-ranks" aria-hidden="true">&#8594;</span>
+                            ${movement}
+                        ` : ''}
                     </div>
-
-                    <dl class="news-result-metrics">
-                        <div>
-                            <dt>Official time</dt>
-                            <dd>${escapeHTML(row.Time)}</dd>
-                        </div>
-                        <div>
-                            <dt>Age grade</dt>
-                            <dd>${escapeHTML(row.AgeGrade)}</dd>
-                        </div>
-                    </dl>
-
-                    ${renderMilestoneDetails(row, presentation)}
-                    ${movement}
                 </article>
             </li>
         `;

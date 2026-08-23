@@ -12,7 +12,11 @@
   separate explicit approval. Athlete, year, and distance filters plus a
   latest-first `Show older` refinement were approved later on 23 August 2026;
   that presentation-only refinement is implemented and the complete local
-  suite and real-data responsive review pass.
+  suite and real-data responsive review pass. A further compact card-flow
+  refinement was approved and implemented on 23 August 2026. The full local
+  suite, both-mode desktop/intermediate/mobile browser coverage, responsive
+  screenshot review, and overflow checks pass. The Pull Request preview update
+  awaits the branch push; nothing is merged or released.
 - **Scope:** Official-result milestones and their reconstructed championship
   effect. This is not an editorial news system.
 
@@ -427,6 +431,10 @@ The eventual `news.html` page should:
   `?site=family` or `?site=everyone` in navigation and athlete links;
 - show entries newest first in exported `SortOrder`, using a responsive
   single-column timeline or card list rather than a wide table;
+- make each desktop card a compact left-to-right flow from Result, through the
+  exported PB improvement or first-result baseline, to the exported
+  Championship movement, while keeping that same reading order in a compact
+  vertical flow on mobile;
 - show date, athlete, canonical distance, event when present, result time, and
   displayed age grade;
 - link the athlete name with the exported `AthleteID` through the shared
@@ -453,7 +461,10 @@ The eventual `news.html` page should:
 
 Badges and movement must not rely on colour alone. Entries should use semantic
 headings or list structure so dates, athlete names, milestone types, and rank
-changes remain understandable to screen readers.
+changes remain understandable to screen readers. Arrows may guide the eye
+between card stages and successive timeline entries, but they are decorative,
+hidden from assistive technology, and must not be the only indication of order
+or meaning.
 
 The browser may format ordinary presentation around validated values. It must
 not compare performances, subtract times or percentages, calculate rank gains,
@@ -512,6 +523,10 @@ prove that the page:
 - hides the filtering interface for header-only and failed-load states and
   performs filtering and progressive reveal without another data request or a
   row from the other site mode;
+- presents each populated desktop card in Result, improvement/baseline, then
+  Championship movement order; preserves that order when compactly stacked on
+  mobile; and exposes any visual arrow connectors as decorative rather than
+  accessible content;
 - exposes no `SourceRow`, `SortOrder`, exact-age-grade, or `ExportBundleID`
   values;
 - has no JavaScript exceptions, failed same-origin requests, or horizontal page

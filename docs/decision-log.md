@@ -249,6 +249,11 @@ Unknown historical details are labelled rather than inferred.
   filters and a latest-first `Show older` control may select and progressively
   reveal already exported rows while preserving `SortOrder`; they remain
   presentation behavior and do not create a second replay or ranking path.
+  Individual cards may compactly arrange the same exported content as a
+  desktop left-to-right Result, PB improvement or baseline, and Championship
+  movement flow, then stack those stages in the same order on mobile.
+  Connector arrows are decorative and carry no information unavailable from
+  the semantic content order.
 - **Rationale:** Exact milestone selection and historical positions depend on
   full-precision age grades, source order, site eligibility, the workbook's
   rolling-window rule, and the same ranking logic as the live Official tables.
@@ -273,7 +278,16 @@ Unknown historical details are labelled rather than inferred.
   local validation do not publish the feature; release remains a separate
   explicit approval. Filtering and progressive reveal require no workbook or
   schema change: clearing filters and revealing all batches must reproduce the
-  complete selected-mode export in its authoritative order.
+  complete selected-mode export in its authoritative order. Compact card flow
+  likewise changes no export, calculation, milestone, improvement, or rank;
+  it only changes how each already exported row uses the available width. The
+  completed responsive validation covered both modes at 1440 x 900, a 720px
+  intermediate width, and 390 x 844, with reviewed screenshots and no
+  overflow. All tested real-data cards remained within the 320px desktop and
+  850px mobile height ceilings, making the visible history about 55% shorter on
+  desktop and 37% shorter on mobile than the preceding layout. The Pull Request
+  preview update remains pending the branch push; this is not merged or
+  released.
 
 ## Production usage analytics are aggregate and cookie-free
 

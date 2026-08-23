@@ -43,6 +43,21 @@ improvements, or historical ranks. It is implemented on the same branch; the
 complete suite and real-data desktop/mobile review pass. This remains local
 review-ready work, not a release.
 
+John approved a second presentation-only follow-up on 23 August 2026 to reduce
+the space used by each update. Desktop cards use the available width as a
+left-to-right Result, PB improvement or baseline, and Championship movement
+flow with decorative visual arrows; mobile preserves the same information and
+order in a compact vertical flow. It changes no workbook logic, schema,
+calculation, exported content, milestone, or historical position.
+Implementation and responsive validation are complete on the same branch. The
+full `pnpm test` suite passed, both modes passed browser checks at 1440 x 900,
+the 720px intermediate probe, and 390 x 844, and reviewed screenshots had no
+overflow. All tested real-data cards remained within the 320px desktop and
+850px mobile height ceilings; the visible history is about 55% shorter on
+desktop and 37% shorter on mobile than the preceding layout. The Pull Request
+preview update awaits the branch push. This remains unmerged review work, not
+a release.
+
 ## Next candidate tasks
 
 1. **Mobile championship leaderboards are close to unreadable.** On

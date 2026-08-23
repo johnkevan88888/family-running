@@ -37,6 +37,20 @@ and mobile, and overflow coverage. Real-data review confirmed the Everyone
 5 km history moves from 12 of 43 to 24 of 43 after one reveal, and the mobile
 controls render without overflow or browser warnings/errors.
 
+John approved a second presentation-only refinement on 23 August 2026 to make
+each milestone substantially more compact. At desktop widths, each card leads
+left to right from Result, through the exported PB improvement or first-result
+baseline, to the exported Championship movement, with decorative arrows
+guiding the eye between stages and down the feed. Mobile keeps the same content
+and reading order in a compact vertical flow. This changes no workbook logic,
+CSV schema, milestone selection, calculation, value, or rank. The refinement is
+implemented and the full `pnpm test` suite passes. Browser smoke coverage passed
+for both modes at 1440 x 900, a 720px intermediate-width probe, and 390 x 844;
+responsive screenshots were reviewed with no overflow. Representative
+real-data cards remain within the tested 320px desktop and 850px mobile height
+ceilings. The visible history is about 55% shorter on desktop and 37% shorter
+on mobile than the preceding layout.
+
 The private source workbook was copied and hash-verified before inspection. The
 unchanged backup is
 `C:\GitHub\_private_workbooks\backups\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX BACKUP BEFORE OFFICIAL NEWS 20260823-163247.xlsm`
@@ -68,8 +82,10 @@ The complete `pnpm test` suite passes against the promoted data: repository,
 vendor, CSV, 59 export-bundle regressions, staged workflow, reconciliation,
 artifact safety/build, and both-mode browser checks. The final artifact contains
 107 files. A separate real-data visual check rendered all 43 Family and 64
-Everyone entries with no mobile overflow or browser warning/error. Nothing has
-been pushed, merged, published, or deployed.
+Everyone entries with no mobile overflow or browser warning/error. The first
+draft and filter refinement are on Pull Request #68; the compact presentation
+update still awaits its branch push and preview rebuild. Nothing has been
+merged, published, or deployed.
 
 ## Prior work: header refinement and workbook-locked age-grade calculator
 

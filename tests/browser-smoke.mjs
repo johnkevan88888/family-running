@@ -88,6 +88,7 @@ try {
     }
 
     await runNewsPageTests(browser);
+    await runNewsIntermediateLayoutTests(browser);
     await runNewsEmptyAndUnavailableTests(browser);
     await runNewsInvalidSiteFallbackTest(browser);
     await runCrownHistoryEdgeCaseTests(browser);
@@ -359,7 +360,7 @@ async function runNewsPageTests(browserInstance) {
                 await assertResponsiveViewport(page, viewport, label);
                 await assertNoHorizontalOverflow(page, label);
                 await assertBundleMetadataHidden(page, label);
-                await assertNewsFixtureRendered(page, mode, fixture);
+                await assertNewsFixtureRendered(page, mode, viewport, fixture);
 
                 const newsRequests = requestedPaths.filter(path => path.endsWith('/official_result_news.csv'));
                 if (newsRequests.length !== 1 || newsRequests[0] !== selectedFile) {
@@ -401,7 +402,132 @@ async function runNewsPageTests(browserInstance) {
     }
 }
 
-async function assertNewsFixtureRendered(page, mode, fixture) {
+async function runNewsIntermediateLayoutTests(browserInstance) {
+    const contextOptions = { viewport: { width: 720, height: 900 } };
+
+    for (const mode of modes) {
+        const label = `${mode}/intermediate News flow`;
+        const selectedFile = `data/${mode}/official_result_news.csv`;
+        const fixture = newsFixture(mode);
+        const context = await browserInstance.newContext(contextOptions);
+        const page = await context.newPage();
+        const consoleErrors = [];
+        const pageErrors = [];
+
+        page.setDefaultTimeout(10000);
+        page.setDefaultNavigationTimeout(10000);
+        page.on('console', message => {
+            const locationUrl = message.location().url;
+
+            if (message.type() === 'error' && (!locationUrl || isSameOrigin(locationUrl))) {
+                consoleErrors.push(message.text());
+            }
+        });
+        page.on('pageerror', error => pageErrors.push(error.message));
+        await page.route(`**/${selectedFile}`, route => route.fulfill({
+            status: 200,
+            contentType: 'text/csv; charset=utf-8',
+            body: fixture.csv
+        }));
+
+        try {
+            await page.goto(`${preview.baseUrl}/news.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+            await waitForRenderedNews(page, mode);
+            await waitForNetworkToSettle(page);
+            await assertNoHorizontalOverflow(page, label);
+
+            const layouts = await page.locator('.news-timeline > .news-timeline-item .news-flow')
+                .evaluateAll(flows => flows.map(flow => {
+                    const rect = target => {
+                        const bounds = target.getBoundingClientRect();
+                        return {
+                            top: bounds.top,
+                            right: bounds.right,
+                            bottom: bounds.bottom,
+                            left: bounds.left
+                        };
+                    };
+                    const result = flow.querySelector(':scope > .news-flow-result');
+                    const improvement = flow.querySelector(':scope > .news-flow-improvement');
+                    const ranks = flow.querySelector(':scope > .news-flow-ranks');
+                    const arrows = [...flow.querySelectorAll(':scope > .news-flow-arrow')];
+
+                    return {
+                        flow: rect(flow),
+                        result: rect(result),
+                        improvement: rect(improvement),
+                        ranks: rect(ranks),
+                        arrows: arrows.map(rect),
+                        secondArrowTransform: arrows[1]
+                            ? getComputedStyle(arrows[1]).transform
+                            : 'missing'
+                    };
+                }));
+
+            if (layouts.length !== newsBatchSize) {
+                failures.push(`${label}: rendered ${layouts.length} compact flows, expected ${newsBatchSize}.`);
+            }
+
+            for (let index = 0; index < layouts.length; index += 1) {
+                const layout = layouts[index];
+                const firstRowBottom = Math.max(layout.result.bottom, layout.improvement.bottom);
+                const resultAndImprovementShareRow =
+                    layout.result.left < layout.improvement.left &&
+                    Math.max(layout.result.top, layout.improvement.top) <
+                        Math.min(layout.result.bottom, layout.improvement.bottom);
+                const firstArrowLeadsAcross =
+                    layout.arrows.length === 2 &&
+                    layout.arrows[0].left >= layout.result.right - 2 &&
+                    layout.arrows[0].right <= layout.improvement.left + 2;
+                const secondArrowLeadsDown =
+                    layout.arrows.length === 2 &&
+                    layout.arrows[1].top >= firstRowBottom - 2 &&
+                    layout.arrows[1].bottom <= layout.ranks.top + 2 &&
+                    layout.secondArrowTransform !== 'none';
+                const ranksFollowBelow =
+                    layout.ranks.top > Math.max(layout.result.top, layout.improvement.top) &&
+                    Math.abs(layout.ranks.left - layout.flow.left) <= 2 &&
+                    Math.abs(layout.ranks.right - layout.flow.right) <= 2;
+
+                if (!resultAndImprovementShareRow || !firstArrowLeadsAcross) {
+                    failures.push(
+                        `${label}: card ${index + 1} did not keep Result -> improvement on its first row.`
+                    );
+                }
+                if (!secondArrowLeadsDown || !ranksFollowBelow) {
+                    failures.push(
+                        `${label}: card ${index + 1} did not lead down from improvement to the ranks row.`
+                    );
+                }
+            }
+
+            const timelineArrowContent = await page.locator('.news-timeline-item').first().evaluate(item =>
+                getComputedStyle(item, '::after').content
+            );
+            const unquotedTimelineArrowContent = String(timelineArrowContent || '')
+                .replace(/^(["'])(.*)\1$/, '$2');
+
+            if (timelineArrowContent !== 'none' && unquotedTimelineArrowContent !== '') {
+                failures.push(
+                    `${label}: timeline connector exposed generated text content ${timelineArrowContent}.`
+                );
+            }
+        } catch (error) {
+            failures.push(`${label}: ${error.message}`);
+        } finally {
+            for (const error of consoleErrors) {
+                failures.push(`${label}: console error: ${error}`);
+            }
+            for (const error of pageErrors) {
+                failures.push(`${label}: JavaScript exception: ${error}`);
+            }
+
+            await context.close();
+        }
+    }
+}
+
+async function assertNewsFixtureRendered(page, mode, viewport, fixture) {
     const label = `${mode} News fixture`;
     const cards = page.locator('.news-timeline > .news-timeline-item .news-card');
     const initiallyVisibleRows = fixture.rows.slice(0, newsBatchSize);
@@ -593,7 +719,154 @@ async function assertNewsFixtureRendered(page, mode, fixture) {
         }
     }
 
+    await assertNewsFlowLayout(page, mode, viewport);
     await assertNewsControlsAndProgressiveLoading(page, mode, fixture);
+}
+
+async function assertNewsFlowLayout(page, mode, viewport) {
+    const label = `${mode}/${viewport.name} News flow`;
+    const cards = page.locator('.news-timeline > .news-timeline-item .news-card');
+    const cardCount = await cards.count();
+    const expectedChildClasses = [
+        'news-flow-result',
+        'news-flow-arrow',
+        'news-flow-improvement',
+        'news-flow-arrow',
+        'news-flow-ranks'
+    ];
+
+    for (let index = 0; index < cardCount; index += 1) {
+        const card = cards.nth(index);
+        const flows = card.locator(':scope > .news-flow');
+
+        if (await flows.count() !== 1) {
+            failures.push(`${label}: card ${index + 1} did not render exactly one compact flow.`);
+            continue;
+        }
+
+        const flow = flows.first();
+        const childClasses = await flow.locator(':scope > *').evaluateAll(elements =>
+            elements.map(element => [...element.classList].find(className =>
+                className === 'news-flow-result' ||
+                className === 'news-flow-improvement' ||
+                className === 'news-flow-ranks' ||
+                className === 'news-flow-arrow'
+            ) || '')
+        );
+
+        if (JSON.stringify(childClasses) !== JSON.stringify(expectedChildClasses)) {
+            failures.push(
+                `${label}: card ${index + 1} flow order was ${childClasses.join(' -> ') || '(empty)'}, ` +
+                `expected Result -> arrow -> improvement -> arrow -> ranks.`
+            );
+            continue;
+        }
+
+        const arrows = flow.locator(':scope > .news-flow-arrow');
+        const hiddenArrows = flow.locator(':scope > .news-flow-arrow[aria-hidden="true"]');
+
+        if (await arrows.count() !== 2 || await hiddenArrows.count() !== 2) {
+            failures.push(
+                `${label}: card ${index + 1} must render two connectors and hide both from assistive technology.`
+            );
+            continue;
+        }
+
+        for (let arrowIndex = 0; arrowIndex < 2; arrowIndex += 1) {
+            const arrow = arrows.nth(arrowIndex);
+            const box = await arrow.boundingBox();
+
+            if (!await arrow.isVisible() || !box || box.width < 1 || box.height < 1) {
+                failures.push(`${label}: card ${index + 1} connector ${arrowIndex + 1} was not visibly rendered.`);
+            }
+        }
+
+        const layout = await flow.evaluate(element => {
+            const rect = target => {
+                const bounds = target.getBoundingClientRect();
+                return {
+                    top: bounds.top,
+                    right: bounds.right,
+                    bottom: bounds.bottom,
+                    left: bounds.left,
+                    width: bounds.width,
+                    height: bounds.height
+                };
+            };
+            const result = element.querySelector(':scope > .news-flow-result');
+            const improvement = element.querySelector(':scope > .news-flow-improvement');
+            const ranks = element.querySelector(':scope > .news-flow-ranks');
+            const arrows = [...element.querySelectorAll(':scope > .news-flow-arrow')];
+            const card = element.closest('.news-card');
+
+            return {
+                flow: rect(element),
+                card: rect(card),
+                result: rect(result),
+                improvement: rect(improvement),
+                ranks: rect(ranks),
+                arrows: arrows.map(rect),
+                viewportWidth: document.documentElement.clientWidth
+            };
+        });
+        const maximumCompactCardHeight = viewport.name === 'desktop' ? 320 : 850;
+
+        if (layout.card.height > maximumCompactCardHeight) {
+            failures.push(
+                `${label}: card ${index + 1} was ${Math.round(layout.card.height)}px tall, ` +
+                `above the ${maximumCompactCardHeight}px compact-layout ceiling.`
+            );
+        }
+
+        if (viewport.name === 'desktop') {
+            const stagesIncreaseLeft =
+                layout.result.left < layout.improvement.left &&
+                layout.improvement.left < layout.ranks.left;
+            const arrowsLeadBetweenStages =
+                layout.arrows[0].left >= layout.result.right - 2 &&
+                layout.arrows[0].right <= layout.improvement.left + 2 &&
+                layout.arrows[1].left >= layout.improvement.right - 2 &&
+                layout.arrows[1].right <= layout.ranks.left + 2;
+            const stagesShareVerticalBand =
+                Math.max(layout.result.top, layout.improvement.top, layout.ranks.top) <
+                Math.min(layout.result.bottom, layout.improvement.bottom, layout.ranks.bottom);
+
+            if (!stagesIncreaseLeft || !arrowsLeadBetweenStages || !stagesShareVerticalBand) {
+                failures.push(
+                    `${label}: card ${index + 1} did not form a horizontal Result -> improvement -> ranks flow.`
+                );
+            }
+        } else {
+            const stagesIncreaseTop =
+                layout.result.top < layout.improvement.top &&
+                layout.improvement.top < layout.ranks.top;
+            const arrowsLeadBetweenStages =
+                layout.arrows[0].top >= layout.result.bottom - 2 &&
+                layout.arrows[0].bottom <= layout.improvement.top + 2 &&
+                layout.arrows[1].top >= layout.improvement.bottom - 2 &&
+                layout.arrows[1].bottom <= layout.ranks.top + 2;
+            const stagesUseCompactColumn = [layout.result, layout.improvement, layout.ranks]
+                .every(stage =>
+                    Math.abs(stage.left - layout.flow.left) <= 2 &&
+                    Math.abs(stage.right - layout.flow.right) <= 2
+                );
+            const staysInsideViewport =
+                layout.card.left >= -1 &&
+                layout.card.right <= layout.viewportWidth + 1;
+
+            if (!stagesIncreaseTop || !arrowsLeadBetweenStages || !stagesUseCompactColumn) {
+                failures.push(
+                    `${label}: card ${index + 1} did not form a compact vertical Result -> improvement -> ranks flow.`
+                );
+            }
+            if (!staysInsideViewport) {
+                failures.push(
+                    `${label}: card ${index + 1} escaped the mobile viewport ` +
+                    `(${layout.card.left}px to ${layout.card.right}px of ${layout.viewportWidth}px).`
+                );
+            }
+        }
+    }
 }
 
 async function assertNewsControlsAndProgressiveLoading(page, mode, fixture) {
