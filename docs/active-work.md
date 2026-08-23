@@ -54,9 +54,11 @@ personal-best reconciliation, preview-artifact safety, the 102-file public
 artifact build, and browser smoke tests. Browser coverage includes both modes at
 1440 x 900 and 390 x 844, compact time entry, workbook-exact output, invalid
 time guidance, and deliberate formula-signature mismatch fail-closed behavior.
-Desktop/mobile Calculator and Head-to-Head screenshots were reviewed. The
-reviewed changes are committed and pushed on `codex/header-layout`, with Pull
-Request #66 open. Nothing has been merged, published, or deployed.
+Desktop/mobile Calculator and Head-to-Head screenshots were reviewed. Pull
+Request #66 was merged into `main` as `aa16b79` and its feature branch was
+removed locally and remotely. The automatic GitHub Pages deployment succeeded,
+and the production Calculator returned HTTP 200 in both Family and Everyone
+modes.
 
 ## Prior work: workbook-owned athlete deactivation
 
