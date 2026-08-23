@@ -55,8 +55,8 @@ artifact build, and browser smoke tests. Browser coverage includes both modes at
 1440 x 900 and 390 x 844, compact time entry, workbook-exact output, invalid
 time guidance, and deliberate formula-signature mismatch fail-closed behavior.
 Desktop/mobile Calculator and Head-to-Head screenshots were reviewed. The
-reviewed changes are committed locally on `codex/header-layout`. Nothing has
-been pushed, merged, published, or deployed.
+reviewed changes are committed and pushed on `codex/header-layout`, with Pull
+Request #66 open. Nothing has been merged, published, or deployed.
 
 ## Prior work: workbook-owned athlete deactivation
 
