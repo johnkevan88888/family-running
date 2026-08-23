@@ -1,6 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+
+const require = createRequire(import.meta.url);
+const ageGradeContract = require('../age-grade-contract.js');
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const validationRoot = process.env.CSV_VALIDATION_ROOT
@@ -485,6 +489,7 @@ function validateSite(siteMode) {
     validateAbsoluteRecords(siteDir);
     validateCrownStandards(siteDir);
     validateAgeGradeStandards(siteDir);
+    validateAgeGradeCalculator(siteDir);
     validateAthleteComparisonTargets(siteDir);
 
     const enabledTables = webtables.filter(row => String(row.Enabled || '').toUpperCase() === 'TRUE');
@@ -1252,6 +1257,111 @@ function validateAgeGradeStandards(siteDir) {
         validateTime(row.RequiredTime, file, row.__rowNumber, 'RequiredTime', { required: true });
         validateAgeGradePaces(row, file);
         validateNumber(row.SortOrder, file, row.__rowNumber, 'SortOrder', { required: true });
+    }
+}
+
+function validateAgeGradeCalculator(siteDir) {
+    const file = `${siteDir}/age_grade_calculator.csv`;
+    const rows = readCsvRequired(file, [
+        'AthleteId',
+        'Participant',
+        'Distance',
+        'AgeGradedStandardSeconds',
+        'ValidationTimeSeconds',
+        'ValidationAgeGrade',
+        'CalculationContractVersion',
+        'CalculationContractSignature',
+        'SortOrder',
+        'ExportBundleID'
+    ]);
+    const objects = toObjects(rows, file);
+    const expectedDistances = ['5 km', '10 km', '10 Mile', 'Half Marathon', 'Marathon'];
+    const rowsByAthlete = new Map();
+    const seenPairs = new Set();
+
+    for (const row of objects) {
+        validateAthleteId(row.AthleteId, file, row.__rowNumber, 'AthleteId', { required: true });
+        requireValue(row.Participant, file, row.__rowNumber, 'Participant');
+        validateAllowed(row.Distance, expectedDistances, file, row.__rowNumber, 'Distance');
+        validatePositiveCalculatorNumber(row.AgeGradedStandardSeconds, file, row.__rowNumber, 'AgeGradedStandardSeconds');
+        validatePositiveCalculatorNumber(row.ValidationTimeSeconds, file, row.__rowNumber, 'ValidationTimeSeconds');
+        validatePositiveCalculatorNumber(row.ValidationAgeGrade, file, row.__rowNumber, 'ValidationAgeGrade');
+        validateNumber(row.SortOrder, file, row.__rowNumber, 'SortOrder', { required: true });
+
+        compareExportedValue(
+            row.CalculationContractVersion,
+            ageGradeContract.version,
+            file,
+            row.__rowNumber,
+            'CalculationContractVersion',
+            'website contract'
+        );
+        compareExportedValue(
+            row.CalculationContractSignature,
+            ageGradeContract.signature,
+            file,
+            row.__rowNumber,
+            'CalculationContractSignature',
+            'website contract'
+        );
+
+        const expectedScore = ageGradeContract.calculate(
+            row.AgeGradedStandardSeconds,
+            row.ValidationTimeSeconds
+        );
+        const workbookScore = Number(row.ValidationAgeGrade);
+        const tolerance = Math.max(1e-13, Math.abs(workbookScore) * 1e-12);
+        if (Number.isFinite(workbookScore) && Math.abs(expectedScore - workbookScore) > tolerance) {
+            addError(
+                file,
+                row.__rowNumber,
+                'ValidationAgeGrade does not match the website calculation for the workbook conformance input.'
+            );
+        }
+
+        const pairKey = `${row.AthleteId}|${row.Distance}`;
+        if (seenPairs.has(pairKey)) {
+            addError(file, row.__rowNumber, `Duplicate calculator row "${pairKey}".`);
+        }
+        seenPairs.add(pairKey);
+
+        const distanceIndex = expectedDistances.indexOf(row.Distance);
+        if (distanceIndex >= 0 && Number(row.SortOrder) !== (distanceIndex + 1) * 100) {
+            addError(file, row.__rowNumber, `SortOrder must be ${(distanceIndex + 1) * 100} for ${row.Distance}.`);
+        }
+
+        if (!rowsByAthlete.has(row.AthleteId)) rowsByAthlete.set(row.AthleteId, []);
+        rowsByAthlete.get(row.AthleteId).push(row);
+    }
+
+    const standardsFile = `${siteDir}/age_grade_standards.csv`;
+    const standards = toObjects(readCsvRequired(standardsFile, ['AthleteId']), standardsFile);
+    const expectedAthletes = new Set(standards.map(row => row.AthleteId).filter(Boolean));
+
+    for (const athleteId of expectedAthletes) {
+        const athleteRows = rowsByAthlete.get(athleteId) || [];
+        const exportedDistances = new Set(athleteRows.map(row => row.Distance));
+        if (athleteRows.length !== expectedDistances.length) {
+            addError(file, 1, `AthleteId "${athleteId}" must have exactly ${expectedDistances.length} calculator rows.`);
+        }
+        for (const distance of expectedDistances) {
+            if (!exportedDistances.has(distance)) {
+                addError(file, 1, `AthleteId "${athleteId}" is missing calculator distance "${distance}".`);
+            }
+        }
+    }
+
+    for (const athleteId of rowsByAthlete.keys()) {
+        if (!expectedAthletes.has(athleteId)) {
+            addError(file, 1, `Calculator AthleteId "${athleteId}" is not available in age_grade_standards.csv.`);
+        }
+    }
+}
+
+function validatePositiveCalculatorNumber(value, file, rowNumber, column) {
+    validateNumber(value, file, rowNumber, column, { required: true });
+    if (String(value || '').trim() && Number(value) <= 0) {
+        addError(file, rowNumber, `${column} must be greater than zero.`);
     }
 }
 

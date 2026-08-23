@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, follow">
+    <meta name="description" content="Every age. Every pace. Every race counts. Age-graded running championships, records, and history.">
+    <meta name="theme-color" content="#102A43">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ace of Race">
+    <meta property="og:title" content="Age-Grade Calculator | Ace of Race">
+    <meta property="og:description" content="Every age. Every pace. Every race counts.">
+    <meta property="og:image" content="https://www.aceofrace.com/assets/brand/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" href="assets/brand/ace-of-race-mark.svg" type="image/svg+xml">
+    <link rel="icon" href="assets/brand/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+    <title>Age-Grade Calculator | Family Running Championships</title>
+    <link rel="stylesheet" href="site.css">
+    <link rel="stylesheet" href="calculator.css">
+</head>
+
+<body data-page="calculator">
+
+<header data-site-header></header>
+
+<main class="calculator-page">
+    <section class="page-intro calculator-hero" aria-labelledby="calculator-page-title">
+        <div>
+            <p class="calculator-eyebrow">Age-grade calculator</p>
+            <h2 id="calculator-page-title">Calculate your age grade</h2>
+            <p>
+                Choose your name and distance, then enter a race time to see the
+                exact percentage produced by the championship workbook.
+            </p>
+        </div>
+        <div class="calculator-source-note">
+            <span aria-hidden="true">&#10003;</span>
+            <span>Formula, standards, and age factors come from the latest workbook export.</span>
+        </div>
+    </section>
+
+    <section class="calculator-panel age-grade-panel" aria-labelledby="age-grade-form-title">
+        <div class="calculator-panel-heading">
+            <div>
+                <p class="calculator-eyebrow">Your result</p>
+                <h2 id="age-grade-form-title">Name, distance, time</h2>
+                <p>
+                    The calculator uses the athlete's age recorded by Excel on the
+                    latest championship update.
+                </p>
+            </div>
+            <span class="calculator-step">%</span>
+        </div>
+
+        <form id="age-grade-controls" class="calculator-controls age-grade-controls" novalidate>
+            <label class="calculator-field">
+                <span>Athlete</span>
+                <select id="age-grade-athlete" name="athlete" autocomplete="name"></select>
+            </label>
+            <label class="calculator-field">
+                <span>Distance</span>
+                <select id="age-grade-distance" name="distance"></select>
+            </label>
+            <label class="calculator-field time-entry-field">
+                <span>Race time</span>
+                <input
+                    id="age-grade-time"
+                    name="time"
+                    type="text"
+                    inputmode="decimal"
+                    enterkeyhint="done"
+                    autocomplete="off"
+                    maxlength="10"
+                    placeholder="24:30"
+                    aria-describedby="age-grade-time-hint age-grade-time-error">
+                <small id="age-grade-time-hint">Fast entry: type 2430 for 24:30, or 14530.5 for 1:45:30.5. The decimal is optional.</small>
+                <small id="age-grade-time-error" class="calculator-field-error" aria-live="polite"></small>
+            </label>
+        </form>
+
+        <div id="age-grade-result" class="age-grade-result" aria-live="polite">
+            <span class="age-grade-result-label">Your age grade</span>
+            <strong id="age-grade-percentage">&mdash;</strong>
+            <p id="age-grade-result-detail">Enter a race time to calculate your result.</p>
+        </div>
+        <p id="age-grade-contract-status" class="calculator-contract-status" role="status"></p>
+    </section>
+</main>
+
+<footer class="site-privacy-note">
+    Privacy-friendly, cookie-free visit statistics are provided by
+    <a href="https://www.goatcounter.com/" rel="external">GoatCounter</a>.
+</footer>
+
+<script src="analytics.js" defer></script>
+<script src="utils.js" defer></script>
+<script src="site-navigation.js" defer></script>
+<script src="age-grade-contract.js" defer></script>
+<script src="age-grade-calculator.js" defer></script>
+
+</body>
+</html>

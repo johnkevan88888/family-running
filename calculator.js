@@ -55,7 +55,7 @@
             window.paceDisplay?.initialize(document);
         } catch (error) {
             renderLoadError();
-            console.error('Unable to load the age-grade calculator.', error);
+            console.error('Unable to load the head-to-head comparison.', error);
         }
     }
 

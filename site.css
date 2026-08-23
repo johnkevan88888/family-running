@@ -13,16 +13,16 @@
         }
 
         .site-header {
-            align-items: center;
+            align-items: stretch;
             background: #1e3a5f;
             border-top: 6px solid #ffd700;
             box-shadow: 0 5px 16px rgba(15,36,56,0.22);
             color: white;
             display: flex;
-            gap: 32px;
+            gap: 16px;
             justify-content: space-between;
             margin-bottom: 30px;
-            padding: 26px 32px;
+            padding: 20px 32px 22px;
         }
 
         .site-brand {
@@ -804,18 +804,23 @@
 }
 
 .site-header-main {
-    align-items: center;
+    align-items: flex-start;
     display: flex;
-    gap: 28px;
+    gap: 24px;
     justify-content: space-between;
 }
 
-.site-header > .site-meta {
+.site-header-main > .site-meta {
+    align-self: flex-start;
     border-left: none;
-    border-top: 1px solid rgba(255,255,255,0.28);
-    grid-template-columns: repeat(3, minmax(0, auto));
+    justify-items: end;
     padding-left: 0;
-    padding-top: 16px;
+    padding-top: 3px;
+    text-align: right;
+}
+
+.site-header-main > .site-meta .site-meta-item {
+    justify-content: flex-end;
 }
 
 .site-title-link {
@@ -831,17 +836,19 @@
 }
 
 .site-navigation-panel {
-    align-items: flex-end;
+    align-items: center;
     display: flex;
-    flex-direction: column;
-    gap: 12px;
+    gap: 24px;
+    justify-content: space-between;
+    width: 100%;
 }
 
 .site-nav {
     display: flex;
+    flex: 0 1 auto;
     flex-wrap: wrap;
-    gap: 8px;
-    justify-content: flex-end;
+    gap: 10px;
+    justify-content: flex-start;
 }
 
 .site-header-tools {
@@ -850,6 +857,7 @@
     flex-wrap: wrap;
     gap: 10px;
     justify-content: flex-end;
+    margin-left: auto;
 }
 
 .pace-unit-control {
@@ -937,10 +945,15 @@
 }
 
 .site-nav-link {
+    align-items: center;
     border: 1px solid rgba(255,255,255,0.34);
     border-radius: 999px;
+    box-sizing: border-box;
     color: #eef5fb;
+    display: inline-flex;
     font-weight: 900;
+    gap: 7px;
+    justify-content: center;
     line-height: 1;
     padding: 11px 14px;
     text-decoration: none;
@@ -951,19 +964,6 @@
     background: #ffd700;
     border-color: #ffd700;
     color: #0f2438;
-}
-
-.site-mode-badge {
-    align-self: flex-end;
-    background: rgba(255,255,255,0.14);
-    border: 1px solid rgba(255,255,255,0.28);
-    border-radius: 999px;
-    color: #ffffff;
-    font-size: 0.86rem;
-    font-weight: 900;
-    letter-spacing: 0.04em;
-    padding: 9px 14px;
-    text-transform: uppercase;
 }
 
 .time-with-pace {
@@ -1190,32 +1190,39 @@
     }
 
     .site-header {
-        gap: 18px;
+        gap: 14px;
         margin-bottom: 24px;
-        padding: 22px 20px;
+        padding: 18px 16px;
     }
 
-    .site-header-main,
+    .site-header-main {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 10px;
+    }
+
     .site-navigation-panel {
         align-items: stretch;
         flex-direction: column;
+        gap: 10px;
     }
 
     .site-nav {
+        gap: 8px;
         justify-content: flex-start;
     }
 
     .site-header-tools {
-        justify-content: flex-start;
-    }
-
-    .site-mode-badge {
-        align-self: flex-start;
+        justify-content: flex-end;
     }
 
     .site-nav-link {
-        flex: 1 1 auto;
+        flex: 1 1 calc(50% - 4px);
         text-align: center;
+    }
+
+    .site-nav .back-link {
+        flex-basis: 100%;
     }
 
     #site-title {
@@ -1226,16 +1233,12 @@
         font-size: 0.95rem;
     }
 
-    .site-meta {
+    .site-header-main > .site-meta {
+        align-self: flex-end;
         border-left: none;
-        border-top: 1px solid rgba(255,255,255,0.28);
         grid-template-columns: 1fr;
         padding-left: 0;
-        padding-top: 14px;
-    }
-
-    .site-header > .site-meta {
-        grid-template-columns: 1fr;
+        padding-top: 0;
     }
 
     .overview-stat-grid,

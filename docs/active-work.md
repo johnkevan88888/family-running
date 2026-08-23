@@ -2,9 +2,63 @@
 
 ## Task title
 
-Workbook-owned athlete deactivation implementation and validation.
+Header refinement, Head-to-Head rename, and workbook-locked age-grade calculator.
 
 ## Status
+
+Completed locally on 23 August 2026 on `codex/header-layout`. The shared header
+places Updated at the top right, groups navigation at the left, aligns Pace at
+the far right, and removes the redundant Family/Everyone button. On athlete
+pages, Championships becomes the mode-preserving Back to Championships link;
+the obsolete championship-type strip is removed and the compact athlete banner
+puts Athlete Profile and the athlete name on one line. The desktop header is
+176px tall, down from 269px, and the athlete banner is 86px, down from 185px.
+Mobile uses two navigation buttons per row, keeps Updated above them, and has no
+horizontal overflow.
+
+The former Calculator navigation item and `calculator.html` are now Head to
+Head. A distinct Calculator item opens `age-grade-calculator.html`, where an
+athlete selects their name and distance and enters one paste-friendly duration.
+The field accepts `MM:SS`, `H:MM:SS`, compact digits such as `2430`, and longer
+compact times such as `14530` or `14530.5`; the optional decimal is retained as
+tenths of a second. It normalizes on blur and updates the percentage as soon as
+the duration is valid.
+
+Excel remains the calculation master. The private working workbook was backed
+up before modification at
+`C:\GitHub\_private_workbooks\backups\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX BACKUP BEFORE AGE GRADE CALCULATOR 20260823-092353.xlsm`.
+The source and backup both had SHA-256
+`663D41FDA2DB3EC761E2EDFECC58897F2DB5D2C8C23B69360DCDBCA43B8D9CAE`.
+The workbook exporter now verifies the live `RaceResults` formula and display
+format, checks calculated results against it, and exports full-precision
+age-graded standards plus a formula signature, version, and conformance value.
+The browser performs only the final exported-standard/time division and refuses
+to enable the calculator if any contract value differs. Final workbook
+verification found zero formula errors, all calculator module markers present,
+and SHA-256 `4B1D11EA6946F0A8A58691B767610CA417D12DE7BAC5F0C9EAD43B368C439AB9`.
+
+The complete workbook export produced bundle
+`20260823T134439531Z-0EFF6180`: 70 public CSV files, including 60 Family and 110
+Everyone calculator rows. Staged validation passed before promotion. Human
+review confirmed that the only non-calculator reconciliation differences were
+row order in `athlete_results.csv` and corresponding internal `SourceRow`
+numbers in absolute records; visible result and record values did not change.
+John separately approved full-bundle promotion. The prior tracked data remains
+recoverable at
+`test-artifacts/workbook-export-promotion/20260823141116609/previous-data`.
+
+Final `pnpm test` passed repository safety, vendored libraries, both-mode CSV
+validation, the Excel/JavaScript contract tests, analytics, release-path and
+workflow regressions, export-bundle and staged-workflow regressions,
+personal-best reconciliation, preview-artifact safety, the 102-file public
+artifact build, and browser smoke tests. Browser coverage includes both modes at
+1440 x 900 and 390 x 844, compact time entry, workbook-exact output, invalid
+time guidance, and deliberate formula-signature mismatch fail-closed behavior.
+Desktop/mobile Calculator and Head-to-Head screenshots were reviewed. The
+reviewed changes are committed and pushed on `codex/header-layout`, with Pull
+Request #66 open. Nothing has been merged, published, or deployed.
+
+## Prior work: workbook-owned athlete deactivation
 
 John approved the athlete-deactivation requirements and explicitly authorized
 inspection and modification of the named private working copy on 21 August

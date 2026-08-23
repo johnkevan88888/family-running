@@ -46,6 +46,26 @@ const cases = [
         }
     },
     {
+        name: 'mismatched age-grade calculator formula contract',
+        expected: 'data/family/age_grade_calculator.csv:2: CalculationContractSignature "changed-contract" does not match website contract value',
+        mutate: async root => {
+            const file = path.join(root, 'data', 'family', 'age_grade_calculator.csv');
+            const lines = splitLines(await fs.readFile(file, 'utf8'));
+            lines[1] = replaceCsvField(lines[1], 7, 'changed-contract');
+            await fs.writeFile(file, `${lines.join('\r\n')}\r\n`);
+        }
+    },
+    {
+        name: 'incorrect age-grade calculator conformance value',
+        expected: 'data/everyone/age_grade_calculator.csv:2: ValidationAgeGrade does not match the website calculation',
+        mutate: async root => {
+            const file = path.join(root, 'data', 'everyone', 'age_grade_calculator.csv');
+            const lines = splitLines(await fs.readFile(file, 'utf8'));
+            lines[1] = replaceCsvField(lines[1], 5, '0.999999999999999');
+            await fs.writeFile(file, `${lines.join('\r\n')}\r\n`);
+        }
+    },
+    {
         name: 'missing age-grade pace field',
         expected: 'data/family/age_grade_standards.csv:1: Missing required header "pace_per_mile"',
         mutate: async root => {

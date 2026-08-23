@@ -18,6 +18,7 @@ export const publishedSiteEntries = [
     'hall-of-fame.html',
     'records.html',
     'calculator.html',
+    'age-grade-calculator.html',
     'overview.html',
     'athlete.html',
     'site.css',
@@ -29,6 +30,8 @@ export const publishedSiteEntries = [
     'records.js',
     'calculator.css',
     'calculator.js',
+    'age-grade-contract.js',
+    'age-grade-calculator.js',
     'utils.js',
     // Brand imagery referenced by every page's favicon and Open Graph tags.
     // Copied whole like `vendor` and `data`, so its contents are contracted in

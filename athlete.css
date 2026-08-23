@@ -42,54 +42,22 @@ body {
     box-shadow: 0 5px 16px rgba(15,36,56,0.22);
     color: white;
     margin-bottom: 30px;
-    padding: 18px 28px 26px;
-}
-
-.athlete-header-topline {
-    align-items: center;
-    border-bottom: 1px solid rgba(255,255,255,0.22);
-    display: flex;
-    justify-content: space-between;
-    padding-bottom: 14px;
-}
-
-.back-link {
-    align-items: center;
-    color: #eef5fb;
-    display: inline-flex;
-    font-size: 1.08rem;
-    font-weight: 800;
-    gap: 8px;
-    text-decoration: none;
-}
-
-.back-link span {
-    color: #ffd700;
-    font-size: 1.3rem;
-}
-
-.back-link:hover {
-    color: white;
-    text-decoration: underline;
-}
-
-.athlete-context {
-    color: #dce7f1;
-    font-size: 0.98rem;
-    font-weight: 800;
-    text-transform: uppercase;
+    padding: 18px 28px;
 }
 
 .athlete-header-main {
-    padding-top: 22px;
+    align-items: baseline;
+    display: flex;
+    gap: 24px;
+    justify-content: space-between;
 }
 
 .athlete-header-label {
     color: #ffd700;
     font-size: 0.98rem;
     font-weight: 900;
-    margin-bottom: 6px;
     text-transform: uppercase;
+    white-space: nowrap;
 }
 
 #athlete-name {
@@ -98,6 +66,7 @@ body {
     letter-spacing: 0;
     line-height: 1.08;
     margin: 0;
+    text-align: right;
 }
 
 #personal-bests {
@@ -688,21 +657,20 @@ tr:hover {
     }
 
     .athlete-profile-header {
-        padding: 16px 18px 22px;
-    }
-
-    .athlete-header-topline {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 10px;
+        padding: 14px 18px;
     }
 
     .athlete-header-main {
-        padding-top: 18px;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .athlete-header-label {
+        font-size: 0.82rem;
     }
 
     #athlete-name {
-        font-size: 1.9rem;
+        font-size: 1.65rem;
     }
 
     table {

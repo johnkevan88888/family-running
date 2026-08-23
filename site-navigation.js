@@ -4,13 +4,15 @@
         championships: 'index.html',
         'hall-of-fame': 'hall-of-fame.html',
         records: 'records.html',
-        calculator: 'calculator.html',
+        'head-to-head': 'calculator.html',
+        calculator: 'age-grade-calculator.html',
         overview: 'overview.html'
     };
     const pageLabels = {
         championships: 'Championships',
         'hall-of-fame': 'Hall of Fame',
         records: 'Records',
+        'head-to-head': 'Head to Head',
         calculator: 'Calculator',
         overview: 'Overview'
     };
@@ -35,7 +37,8 @@
         if (filename === 'overview.html') return 'overview';
         if (filename === 'hall-of-fame.html') return 'hall-of-fame';
         if (filename === 'records.html') return 'records';
-        if (filename === 'calculator.html') return 'calculator';
+        if (filename === 'calculator.html') return 'head-to-head';
+        if (filename === 'age-grade-calculator.html') return 'calculator';
         if (filename === 'athlete.html') return 'athlete';
 
         return 'championships';
@@ -79,12 +82,16 @@
         const navItems = Object.entries(pageFiles)
             .map(([key]) => {
                 const active = key === page;
+                const isAthleteBackLink = page === 'athlete' && key === 'championships';
+                const label = isAthleteBackLink
+                    ? '<span aria-hidden="true">&#8592;</span> Back to Championships'
+                    : pageLabels[key];
                 return `
                     <a
-                        class="site-nav-link${active ? ' active' : ''}"
+                        class="site-nav-link${isAthleteBackLink ? ' back-link' : ''}${active ? ' active' : ''}"
                         href="${pageHref(key, site)}"
                         ${active ? 'aria-current="page"' : ''}>
-                        ${pageLabels[key]}
+                        ${label}
                     </a>
                 `;
             })
@@ -103,24 +110,23 @@
                         <span>Age-Graded Rankings Across Generations</span>
                     </div>
                 </div>
-                <div class="site-navigation-panel">
-                    <nav class="site-nav" aria-label="Primary pages">
-                        ${navItems}
-                    </nav>
-                    <div class="site-header-tools">
-                        <div class="site-pace-control pace-unit-control" role="group" aria-label="Pace display unit">
-                            <span class="pace-unit-label">Pace</span>
-                            <div class="pace-unit-options">
-                                <button type="button" data-pace-unit="km" aria-label="Show pace per kilometre" aria-pressed="true">/km</button>
-                                <button type="button" data-pace-unit="mi" aria-label="Show pace per mile" aria-pressed="false">/mi</button>
-                            </div>
-                        </div>
-                        <div class="site-mode-badge" aria-label="Current site">${modeLabel}</div>
-                    </div>
+                <div class="site-meta" id="last-updated" aria-live="polite">
+                    <div class="site-meta-item">Loading championship data...</div>
                 </div>
             </div>
-            <div class="site-meta" id="last-updated" aria-live="polite">
-                <div class="site-meta-item">Loading championship data...</div>
+            <div class="site-navigation-panel">
+                <nav class="site-nav" aria-label="Primary pages">
+                    ${navItems}
+                </nav>
+                <div class="site-header-tools">
+                    <div class="site-pace-control pace-unit-control" role="group" aria-label="Pace display unit">
+                        <span class="pace-unit-label">Pace</span>
+                        <div class="pace-unit-options">
+                            <button type="button" data-pace-unit="km" aria-label="Show pace per kilometre" aria-pressed="true">/km</button>
+                            <button type="button" data-pace-unit="mi" aria-label="Show pace per mile" aria-pressed="false">/mi</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
 
