@@ -1,0 +1,635 @@
+.gallery-kicker {
+    color: #c84a32;
+    font-size: 0.76rem;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    margin: 0 0 8px;
+    text-transform: uppercase;
+}
+
+.gallery-intro {
+    align-items: center;
+    background:
+        radial-gradient(circle at 82% 20%, rgba(255, 215, 0, 0.35), transparent 24%),
+        linear-gradient(135deg, #ffffff 0%, #fff7dc 100%);
+    border-bottom: 6px solid #ffd700;
+    display: flex;
+    gap: 28px;
+    justify-content: space-between;
+    overflow: hidden;
+}
+
+.gallery-intro h2,
+.gallery-heading-row h2 {
+    background: transparent;
+    color: #0f2438;
+    margin: 0;
+    padding: 0;
+}
+
+.gallery-intro p:not(.gallery-kicker) {
+    margin-bottom: 0;
+    max-width: 720px;
+}
+
+.gallery-intro-mark {
+    align-items: center;
+    background: #c84a32;
+    border: 9px solid rgba(255, 255, 255, 0.74);
+    border-radius: 50%;
+    box-shadow: 0 8px 28px rgba(93, 34, 25, 0.2);
+    color: #ffffff;
+    display: flex;
+    flex: 0 0 112px;
+    font-size: 2.6rem;
+    height: 112px;
+    justify-content: center;
+    padding-left: 7px;
+    transform: rotate(-7deg);
+}
+
+.gallery-shell {
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 5px 16px rgba(15, 36, 56, 0.12);
+    padding: 24px;
+}
+
+.gallery-heading-row {
+    align-items: flex-end;
+    display: flex;
+    gap: 24px;
+    justify-content: space-between;
+}
+
+.gallery-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.gallery-filters[hidden],
+.gallery-status[hidden] {
+    display: none;
+}
+
+.gallery-filter {
+    background: #eef3f7;
+    border: 1px solid #c6d3df;
+    border-radius: 999px;
+    color: #1e3a5f;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 900;
+    padding: 9px 14px;
+}
+
+.gallery-filter[aria-pressed="true"] {
+    background: #1e3a5f;
+    border-color: #1e3a5f;
+    color: #ffffff;
+}
+
+.gallery-filter:focus-visible,
+.gallery-card-open:focus-visible,
+.gallery-viewer-close:focus-visible {
+    outline: 3px solid #ffd700;
+    outline-offset: 3px;
+}
+
+.gallery-status {
+    align-items: center;
+    background: linear-gradient(135deg, #f7fafc, #eef3f7);
+    border: 1px solid #d7e1ea;
+    border-radius: 14px;
+    color: #445363;
+    display: flex;
+    font-weight: 750;
+    gap: 11px;
+    line-height: 1.5;
+    margin-top: 22px;
+    padding: 24px;
+}
+
+.gallery-status.is-empty {
+    background:
+        linear-gradient(135deg, rgba(255, 215, 0, 0.13), transparent 50%),
+        #ffffff;
+    border-color: #ead27b;
+    border-left: 6px solid #ffd700;
+}
+
+.gallery-status.is-error {
+    background: #fdf6f6;
+    border-color: #d9b8b8;
+    border-left: 6px solid #a33a3a;
+    color: #6d2020;
+}
+
+.gallery-status-pulse {
+    background: #ffd700;
+    border-radius: 50%;
+    box-shadow: 0 0 0 5px rgba(255, 215, 0, 0.2);
+    flex: 0 0 10px;
+    height: 10px;
+}
+
+.gallery-grid {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 22px;
+}
+
+.gallery-card {
+    background: #ffffff;
+    border: 1px solid #d9e2ea;
+    border-radius: 16px;
+    box-shadow: 0 4px 14px rgba(15, 36, 56, 0.1);
+    min-width: 0;
+    overflow: hidden;
+}
+
+.gallery-card-open {
+    background: #0f2438;
+    border: 0;
+    cursor: pointer;
+    display: block;
+    padding: 0;
+    position: relative;
+    width: 100%;
+}
+
+.gallery-card-image {
+    aspect-ratio: 4 / 3;
+    display: block;
+    object-fit: cover;
+    transition: opacity 180ms ease, transform 240ms ease;
+    width: 100%;
+}
+
+.gallery-card-open:hover .gallery-card-image {
+    opacity: 0.9;
+    transform: scale(1.025);
+}
+
+.gallery-card-type {
+    background: rgba(15, 36, 56, 0.88);
+    border-radius: 999px;
+    bottom: 12px;
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 900;
+    left: 12px;
+    letter-spacing: 0.07em;
+    padding: 7px 10px;
+    position: absolute;
+    text-transform: uppercase;
+}
+
+.gallery-card-type.video::before {
+    content: "\25B6";
+    margin-right: 6px;
+}
+
+.gallery-card-copy {
+    padding: 16px 17px 18px;
+}
+
+.gallery-card-event {
+    color: #c84a32;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    margin: 0 0 6px;
+    text-transform: uppercase;
+}
+
+.gallery-card-title {
+    color: #0f2438;
+    font-size: 1.12rem;
+    line-height: 1.2;
+    margin: 0;
+}
+
+.gallery-card-caption,
+.gallery-card-meta {
+    color: #52616e;
+    line-height: 1.45;
+    margin: 8px 0 0;
+}
+
+.gallery-card-meta {
+    font-size: 0.8rem;
+    font-weight: 750;
+}
+
+.gallery-viewer {
+    background: #ffffff;
+    border: 0;
+    border-radius: 18px;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.32);
+    box-sizing: border-box;
+    color: #222222;
+    max-height: calc(100vh - 48px);
+    max-width: 1040px;
+    padding: 20px;
+    width: calc(100% - 40px);
+}
+
+.gallery-viewer::backdrop {
+    background: rgba(8, 22, 34, 0.78);
+}
+
+.gallery-viewer-bar {
+    align-items: flex-start;
+    display: flex;
+    gap: 18px;
+    justify-content: space-between;
+}
+
+.gallery-viewer-bar h2 {
+    background: transparent;
+    color: #0f2438;
+    margin: 0;
+    padding: 0;
+}
+
+.gallery-viewer-close {
+    background: #1e3a5f;
+    border: 0;
+    border-radius: 999px;
+    color: #ffffff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 900;
+    padding: 10px 15px;
+}
+
+.gallery-viewer-media {
+    background: #0f2438;
+    border-radius: 12px;
+    display: grid;
+    margin-top: 18px;
+    min-height: 240px;
+    overflow: hidden;
+    place-items: center;
+}
+
+.gallery-viewer-media img,
+.gallery-viewer-media video {
+    display: block;
+    max-height: 68vh;
+    max-width: 100%;
+}
+
+.gallery-viewer-media video {
+    width: 100%;
+}
+
+.gallery-viewer-copy {
+    color: #445363;
+    line-height: 1.5;
+    padding: 14px 2px 2px;
+}
+
+.gallery-viewer-copy p {
+    margin: 0;
+}
+
+.gallery-viewer-copy p + p {
+    margin-top: 6px;
+}
+
+.championship-podium {
+    align-items: end;
+    display: grid;
+    gap: 14px;
+    grid-template-columns: 0.94fr 1.12fr 0.94fr;
+    margin: 22px 0 26px;
+}
+
+.championship-podium-card {
+    background: #ffffff;
+    border: 1px solid #d9e2ea;
+    border-radius: 16px;
+    box-shadow: 0 7px 20px rgba(15, 36, 56, 0.13);
+    min-width: 0;
+    overflow: hidden;
+}
+
+.championship-podium-count-3 .championship-podium-card[data-podium-position="1"] {
+    border-bottom: 6px solid #ffd700;
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.championship-podium-count-3 .championship-podium-card[data-podium-position="2"] {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.championship-podium-count-3 .championship-podium-card[data-podium-position="3"] {
+    grid-column: 3;
+    grid-row: 1;
+}
+
+.championship-podium-count-2 {
+    grid-template-columns: repeat(2, minmax(0, 360px));
+    justify-content: center;
+}
+
+.championship-podium-count-1 {
+    grid-template-columns: minmax(0, 400px);
+    justify-content: center;
+}
+
+.championship-podium-count-1 .championship-podium-card,
+.championship-podium-count-2 .championship-podium-card {
+    grid-column: auto;
+    grid-row: auto;
+}
+
+.championship-podium-media {
+    align-items: center;
+    background:
+        radial-gradient(circle at 76% 20%, rgba(255, 215, 0, 0.34), transparent 24%),
+        linear-gradient(145deg, #2b5c88, #0f2438);
+    color: #ffffff;
+    display: flex;
+    font-size: 2.35rem;
+    font-weight: 900;
+    justify-content: center;
+    min-height: 190px;
+    overflow: hidden;
+}
+
+.championship-podium-card[data-podium-position="1"] .championship-podium-media {
+    min-height: 230px;
+}
+
+.championship-podium-media img {
+    display: block;
+    height: 100%;
+    min-height: inherit;
+    object-fit: cover;
+    width: 100%;
+}
+
+.championship-podium-copy {
+    align-items: center;
+    display: grid;
+    gap: 11px;
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 13px 14px 15px;
+}
+
+.championship-podium-medal {
+    display: block;
+    font-size: 2rem;
+}
+
+.championship-podium-copy h5 {
+    color: #0f2438;
+    font-size: 1rem;
+    margin: 0;
+    overflow-wrap: break-word;
+}
+
+.championship-podium-copy h5 a {
+    color: inherit;
+}
+
+.championship-podium-copy div > span {
+    color: #526779;
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 800;
+    margin-top: 3px;
+}
+
+.race-moments {
+    background: #0f2438;
+    border-radius: 18px;
+    box-shadow: 0 7px 22px rgba(15, 36, 56, 0.2);
+    margin: 28px 0 38px;
+    overflow: hidden;
+    padding: 22px;
+}
+
+.race-moments[hidden] {
+    display: none;
+}
+
+.race-moments-heading {
+    align-items: flex-end;
+    display: flex;
+    gap: 18px;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.race-moments-heading .gallery-kicker {
+    color: #ffd700;
+}
+
+.race-moments-heading h2 {
+    background: transparent;
+    color: #ffffff;
+    margin: 0;
+    padding: 0;
+}
+
+.race-moments-link {
+    color: #ffffff;
+    font-size: 0.88rem;
+    font-weight: 900;
+    text-underline-offset: 4px;
+}
+
+.race-moments-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.race-moment-card {
+    background: #172f47;
+    border-radius: 13px;
+    color: #ffffff;
+    display: block;
+    min-height: 210px;
+    overflow: hidden;
+    position: relative;
+    text-decoration: none;
+}
+
+.race-moment-card img {
+    height: 100%;
+    inset: 0;
+    object-fit: cover;
+    position: absolute;
+    transition: opacity 180ms ease, transform 240ms ease;
+    width: 100%;
+}
+
+.race-moment-card::after {
+    background: linear-gradient(180deg, transparent 22%, rgba(5, 18, 29, 0.9) 100%);
+    content: "";
+    inset: 0;
+    position: absolute;
+}
+
+.race-moment-card:hover img {
+    opacity: 0.9;
+    transform: scale(1.035);
+}
+
+.race-moment-card:focus-visible {
+    outline: 4px solid #ffd700;
+    outline-offset: 3px;
+}
+
+.race-moment-card-copy {
+    bottom: 0;
+    display: grid;
+    gap: 5px;
+    left: 0;
+    padding: 18px;
+    position: absolute;
+    right: 0;
+    z-index: 1;
+}
+
+.race-moment-card-event,
+.race-moment-card-type {
+    color: #ffd700;
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.race-moment-card-copy strong {
+    font-size: 1.08rem;
+    line-height: 1.2;
+}
+
+.race-moment-card-type {
+    color: #ffffff;
+    opacity: 0.86;
+}
+
+@media (max-width: 900px) {
+    .gallery-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .race-moments-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .championship-podium,
+    .championship-podium-count-1,
+    .championship-podium-count-2 {
+        gap: 6px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        justify-content: stretch;
+        margin: 16px 0 20px;
+    }
+
+    .championship-podium-count-1 {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .championship-podium-count-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .championship-podium-count-3 .championship-podium-card[data-podium-position="1"],
+    .championship-podium-count-3 .championship-podium-card[data-podium-position="2"],
+    .championship-podium-count-3 .championship-podium-card[data-podium-position="3"] {
+        grid-row: 1;
+    }
+
+    .championship-podium-card {
+        border-radius: 10px;
+    }
+
+    .championship-podium-media,
+    .championship-podium-card[data-podium-position="1"] .championship-podium-media {
+        min-height: clamp(88px, 24vw, 128px);
+    }
+
+    .championship-podium-card[data-podium-position="1"] .championship-podium-media {
+        min-height: clamp(106px, 29vw, 150px);
+    }
+
+    .championship-podium-copy {
+        display: block;
+        padding: 7px 5px 9px;
+        text-align: center;
+    }
+
+    .championship-podium-medal {
+        font-size: 1.45rem;
+        margin-bottom: 3px;
+    }
+
+    .championship-podium-copy h5 {
+        font-size: 0.75rem;
+    }
+
+    .championship-podium-copy div > span {
+        font-size: 0.7rem;
+    }
+
+    .gallery-intro-mark {
+        flex-basis: 76px;
+        font-size: 1.8rem;
+        height: 76px;
+    }
+
+    .gallery-shell {
+        padding: 18px;
+    }
+
+    .gallery-heading-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .gallery-filters {
+        justify-content: flex-start;
+    }
+
+    .gallery-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .race-moments {
+        padding: 18px;
+    }
+
+    .race-moments-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .race-moments-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .gallery-viewer {
+        max-height: calc(100vh - 24px);
+        padding: 16px;
+        width: calc(100% - 20px);
+    }
+}

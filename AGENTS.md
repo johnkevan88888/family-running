@@ -27,9 +27,20 @@ Preserve the selected `site` parameter when navigating between championship page
 ## Current Static Architecture
 
 - `index.html` is the championship landing page.
-- `leaderboard.js` reads the selected site mode, loads `data/<site>/siteinfo.csv`, `data/<site>/halloffame.csv`, and `data/<site>/webtables.csv`, then renders enabled leaderboard CSVs referenced by `webtables.csv`.
+- `leaderboard.js` reads the selected site mode, loads `data/<site>/siteinfo.csv`, `data/<site>/halloffame.csv`, and `data/<site>/webtables.csv`, then renders enabled leaderboard CSVs referenced by `webtables.csv`. Each non-vacant table may have a photo podium made only from its first three exported ranked rows. The full exported table must remain directly below it, and Current must remain before All-Time. Podium media is decoration supplied by `gallery.js` only after suppression; missing media uses a fallback and must never change which athletes, ranks, or medals appear.
 - `athlete.html` is the athlete profile page.
 - `athlete.js` loads shared athlete result data from `data/athlete_results.csv` and site-specific supporting exports from `data/<site>/`.
+- `gallery.html` is the owner-curated photo and video gallery. `gallery.js`
+  loads only `gallery-data/<site>.json` plus the shared
+  `gallery-data/hidden-athlete-ids.json` list, renders media through native
+  browser elements, supplies featured Race moments panels on championship,
+  Overview, and athlete pages, and decorates exported championship podiums with
+  approved athlete-tagged media. Any item carrying a listed athlete tag must be
+  removed before media elements are created on every surface; a missing or
+  malformed suppression list must fail closed. Gallery metadata is editorial
+  and does not belong to Excel; it must not influence championship data or
+  calculations. Public manifests and public derivatives contain no geotags;
+  private originals may retain them only in access-controlled media storage.
 - `utils.js` contains the shared CSV loading/parsing, HTML escaping, and
   athlete-link helpers. `escapeHTML`, `csvRowsToObjects`, and `parseCSV` live
   here only; do not reintroduce per-file copies. `athleteLink` escapes its own
@@ -58,14 +69,18 @@ Preserve the selected `site` parameter when navigating between championship page
   `PREVIEW_OUTPUT_DIR` is gated fail-closed by
   `scripts/preview-artifact-contract.mjs` before anything is removed. Only a
   canonical absolute path strictly inside `test-artifacts/` is accepted.
-- `data/`, `vendor/`, and `assets/` are copied whole, so the `runtimeEntries`
+- `data/`, `vendor/`, `assets/`, and `gallery-data/` are copied whole, so the `runtimeEntries`
   whitelist says nothing about their contents and each is checked against its
   own contract. Published `data/` must be exactly `data/export_manifest.csv`
   plus the paths that manifest lists. Published `vendor/` must be exactly the
   set in `scripts/vendored-library-files.mjs`. Published `assets/` must be brand
-  imagery only, under `assets/brand/` and in an image format. Anything else
-  fails the build. Adding a fourth copied-whole directory means adding its
-  contract in the same change.
+  imagery only, under `assets/brand/` and in an image format. Published
+  `gallery-data/` must be exactly `family.json`, `everyone.json`, and
+  `hidden-athlete-ids.json`; the suppression file contains public athlete IDs
+  only—never names, reasons, or administrative notes. Photographs and videos
+  stay in external media storage and any media file placed there fails the
+  build. Anything else fails the build. Adding another copied-whole directory
+  means adding its contract in the same change.
 - Open Graph and description metadata must stay mode-neutral. One static file
   serves both `?site=family` and `?site=everyone`, so share copy naming one mode
   is wrong for every share of the other. Browser tests fail on "family" or
@@ -125,6 +140,8 @@ Before presenting a change for review, run the available local checks:
 - Repository safety validation.
 - Vendored library validation.
 - CSV validation for both `data/family/` and `data/everyone/`.
+- Gallery validation for both `gallery-data/family.json` and
+  `gallery-data/everyone.json`.
 - Preview artifact safety tests.
 - Browser smoke tests for both `?site=family` and `?site=everyone`.
 - Responsive screenshots for desktop and mobile views.

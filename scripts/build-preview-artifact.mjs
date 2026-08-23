@@ -5,6 +5,7 @@ import { parseCsv } from './export-bundle-tools.mjs';
 import {
     findAssetProblems,
     findDataBundleProblems,
+    findGalleryDataProblems,
     findVendorProblems,
     resolvePreviewOutputDir
 } from './preview-artifact-contract.mjs';
@@ -97,7 +98,8 @@ if (leakedFiles.length) {
     process.exit(1);
 }
 
-// `data/`, `vendor/`, and `assets/` are copied as whole directories, so the
+// `data/`, `vendor/`, `assets/`, and `gallery-data/` are copied as whole
+// directories, so the
 // whitelist above says nothing about their contents. Each is checked against
 // its own contract instead: `data/` against the export manifest that defines
 // one complete CSV bundle, `vendor/` against the exact set of pinned browser
@@ -106,7 +108,8 @@ if (leakedFiles.length) {
 const contractProblems = [
     ...findDataBundleProblems(publishedPaths, await readPublishedManifest()),
     ...findVendorProblems(publishedPaths),
-    ...findAssetProblems(publishedPaths)
+    ...findAssetProblems(publishedPaths),
+    ...findGalleryDataProblems(publishedPaths)
 ];
 
 if (contractProblems.length) {
@@ -117,7 +120,7 @@ if (contractProblems.length) {
     process.exit(1);
 }
 
-for (const requiredFile of ['CNAME', 'robots.txt', 'index.html', 'championships.html', 'hall-of-fame.html', 'records.html', 'calculator.html', 'overview.html', 'athlete.html', 'analytics.js', 'records.js', 'calculator.js', 'assets/brand/ace-of-race-mark.svg', 'assets/brand/favicon-32.png', 'assets/brand/apple-touch-icon.png', 'assets/brand/og-image.png', 'vendor/chart.umd.min.js', 'vendor/chartjs-adapter-date-fns.bundle.min.js', 'data/family/webtables.csv', 'data/everyone/webtables.csv', 'data/family/absolute_records.csv', 'data/everyone/absolute_records.csv']) {
+for (const requiredFile of ['CNAME', 'robots.txt', 'index.html', 'championships.html', 'hall-of-fame.html', 'records.html', 'gallery.html', 'calculator.html', 'overview.html', 'athlete.html', 'analytics.js', 'records.js', 'gallery.css', 'gallery-contract.js', 'gallery.js', 'calculator.js', 'gallery-data/family.json', 'gallery-data/everyone.json', 'gallery-data/hidden-athlete-ids.json', 'assets/brand/ace-of-race-mark.svg', 'assets/brand/favicon-32.png', 'assets/brand/apple-touch-icon.png', 'assets/brand/og-image.png', 'vendor/chart.umd.min.js', 'vendor/chartjs-adapter-date-fns.bundle.min.js', 'data/family/webtables.csv', 'data/everyone/webtables.csv', 'data/family/absolute_records.csv', 'data/everyone/absolute_records.csv']) {
     try {
         await fs.access(path.join(outputDir, requiredFile));
     } catch {

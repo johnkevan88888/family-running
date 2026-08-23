@@ -183,6 +183,42 @@ export function findAssetProblems(publishedPaths) {
     return problems.sort();
 }
 
+// Gallery metadata is copied whole, but the media itself is deliberately not.
+// Publishing exactly one JSON document for each required site mode plus the
+// shared person-tag suppression list prevents a dropped scratch file or a large
+// photo/video from becoming part of the Pages artifact merely because it was
+// saved beside the manifests.
+const galleryDataFiles = [
+    'gallery-data/family.json',
+    'gallery-data/everyone.json',
+    'gallery-data/hidden-athlete-ids.json'
+];
+
+export function findGalleryDataProblems(publishedPaths) {
+    const published = publishedPaths
+        .map(normalizeArtifactPath)
+        .filter(entry => entry === 'gallery-data' || entry.startsWith('gallery-data/'));
+    const problems = [];
+
+    for (const relativePath of published) {
+        if (!galleryDataFiles.includes(relativePath)) {
+            problems.push(
+                `Published gallery-data/ contains "${relativePath}", which is not a contracted gallery metadata file.`
+            );
+        }
+    }
+
+    for (const relativePath of galleryDataFiles) {
+        if (!published.includes(relativePath)) {
+            problems.push(
+                `Published gallery-data/ is missing the required metadata file "${relativePath}".`
+            );
+        }
+    }
+
+    return problems.sort();
+}
+
 function normalizeArtifactPath(value) {
     return String(value || '')
         .trim()

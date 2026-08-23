@@ -38,6 +38,12 @@ Run CSV validation only:
 pnpm run validate:csv
 ```
 
+Validate the two owner-curated gallery manifests:
+
+```bash
+pnpm run validate:gallery
+```
+
 Check that the committed `vendor/` browser libraries still match the pinned
 dependencies:
 
@@ -188,8 +194,8 @@ removed. Only a canonical absolute path strictly inside the ignored
 and its descendants, parent and sibling directories, `test-artifacts/` itself,
 relative paths, traversal segments, and surrounding whitespace are all rejected.
 
-`data/`, `vendor/`, and `assets/` are copied as whole directories, so the file
-whitelist says nothing about their contents. Each is checked against its own
+`data/`, `vendor/`, `assets/`, and `gallery-data/` are copied as whole
+directories, so the file whitelist says nothing about their contents. Each is checked against its own
 contract instead. Published `data/` must be exactly `data/export_manifest.csv`
 plus every path that manifest lists, so a scratch file, an editor backup, an
 unlisted export, or a missing contracted CSV fails the build rather than
@@ -200,14 +206,17 @@ be published from `vendor/` without also being pinned to a reviewed dependency.
 Published `assets/` must be brand imagery only: everything under
 `assets/brand/`, and only vector or raster image formats, so a stylesheet,
 script, or document cannot be served from the public web root by being dropped
-into the assets folder.
+into the assets folder. Published `gallery-data/` must contain exactly
+`family.json`, `everyone.json`, and `hidden-athlete-ids.json`. Photographs and
+videos are externally hosted, so adding any media file, private original, or
+scratch document to that directory fails the build.
 
 Preview artifact safety regression tests cover both gates. They assert every
 rejected output-directory shape, prove the build refuses an out-of-tree
 directory without deleting it by aiming a refused build at a throwaway
-directory containing a canary file, and prove all three publication contracts on
-the real tree by adding one stray file to `data/`, one to `vendor/`, and one to
-`assets/brand/` and removing them again.
+directory containing a canary file, and prove all four publication contracts on
+the real tree by adding one stray file to `data/`, one to `vendor/`, one to
+`assets/brand/`, and one to `gallery-data/`, then removing them again.
 
 The same artifact is deployed to GitHub Pages by
 `.github/workflows/deploy-pages.yml` on every push to `main`. Pages no longer
@@ -254,6 +263,29 @@ Browser smoke tests run the site through a local static server for:
 - `/?site=family`
 - `/?site=everyone`
 
+Gallery coverage opens the Gallery in both site modes at desktop and mobile
+sizes, checks that navigation preserves the selected mode, and proves that only
+that mode's manifest and the shared suppression list are requested. The tracked
+empty manifests render a deliberate first-moment state. Synthetic populated
+coverage renders one photo and one video, checks photo/video filters,
+literal-text handling for hostile captions, accessible viewer focus
+restoration, featured moments on the Championships page, athlete-associated
+moments on profiles, and approved athlete-tagged podium photography. Person-tag
+suppression is checked across Gallery cards, featured moments, athlete profiles,
+and championship podiums without requesting the hidden media. Unsafe media URLs
+and malformed suppression lists fail closed. The populated Gallery grid and
+photo podium are checked for mobile overflow and saved at desktop and mobile
+sizes.
+
+Repository gallery validation also joins each item back to the public exported
+results. Its race date, event, and distance must identify a result available in
+that site mode, and every tagged athlete must belong to that mode's public
+result-bearing roster. This is the same contract the future uploader's cascading
+date, race, and people selectors will use. The shared suppression document is
+also contract-validated for exact schema, URL-safe athlete IDs, uniqueness, and
+unsupported fields; suppression IDs do not need a current gallery item so an
+owner can record a request before future media is added.
+
 Every public page is also checked for a `noindex` robots meta tag. The site is
 kept out of search results by that tag rather than by a `robots.txt` Disallow,
 so a new page shipping without it would be indexed while every other page is
@@ -279,7 +311,15 @@ repeat theirs. Its most important assertion is content parity: the card fields
 must exactly equal the table's own column headers, so a future change cannot
 quietly drop a column and pass as a layout improvement. The same checks run at
 1440px in reverse, proving the desktop table still renders as a real table with
-its header row and no injected labels.
+its header row and no injected labels. Podium coverage proves every non-vacant
+rendered table keeps one podium immediately before it, the three exported
+leaders retain matching medals in podium and table, category badges display one
+word but keep the full exported accessible label, and time/pace values break at
+the same deliberate point. On mobile the three podium cards must stay in one
+row under 280px tall. Opening a previously collapsed distance proves its
+exported Current section still precedes its All-Time section and that each
+ranked table receives the same treatment; vacant/no-result sections
+deliberately retain their table without inventing a podium.
 
 A document-title regression test checks every static public page in both modes.
 Each `<title>` is fixed markup, so an Everyone-mode tab used to read "Family
@@ -342,9 +382,18 @@ Screenshots are saved to `test-artifacts/screenshots/` for:
 - Everyone desktop, 1440 x 900
 - Everyone mobile, 390 x 844
 
+The same pass saves Gallery screenshots for both modes at both sizes and focused
+populated-gallery screenshots for desktop and mobile using synthetic approved
+media metadata.
+
 The same browser pass also saves full-page Calculator screenshots for Family
 and Everyone at both desktop and mobile sizes, plus focused desktop and mobile
 comparison screenshots using synthetic period-labelled workbook-export rows.
+
+The synthetic populated-media pass also saves focused desktop and mobile
+Championship screenshots showing an approved athlete-tagged photo on the
+podium. These complement the normal both-mode screenshots, whose intentionally
+empty manifests exercise the branded fallback state.
 
 Generated screenshots and reports are ignored by Git.
 
