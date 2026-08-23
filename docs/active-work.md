@@ -72,7 +72,11 @@ Championship and Gallery screenshots were reviewed; no horizontal overflow was
 found and the mobile podium remained a compact three-column row.
 
 Excel and the private workbook were not inspected or changed. No merge,
-deployment, or publication has been performed.
+deployment, or publication has been performed. Pull Request #69 was opened from
+`codex/curated-gallery-phase-1` to `main` as a standard preview-backed change:
+https://github.com/johnkevan88888/family-running/pull/69. Review must wait for
+the required GitHub check and a successful Netlify Deploy Preview, then cover
+both Family and Everyone links before any separate merge approval.
 
 ## Prior work: header refinement, Head-to-Head rename, and workbook-locked age-grade calculator
 
