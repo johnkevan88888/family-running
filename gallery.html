@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, follow">
+    <meta name="description" content="Every age. Every pace. Every race counts. Photographs and videos from the running championships.">
+    <meta name="theme-color" content="#102A43">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ace of Race">
+    <meta property="og:title" content="Gallery | Ace of Race">
+    <meta property="og:description" content="Every age. Every pace. Every race counts.">
+    <meta property="og:image" content="https://www.aceofrace.com/assets/brand/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" href="assets/brand/ace-of-race-mark.svg" type="image/svg+xml">
+    <link rel="icon" href="assets/brand/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+    <title>Gallery | Family Running Championships</title>
+    <link rel="stylesheet" href="site.css">
+    <link rel="stylesheet" href="gallery.css">
+</head>
+
+<body data-page="gallery">
+
+<header data-site-header></header>
+
+<main>
+    <section class="page-intro gallery-intro" aria-labelledby="gallery-page-title">
+        <div>
+            <p class="gallery-kicker">Race moments</p>
+            <h2 id="gallery-page-title">Gallery</h2>
+            <p>
+                Photographs and videos from race days, finish lines, training runs,
+                and the people behind the times.
+            </p>
+        </div>
+        <div class="gallery-intro-mark" aria-hidden="true">&#9654;</div>
+    </section>
+
+    <section class="gallery-shell" aria-labelledby="gallery-content-title">
+        <div class="gallery-heading-row">
+            <div>
+                <p class="gallery-kicker">The story beyond the standings</p>
+                <h2 id="gallery-content-title">Championship moments</h2>
+            </div>
+            <div id="gallery-filters" class="gallery-filters" aria-label="Filter gallery" hidden></div>
+        </div>
+
+        <div id="gallery-status" class="gallery-status" aria-live="polite">
+            <span class="gallery-status-pulse" aria-hidden="true"></span>
+            Loading approved moments...
+        </div>
+        <div id="gallery-grid" class="gallery-grid"></div>
+    </section>
+</main>
+
+<dialog id="gallery-viewer" class="gallery-viewer" aria-labelledby="gallery-viewer-title">
+    <div class="gallery-viewer-bar">
+        <div>
+            <p class="gallery-kicker">Race moment</p>
+            <h2 id="gallery-viewer-title">Gallery item</h2>
+        </div>
+        <button type="button" class="gallery-viewer-close" aria-label="Close gallery viewer">Close</button>
+    </div>
+    <div id="gallery-viewer-media" class="gallery-viewer-media"></div>
+    <div id="gallery-viewer-copy" class="gallery-viewer-copy"></div>
+</dialog>
+
+<footer class="site-privacy-note">
+    Privacy-friendly, cookie-free visit statistics are provided by
+    <a href="https://www.goatcounter.com/" rel="external">GoatCounter</a>.
+</footer>
+
+<script src="analytics.js" defer></script>
+<script src="utils.js" defer></script>
+<script src="site-navigation.js" defer></script>
+<script src="gallery-contract.js" defer></script>
+<script src="gallery.js" defer></script>
+
+</body>
+</html>

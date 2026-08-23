@@ -2,9 +2,89 @@
 
 ## Task title
 
-Header refinement, Head-to-Head rename, and workbook-locked age-grade calculator.
+Owner-curated photo and video gallery, Phase 1.
 
 ## Status
+
+Completed locally on 23 August 2026 on
+`codex/curated-gallery-phase-1`. The site now has a mode-preserving Gallery
+page with photo/video filters, responsive media cards, an accessible native
+viewer, deliberate empty and unavailable states, and featured Race moments
+panels on the landing, Championships, Overview, and athlete pages. The two
+mode-specific manifests are intentionally empty until approved media is ready;
+no private family photos or videos were invented, copied into Git, or
+published.
+
+Gallery media is owner-curated and hosted outside Git. The repository contains
+only mode-specific metadata in `gallery-data/family.json` and
+`gallery-data/everyone.json`; the preview artifact contract permits exactly
+those two JSON files and rejects a stray media file. Every entry is validated
+against the public result data and public athlete roster for its site mode.
+The public schema records race date, event, distance, and tagged athlete IDs,
+so a future authenticated uploader can first choose a date, then choose one of
+the exported event-and-distance races on that date, then tag people from the
+relevant site roster. Actual file transfer, authentication, consent capture,
+and moderation remain deliberately out of Phase 1 until a storage and access
+model is selected; no non-functional upload control is exposed on the public
+site. Captions are public manifest fields. Geotags and embedded device metadata
+remain private media-repository metadata; public derivatives strip them and the
+public manifest has no geotag field.
+
+The shared owner-maintained `gallery-data/hidden-athlete-ids.json` list now
+provides a person-tag opt-out. Adding one public athlete ID suppresses every
+tagged item from the Gallery, featured Race moments, and athlete profiles in
+both modes before the browser creates a media element, so hidden media is not
+requested during page rendering. The gallery fails closed if the list is
+missing or malformed. The file contains IDs only, never names or request
+reasons, and its public-static limitation is documented: complete takedown also
+requires removing the file from the external media host.
+
+Every non-vacant Current and All-Time championship table now has a photo podium
+made from its first three workbook-exported ranked rows. Overall and every
+distance dropdown retain the original Current-then-All-Time order, and each
+full table remains directly below its podium with every original column and row
+still present. The exported rank supplies matching medals in the card and the
+table. Category badges display only their first word while preserving the full
+exported value as an accessible label, and time/pace values use one consistent
+line break. Mobile keeps all three podium cards in one compact row instead of
+stacking them into a long page.
+
+Approved athlete-tagged gallery media decorates the corresponding podium card;
+manifest order remains the editorial choice, with a photograph preferred over
+a video poster. Suppression is applied first, and a missing, suppressed, or
+unavailable image leaves a branded initials fallback without changing the
+ranking. Vacant and no-result exports keep their valid tables without inventing
+a podium.
+
+Final `pnpm test` passed repository safety, vendored-library checks, CSV
+validation for both modes, gallery manifest and race/tag association checks,
+gallery contract regressions, the age-grade contract, analytics and release
+workflow regressions, export workflow regressions, preview-artifact safety and
+build checks, the 109-file preview artifact, and browser smoke tests. Browser
+coverage includes Gallery and championship podiums in both modes at 1440 x 900
+and 390 x 844, synthetic populated photo and video states, category and
+time/pace presentation, matching podium/table medals, opened distance groups,
+filtering, escaped hostile captions, viewer focus restoration, featured
+moments, athlete associations, global person-tag suppression without
+hidden-media requests, invalid-manifest and invalid-suppression fail-closed
+behavior, and mode isolation. Empty/fallback and populated desktop/mobile
+Championship and Gallery screenshots were reviewed; no horizontal overflow was
+found and the mobile podium remained a compact three-column row.
+
+Excel and the private workbook were not inspected or changed. No merge,
+deployment, or publication has been performed. Pull Request #69 was opened from
+`codex/curated-gallery-phase-1` to `main` as a standard preview-backed change:
+https://github.com/johnkevan88888/family-running/pull/69. Review must wait for
+the required GitHub check and a successful Netlify Deploy Preview, then cover
+both Family and Everyone links before any separate merge approval.
+
+## Prior work: header refinement, Head-to-Head rename, and workbook-locked age-grade calculator
+
+### Task title
+
+Header refinement, Head-to-Head rename, and workbook-locked age-grade calculator.
+
+### Status
 
 Completed locally on 23 August 2026 on `codex/header-layout`. The shared header
 places Updated at the top right, groups navigation at the left, aligns Pace at

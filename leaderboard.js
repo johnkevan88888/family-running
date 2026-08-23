@@ -650,6 +650,102 @@ function toggleCrownHistory(button) {
     button.querySelector('.crown-history-symbol').textContent = expanded ? '[+]' : '[-]';
 }
 
+const leaderboardMedals = new Map([
+    ['1', '&#129351;'],
+    ['2', '&#129352;'],
+    ['3', '&#129353;']
+]);
+
+function renderChampionshipPodium(rows, title) {
+    const headers = rows[0] || [];
+    const rankedRows = rows
+        .slice(1)
+        .filter(row => row.some(cell => cell !== ''))
+        .map(row => Object.fromEntries(headers.map((header, index) => [header, row[index] || ''])))
+        .filter(row => leaderboardMedals.has(String(row.Rank || '').trim()))
+        .slice(0, 3);
+
+    if (!rankedRows.length) {
+        return '';
+    }
+
+    return `
+        <div
+            class="championship-podium championship-podium-count-${rankedRows.length}"
+            aria-label="${escapeHTML(title)} top three">
+            ${rankedRows.map((row, index) => renderChampionshipPodiumCard(row, index + 1)).join('')}
+        </div>
+    `;
+}
+
+function renderChampionshipPodiumCard(row, position) {
+    const rank = String(row.Rank || '').trim();
+    const participant = String(row.Participant || 'Championship Vacant');
+    const athleteId = String(row['Athlete ID'] || '').trim();
+    const ageGrade = String(row['Age Graded Score'] || '').trim();
+    const participantMarkup = athleteId
+        ? athleteLink(athleteId, participant)
+        : escapeHTML(participant);
+    const mediaAttributes = athleteId
+        ? ` data-gallery-athlete-photo="${escapeHTML(athleteId)}"`
+        : '';
+
+    return `
+        <article
+            class="championship-podium-card"
+            data-podium-position="${position}"
+            data-rank="${escapeHTML(rank)}">
+            <div
+                class="championship-podium-media"
+                role="img"
+                aria-label="No approved photograph is currently available for ${escapeHTML(participant)}"
+                ${mediaAttributes}>
+                <span aria-hidden="true">${escapeHTML(podiumInitials(participant))}</span>
+            </div>
+            <div class="championship-podium-copy">
+                <span class="championship-podium-medal medal" aria-label="Rank ${escapeHTML(rank)}">
+                    ${leaderboardMedals.get(rank)}
+                </span>
+                <div>
+                    <h5>${participantMarkup}</h5>
+                    ${ageGrade ? `<span>${escapeHTML(ageGrade)} age grade</span>` : ''}
+                </div>
+            </div>
+        </article>
+    `;
+}
+
+function podiumInitials(participant) {
+    const initials = String(participant || '')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part.charAt(0).toUpperCase())
+        .join('');
+
+    return initials || '?';
+}
+
+function renderAgeGradedCategory(value) {
+    const category = String(value || '').toLowerCase();
+    const presentation = new Map([
+        ['recreational', ['recreational', 'Recreational']],
+        ['club', ['club', 'Club']],
+        ['local competitive', ['local', 'Local']],
+        ['regional class', ['regional', 'Regional']],
+        ['national class', ['national', 'National']],
+        ['world class', ['world', 'World']]
+    ]).get(category);
+
+    if (!presentation) {
+        return null;
+    }
+
+    const [className, label] = presentation;
+    return `<span class="${className}" aria-label="${escapeHTML(value)}">${label}</span>`;
+}
+
 function renderLeaderboardTable(rows) {
     const headers = rows[0].map(h => String(h).trim());
 
@@ -664,14 +760,6 @@ function renderLeaderboardTable(rows) {
     const rankIndex = headers.findIndex(h =>
         h.toLowerCase().trim() === 'rank'
     );
-
-    // A Map, not an object literal, so an exported value like "constructor"
-    // cannot resolve through Object.prototype.
-    const medals = new Map([
-        ['1', '&#129351;'],
-        ['2', '&#129352;'],
-        ['3', '&#129353;']
-    ]);
 
     // Real <thead>/<tbody>, and every cell carries its column name in
     // data-label. Below the mobile breakpoint site.css turns each row into a
@@ -730,18 +818,12 @@ function renderLeaderboardTable(rows) {
 
             // Match on the rank column itself, so an unrelated column that
             // happens to hold "1" is never replaced by a medal.
-            if (cellIndex === rankIndex && medals.has(value)) {
-                cell = `<span class="medal">${medals.get(value)}</span>`;
+            if (cellIndex === rankIndex && leaderboardMedals.has(value)) {
+                cell = `<span class="medal">${leaderboardMedals.get(value)}</span>`;
             }
 
-            const category = value.toLowerCase();
-
-            if (category === 'recreational') cell = '<span class="recreational">Recreational</span>';
-            if (category === 'club') cell = '<span class="club">Club</span>';
-            if (category === 'local competitive') cell = '<span class="local">Local Competitive</span>';
-            if (category === 'regional class') cell = '<span class="regional">Regional Class</span>';
-            if (category === 'national class') cell = '<span class="national">National Class</span>';
-            if (category === 'world class') cell = '<span class="world">World Class</span>';
+            const renderedCategory = renderAgeGradedCategory(value);
+            if (renderedCategory) cell = renderedCategory;
 
             // Marked by index rather than by header text, so the card layout
             // never depends on an exported string staying spelled the same.
@@ -792,6 +874,7 @@ async function renderLeaderboardGroup(groupId) {
             <section class="leaderboard-section">
                 <h4>${escapeHTML(row.title)}</h4>
                 <p class="description">${escapeHTML(row.description)}</p>
+                ${renderChampionshipPodium(tableRows, row.title)}
                 ${renderLeaderboardTable(tableRows)}
             </section>
         `;
@@ -800,6 +883,7 @@ async function renderLeaderboardGroup(groupId) {
     container.innerHTML = sections.join('');
     group.loaded = true;
     refreshPaceDisplay();
+    window.galleryPresentation?.decorateAthletePhotos?.(container);
 }
 
 async function buildLeaderboards() {

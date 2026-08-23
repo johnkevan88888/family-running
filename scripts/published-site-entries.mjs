@@ -17,6 +17,7 @@ export const publishedSiteEntries = [
     'championships.html',
     'hall-of-fame.html',
     'records.html',
+    'gallery.html',
     'calculator.html',
     'age-grade-calculator.html',
     'overview.html',
@@ -28,6 +29,9 @@ export const publishedSiteEntries = [
     'athlete.js',
     'leaderboard.js',
     'records.js',
+    'gallery.css',
+    'gallery-contract.js',
+    'gallery.js',
     'calculator.css',
     'calculator.js',
     'age-grade-contract.js',
@@ -38,7 +42,11 @@ export const publishedSiteEntries = [
     // scripts/preview-artifact-contract.mjs rather than left unchecked.
     'assets',
     'vendor',
-    'data'
+    'data',
+    // Editorial media metadata and the shared person-tag suppression list only.
+    // Photographs and videos stay in external media storage so Git history and
+    // the Pages artifact remain small.
+    'gallery-data'
 ];
 
 // Files that are never published themselves but decide what gets published or

@@ -19,6 +19,7 @@
 
 <link rel="stylesheet" href="site.css">
 <link rel="stylesheet" href="athlete.css">
+<link rel="stylesheet" href="gallery.css">
 
 </head>
 <body data-page="athlete">
@@ -31,6 +32,17 @@
         <h1 id="athlete-name">Loading...</h1>
     </div>
 </header>
+
+<section class="race-moments" data-gallery-highlights data-gallery-athlete data-gallery-limit="3" hidden aria-labelledby="athlete-race-moments-title">
+    <div class="race-moments-heading">
+        <div>
+            <p class="gallery-kicker">From the course</p>
+            <h2 id="athlete-race-moments-title">Race moments</h2>
+        </div>
+        <a class="race-moments-link" data-site-page="gallery" href="gallery.html?site=family">View the gallery</a>
+    </div>
+    <div class="race-moments-grid" data-gallery-highlight-grid></div>
+</section>
 
 <h2>Personal Bests</h2>
 <section id="personal-bests"></section>
@@ -73,6 +85,8 @@
 <script src="analytics.js" defer></script>
 <script src="utils.js" defer></script>
 <script src="site-navigation.js" defer></script>
+<script src="gallery-contract.js" defer></script>
+<script src="gallery.js" defer></script>
 <script src="vendor/chart.umd.min.js" defer></script>
 <script src="vendor/chartjs-adapter-date-fns.bundle.min.js" defer></script>
 <script src="athlete.js" defer></script>

@@ -360,6 +360,85 @@ Unknown historical details are labelled rather than inferred.
   which GitHub Pages does not provide. The Open Graph tags still work, so shared
   links continue to preview correctly in messaging apps.
 
+## Gallery media is owner-curated and stored outside Git
+
+- **Status:** Accepted and implemented locally; no media published yet
+- **Date:** 23 August 2026
+- **Decision:** Phase 1 adds a public, owner-curated Gallery without accepting
+  visitor uploads. Family and Everyone each load their own versioned JSON
+  manifest from `gallery-data/`. The manifests hold approved editorial metadata
+  and absolute HTTPS media URLs; photograph and video files remain in dedicated
+  external media storage rather than Git or the GitHub Pages artifact. Gallery
+  items may be featured on Championships and Overview or associated with public
+  athlete IDs for profile presentation, but they do not affect championship
+  data or calculations.
+- **Uploader preparation:** A future authenticated upload flow is constrained to
+  select an exported race rather than accept a free-text event: the uploader
+  chooses a race date, then one of the distinct event-and-distance combinations
+  in public results for that date and site mode. People tags use public athlete
+  IDs; runners in the selected race appear first, with other public athletes in
+  that mode still available for spectators and supporters. The stored
+  `raceDate`, `raceEvent`, `raceDistance`, and `athleteIds` fields already match
+  that flow. File transfer, uploader identity, and moderation remain outside
+  Phase 1 until authenticated media storage is selected. Captions are public;
+  geotags and embedded device metadata remain private repository metadata. A
+  public derivative strips them, and neither public manifest has a geotag field.
+- **Person-tag suppression:** The shared owner-maintained
+  `gallery-data/hidden-athlete-ids.json` list suppresses every item tagged with
+  a listed public athlete ID across both site modes, including Gallery cards,
+  featured moments, and athlete profiles. Suppression is applied before media
+  elements are created, and a missing or malformed list makes the gallery fail
+  closed. The file holds IDs only—never names, reasons, or request details—and
+  may retain an unused ID to protect against a future tagged item. It is public
+  metadata because this remains a static public site; a private administration
+  record would require authenticated storage outside GitHub Pages.
+- **Rationale:** GitHub Pages can render a gallery but cannot receive uploads,
+  and committing video or growing photo libraries would permanently inflate Git
+  history and the published artifact. Owner curation provides the visual benefit
+  while retaining the existing static production and review model.
+- **Consequences:** Excel/VBA is not involved in gallery publishing. The selected
+  site mode requests only its own manifest. Repository validation rejects unsafe
+  URLs, invalid schema, race tuples absent from that mode's public results,
+  athlete tags outside that mode's public roster, and inconsistent shared items.
+  The artifact contract permits only `family.json`, `everyone.json`, and
+  `hidden-athlete-ids.json` under `gallery-data/`, so a photograph, video,
+  private original, or scratch file saved there fails the build. Media is
+  rendered with native browser image and video elements and no external
+  JavaScript. Published media remains public: `noindex` reduces search
+  visibility but is not access control. Hiding an item from the site does not
+  delete it from the external media host, so a complete takedown removes it
+  there as well. Consent review, metadata removal, a private-original boundary,
+  and explicit release approval are part of the publishing workflow.
+
+## Championship photography is a display layer over exported standings
+
+- **Status:** Accepted and implemented locally
+- **Date:** 23 August 2026
+- **Decision:** Every non-vacant Current and All-Time championship table may
+  display a three-card photo podium immediately before the unchanged table.
+  Overall and every distance dropdown use the same order: Current podium,
+  Current table, All-Time podium, All-Time table. Podium entries are the first
+  three ranked rows in the workbook-exported order, and their medals come from
+  each row's exported `Rank`. The browser does not select, score, or reorder a
+  champion.
+- **Media boundary:** Athlete-tagged items from the already filtered
+  mode-specific gallery manifest decorate podium cards. The first approved
+  photograph in editorial order is preferred, then a video poster. The shared
+  person-tag suppression list is applied before any podium media element is
+  created. Missing or suppressed media leaves a branded fallback.
+- **Rationale:** Photography can make the championship human and recognisable
+  without replacing the detailed lists or creating a second ranking system.
+  Keeping the original tables directly below each podium preserves every
+  exported field and the audit trail visitors already use.
+- **Consequences:** Vacant and no-result tables remain valid and render without
+  a fabricated podium. Category badges show only their first word to stay
+  compact while retaining the complete exported category as an accessible
+  label. Time and pace use a deliberate consistent line break. On mobile, the
+  three podium cards remain in one compact row rather than becoming a long
+  vertical stack. Tests cover both modes, Overall and a lazily opened distance,
+  media suppression, fallbacks, responsive sizing, medals, table-field parity,
+  and original Current-before-All-Time ordering.
+
 ## Correction: the workbook staging parent is not portable
 
 - **Status:** Correction to an earlier entry; portability is open, not accepted

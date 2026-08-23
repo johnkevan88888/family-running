@@ -216,6 +216,15 @@
     display: inline-block;
     box-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
+
+.recreational,
+.club,
+.local,
+.regional,
+.national,
+.world {
+    white-space: nowrap;
+}
 .footer {
     text-align: center;
     color: #777;
@@ -971,6 +980,11 @@
     display: inline-flex;
     flex-wrap: wrap;
     gap: 3px 7px;
+}
+
+.leaderboard-section .time-with-pace {
+    display: inline-grid;
+    gap: 2px;
 }
 
 .result-time {

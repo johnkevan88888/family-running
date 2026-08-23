@@ -9,6 +9,7 @@ import {
     defaultPreviewOutputDir,
     findAssetProblems,
     findDataBundleProblems,
+    findGalleryDataProblems,
     findVendorProblems,
     managedArtifactRoot,
     resolvePreviewOutputDir
@@ -144,7 +145,8 @@ console.log('PASS - the build refuses an out-of-tree output directory before del
 
 // -- What the artifact is allowed to publish -------------------------------
 //
-// `data/` and `vendor/` are copied as whole directories, so the build's
+// `data/`, `vendor/`, `assets/`, and `gallery-data/` are copied as whole
+// directories, so the build's
 // file-by-file whitelist says nothing about their contents. Whatever is in them
 // is published at its path on the public web.
 
@@ -262,12 +264,37 @@ assert.deepEqual(findAssetProblems(['index.html']), []);
 
 console.log('PASS - published assets/ must be brand images only');
 
-// Wiring proof for both contracts: a real build of the real tree, with one
+const galleryDataBundle = [
+    'index.html',
+    'gallery-data/family.json',
+    'gallery-data/everyone.json',
+    'gallery-data/hidden-athlete-ids.json'
+];
+
+assert.deepEqual(findGalleryDataProblems(galleryDataBundle), []);
+assert.deepEqual(
+    findGalleryDataProblems([...galleryDataBundle, 'gallery-data/private-original.jpg']),
+    ['Published gallery-data/ contains "gallery-data/private-original.jpg", which is not a contracted gallery metadata file.']
+);
+assert.deepEqual(
+    findGalleryDataProblems([...galleryDataBundle, 'gallery-data/notes.md']),
+    ['Published gallery-data/ contains "gallery-data/notes.md", which is not a contracted gallery metadata file.']
+);
+assert.deepEqual(
+    findGalleryDataProblems(galleryDataBundle.filter(entry => entry !== 'gallery-data/everyone.json')),
+    ['Published gallery-data/ is missing the required metadata file "gallery-data/everyone.json".']
+);
+assert.deepEqual(findGalleryDataProblems(['index.html']).length, 3);
+
+console.log('PASS - published gallery-data/ must contain only the three contracted metadata files');
+
+// Wiring proof for all contracts: a real build of the real tree, with one
 // stray file added to each directory and removed again afterwards.
 const buildOutputDir = path.join(managedArtifactRoot, `preview-site-safety-${process.pid}`);
 const strayDataFile = path.join(trackedDataRoot, '__artifact-contract-probe__.csv');
 const strayVendorFile = path.join(repoRoot, 'vendor', '__artifact-contract-probe__.js');
 const strayAssetFile = path.join(repoRoot, 'assets', 'brand', '__artifact-contract-probe__.js');
+const strayGalleryFile = path.join(repoRoot, 'gallery-data', '__artifact-contract-probe__.jpg');
 
 try {
     await fs.writeFile(strayDataFile, 'Header,ExportBundleID\r\nValue,PROBE\r\n', 'utf8');
@@ -297,6 +324,15 @@ try {
     assert.match(strayAsset.output, /is not one of/);
 
     await fs.rm(strayAssetFile, { force: true });
+    await fs.writeFile(strayGalleryFile, 'not really an image\n', 'utf8');
+
+    const strayGallery = await runBuild({ PREVIEW_OUTPUT_DIR: buildOutputDir });
+
+    assert.notEqual(strayGallery.code, 0, 'The build published a media file from gallery-data/.');
+    assert.match(strayGallery.output, /gallery-data\/__artifact-contract-probe__\.jpg/);
+    assert.match(strayGallery.output, /not a contracted gallery metadata file/);
+
+    await fs.rm(strayGalleryFile, { force: true });
 
     const clean = await runBuild({ PREVIEW_OUTPUT_DIR: buildOutputDir });
 
@@ -305,13 +341,14 @@ try {
     await fs.rm(strayDataFile, { force: true });
     await fs.rm(strayVendorFile, { force: true });
     await fs.rm(strayAssetFile, { force: true });
+    await fs.rm(strayGalleryFile, { force: true });
     await fs.rm(buildOutputDir, { recursive: true, force: true });
 }
 
 // The probes are deliberately created inside tracked directories, so leaving one
 // behind would look like an export defect to the next person. Prove they are
 // gone rather than trusting the cleanup above.
-for (const probe of [strayDataFile, strayVendorFile, strayAssetFile]) {
+for (const probe of [strayDataFile, strayVendorFile, strayAssetFile, strayGalleryFile]) {
     assert.equal(
         await pathExists(probe),
         false,
@@ -319,7 +356,7 @@ for (const probe of [strayDataFile, strayVendorFile, strayAssetFile]) {
     );
 }
 
-console.log('PASS - the artifact build enforces both contracts on the real tree');
+console.log('PASS - the artifact build enforces all publication contracts on the real tree');
 console.log('Preview artifact safety tests passed.');
 
 function runBuild(env) {
