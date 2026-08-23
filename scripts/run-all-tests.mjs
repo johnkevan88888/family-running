@@ -8,6 +8,7 @@ const checks = [
     ['Repository safety validation', ['scripts/validate-repository-safety.mjs']],
     ['Vendored library validation', ['scripts/sync-vendor.mjs', '--check']],
     ['CSV validation', ['scripts/validate-csv.mjs']],
+    ['Age-grade master/slave contract tests', ['tests/age-grade-contract.mjs']],
     ['Analytics configuration tests', ['tests/analytics-config.mjs']],
     ['PR release-path tests', ['tests/pr-release-path.mjs']],
     ['Simple data-update workflow tests', ['tests/simple-data-update.mjs']],

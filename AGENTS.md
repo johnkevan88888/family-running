@@ -13,7 +13,7 @@ This repository is a static GitHub Pages website for the Family Running Champion
 - Excel is the private source of truth for championship data and calculations.
 - The website consumes CSV files exported from Excel/VBA.
 - Do not modify, copy, upload, commit, inspect, or publish the private Excel workbook, unless explicit permission is given. In which case, ensure a backup copy is made before any changes are made.
-- JavaScript must not calculate age grades, rankings, championship status, crown standards, target times, or medal positions. Those values must remain Excel/VBA-owned and arrive in exported CSVs.
+- JavaScript must not calculate rankings, championship status, crown standards, target times, or medal positions. Age grades also remain Excel/VBA-owned except for the dedicated calculator's narrow, approved slave calculation: `age-grade-contract.js` may divide the workbook-exported full-precision `AgeGradedStandardSeconds` by a visitor-entered elapsed time only. It must not derive an open standard, age, sex, or age factor. The workbook exports an exact formula signature, version, and conformance vector; both browser and repository validation must fail closed if they do not match the JavaScript contract.
 
 ## Required Site Modes
 
@@ -88,6 +88,7 @@ Preserve the selected `site` parameter when navigating between championship page
 - `data/family/` contains CSV exports for the Family mode.
 - `data/everyone/` contains CSV exports for the Everyone mode.
 - `data/athlete_results.csv` is shared profile result data used by athlete pages.
+- `data/<site>/age_grade_calculator.csv` is the workbook-owned input and conformance contract for the dedicated calculator. The browser must validate it through `age-grade-contract.js` before enabling time entry.
 - `data/export_manifest.csv` is the completion and consistency contract for one full website-data export.
 
 ## Export Bundle Contract

@@ -411,3 +411,29 @@ Unknown historical details are labelled rather than inferred.
   legitimately promote or re-rank other athletes. Historical Git commits are
   not rewritten. A data promotion and publication remain separate explicit
   approvals.
+
+## The age-grade calculator is a fail-closed JavaScript slave of Excel
+
+- **Status:** Accepted and implemented in the private workbook and website;
+  public data promotion pending
+- **Date:** 23 August 2026
+- **Decision:** Excel remains the master for age, sex, event standards, age
+  factors, and the age-grade formula. The dedicated calculator may perform only
+  the final division of a workbook-exported full-precision age-graded standard
+  by a visitor-entered duration. The export carries an exact formula signature,
+  contract version, and workbook-generated conformance value. The browser and
+  repository validators refuse to calculate if any of them differ from the
+  supported JavaScript contract.
+- **Rationale:** A static site cannot send arbitrary user-entered times back to
+  the private workbook. Exporting the already age-adjusted standard preserves
+  workbook ownership of all personal and standards lookups while allowing an
+  instant local calculation. Formula signatures and conformance vectors turn a
+  potentially silent duplicate implementation into an explicit master/slave
+  release contract.
+- **Consequences:** `age-grade-contract.js` is the sole narrow exception to the
+  general ban on JavaScript age-grade calculation. It must not derive age,
+  sex, open standards, or age factors, and it cannot calculate rankings,
+  categories, targets, or awards. Any workbook logic or display-precision
+  change requires a same-release JavaScript and test update; otherwise export
+  or page initialization fails closed. Calculator CSVs are site-specific and
+  join the normal full-bundle staging, reconciliation, and promotion workflow.

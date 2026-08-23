@@ -62,6 +62,7 @@ try {
     await runDocumentTitleTests(browser);
     await runCalculatorComparisonUnavailableEdgeCaseTests(browser);
     await runCalculatorComparisonEdgeCaseTests(browser);
+    await runAgeGradeCalculatorContractEdgeCaseTests(browser);
 } finally {
     if (browser) {
         await browser.close();
@@ -184,15 +185,30 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} records page`);
         await assertBundleMetadataHidden(page, `${mode}/${viewport.name} records page`);
 
-        const calculatorRequestStart = requestedPaths.length;
+        const headToHeadRequestStart = requestedPaths.length;
         await page.goto(`${preview.baseUrl}/calculator.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
         await waitForRenderedCalculator(page, mode);
         await waitForNetworkToSettle(page);
+        await assertPrimaryNavigation(page, mode, viewport, 'head-to-head');
+        await assertNoModeSwitch(page, mode, viewport, 'head-to-head');
+        await assertCalculatorPage(page, mode, viewport, requestedPaths.slice(headToHeadRequestStart));
+        await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} head-to-head page`);
+        await assertBundleMetadataHidden(page, `${mode}/${viewport.name} head-to-head page`);
+
+        const ageGradeCalculatorRequestStart = requestedPaths.length;
+        await page.goto(`${preview.baseUrl}/age-grade-calculator.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+        await waitForRenderedAgeGradeCalculator(page, mode);
+        await waitForNetworkToSettle(page);
         await assertPrimaryNavigation(page, mode, viewport, 'calculator');
         await assertNoModeSwitch(page, mode, viewport, 'calculator');
-        await assertCalculatorPage(page, mode, viewport, requestedPaths.slice(calculatorRequestStart));
-        await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} calculator page`);
-        await assertBundleMetadataHidden(page, `${mode}/${viewport.name} calculator page`);
+        await assertAgeGradeCalculatorPage(
+            page,
+            mode,
+            viewport,
+            requestedPaths.slice(ageGradeCalculatorRequestStart)
+        );
+        await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} age-grade calculator page`);
+        await assertBundleMetadataHidden(page, `${mode}/${viewport.name} age-grade calculator page`);
 
         const overviewRequestStart = requestedPaths.length;
         await page.goto(`${preview.baseUrl}/overview.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
@@ -216,7 +232,8 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await capturePageScreenshot(page, mode, viewport, 'championships', waitForRenderedChampionship);
         await capturePageScreenshot(page, mode, viewport, 'hall-of-fame', waitForRenderedHallOfFame);
         await capturePageScreenshot(page, mode, viewport, 'records', waitForRenderedRecords);
-        await capturePageScreenshot(page, mode, viewport, 'calculator', waitForRenderedCalculator);
+        await capturePageScreenshot(page, mode, viewport, 'head-to-head', waitForRenderedCalculator);
+        await capturePageScreenshot(page, mode, viewport, 'calculator', waitForRenderedAgeGradeCalculator);
         await capturePageScreenshot(page, mode, viewport, 'overview', waitForRenderedOverview);
 
         if (updateScreenshots) {
@@ -349,7 +366,7 @@ async function assertCalculatorPage(page, mode, viewport, requestedPaths) {
 
     const intro = normalizeText(await page.locator('.calculator-hero').textContent());
     const calculatorText = normalizeText(await page.locator('.calculator-page').textContent());
-    for (const requiredText of ['Age-grade calculator', 'latest championship export']) {
+    for (const requiredText of ['Head to Head', 'latest championship export']) {
         if (!intro.includes(requiredText)) {
             failures.push(`${context}: Calculator intro omitted "${requiredText}".`);
         }
@@ -410,6 +427,88 @@ async function assertCalculatorPage(page, mode, viewport, requestedPaths) {
     await perMile.click();
     await assertVisiblePaceUnit(page.locator('.calculator-page'), 'mi', `${context} calculator paces`);
     await perKm.click();
+}
+
+async function assertAgeGradeCalculatorPage(page, mode, viewport, requestedPaths) {
+    const context = `${mode}/${viewport.name} age-grade calculator`;
+    const selectedFile = `data/${mode}/age_grade_calculator.csv`;
+    const otherMode = mode === 'family' ? 'everyone' : 'family';
+    const otherFile = `data/${otherMode}/age_grade_calculator.csv`;
+    const rows = await readCsvObjects(selectedFile);
+    const athleteIds = [...new Set(rows.map(row => row.AthleteId).filter(Boolean))];
+    const distances = [...new Set(rows.map(row => row.Distance).filter(Boolean))];
+
+    if (!requestedPaths.includes(selectedFile)) {
+        failures.push(`${context}: did not request ${selectedFile}.`);
+    }
+    if (requestedPaths.includes(otherFile)) {
+        failures.push(`${context}: requested the other site mode's calculator export.`);
+    }
+
+    const intro = normalizeText(await page.locator('.calculator-hero').textContent());
+    for (const requiredText of ['Calculate your age grade', 'latest workbook export']) {
+        if (!intro.includes(requiredText)) {
+            failures.push(`${context}: intro omitted "${requiredText}".`);
+        }
+    }
+
+    if (await page.locator('#age-grade-athlete option').count() !== athleteIds.length) {
+        failures.push(`${context}: athlete dropdown did not match the selected site's workbook export.`);
+    }
+    if (await page.locator('#age-grade-distance option').count() !== distances.length) {
+        failures.push(`${context}: distance dropdown did not match the workbook export.`);
+    }
+
+    const example = rows.find(row => row.Distance === '5 km') || rows[0];
+    if (!example) {
+        failures.push(`${context}: calculator export had no example row.`);
+        return;
+    }
+
+    await page.locator('#age-grade-athlete').selectOption(example.AthleteId);
+    await page.locator('#age-grade-distance').selectOption(example.Distance);
+    await page.locator('#age-grade-time').fill('2430');
+    await page.locator('#age-grade-time').blur();
+
+    const normalizedTime = await page.locator('#age-grade-time').inputValue();
+    if (normalizedTime !== '24:30') {
+        failures.push(`${context}: compact time 2430 normalized to "${normalizedTime}" instead of "24:30".`);
+    }
+
+    const expectedPercentage = `${((Number(example.AgeGradedStandardSeconds) / 1470) * 100).toFixed(2)}%`;
+    await expectText(page, '#age-grade-percentage', expectedPercentage, `${context} workbook result`);
+
+    const longRaceExample = rows.find(row => row.Distance === 'Marathon' && row.AthleteId === example.AthleteId)
+        || rows.find(row => row.Distance === 'Marathon');
+    await page.locator('#age-grade-athlete').selectOption(longRaceExample.AthleteId);
+    await page.locator('#age-grade-distance').selectOption(longRaceExample.Distance);
+    await page.locator('#age-grade-time').fill('14530.5');
+    await page.locator('#age-grade-time').blur();
+    if (await page.locator('#age-grade-time').inputValue() !== '1:45:30.5') {
+        failures.push(`${context}: compact time 14530.5 did not preserve its optional tenth.`);
+    }
+    const expectedLongPercentage = `${((Number(longRaceExample.AgeGradedStandardSeconds) / 6330.5) * 100).toFixed(2)}%`;
+    await expectText(page, '#age-grade-percentage', expectedLongPercentage, `${context} fractional workbook result`);
+
+    await page.locator('#age-grade-time').fill('14530');
+    await page.locator('#age-grade-time').blur();
+    if (await page.locator('#age-grade-time').inputValue() !== '1:45:30') {
+        failures.push(`${context}: compact time 14530 did not work without the optional tenth.`);
+    }
+
+    await page.locator('#age-grade-time').fill('24:99');
+    await page.locator('#age-grade-time').blur();
+    if (await page.locator('#age-grade-time').getAttribute('aria-invalid') !== 'true') {
+        failures.push(`${context}: invalid seconds were not marked invalid.`);
+    }
+    if (!normalizeText(await page.locator('#age-grade-time-error').textContent())) {
+        failures.push(`${context}: invalid time did not render guidance.`);
+    }
+
+    const contractStatus = normalizeText(await page.locator('#age-grade-contract-status').textContent());
+    if (!contractStatus.includes('Checked against the workbook calculation contract')) {
+        failures.push(`${context}: workbook contract confirmation was not shown.`);
+    }
 }
 
 async function assertCalculatorComparisonCards(page, targets, context) {
@@ -668,11 +767,15 @@ async function assertOverviewActivity(page, mode, viewport) {
 
 async function assertPrimaryNavigation(page, mode, viewport, activePage) {
     const context = `${mode}/${viewport.name} ${activePage}`;
+    const championshipsLabel = activePage === 'athlete'
+        ? 'Back to Championships'
+        : 'Championships';
     const expected = new Map([
-        ['Championships', 'index.html'],
+        [championshipsLabel, 'index.html'],
         ['Hall of Fame', 'hall-of-fame.html'],
         ['Records', 'records.html'],
-        ['Calculator', 'calculator.html'],
+        ['Head to Head', 'calculator.html'],
+        ['Calculator', 'age-grade-calculator.html'],
         ['Overview', 'overview.html']
     ]);
 
@@ -721,23 +824,38 @@ async function assertWebsiteDateFormat(page, context) {
 async function assertNoModeSwitch(page, mode, viewport, pageKey) {
     const context = `${mode}/${viewport.name} ${pageKey}`;
     const switchLinks = await page.locator('.site-mode-link').count();
-    const modeBadges = page.locator('.site-mode-badge');
-    const badgeCount = await modeBadges.count();
+    const badgeCount = await page.locator('.site-mode-badge').count();
 
     if (switchLinks !== 0) {
         failures.push(`${context}: rendered ${switchLinks} Family/Everyone switch link(s).`);
     }
 
-    if (badgeCount !== 1) {
-        failures.push(`${context}: expected one current-site badge, found ${badgeCount}.`);
-        return;
+    if (badgeCount !== 0) {
+        failures.push(`${context}: rendered ${badgeCount} redundant current-site badge(s).`);
     }
 
     const expectedLabel = mode === 'everyone' ? 'Everyone' : 'Family';
-    const badgeText = normalizeText(await modeBadges.first().textContent());
-    if (!badgeText.includes(expectedLabel)) {
-        failures.push(`${context}: current-site badge was "${badgeText}", expected ${expectedLabel}.`);
+    const subtitleLabel = normalizeText(await page.locator('#site-mode-label').textContent());
+    if (!subtitleLabel.includes(expectedLabel)) {
+        failures.push(`${context}: site subtitle was "${subtitleLabel}", expected ${expectedLabel}.`);
     }
+}
+
+async function waitForRenderedAgeGradeCalculator(page, mode) {
+    await page.waitForSelector('#site-title', { state: 'visible' });
+    await page.waitForFunction(() => {
+        const input = document.querySelector('#age-grade-time');
+        const status = document.querySelector('#age-grade-contract-status')?.textContent || '';
+        return input && !input.disabled && status.includes('Checked against');
+    });
+    await page.waitForFunction(expectedMode => {
+        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
+        const expected = expectedMode === 'everyone'
+            ? 'Age-Graded Running Championships'
+            : 'Family Running Championships';
+
+        return title === expected;
+    }, mode);
 }
 
 async function assertSitePaceToggle(page, mode, viewport) {
@@ -783,7 +901,8 @@ async function assertNavigationBetweenPublicPages(page, mode, viewport) {
     const targets = [
         { label: 'Hall of Fame', pageKey: 'hall-of-fame', waitFor: waitForRenderedHallOfFame },
         { label: 'Records', pageKey: 'records', waitFor: waitForRenderedRecords },
-        { label: 'Calculator', pageKey: 'calculator', waitFor: waitForRenderedCalculator },
+        { label: 'Head to Head', pageKey: 'head-to-head', waitFor: waitForRenderedCalculator },
+        { label: 'Calculator', pageKey: 'calculator', waitFor: waitForRenderedAgeGradeCalculator },
         { label: 'Overview', pageKey: 'overview', waitFor: waitForRenderedOverview },
         { label: 'Championships', pageKey: 'championships', waitFor: waitForRenderedChampionship }
     ];
@@ -821,7 +940,8 @@ function pageFileForKey(pageKey) {
     if (pageKey === 'hall-of-fame') return 'hall-of-fame.html';
     if (pageKey === 'overview') return 'overview.html';
     if (pageKey === 'records') return 'records.html';
-    if (pageKey === 'calculator') return 'calculator.html';
+    if (pageKey === 'head-to-head') return 'calculator.html';
+    if (pageKey === 'calculator') return 'age-grade-calculator.html';
     if (pageKey === 'athlete') return 'athlete.html';
 
     return 'index.html';
@@ -1625,6 +1745,7 @@ async function runBrandMetadataTests(browserInstance) {
         'hall-of-fame.html',
         'records.html',
         'calculator.html',
+        'age-grade-calculator.html',
         'overview.html',
         'athlete.html'
     ];
@@ -1841,6 +1962,7 @@ async function runDocumentTitleTests(browserInstance) {
         'hall-of-fame.html',
         'records.html',
         'calculator.html',
+        'age-grade-calculator.html',
         'overview.html'
     ];
     const context = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
@@ -1897,6 +2019,40 @@ async function runDocumentTitleTests(browserInstance) {
         }
     } catch (error) {
         failures.push(`document title: ${error.message}`);
+    } finally {
+        await context.close();
+    }
+}
+
+async function runAgeGradeCalculatorContractEdgeCaseTests(browserInstance) {
+    const context = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+
+    try {
+        const filePath = path.join(siteRoot, 'data', 'family', 'age_grade_calculator.csv');
+        const csv = await fs.readFile(filePath, 'utf8');
+        const mismatchedCsv = csv.replace(
+            'AGOC:=[@OC]/[@[Age Factor]]|AGSCORE:=[@[AG OC]]/[@[Time Seconds]]|FORMAT:0.00%',
+            'changed-workbook-contract'
+        );
+
+        await page.route('**/data/family/age_grade_calculator.csv', route => route.fulfill({
+            status: 200,
+            contentType: 'text/csv; charset=utf-8',
+            body: mismatchedCsv
+        }));
+        await page.goto(`${preview.baseUrl}/age-grade-calculator.html?site=family`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#age-grade-result[data-state="error"]');
+
+        if (!await page.locator('#age-grade-time').isDisabled()) {
+            failures.push('age-grade calculator contract mismatch: time input remained enabled.');
+        }
+        const status = normalizeText(await page.locator('#age-grade-contract-status').textContent());
+        if (!status.includes('Excel age-grade formula has changed')) {
+            failures.push('age-grade calculator contract mismatch: fail-closed explanation was not shown.');
+        }
+    } catch (error) {
+        failures.push(`age-grade calculator contract mismatch: ${error.message}`);
     } finally {
         await context.close();
     }
@@ -2201,9 +2357,75 @@ async function assertDirectAthleteProfile(page, mode, viewport) {
     await waitForNetworkToSettle(page);
     await assertPrimaryNavigation(page, mode, viewport, 'athlete');
     await assertNoModeSwitch(page, mode, viewport, 'athlete');
+    await assertAthleteHeaderLayout(page, mode, viewport);
     await assertProgressionChart(page, mode, viewport);
     await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} direct athlete page`);
     await assertBundleMetadataHidden(page, `${mode}/${viewport.name} direct athlete page`);
+}
+
+async function assertAthleteHeaderLayout(page, mode, viewport) {
+    const context = `${mode}/${viewport.name} athlete header`;
+    const layout = await page.evaluate(() => {
+        const bounds = selector => {
+            const element = document.querySelector(selector);
+            if (!element) return null;
+            const rect = element.getBoundingClientRect();
+            return {
+                bottom: rect.bottom,
+                height: rect.height,
+                left: rect.left,
+                right: rect.right,
+                top: rect.top
+            };
+        };
+
+        return {
+            athleteHeader: bounds('.athlete-profile-header'),
+            athleteLabel: bounds('.athlete-header-label'),
+            athleteName: bounds('#athlete-name'),
+            backLinkInNavigation: document.querySelectorAll('.site-nav .back-link').length,
+            contextCount: document.querySelectorAll('#athlete-context').length,
+            mainHeader: bounds('.site-header-main'),
+            modeBadgeCount: document.querySelectorAll('.site-mode-badge').length,
+            navigation: bounds('.site-navigation-panel'),
+            paceControl: bounds('.site-pace-control'),
+            primaryNavigation: bounds('.site-nav'),
+            profileToplineCount: document.querySelectorAll('.athlete-header-topline').length,
+            siteHeader: bounds('.site-header'),
+            updated: bounds('#last-updated')
+        };
+    });
+
+    if (layout.backLinkInNavigation !== 1) {
+        failures.push(`${context}: expected the back link in the primary navigation.`);
+    }
+    if (layout.profileToplineCount !== 0 || layout.contextCount !== 0) {
+        failures.push(`${context}: the removed championship-context row is still present.`);
+    }
+    if (layout.modeBadgeCount !== 0) {
+        failures.push(`${context}: the redundant current-site badge is still present.`);
+    }
+    if (!layout.athleteHeader || layout.athleteHeader.height >= 120) {
+        failures.push(`${context}: athlete banner was not reduced below 120px.`);
+    }
+    if (!layout.athleteLabel || !layout.athleteName || layout.athleteName.left <= layout.athleteLabel.left) {
+        failures.push(`${context}: athlete name was not positioned to the right of its label.`);
+    }
+    if (!layout.updated || !layout.mainHeader || layout.updated.top < layout.mainHeader.top || layout.updated.bottom > layout.mainHeader.bottom + 1) {
+        failures.push(`${context}: updated timestamp was not kept in the top header row.`);
+    }
+    if (!layout.navigation || !layout.mainHeader || layout.navigation.top < layout.mainHeader.bottom - 1) {
+        failures.push(`${context}: header controls were not positioned below the title row.`);
+    }
+    if (!layout.paceControl || !layout.navigation || Math.abs(layout.paceControl.right - layout.navigation.right) > 1) {
+        failures.push(`${context}: pace control was not aligned to the right of the menu row.`);
+    }
+    if (viewport.name === 'desktop' && (!layout.primaryNavigation || !layout.paceControl || layout.paceControl.left - layout.primaryNavigation.right < 24)) {
+        failures.push(`${context}: menu links were not separated from the right-aligned pace control.`);
+    }
+    if (viewport.name === 'desktop' && (!layout.siteHeader || layout.siteHeader.height >= 210)) {
+        failures.push(`${context}: main header was not reduced below 210px on desktop.`);
+    }
 }
 
 // The chart library is vendored and same-origin, so unlike the previous CDN

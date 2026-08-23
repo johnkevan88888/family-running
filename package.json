@@ -14,6 +14,7 @@
     "validate:vendor": "node scripts/sync-vendor.mjs --check",
     "vendor:sync": "node scripts/sync-vendor.mjs",
     "test:export-bundle": "node tests/export-bundle-validation.mjs",
+    "test:age-grade-contract": "node tests/age-grade-contract.mjs",
     "test:staged-export": "node tests/staged-export-workflow.mjs",
     "test:artifact-safety": "node tests/preview-artifact-safety.mjs",
     "test:personal-best-reconciliation": "node tests/personal-best-reconciliation.mjs",

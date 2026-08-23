@@ -5,23 +5,6 @@ const site = window.siteNavigation?.selectedSite
     ? window.siteNavigation.selectedSite()
     : (params.get('site') || 'family');
 
-function updateBackLink() {
-    const backLink = document.querySelector('.back-link');
-    const athleteContext = document.getElementById('athlete-context');
-
-    if (backLink) {
-        backLink.href = window.siteNavigation?.pageHref
-            ? window.siteNavigation.pageHref('championships', site)
-            : `index.html?site=${site}`;
-    }
-
-    if (athleteContext) {
-        athleteContext.innerText = site === 'everyone'
-            ? 'Everyone Championships'
-            : 'Family Championships';
-    }
-}
-
 function parseDate(dateStr) {
     return window.dateDisplay?.parse(dateStr) || new Date(Number.NaN);
 }
@@ -812,7 +795,6 @@ async function exportedWindowEnd(results) {
 }
 
 async function buildAthletePage() {
-	updateBackLink();
     const rows = await fetchCSV('data/athlete_results.csv');
     const headers = rows[0];
     const data = rows.slice(1);
