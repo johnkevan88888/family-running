@@ -311,8 +311,11 @@ Unknown historical details are labelled rather than inferred.
   synthetic regression suite and complete `pnpm test` suite pass, including the
   107-file artifact build and both-mode browser coverage at 1440px, 720px, and
   390px. Refreshed screenshots were manually reviewed: the callout and badges
-  are readable, contained, and introduce no overflow. The branch push and
-  updated Pull Request preview remain pending. This is not merged or released.
+  are readable, contained, and introduce no overflow. Commit `2b28907` is on
+  Pull Request #68 with green checks, and its refreshed Deploy Preview was
+  remotely verified in both modes. The Family initial batch has 5 medal cards
+  and 10 badges; Everyone has 2 cards and 4 badges. Both preserve selected-mode
+  titles and links without overflow. This is not merged or released.
 
 ## Production usage analytics are aggregate and cookie-free
 

@@ -201,8 +201,13 @@ The complete `pnpm test` suite passes, including the 107-file preview-artifact
 build. Browser smoke coverage passes in both modes at 1440px, the 720px
 intermediate probe, and 390px mobile. Responsive screenshots were refreshed and
 manually reviewed; the medal callout and per-context badges remain readable and
-contained, with no horizontal overflow. The branch push and updated Deploy
-Preview remain pending and are not recorded as passing here.
+contained, with no horizontal overflow. Commit `2b28907` is pushed to Pull
+Request #68 and its checks are green. The refreshed Deploy Preview at
+`https://deploy-preview-68--thunderous-moxie-c5aac5.netlify.app/news.html`
+shows `Updated 23 Aug 2026 7:52 PM`. Remote DOM verification found 5 medal cards
+and 10 badges in Family's initial 12, and 2 cards and 4 badges in Everyone's.
+Both modes preserve the selected-mode title and links and have no horizontal
+overflow. This verification does not merge or release the change.
 
 Focused CSV validation must require the exact ordered 36-column News header and
 enforce the complete contract: one selected-site file, literal `Official`, the
@@ -291,7 +296,8 @@ reviewed with no horizontal overflow. All tested real-data cards remained
 within the 320px desktop and 850px mobile height ceilings; the visible history
 was about 55% shorter on desktop and 37% shorter on mobile than the preceding
 layout. This local acceptance does not merge or release the change. The Pull
-Request preview still requires the validated branch update to be pushed.
+Request preview was subsequently refreshed and verified for the medal-position
+extension at commit `2b28907`.
 
 Analytics configuration tests prove that GoatCounter loads only for the
 production `www.aceofrace.com` and `aceofrace.com` domains, plus the legacy
@@ -548,8 +554,8 @@ The four-field medal-position extension is also a coordinated workbook schema,
 data, validator, and browser change. It is not eligible for the existing-schema
 lightweight data route. Its refreshed full-bundle validation, reconciliation,
 promotion, tracked-data validation, complete local suite, and both-mode
-responsive review pass. No updated Deploy Preview and explicit approval, no
-release of the extension.
+responsive review pass. The updated Deploy Preview and PR checks also pass. No
+explicit merge approval and completed merge, no release of the extension.
 
 For validated lightweight data refreshes, no accepted eligibility gate, exact
 CSV diff review, and responsive screenshot review for both site modes, no

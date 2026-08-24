@@ -83,9 +83,14 @@ complete `pnpm test` suite now passes. The preview artifact contains 107 files,
 and browser smoke coverage passes in both modes at 1440px, the 720px
 intermediate probe, and 390px mobile. Responsive screenshots were refreshed and
 manually reviewed: the medal callout and per-context badges are readable,
-contained within their cards, and introduce no horizontal overflow. The branch
-push and updated Pull Request preview remain pending; no remote preview pass is
-claimed yet.
+contained within their cards, and introduce no horizontal overflow. Commit
+`2b28907` is pushed to Pull Request #68 and all remote checks are green. The
+refreshed Deploy Preview at
+`https://deploy-preview-68--thunderous-moxie-c5aac5.netlify.app/news.html`
+shows `Updated 23 Aug 2026 7:52 PM`. Remote DOM verification found the Family
+initial batch contains 5 medal cards and 10 medal badges, while Everyone
+contains 2 cards and 4 badges. Both modes have the correct selected-mode title
+and links and no horizontal overflow.
 
 The private source workbook was copied and hash-verified before inspection. The
 unchanged backup is
@@ -122,8 +127,8 @@ Everyone entries with no mobile overflow or browser warning/error. The first
 draft, filters, and compact presentation are on Pull Request #68 and passed
 their pre-medal preview checks. The medal-position extension is local work
 with its refreshed export promoted and its complete local suite and responsive
-review passing. The branch push and Pull Request preview update remain. Nothing
-has been merged, published, or deployed.
+review passing. Commit `2b28907`, the green PR checks, and the refreshed
+both-mode preview are verified. Nothing has been merged, published, or released.
 
 ## Prior work: header refinement and workbook-locked age-grade calculator
 

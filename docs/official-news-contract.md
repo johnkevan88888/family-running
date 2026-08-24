@@ -25,8 +25,11 @@
   validation passed. The complete `pnpm test` suite and 107-file artifact build
   pass. Both modes pass browser coverage at 1440px, 720px, and 390px; refreshed
   responsive screenshots were manually reviewed with readable, contained
-  medal callouts and badges and no overflow. The branch push and updated Pull
-  Request preview remain pending.
+  medal callouts and badges and no overflow. Pull Request #68 is updated at
+  commit `2b28907` with green checks. Its refreshed Deploy Preview was remotely
+  verified in both modes: the Family initial batch has 5 medal cards and 10
+  badges, Everyone has 2 cards and 4 badges, selected-mode titles and links are
+  correct, and neither mode overflows. Nothing is merged or released.
 - **Scope:** Official-result milestones and their reconstructed championship
   effect. This is not an editorial news system.
 
