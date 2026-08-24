@@ -229,8 +229,9 @@ Unknown historical details are labelled rather than inferred.
 
 ## Official Results News is a workbook-owned historical replay
 
-- **Status:** Accepted and implemented locally; approved 72-file data bundle
-  promoted and complete validation passed; not released
+- **Status:** Accepted and implemented locally; approved first-draft 72-file
+  data bundle promoted and validated; medal-entry extension in progress; not
+  released
 - **Date:** 23 August 2026
 - **Decision:** Excel/VBA independently reconstructs Family and Everyone
   Official-result milestone history from the presently valid result set. A
@@ -253,12 +254,23 @@ Unknown historical details are labelled rather than inferred.
   desktop left-to-right Result, PB improvement or baseline, and Championship
   movement flow, then stack those stages in the same order on mobile.
   Connector arrows are decorative and carry no information unavailable from
-  the semantic content order.
+  the semantic content order. A result entering a medal position is also
+  workbook-owned. Four context-aligned fields independently export blank,
+  `Gold`, `Silver`, or `Bronze` for Current Distance, Current Overall, All Time
+  Distance, and All Time Overall. They populate only for a crossing from
+  unranked or Rank 4+ into Rank 1/2/3; movement within an existing medal
+  position is not a new entry. Competition rank supplies tie semantics, and
+  the browser may celebrate only the exported values rather than inferring a
+  medal from before/after ranks.
 - **Rationale:** Exact milestone selection and historical positions depend on
   full-precision age grades, source order, site eligibility, the workbook's
   rolling-window rule, and the same ranking logic as the live Official tables.
   Public result rows and current leaderboard snapshots do not carry enough
-  information to reproduce those decisions safely.
+  information to reproduce those decisions safely. Although the News row
+  carries before/after ranks for display, having the browser convert them into
+  medals would create a second championship-award rule. Four aligned enums are
+  the smallest robust export shape that preserves which of several simultaneous
+  contexts changed and which medal each one entered.
 - **Consequences:** The first draft adds required site-specific
   `data/family/official_result_news.csv` and
   `data/everyone/official_result_news.csv` exports. The workbook draft produced
@@ -285,9 +297,22 @@ Unknown historical details are labelled rather than inferred.
   intermediate width, and 390 x 844, with reviewed screenshots and no
   overflow. All tested real-data cards remained within the 320px desktop and
   850px mobile height ceilings, making the visible history about 55% shorter on
-  desktop and 37% shorter on mobile than the preceding layout. The Pull Request
-  preview update remains pending the branch push; this is not merged or
-  released.
+  desktop and 37% shorter on mobile than the preceding layout. The medal-entry
+  extension expands the News header from 32 to 36 columns without adding
+  another public file or changing milestone selection. One result may carry
+  several medal entries, Family and Everyone may differ, and 1 Mile remains
+  Overall-only. The page uses an explicit `Medal breakthrough!` callout and
+  labelled per-context medal badges, so colour is not the only signal and the
+  wording does not claim a permanent award. The refreshed staged 72-file export
+  passed validation; reconciliation found only the two News CSVs meaningfully
+  changed and preserved every prior News fact, rank, and delta. Atomic promotion
+  and tracked-data validation pass. The promoted rows contain 24 Family cards
+  with 59 medal-entry contexts and 34 Everyone cards with 77. The focused
+  synthetic regression suite and complete `pnpm test` suite pass, including the
+  107-file artifact build and both-mode browser coverage at 1440px, 720px, and
+  390px. Refreshed screenshots were manually reviewed: the callout and badges
+  are readable, contained, and introduce no overflow. The branch push and
+  updated Pull Request preview remain pending. This is not merged or released.
 
 ## Production usage analytics are aggregate and cookie-free
 

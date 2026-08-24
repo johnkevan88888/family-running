@@ -55,8 +55,27 @@ the 720px intermediate probe, and 390 x 844, and reviewed screenshots had no
 overflow. All tested real-data cards remained within the 320px desktop and
 850px mobile height ceilings; the visible history is about 55% shorter on
 desktop and 37% shorter on mobile than the preceding layout. The Pull Request
-preview update awaits the branch push. This remains unmerged review work, not
+preview passed for that compact version. This remains unmerged review work, not
 a release.
+
+John requested a third follow-up on 23 August 2026 to make a result entering a
+medal-winning position visibly stand out. This is not a browser-derived medal:
+the News export grows from 32 to 36 columns with one workbook-owned blank or
+Gold/Silver/Bronze `MedalEntry` field for each Current/All-Time,
+Distance/Overall rank context. A field is populated only for an unranked or
+Rank 4+ to Rank 1/2/3 crossing; existing-medal upgrades stay blank, tied ranks
+use the workbook's competition rank, multiple contexts may populate, and 1 Mile
+remains Overall-only. The page uses the exported fields for the textual callout
+`Medal breakthrough!`, a card accent, and labelled badges on affected movement
+rows. The repository contract and focused synthetic tests pass locally. A
+refreshed staged 72-file workbook export passed validation and reconciliation,
+only the two News CSVs changed meaningfully, and atomic tracked-data promotion
+plus validation passed. It contains 24 Family cards with 59 medal-entry
+contexts and 34 Everyone cards with 77. The complete `pnpm test` suite and
+107-file artifact build pass; both modes pass browser coverage at 1440px,
+720px, and 390px. Refreshed screenshots were manually reviewed with readable,
+contained medal treatment and no overflow. The branch push and updated Pull
+Request preview remain pending; this is not released.
 
 ## Next candidate tasks
 

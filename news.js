@@ -43,6 +43,26 @@
             showTimeImprovement: true
         }
     };
+    const medalEntryPresentations = {
+        Gold: {
+            className: 'gold',
+            icon: '&#129351;'
+        },
+        Silver: {
+            className: 'silver',
+            icon: '&#129352;'
+        },
+        Bronze: {
+            className: 'bronze',
+            icon: '&#129353;'
+        }
+    };
+    const medalEntryContexts = [
+        ['CurrentDistance', 'CurrentDistanceMedalEntry'],
+        ['CurrentOverall', 'CurrentOverallMedalEntry'],
+        ['AllTimeDistance', 'AllTimeDistanceMedalEntry'],
+        ['AllTimeOverall', 'AllTimeOverallMedalEntry']
+    ];
 
     async function buildOfficialResultNews() {
         const elements = getNewsElements();
@@ -275,10 +295,27 @@
         const currentMovement = renderRankPeriod(row, 'Current', index);
         const allTimeMovement = renderRankPeriod(row, 'AllTime', index);
         const milestoneDetails = renderMilestoneDetails(row, presentation);
+        const hasMedalEntry = medalEntryContexts.some(([rankKey, medalField]) =>
+            medalEntryPresentation(row[medalField]) &&
+            isCompleteRankMovement(
+                row[`${rankKey}RankBefore`],
+                row[`${rankKey}RankAfter`],
+                row[`${rankKey}PlacesGained`]
+            )
+        );
         const movement = currentMovement || allTimeMovement
             ? `
                 <section class="news-rank-section news-flow-stage news-flow-ranks" aria-labelledby="news-ranks-${index}">
-                    <h4 id="news-ranks-${index}">Championship movement</h4>
+                    <div class="news-rank-heading">
+                        <h4 id="news-ranks-${index}">Championship movement</h4>
+                        ${hasMedalEntry ? `
+                            <div class="news-medal-callout">
+                                <span class="news-medal-callout-icon" aria-hidden="true">&#10024;</span>
+                                <strong>Medal breakthrough!</strong>
+                                <span>Entered a medal-winning position</span>
+                            </div>
+                        ` : ''}
+                    </div>
                     <div class="news-rank-periods">
                         ${currentMovement}
                         ${allTimeMovement}
@@ -289,7 +326,7 @@
 
         return `
             <li class="news-timeline-item">
-                <article class="news-card news-card-${presentation.className}">
+                <article class="news-card news-card-${presentation.className}${hasMedalEntry ? ' news-card-medal-entry' : ''}">
                     <div class="news-flow">
                         <section class="news-flow-stage news-flow-result" aria-label="Official result">
                             <header class="news-card-header">
@@ -388,13 +425,17 @@
             'Distance',
             row[`${periodKey}DistanceRankBefore`],
             row[`${periodKey}DistanceRankAfter`],
-            row[`${periodKey}DistancePlacesGained`]
+            row[`${periodKey}DistancePlacesGained`],
+            row[`${periodKey}DistanceMedalEntry`],
+            `${periodKey.toLowerCase()}-distance`
         );
         const overallMovement = renderRankMovement(
             'Overall',
             row[`${periodKey}OverallRankBefore`],
             row[`${periodKey}OverallRankAfter`],
-            row[`${periodKey}OverallPlacesGained`]
+            row[`${periodKey}OverallPlacesGained`],
+            row[`${periodKey}OverallMedalEntry`],
+            `${periodKey.toLowerCase()}-overall`
         );
 
         if (!distanceMovement && !overallMovement) {
@@ -412,10 +453,11 @@
         `;
     }
 
-    function renderRankMovement(label, before, after, placesGained) {
+    function renderRankMovement(label, before, after, placesGained, medalEntry, contextKey) {
         const rankBefore = String(before || '').trim();
         const rankAfter = String(after || '').trim();
         const gained = String(placesGained || '').trim();
+        const medalPresentation = medalEntryPresentation(medalEntry);
 
         if (!rankBefore && !rankAfter && !gained) {
             return '';
@@ -439,15 +481,43 @@
             change = '';
         }
 
+        const medalBadge = medalPresentation && isCompleteRankMovement(rankBefore, rankAfter, gained)
+            ? `
+                <span class="news-medal-entry-badge news-medal-entry-${medalPresentation.className}">
+                    <span class="news-medal-entry-icon" aria-hidden="true">${medalPresentation.icon}</span>
+                    <span>New ${escapeHTML(medalEntry)} medal position</span>
+                </span>
+            `
+            : '';
+
         return `
-            <div class="news-rank-row">
+            <div class="news-rank-row${medalBadge ? ` news-rank-row-medal-entry news-rank-row-medal-${medalPresentation.className}` : ''}"
+                 data-news-rank-context="${escapeHTML(contextKey)}">
                 <dt>${escapeHTML(label)}</dt>
                 <dd>
                     <span class="news-rank-positions">${positions}</span>
                     ${change ? `<span class="news-rank-change">${change}</span>` : ''}
+                    ${medalBadge}
                 </dd>
             </div>
         `;
+    }
+
+    function medalEntryPresentation(value) {
+        return Object.prototype.hasOwnProperty.call(medalEntryPresentations, value)
+            ? medalEntryPresentations[value]
+            : null;
+    }
+
+    function isCompleteRankMovement(before, after, placesGained) {
+        const rankBefore = String(before || '').trim();
+        const rankAfter = String(after || '').trim();
+        const gained = String(placesGained || '').trim();
+
+        return Boolean(
+            (!rankBefore && rankAfter && !gained) ||
+            (rankBefore && rankAfter && gained)
+        );
     }
 
     function formatNewsDate(value) {

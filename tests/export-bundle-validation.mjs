@@ -30,18 +30,97 @@ const officialNewsHeaders = [
     'CurrentDistanceRankBefore',
     'CurrentDistanceRankAfter',
     'CurrentDistancePlacesGained',
+    'CurrentDistanceMedalEntry',
     'CurrentOverallRankBefore',
     'CurrentOverallRankAfter',
     'CurrentOverallPlacesGained',
+    'CurrentOverallMedalEntry',
     'AllTimeDistanceRankBefore',
     'AllTimeDistanceRankAfter',
     'AllTimeDistancePlacesGained',
+    'AllTimeDistanceMedalEntry',
     'AllTimeOverallRankBefore',
     'AllTimeOverallRankAfter',
     'AllTimeOverallPlacesGained',
+    'AllTimeOverallMedalEntry',
     'ExportBundleID'
 ];
 const officialNewsColumn = new Map(officialNewsHeaders.map((header, index) => [header, index]));
+const officialNewsMedalContextFixtures = [
+    {
+        label: 'Current Distance',
+        prefix: 'CurrentDistance',
+        medal: 'Bronze',
+        wrongMedal: 'Gold',
+        before: '4',
+        after: '3',
+        gain: '1'
+    },
+    {
+        label: 'Current Overall',
+        prefix: 'CurrentOverall',
+        medal: 'Silver',
+        wrongMedal: 'Gold',
+        before: '4',
+        after: '2',
+        gain: '2'
+    },
+    {
+        label: 'All-Time Distance',
+        prefix: 'AllTimeDistance',
+        medal: 'Bronze',
+        wrongMedal: 'Silver',
+        before: '4',
+        after: '3',
+        gain: '1'
+    },
+    {
+        label: 'All-Time Overall',
+        prefix: 'AllTimeOverall',
+        medal: 'Gold',
+        wrongMedal: 'Bronze',
+        before: '4',
+        after: '1',
+        gain: '3'
+    }
+];
+const officialNewsMedalContextCases = officialNewsMedalContextFixtures.flatMap(context => [
+    {
+        name: `official result News rejects a missing ${context.label} medal entry`,
+        expected:
+            `${context.prefix}MedalEntry must be "${context.medal}" because the result ` +
+            `entered a medal position at Rank ${context.after}.`,
+        mutate: async root => {
+            await configureOfficialNewsMedalCrossing(root, context, '');
+        }
+    },
+    {
+        name: `official result News rejects a wrong ${context.label} medal entry`,
+        expected:
+            `${context.prefix}MedalEntry must be "${context.medal}" because the result ` +
+            `entered a medal position at Rank ${context.after}.`,
+        mutate: async root => {
+            await configureOfficialNewsMedalCrossing(root, context, context.wrongMedal);
+        }
+    },
+    {
+        name: `official result News rejects an extraneous ${context.label} medal entry`,
+        expected: `${context.prefix}MedalEntry must be blank because the result did not enter a new medal position.`,
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, `${context.prefix}MedalEntry`, context.medal);
+        }
+    }
+]);
+const officialNewsOneMileMedalCases = [
+    'CurrentDistanceMedalEntry',
+    'AllTimeDistanceMedalEntry'
+].map(field => ({
+    name: `1 Mile News row cannot carry ${field}`,
+    expected: `${field} must be blank because 1 Mile has no dedicated Official distance leaderboard.`,
+    mutate: async root => {
+        await mutateOfficialNewsRow(root, 'everyone', 4, field, 'Gold');
+    }
+}));
 
 const cases = [
     {
@@ -196,6 +275,52 @@ const cases = [
         }
     },
     {
+        name: 'official result News supports independent multi-context medal entries',
+        expectPass: true,
+        mutate: async root => {
+            const changes = [
+                ['CurrentOverallRankAfter', '2'],
+                ['CurrentOverallMedalEntry', 'Silver'],
+                ['AllTimeOverallRankBefore', '4'],
+                ['AllTimeOverallRankAfter', '1'],
+                ['AllTimeOverallPlacesGained', '3'],
+                ['AllTimeOverallMedalEntry', 'Gold']
+            ];
+
+            for (const [field, value] of changes) {
+                await mutateOfficialNewsRow(root, 'everyone', 4, field, value);
+            }
+        }
+    },
+    // The News row carries the workbook's competition rank, not a leaderboard
+    // row offset. A tied Rank 2 therefore follows the same direct Silver rule;
+    // the repository neither detects nor breaks the tie.
+    {
+        name: 'competition Rank 2 maps directly to a Silver medal entry',
+        expectPass: true,
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 4, 'CurrentOverallRankAfter', '2');
+            await mutateOfficialNewsRow(root, 'everyone', 4, 'CurrentOverallMedalEntry', 'Silver');
+        }
+    },
+    {
+        name: 'moving within existing medal positions is not a new medal entry',
+        expectPass: true,
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceRankAfter', '2');
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistancePlacesGained', '1');
+        }
+    },
+    ...officialNewsMedalContextCases,
+    {
+        name: 'official result News rejects an unsupported medal entry',
+        expected: 'CurrentDistanceMedalEntry "Platinum" must be blank or one of: Gold, Silver, Bronze.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 2, 'CurrentDistanceMedalEntry', 'Platinum');
+        }
+    },
+    ...officialNewsOneMileMedalCases,
+    {
         name: 'official result News duplicate SourceRow',
         expected: 'Duplicate SourceRow 54.',
         mutate: async root => {
@@ -293,6 +418,7 @@ const cases = [
         expectPass: true,
         mutate: async root => {
             await mutateOfficialNewsRow(root, 'family', 1, 'CurrentDistanceRankAfter', '3');
+            await mutateOfficialNewsRow(root, 'family', 1, 'CurrentDistanceMedalEntry', 'Bronze');
         }
     },
     {
@@ -854,6 +980,7 @@ function validOfficialNewsRows(bundleId, mode) {
             CurrentDistanceRankBefore: '4',
             CurrentDistanceRankAfter: '3',
             CurrentDistancePlacesGained: '1',
+            CurrentDistanceMedalEntry: 'Bronze',
             CurrentOverallRankBefore: '6',
             CurrentOverallRankAfter: '5',
             CurrentOverallPlacesGained: '1',
@@ -1107,6 +1234,19 @@ async function mutateOfficialNewsRow(root, mode, dataRowNumber, field, value) {
 
     rows[dataRowNumber][columnIndex] = String(value);
     await writeOfficialNews(root, mode, rows);
+}
+
+async function configureOfficialNewsMedalCrossing(root, context, medalEntry) {
+    const changes = [
+        [`${context.prefix}RankBefore`, context.before],
+        [`${context.prefix}RankAfter`, context.after],
+        [`${context.prefix}PlacesGained`, context.gain],
+        [`${context.prefix}MedalEntry`, medalEntry]
+    ];
+
+    for (const [field, value] of changes) {
+        await mutateOfficialNewsRow(root, 'everyone', 3, field, value);
+    }
 }
 
 async function mutateOfficialNewsMatchingRow(root, mode, predicate, field, value) {

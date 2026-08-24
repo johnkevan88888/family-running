@@ -172,9 +172,41 @@ same release. The tracked public bundle contains 72 CSV files: 71 manifest
 entries plus
 `data/export_manifest.csv`.
 
-Focused CSV validation must require the exact ordered News header and enforce
-the complete contract: one selected-site file, literal `Official`, the six
-canonical distances, contiguous newest-first `SortOrder`, unique positive
+### News medal-position extension status
+
+The approved medal-position refinement changes only the two News CSV headers,
+their workbook population, repository validation, and News presentation; it
+does not add another public file or change which results qualify as milestones.
+The exact News header grows from 32 to 36 columns by placing
+`CurrentDistanceMedalEntry`, `CurrentOverallMedalEntry`,
+`AllTimeDistanceMedalEntry`, and `AllTimeOverallMedalEntry` immediately after
+their aligned rank triplets. Each field is blank or `Gold`, `Silver`, or
+`Bronze` and is populated only for an unranked/Rank 4+ to Rank 1/2/3 crossing
+in that workbook-owned context. Contexts and site modes remain independent;
+within-medal movement is blank, tied athletes use their exported competition
+rank, and 1 Mile distance entries are blank.
+
+The 36-column repository validator and synthetic export-bundle regressions are
+implemented. Syntax checks and the focused `pnpm run test:export-bundle` pass.
+The backed-up News draft produced staged 72-file export
+`test-artifacts/workbook-export-staging/run-20260823-195159-167-medal`, which
+passed the updated validator. Reconciliation found only the two News CSVs
+meaningfully changed and every prior News fact, rank, and delta identical. The
+bundle was promoted atomically; the prior tracked data is recoverable at
+`test-artifacts/workbook-export-promotion/20260823235713853`. Tracked-data
+validation passes. The promoted export contains 24 Family cards carrying at
+least one medal entry across 59 contexts, and 34 such Everyone cards across 77
+contexts. The complete News feeds remain 43 Family and 64 Everyone milestones.
+The complete `pnpm test` suite passes, including the 107-file preview-artifact
+build. Browser smoke coverage passes in both modes at 1440px, the 720px
+intermediate probe, and 390px mobile. Responsive screenshots were refreshed and
+manually reviewed; the medal callout and per-context badges remain readable and
+contained, with no horizontal overflow. The branch push and updated Deploy
+Preview remain pending and are not recorded as passing here.
+
+Focused CSV validation must require the exact ordered 36-column News header and
+enforce the complete contract: one selected-site file, literal `Official`, the
+six canonical distances, contiguous newest-first `SortOrder`, unique positive
 `SourceRow`, descending dates and reverse source order within a date,
 source-result identity, full-precision/display age-grade agreement, the four
 closed milestone types, exact previous-best and delta population rules,
@@ -195,18 +227,23 @@ wrong delta arithmetic, partial rank triplets, and a mode or source mismatch.
 Age-grade subtraction and two-decimal display rounding must be checked with
 exact fixed-decimal arithmetic, including half-up boundary cases. Cross-mode
 validation must require every Family milestone to match the same public source
-result and non-rank values in Everyone while allowing mode-specific order and
-rank triplets.
+result and non-rank/non-medal-entry values in Everyone while allowing
+mode-specific order, rank triplets, and medal entries. Every medal-entry field
+must be checked against its own aligned rank triplet: reject missing, wrong,
+extraneous, or unsupported values; accept Gold/Silver/Bronze, multiple contexts
+on one row, and direct competition-rank tie semantics; keep within-medal moves
+and unavailable 1 Mile distance contexts blank.
 
 The repository may validate exported arithmetic and public-source agreement,
 but it must not generate milestones or ranks. Before the manifest is written,
 workbook post-export validation must replay date/`SourceRow` order, preserve
 source time through millisecond precision, apply the
 strict historical Current rule (`result date > D - 365 days` and
-`result date <= D`), and compare its complete terminal Current and All-Time
-state with all 12 Official leaderboard files in each mode. This workbook check
-is required because rounded public rows cannot independently prove exact
-milestone completeness or historical ranking.
+`result date <= D`), populate each medal-entry field from the same
+workbook-owned historical rank context, and compare its complete terminal
+Current and All-Time state with all 12 Official leaderboard files in each mode.
+This workbook check is required because rounded public rows cannot independently
+prove exact milestone completeness or historical ranking.
 
 Browser smoke coverage must open the eventual News page in Family and Everyone
 at 1440 x 900 and 390 x 844. It must prove selected-mode-only requests,
@@ -214,7 +251,12 @@ mode-preserving navigation and athlete links, exact exported order including
 same-day rows, all four milestone types, first/tiny/combined improvements,
 fractional raw-time values and improvements, unranked, unchanged, gained-place,
 unavailable-table, header-only, and failed-load states. It must also prove
-there is no fallback calculation from
+that only exported medal-entry fields trigger the explicit card callout and
+per-context Gold/Silver/Bronze labels, that multiple contexts render, that
+within-medal movement is not called a new entry, and that rank numbers alone do
+not cause the browser to infer a medal. The treatment must use visible text as
+well as colour and decorative icons. It must also prove there is no fallback
+calculation from
 `athlete_results.csv`, no leaked `SourceRow`, exact age grade, `SortOrder`, or
 bundle metadata, no script or same-origin request failure, and no horizontal
 page overflow. Responsive screenshots for both modes must include a combined
@@ -478,6 +520,12 @@ Before approving a Pull Request:
   values and improvements, the strict 365-day Current boundary, all four
   before/after rank contexts, the two new manifest rows, and final-state
   agreement with every Official leaderboard before data promotion.
+- For the News medal-position extension, review all four new header fields,
+  representative unranked and Rank 4+ entries into Gold/Silver/Bronze,
+  multi-context rows, a within-medal move that remains unmarked, 1 Mile's blank
+  distance fields, and mode-specific Family/Everyone differences. Confirm the
+  preview says `entered a medal-winning position` rather than claiming a final
+  medal award, and that text remains clear without colour or icons.
 - For record changes, review the private workbook's `AbsoluteRecords` sheet and the staged `absolute_records.csv` files before approving tracked data promotion.
 - Confirm known limitations and rollback approach are documented.
 
@@ -495,6 +543,13 @@ route. The 72-file staged bundle and staged validator have passed, but that is
 only one release gate. No completed focused failure coverage, successful full
 suite, both-mode browser and responsive screenshot review, tracked-data
 promotion, and explicit approval, no News release.
+
+The four-field medal-position extension is also a coordinated workbook schema,
+data, validator, and browser change. It is not eligible for the existing-schema
+lightweight data route. Its refreshed full-bundle validation, reconciliation,
+promotion, tracked-data validation, complete local suite, and both-mode
+responsive review pass. No updated Deploy Preview and explicit approval, no
+release of the extension.
 
 For validated lightweight data refreshes, no accepted eligibility gate, exact
 CSV diff review, and responsive screenshot review for both site modes, no

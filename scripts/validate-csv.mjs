@@ -35,6 +35,7 @@ const officialNewsMilestoneTypes = [
     'Raw-Time PB',
     'Age Grade + Raw-Time PB'
 ];
+const officialNewsMedalEntries = ['Gold', 'Silver', 'Bronze'];
 const officialNewsHeaders = [
     'SortOrder',
     'SourceRow',
@@ -58,22 +59,46 @@ const officialNewsHeaders = [
     'CurrentDistanceRankBefore',
     'CurrentDistanceRankAfter',
     'CurrentDistancePlacesGained',
+    'CurrentDistanceMedalEntry',
     'CurrentOverallRankBefore',
     'CurrentOverallRankAfter',
     'CurrentOverallPlacesGained',
+    'CurrentOverallMedalEntry',
     'AllTimeDistanceRankBefore',
     'AllTimeDistanceRankAfter',
     'AllTimeDistancePlacesGained',
+    'AllTimeDistanceMedalEntry',
     'AllTimeOverallRankBefore',
     'AllTimeOverallRankAfter',
     'AllTimeOverallPlacesGained',
+    'AllTimeOverallMedalEntry',
     'ExportBundleID'
 ];
-const officialNewsRankTriplets = [
-    ['CurrentDistanceRankBefore', 'CurrentDistanceRankAfter', 'CurrentDistancePlacesGained'],
-    ['CurrentOverallRankBefore', 'CurrentOverallRankAfter', 'CurrentOverallPlacesGained'],
-    ['AllTimeDistanceRankBefore', 'AllTimeDistanceRankAfter', 'AllTimeDistancePlacesGained'],
-    ['AllTimeOverallRankBefore', 'AllTimeOverallRankAfter', 'AllTimeOverallPlacesGained']
+const officialNewsRankContexts = [
+    [
+        'CurrentDistanceRankBefore',
+        'CurrentDistanceRankAfter',
+        'CurrentDistancePlacesGained',
+        'CurrentDistanceMedalEntry'
+    ],
+    [
+        'CurrentOverallRankBefore',
+        'CurrentOverallRankAfter',
+        'CurrentOverallPlacesGained',
+        'CurrentOverallMedalEntry'
+    ],
+    [
+        'AllTimeDistanceRankBefore',
+        'AllTimeDistanceRankAfter',
+        'AllTimeDistancePlacesGained',
+        'AllTimeDistanceMedalEntry'
+    ],
+    [
+        'AllTimeOverallRankBefore',
+        'AllTimeOverallRankAfter',
+        'AllTimeOverallPlacesGained',
+        'AllTimeOverallMedalEntry'
+    ]
 ];
 // The workbook annotates participants with status markers, and a marker that
 // reaches AthleteID silently renames the athlete. Nothing downstream notices:
@@ -1245,10 +1270,10 @@ function validateOfficialResultNews(siteDir, siteMode) {
             seenPublicSourceRows.add(sourceResult.__rowNumber);
         }
         validateOfficialNewsMilestoneFields(row, file);
-        for (const triplet of officialNewsRankTriplets) {
-            const isDistanceTriplet = triplet[0].includes('Distance');
-            validateOfficialNewsRankTriplet(row, file, triplet, {
-                tableAvailable: !(String(row.Distance || '').trim() === '1 Mile' && isDistanceTriplet)
+        for (const rankContext of officialNewsRankContexts) {
+            const isDistanceContext = rankContext[0].includes('Distance');
+            validateOfficialNewsRankContext(row, file, rankContext, {
+                tableAvailable: !(String(row.Distance || '').trim() === '1 Mile' && isDistanceContext)
             });
         }
     }
@@ -1295,7 +1320,7 @@ function validateOfficialNewsCrossModeAgreement() {
             .filter(row => Number.isInteger(row.__sourceResultRowNumber))
             .map(row => [row.__sourceResultRowNumber, row])
     );
-    const rankFields = new Set(officialNewsRankTriplets.flat());
+    const rankFields = new Set(officialNewsRankContexts.flat());
     const ignoredFields = new Set(['SortOrder', 'ExportBundleID', ...rankFields]);
 
     for (const familyRow of familyRows) {
@@ -1556,13 +1581,28 @@ function validateOfficialNewsAgeGradeImprovement(row, file) {
     }
 }
 
-function validateOfficialNewsRankTriplet(row, file, [beforeField, afterField, gainField], options = {}) {
+function validateOfficialNewsRankContext(
+    row,
+    file,
+    [beforeField, afterField, gainField, medalEntryField],
+    options = {}
+) {
     const beforeText = String(row[beforeField] || '').trim();
     const afterText = String(row[afterField] || '').trim();
     const gainText = String(row[gainField] || '').trim();
+    const medalEntryText = String(row[medalEntryField] || '').trim();
+    const medalEntryIsAllowed = !medalEntryText || officialNewsMedalEntries.includes(medalEntryText);
+
+    if (!medalEntryIsAllowed) {
+        addError(
+            file,
+            row.__rowNumber,
+            `${medalEntryField} "${medalEntryText}" must be blank or one of: ${officialNewsMedalEntries.join(', ')}.`
+        );
+    }
 
     if (options.tableAvailable === false) {
-        for (const field of [beforeField, afterField, gainField]) {
+        for (const field of [beforeField, afterField, gainField, medalEntryField]) {
             if (String(row[field] || '').trim()) {
                 addError(
                     file,
@@ -1588,6 +1628,32 @@ function validateOfficialNewsRankTriplet(row, file, [beforeField, afterField, ga
         afterField,
         { minimum: 1 }
     );
+
+    if (
+        medalEntryIsAllowed &&
+        after !== null &&
+        (!beforeText || before !== null)
+    ) {
+        const afterMedal = officialNewsMedalForRank(after);
+        const enteredMedalPosition = afterMedal && (!beforeText || before > 3);
+        const expectedMedalEntry = enteredMedalPosition ? afterMedal : '';
+
+        if (medalEntryText !== expectedMedalEntry) {
+            if (expectedMedalEntry) {
+                addError(
+                    file,
+                    row.__rowNumber,
+                    `${medalEntryField} must be "${expectedMedalEntry}" because the result entered a medal position at Rank ${after}.`
+                );
+            } else {
+                addError(
+                    file,
+                    row.__rowNumber,
+                    `${medalEntryField} must be blank because the result did not enter a new medal position.`
+                );
+            }
+        }
+    }
 
     // The separately validated 12-file Official matrix makes all four table
     // contexts available for every supported News distance. The contract's
@@ -1633,6 +1699,17 @@ function validateOfficialNewsRankTriplet(row, file, [beforeField, afterField, ga
             );
         }
     }
+}
+
+function officialNewsMedalForRank(rank) {
+    // Rank is workbook-owned competition rank. Tied athletes therefore carry
+    // the same rank and medal; skipped competition ranks award no medal. This
+    // consistency check never uses row position or invents a tie-break.
+    return {
+        1: 'Gold',
+        2: 'Silver',
+        3: 'Bronze'
+    }[rank] || '';
 }
 
 function validateOfficialNewsMilestoneChains(objects, file) {

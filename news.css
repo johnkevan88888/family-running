@@ -278,6 +278,13 @@
     border-left-color: #a43a27;
 }
 
+.news-card-medal-entry {
+    background: linear-gradient(115deg, #fffdf4 0%, #ffffff 34%);
+    box-shadow:
+        0 0 0 2px rgba(225, 177, 0, 0.68),
+        0 6px 16px rgba(15, 36, 56, 0.15);
+}
+
 .news-flow {
     align-items: stretch;
     display: grid;
@@ -458,7 +465,7 @@
 }
 
 .news-improvement h4,
-.news-rank-section > h4 {
+.news-rank-heading h4 {
     color: #1e3a5f;
     font-size: 0.78rem;
     letter-spacing: 0.04em;
@@ -507,6 +514,42 @@
     padding: 0;
 }
 
+.news-rank-heading {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 8px;
+    justify-content: space-between;
+}
+
+.news-medal-callout {
+    align-items: center;
+    background: #1e3a5f;
+    border: 1px solid #e4b900;
+    border-radius: 999px;
+    box-shadow: 0 2px 6px rgba(15, 36, 56, 0.18);
+    color: #ffffff;
+    display: inline-flex;
+    flex-wrap: wrap;
+    font-size: 0.68rem;
+    gap: 2px 5px;
+    justify-content: center;
+    line-height: 1.15;
+    padding: 4px 8px;
+    text-align: center;
+}
+
+.news-medal-callout strong {
+    font-size: 0.74rem;
+    letter-spacing: 0.02em;
+}
+
+.news-medal-callout-icon {
+    color: #ffd700;
+    font-size: 0.86rem;
+    line-height: 1;
+}
+
 .news-rank-periods {
     display: grid;
     gap: 7px;
@@ -543,6 +586,30 @@
     padding: 6px 7px;
 }
 
+.news-rank-row-medal-entry {
+    border: 1px solid transparent;
+    box-shadow: inset 4px 0 0 currentColor;
+    padding-left: 9px;
+}
+
+.news-rank-row-medal-gold {
+    background: linear-gradient(105deg, #fff3b8 0%, #fffdf3 74%);
+    border-color: #d1a900;
+    color: #705400;
+}
+
+.news-rank-row-medal-silver {
+    background: linear-gradient(105deg, #e8edf1 0%, #fbfcfd 74%);
+    border-color: #8e9ba7;
+    color: #53616d;
+}
+
+.news-rank-row-medal-bronze {
+    background: linear-gradient(105deg, #f6d4b9 0%, #fff8f2 74%);
+    border-color: #b56528;
+    color: #884817;
+}
+
 .news-rank-row dd {
     align-items: flex-end;
     display: flex;
@@ -565,6 +632,37 @@
     color: #52616e;
     font-size: 0.75rem;
     font-weight: 800;
+}
+
+.news-medal-entry-badge {
+    align-items: center;
+    border-radius: 999px;
+    color: #ffffff;
+    display: inline-flex;
+    font-size: 0.7rem;
+    font-weight: 900;
+    gap: 4px;
+    line-height: 1.15;
+    padding: 3px 7px;
+    text-align: left;
+}
+
+.news-medal-entry-gold {
+    background: #705400;
+}
+
+.news-medal-entry-silver {
+    background: #465460;
+}
+
+.news-medal-entry-bronze {
+    background: #7b3f14;
+}
+
+.news-medal-entry-icon {
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.22));
+    font-size: 0.9rem;
+    line-height: 1;
 }
 
 @media (min-width: 701px) and (max-width: 1100px) {

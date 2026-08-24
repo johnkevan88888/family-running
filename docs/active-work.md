@@ -2,7 +2,7 @@
 
 ## Task title
 
-Official Results News filters and progressive history.
+Official Results News medal-position breakthroughs.
 
 ## Status
 
@@ -16,10 +16,13 @@ The static News page loads only
 `data/<selected-site>/official_result_news.csv`, preserves `?site=`, renders the
 workbook's exported order, improvements, and before/after Current and All-Time
 distance/Overall positions, and performs no PB or ranking calculation. The
-repository validator requires the exact 32-column export, both mode-specific
+repository validator requires the exact 36-column export, both mode-specific
 manifest paths, the complete Official leaderboard matrix, source agreement,
 milestone chains, rank-field arithmetic, 1 Mile's Overall-only movement, and
-genuine source-time precision through milliseconds.
+genuine source-time precision through milliseconds. Four workbook-owned
+`MedalEntry` fields align with the four rank contexts and tell the browser when
+a result crossed from unranked or Rank 4+ into Gold, Silver, or Bronze. The
+browser does not derive that meaning from the rank numbers.
 
 John approved the next presentation refinement on 23 August 2026: optional
 athlete, year, and distance filters plus a latest-first initial batch with a
@@ -50,6 +53,39 @@ responsive screenshots were reviewed with no overflow. Representative
 real-data cards remain within the tested 320px desktop and 850px mobile height
 ceilings. The visible history is about 55% shorter on desktop and 37% shorter
 on mobile than the preceding layout.
+
+John requested a further refinement on 23 August 2026 to make entry into a
+medal-winning position stand out. The settled contract adds
+`CurrentDistanceMedalEntry`, `CurrentOverallMedalEntry`,
+`AllTimeDistanceMedalEntry`, and `AllTimeOverallMedalEntry`, each blank or one
+of `Gold`, `Silver`, and `Bronze`. A field is populated only when that context's
+workbook-owned before rank is blank or at least 4 and its after rank is 1, 2,
+or 3. Movement within the existing medal positions is not a new entry. Each
+context is independent, tied competition ranks use their exported rank
+directly, and 1 Mile's distance fields remain blank. The local page uses only
+those exported values to add an explicit `Medal breakthrough!` callout, a
+celebratory card accent, and a labelled medal badge on every affected movement
+row; colour and decorative icons are not the only indication.
+
+The 36-column repository validator and focused export-bundle regression
+fixtures are implemented. Syntax checks and `pnpm run test:export-bundle`
+pass, including Gold, Silver, Bronze, multi-context, tied-rank, within-podium,
+missing, wrong, extraneous, unsupported, 1 Mile, and cross-mode cases. The
+backed-up News draft workbook produced staged 72-file export
+`test-artifacts/workbook-export-staging/run-20260823-195159-167-medal`, which
+passed the updated validator. Reconciliation found only the two News CSVs
+meaningfully changed; every prior News fact, rank, and delta remained identical.
+The bundle was promoted atomically, with the previous tracked data retained at
+`test-artifacts/workbook-export-promotion/20260823235713853`, and tracked-data
+validation passes. It exports 24 Family cards carrying at least one medal
+entry, across 59 contexts, and 34 such Everyone cards across 77 contexts. The
+complete `pnpm test` suite now passes. The preview artifact contains 107 files,
+and browser smoke coverage passes in both modes at 1440px, the 720px
+intermediate probe, and 390px mobile. Responsive screenshots were refreshed and
+manually reviewed: the medal callout and per-context badges are readable,
+contained within their cards, and introduce no horizontal overflow. The branch
+push and updated Pull Request preview remain pending; no remote preview pass is
+claimed yet.
 
 The private source workbook was copied and hash-verified before inspection. The
 unchanged backup is
@@ -83,9 +119,11 @@ vendor, CSV, 59 export-bundle regressions, staged workflow, reconciliation,
 artifact safety/build, and both-mode browser checks. The final artifact contains
 107 files. A separate real-data visual check rendered all 43 Family and 64
 Everyone entries with no mobile overflow or browser warning/error. The first
-draft and filter refinement are on Pull Request #68; the compact presentation
-update still awaits its branch push and preview rebuild. Nothing has been
-merged, published, or deployed.
+draft, filters, and compact presentation are on Pull Request #68 and passed
+their pre-medal preview checks. The medal-position extension is local work
+with its refreshed export promoted and its complete local suite and responsive
+review passing. The branch push and Pull Request preview update remain. Nothing
+has been merged, published, or deployed.
 
 ## Prior work: header refinement and workbook-locked age-grade calculator
 

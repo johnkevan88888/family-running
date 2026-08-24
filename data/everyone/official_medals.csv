@@ -1,28 +1,28 @@
 AthleteId,Medal,Place,Period,Distance,AwardTitle,Time,AgeGrade,EventDate,EventName,SortOrder,ExportBundleID
-carolyn-kevan,Gold,1,Current,Overall,Current Overall Official Gold,00:25:20,78.0%,28/03/2026,Northern Counties Womens Relay,101,20260823T213230878Z-6E2E617F
-gareth-devine,Silver,2,Current,Overall,Current Overall Official Silver,00:19:12,77.3%,15/08/2026,Darlington South Park Parkrun,102,20260823T213230878Z-6E2E617F
-jim-chambers,Bronze,3,Current,Overall,Current Overall Official Bronze,00:26:01,67.0%,01/08/2026,Derry City Parkrun,103,20260823T213230878Z-6E2E617F
-carolyn-kevan,Gold,1,All Time,Overall,All Time Overall Official Gold,00:46:54,78.4%,07/12/2019,Xmas Pudding 10k,111,20260823T213230878Z-6E2E617F
-gareth-devine,Silver,2,All Time,Overall,All Time Overall Official Silver,00:19:12,77.3%,15/08/2026,Darlington South Park Parkrun,112,20260823T213230878Z-6E2E617F
-david-graham-kevan,Bronze,3,All Time,Overall,All Time Overall Official Bronze,00:19:53,69.6%,22/09/2012,Worcester Parkrun,113,20260823T213230878Z-6E2E617F
-carolyn-kevan,Gold,1,Current,5 km,Current 5 km Official Gold,00:25:20,78.0%,28/03/2026,Northern Counties Womens Relay,601,20260823T213230878Z-6E2E617F
-gareth-devine,Silver,2,Current,5 km,Current 5 km Official Silver,00:19:12,77.3%,15/08/2026,Darlington South Park Parkrun,602,20260823T213230878Z-6E2E617F
-jim-chambers,Bronze,3,Current,5 km,Current 5 km Official Bronze,00:26:01,67.0%,01/08/2026,Derry City Parkrun,603,20260823T213230878Z-6E2E617F
-carolyn-kevan,Gold,1,All Time,5 km,All Time 5 km Official Gold,00:25:20,78.0%,28/03/2026,Northern Counties Womens Relay,611,20260823T213230878Z-6E2E617F
-gareth-devine,Silver,2,All Time,5 km,All Time 5 km Official Silver,00:19:12,77.3%,15/08/2026,Darlington South Park Parkrun,612,20260823T213230878Z-6E2E617F
-david-graham-kevan,Bronze,3,All Time,5 km,All Time 5 km Official Bronze,00:19:53,69.6%,22/09/2012,Worcester Parkrun,613,20260823T213230878Z-6E2E617F
-david-graham-kevan,Gold,1,Current,10 km,Current 10 km Official Gold,00:48:18,64.8%,17/05/2026,Worcester 10k,501,20260823T213230878Z-6E2E617F
-sebastien-le-rouzic,Silver,2,Current,10 km,Current 10 km Official Silver,00:59:58,45.4%,11/01/2026,Dubai Creek Striders Half Marathon,502,20260823T213230878Z-6E2E617F
-carolyn-kevan,Gold,1,All Time,10 km,All Time 10 km Official Gold,00:46:54,78.4%,07/12/2019,Xmas Pudding 10k,511,20260823T213230878Z-6E2E617F
-david-graham-kevan,Silver,2,All Time,10 km,All Time 10 km Official Silver,00:48:18,64.8%,17/05/2026,Worcester 10k,512,20260823T213230878Z-6E2E617F
-grace-chambers,Bronze,3,All Time,10 km,All Time 10 km Official Bronze,00:52:25,55.1%,22/01/2023,Dubai Creek Striders Half Marathon 2024,513,20260823T213230878Z-6E2E617F
-jim-chambers,Gold,1,Current,10 Mile,Current 10 Mile Official Gold,01:34:11,62.0%,14/04/2026,Derry 10 Mile,401,20260823T213230878Z-6E2E617F
-jim-chambers,Gold,1,All Time,10 Mile,All Time 10 Mile Official Gold,01:34:11,62.0%,14/04/2026,Derry 10 Mile,411,20260823T213230878Z-6E2E617F
-david-graham-kevan,Gold,1,Current,Half Marathon,Current Half Marathon Official Gold,01:48:09,63.4%,13/09/2025,Worcester Half,301,20260823T213230878Z-6E2E617F
-poppy-coleman,Silver,2,Current,Half Marathon,Current Half Marathon Official Silver,01:42:56,61.1%,17/05/2026,Worcester Half,302,20260823T213230878Z-6E2E617F
-jack-graham-kevan,Bronze,3,Current,Half Marathon,Current Half Marathon Official Bronze,01:38:13,58.6%,13/09/2025,Sutcliffe & Co Worcester City Runs,303,20260823T213230878Z-6E2E617F
-david-graham-kevan,Gold,1,All Time,Half Marathon,All Time Half Marathon Official Gold,01:32:46,63.8%,10/05/2009,Tewkesbury Half Marathon,311,20260823T213230878Z-6E2E617F
-poppy-coleman,Silver,2,All Time,Half Marathon,All Time Half Marathon Official Silver,01:42:56,61.1%,17/05/2026,Worcester Half,312,20260823T213230878Z-6E2E617F
-jack-graham-kevan,Bronze,3,All Time,Half Marathon,All Time Half Marathon Official Bronze,01:38:13,58.6%,13/09/2025,Sutcliffe & Co Worcester City Runs,313,20260823T213230878Z-6E2E617F
-kevin-reaney,Gold,1,All Time,Marathon,All Time Marathon Official Gold,03:30:48,59.5%,20/10/2024,UNKNOWN,211,20260823T213230878Z-6E2E617F
-matthew-johnson,Silver,2,All Time,Marathon,All Time Marathon Official Silver,04:16:22,48.5%,03/10/2021,London Marathon,212,20260823T213230878Z-6E2E617F
+carolyn-kevan,Gold,1,Current,Overall,Current Overall Official Gold,00:25:20,78.0%,28/03/2026,Northern Counties Womens Relay,101,20260823T235201802Z-3F8B6180
+gareth-devine,Silver,2,Current,Overall,Current Overall Official Silver,00:19:12,77.3%,15/08/2026,Darlington South Park Parkrun,102,20260823T235201802Z-3F8B6180
+jim-chambers,Bronze,3,Current,Overall,Current Overall Official Bronze,00:26:01,67.0%,01/08/2026,Derry City Parkrun,103,20260823T235201802Z-3F8B6180
+carolyn-kevan,Gold,1,All Time,Overall,All Time Overall Official Gold,00:46:54,78.4%,07/12/2019,Xmas Pudding 10k,111,20260823T235201802Z-3F8B6180
+gareth-devine,Silver,2,All Time,Overall,All Time Overall Official Silver,00:19:12,77.3%,15/08/2026,Darlington South Park Parkrun,112,20260823T235201802Z-3F8B6180
+david-graham-kevan,Bronze,3,All Time,Overall,All Time Overall Official Bronze,00:19:53,69.6%,22/09/2012,Worcester Parkrun,113,20260823T235201802Z-3F8B6180
+carolyn-kevan,Gold,1,Current,5 km,Current 5 km Official Gold,00:25:20,78.0%,28/03/2026,Northern Counties Womens Relay,601,20260823T235201802Z-3F8B6180
+gareth-devine,Silver,2,Current,5 km,Current 5 km Official Silver,00:19:12,77.3%,15/08/2026,Darlington South Park Parkrun,602,20260823T235201802Z-3F8B6180
+jim-chambers,Bronze,3,Current,5 km,Current 5 km Official Bronze,00:26:01,67.0%,01/08/2026,Derry City Parkrun,603,20260823T235201802Z-3F8B6180
+carolyn-kevan,Gold,1,All Time,5 km,All Time 5 km Official Gold,00:25:20,78.0%,28/03/2026,Northern Counties Womens Relay,611,20260823T235201802Z-3F8B6180
+gareth-devine,Silver,2,All Time,5 km,All Time 5 km Official Silver,00:19:12,77.3%,15/08/2026,Darlington South Park Parkrun,612,20260823T235201802Z-3F8B6180
+david-graham-kevan,Bronze,3,All Time,5 km,All Time 5 km Official Bronze,00:19:53,69.6%,22/09/2012,Worcester Parkrun,613,20260823T235201802Z-3F8B6180
+david-graham-kevan,Gold,1,Current,10 km,Current 10 km Official Gold,00:48:18,64.8%,17/05/2026,Worcester 10k,501,20260823T235201802Z-3F8B6180
+sebastien-le-rouzic,Silver,2,Current,10 km,Current 10 km Official Silver,00:59:58,45.4%,11/01/2026,Dubai Creek Striders Half Marathon,502,20260823T235201802Z-3F8B6180
+carolyn-kevan,Gold,1,All Time,10 km,All Time 10 km Official Gold,00:46:54,78.4%,07/12/2019,Xmas Pudding 10k,511,20260823T235201802Z-3F8B6180
+david-graham-kevan,Silver,2,All Time,10 km,All Time 10 km Official Silver,00:48:18,64.8%,17/05/2026,Worcester 10k,512,20260823T235201802Z-3F8B6180
+grace-chambers,Bronze,3,All Time,10 km,All Time 10 km Official Bronze,00:52:25,55.1%,22/01/2023,Dubai Creek Striders Half Marathon 2024,513,20260823T235201802Z-3F8B6180
+jim-chambers,Gold,1,Current,10 Mile,Current 10 Mile Official Gold,01:34:11,62.0%,14/04/2026,Derry 10 Mile,401,20260823T235201802Z-3F8B6180
+jim-chambers,Gold,1,All Time,10 Mile,All Time 10 Mile Official Gold,01:34:11,62.0%,14/04/2026,Derry 10 Mile,411,20260823T235201802Z-3F8B6180
+david-graham-kevan,Gold,1,Current,Half Marathon,Current Half Marathon Official Gold,01:48:09,63.4%,13/09/2025,Worcester Half,301,20260823T235201802Z-3F8B6180
+poppy-coleman,Silver,2,Current,Half Marathon,Current Half Marathon Official Silver,01:42:56,61.1%,17/05/2026,Worcester Half,302,20260823T235201802Z-3F8B6180
+jack-graham-kevan,Bronze,3,Current,Half Marathon,Current Half Marathon Official Bronze,01:38:13,58.6%,13/09/2025,Sutcliffe & Co Worcester City Runs,303,20260823T235201802Z-3F8B6180
+david-graham-kevan,Gold,1,All Time,Half Marathon,All Time Half Marathon Official Gold,01:32:46,63.8%,10/05/2009,Tewkesbury Half Marathon,311,20260823T235201802Z-3F8B6180
+poppy-coleman,Silver,2,All Time,Half Marathon,All Time Half Marathon Official Silver,01:42:56,61.1%,17/05/2026,Worcester Half,312,20260823T235201802Z-3F8B6180
+jack-graham-kevan,Bronze,3,All Time,Half Marathon,All Time Half Marathon Official Bronze,01:38:13,58.6%,13/09/2025,Sutcliffe & Co Worcester City Runs,313,20260823T235201802Z-3F8B6180
+kevin-reaney,Gold,1,All Time,Marathon,All Time Marathon Official Gold,03:30:48,59.5%,20/10/2024,UNKNOWN,211,20260823T235201802Z-3F8B6180
+matthew-johnson,Silver,2,All Time,Marathon,All Time Marathon Official Silver,04:16:22,48.5%,03/10/2021,London Marathon,212,20260823T235201802Z-3F8B6180

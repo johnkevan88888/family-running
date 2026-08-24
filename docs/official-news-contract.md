@@ -16,7 +16,17 @@
   refinement was approved and implemented on 23 August 2026. The full local
   suite, both-mode desktop/intermediate/mobile browser coverage, responsive
   screenshot review, and overflow checks pass. The Pull Request preview update
-  awaits the branch push; nothing is merged or released.
+  passed before the next schema change; nothing is merged or released. A
+  workbook-owned medal-position-entry extension was requested on 23 August
+  2026. Its 36-column repository contract, focused fixtures, and browser
+  presentation are implemented locally. The refreshed staged 72-file workbook
+  bundle passed validation and reconciliation, only the two News CSVs changed
+  meaningfully, and atomic tracked-data promotion plus focused regression
+  validation passed. The complete `pnpm test` suite and 107-file artifact build
+  pass. Both modes pass browser coverage at 1440px, 720px, and 390px; refreshed
+  responsive screenshots were manually reviewed with readable, contained
+  medal callouts and badges and no overflow. The branch push and updated Pull
+  Request preview remain pending.
 - **Scope:** Official-result milestones and their reconstructed championship
   effect. This is not an editorial news system.
 
@@ -182,8 +192,11 @@ still exports the header-only file.
 The exact ordered header is:
 
 ```csv
-SortOrder,SourceRow,AthleteID,AthleteName,ResultDate,Distance,Time,AgeGrade,AgeGradeExact,Event,TimeClass,MilestoneType,PreviousBestTime,TimeImprovementSeconds,TimeImprovement,PreviousBestAgeGrade,PreviousBestAgeGradeExact,AgeGradeImprovementExact,AgeGradeImprovement,CurrentDistanceRankBefore,CurrentDistanceRankAfter,CurrentDistancePlacesGained,CurrentOverallRankBefore,CurrentOverallRankAfter,CurrentOverallPlacesGained,AllTimeDistanceRankBefore,AllTimeDistanceRankAfter,AllTimeDistancePlacesGained,AllTimeOverallRankBefore,AllTimeOverallRankAfter,AllTimeOverallPlacesGained,ExportBundleID
+SortOrder,SourceRow,AthleteID,AthleteName,ResultDate,Distance,Time,AgeGrade,AgeGradeExact,Event,TimeClass,MilestoneType,PreviousBestTime,TimeImprovementSeconds,TimeImprovement,PreviousBestAgeGrade,PreviousBestAgeGradeExact,AgeGradeImprovementExact,AgeGradeImprovement,CurrentDistanceRankBefore,CurrentDistanceRankAfter,CurrentDistancePlacesGained,CurrentDistanceMedalEntry,CurrentOverallRankBefore,CurrentOverallRankAfter,CurrentOverallPlacesGained,CurrentOverallMedalEntry,AllTimeDistanceRankBefore,AllTimeDistanceRankAfter,AllTimeDistancePlacesGained,AllTimeDistanceMedalEntry,AllTimeOverallRankBefore,AllTimeOverallRankAfter,AllTimeOverallPlacesGained,AllTimeOverallMedalEntry,ExportBundleID
 ```
+
+This is a 36-column contract. The four medal-entry fields sit immediately
+after the rank triplet they describe.
 
 No column may be renamed, omitted, reordered, or added without a coordinated
 workbook, validator, browser, test, and documentation change.
@@ -342,6 +355,49 @@ or change the exported wording based on a calculated outcome. It only selects
 the rendering case from the validated blank pattern and displays `#` plus the
 exported integers.
 
+### Medal-position entry fields
+
+Each rank context has one aligned workbook-owned medal-entry field:
+
+- `CurrentDistanceMedalEntry`
+- `CurrentOverallMedalEntry`
+- `AllTimeDistanceMedalEntry`
+- `AllTimeOverallMedalEntry`
+
+Each field is either blank or exactly `Gold`, `Silver`, or `Bronze`. It records
+a threshold crossing in that context, not every movement within the medal
+places:
+
+```text
+if RankAfter is 1, 2, or 3
+and RankBefore is blank or at least 4
+then MedalEntry is Gold, Silver, or Bronze respectively
+otherwise MedalEntry is blank
+```
+
+Examples: unranked to Rank 2 exports `Silver`; Rank 4 to Rank 3 exports
+`Bronze`; Rank 3 to Rank 2 remains blank because the athlete already held a
+medal position. A later product change may distinguish medal upgrades, but it
+must not overload this entry-only field.
+
+The four contexts are independent. One result can enter medal positions in
+several tables and must populate every corresponding field; no single
+card-level value collapses them. Family and Everyone may legitimately differ
+for the same source result. `1 Mile` has no distance table, so both of its
+distance medal-entry fields are blank while either Overall field may be
+populated.
+
+Medal names follow the workbook's exported competition rank directly. Rank 1
+is Gold, Rank 2 is Silver, and Rank 3 is Bronze. A tied athlete carrying one of
+those ranks receives the same value; skipped competition ranks create no medal.
+Neither the browser nor repository validation uses leaderboard row position or
+invents a tie-break.
+
+This describes entry into a reconstructed historical medal position. It is not
+a claim that a final medal was permanently won: corrections or eligibility
+changes can revise the replay just as they can revise any other historical News
+movement.
+
 ## Workbook responsibilities
 
 For each site mode, Excel/VBA must:
@@ -358,8 +414,8 @@ For each site mode, Excel/VBA must:
 6. apply Current expiries before every before-snapshot;
 7. obtain all four rank snapshots from the same workbook ranking logic used by
    the existing Official tables;
-8. populate display, exact, delta, rank, blank-state, source-row, and ordering
-   fields without relying on the browser;
+8. populate display, exact, delta, rank, medal-entry, blank-state, source-row,
+   and ordering fields without relying on the browser;
 9. emit only the four milestone types defined here, with one row per qualifying
    source result per mode;
 10. validate the replay and compare its final Current and All-Time state with
@@ -405,7 +461,12 @@ minimum:
 - reject duplicate source results and duplicate athlete/date/distance/source
   milestone rows;
 - enforce the complete rank-triplet blank matrix, positive ranks, non-negative
-  gains, and `before - after` arithmetic where both ranks exist; and
+  gains, and `before - after` arithmetic where both ranks exist;
+- require each aligned medal-entry field to be blank, `Gold`, `Silver`, or
+  `Bronze`; require the exact after-rank medal only for an unranked/Rank 4+
+  crossing into Rank 1/2/3; reject a missing, wrong, unsupported, or extraneous
+  value; allow independent multi-context and cross-mode values; and require
+  both 1 Mile distance medal-entry fields to be blank; and
 - reject any row containing `Unofficial`, a vacancy placeholder, a distance
   outside the six-value contract, a zero/negative improvement, or an invented
   previous value for a first result; and require both distance-rank triplets to
@@ -417,8 +478,10 @@ replay as authoritative. Completeness of full-precision milestones and exact
 historical ranks remains a workbook export responsibility.
 
 Focused validation fixtures should prove rejection of every enum, chronology,
-source, delta, rank, blank-state, and bundle failure above, including a valid
-tiny exact age-grade improvement whose one-decimal before and after values are
+source, delta, rank, medal-entry, blank-state, and bundle failure above,
+including valid Gold/Silver/Bronze crossings, multiple contexts on one row, a
+tied competition rank, a within-medal move that stays blank, and a valid tiny
+exact age-grade improvement whose one-decimal before and after values are
 equal.
 
 ## News page behavior
@@ -449,6 +512,11 @@ The eventual `news.html` page should:
 - show both independently for a combined milestone;
 - group rank movement under `Current` and `All Time`, with Distance and Overall
   rows, applying only the validated blank/rendering cases in this contract;
+- when one or more exported medal-entry fields are populated, make the card
+  visibly celebratory, show the explicit text `Medal breakthrough!` and
+  `Entered a medal-winning position`, and label each affected movement row as
+  a new Gold, Silver, or Bronze medal position using that field's exported
+  value;
 - omit an unavailable movement block, but show `no rank change` rather than
   hiding a valid zero movement;
 - render the neutral header-only state `No official result milestones have been
@@ -459,8 +527,10 @@ The eventual `news.html` page should:
 - remain usable at desktop and mobile widths without page-level horizontal
   overflow.
 
-Badges and movement must not rely on colour alone. Entries should use semantic
-headings or list structure so dates, athlete names, milestone types, and rank
+Badges and movement must not rely on colour alone. Medal-position treatment
+must include visible text in addition to colour and decorative medal/sparkle
+icons. Entries should use semantic headings or list structure so dates,
+athlete names, milestone types, and rank
 changes remain understandable to screen readers. Arrows may guide the eye
 between card stages and successive timeline entries, but they are decorative,
 hidden from assistive technology, and must not be the only indication of order
@@ -468,7 +538,11 @@ or meaning.
 
 The browser may format ordinary presentation around validated values. It must
 not compare performances, subtract times or percentages, calculate rank gains,
-replay a rolling window, choose a milestone type, or repair a missing export.
+replay a rolling window, choose a milestone type, derive a medal from a rank,
+or repair a missing export. It may test only whether a validated exported
+medal-entry field is populated, alongside the existing validated movement
+blank-pattern case, in order to apply the card accent and place the
+corresponding exported medal label beside that same movement row.
 
 ### Presentation filters and progressive reveal
 
@@ -511,6 +585,11 @@ prove that the page:
 - renders all four milestone types from synthetic workbook-owned rows;
 - renders exact first-result, improvement, tiny-improvement, unranked, no-rank-
   change, places-gained, and unavailable-table states;
+- renders an explicit card-level medal breakthrough and per-context exported
+  Gold/Silver/Bronze labels, supports multiple medal entries on one result,
+  does not mark a within-medal move as a new entry, and does not infer a medal
+  marker from RankBefore/RankAfter when the exported medal-entry field is
+  blank;
 - retains exported order, including multiple same-day results;
 - handles quoted commas, escaped quotes, and multiline event text through the
   shared whole-document CSV parser;
