@@ -75,9 +75,10 @@ contexts and 34 Everyone cards with 77. After integrating the Gallery baseline,
 the complete `pnpm test` suite and 114-file artifact build pass; both modes pass
 browser coverage at 1440px,
 720px, and 390px. Refreshed screenshots were manually reviewed with readable,
-contained medal treatment and no overflow. Pull Request #68 requires the local
-current-main integration to be pushed and a new combined preview to pass. This
-is not merged or released.
+contained medal treatment and no overflow. Merge commit `65190fe` is pushed to
+Pull Request #68; the required static-site check and combined Deploy Preview
+passed, and GitHub reports the PR clean and mergeable. This is not merged or
+released.
 
 ## Next candidate tasks
 

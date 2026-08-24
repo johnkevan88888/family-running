@@ -311,9 +311,9 @@ Unknown historical details are labelled rather than inferred.
   `main`, including the Gallery baseline, was integrated locally, the combined
   114-file artifact and both-mode desktop/mobile browser coverage also passed.
   Refreshed News and Gallery screenshots were manually reviewed without
-  overflow. Pull Request #68 still requires the local integration to be pushed
-  and a fresh combined preview to pass before review. This is not merged or
-  released.
+  overflow. Merge commit `65190fe` is pushed to Pull Request #68; GitHub reports
+  it clean and mergeable, and both the required static-site check and combined
+  Deploy Preview passed. This is not merged or released.
 
 ## Production usage analytics are aggregate and cookie-free
 

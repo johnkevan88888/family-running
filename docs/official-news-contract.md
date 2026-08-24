@@ -26,9 +26,10 @@
   complete `pnpm test` suite and combined 114-file artifact build pass. Both
   modes pass browser coverage at 1440px, 720px, and 390px; refreshed
   responsive screenshots were manually reviewed with readable, contained
-  medal callouts and badges and no overflow. The current-main integration is
-  local only; Pull Request #68 requires a fresh push, checks, and combined
-  Deploy Preview before review. Nothing is merged or released.
+  medal callouts and badges and no overflow. Merge commit `65190fe` is pushed to
+  Pull Request #68; GitHub reports it clean and mergeable, and the required
+  static-site check plus combined Deploy Preview passed. Nothing is merged or
+  released.
 - **Scope:** Official-result milestones and their reconstructed championship
   effect. This is not an editorial news system.
 

@@ -208,11 +208,12 @@ News-and-Gallery preview-artifact build. Browser smoke coverage passes in both
 modes at 1440px, the 720px
 intermediate probe, and 390px mobile. Responsive screenshots were refreshed and
 manually reviewed; the medal callout and per-context badges remain readable and
-contained, with no horizontal overflow. The local integration of current
-`main` also preserves Gallery validation, populated/fallback presentation, and
-both-mode responsive screenshots. Pull Request #68 requires that integration
-to be pushed and a fresh combined Deploy Preview to pass. This verification
-does not merge or release the change.
+contained, with no horizontal overflow. The integration of current `main` also
+preserves Gallery validation, populated/fallback presentation, and both-mode
+responsive screenshots. Merge commit `65190fe` is pushed to Pull Request #68;
+the required static-site check and combined Deploy Preview passed, and GitHub
+reports the PR clean and mergeable. This verification does not merge or release
+the change.
 
 Focused CSV validation must require the exact ordered 36-column News header and
 enforce the complete contract: one selected-site file, literal `Official`, the

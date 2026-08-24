@@ -93,8 +93,8 @@ initial batch contains 5 medal cards and 10 medal badges, while Everyone
 contains 2 cards and 4 badges. Both modes have the correct selected-mode title
 and links and no horizontal overflow.
 
-That remote preview predates Pull Request #69 and is no longer review evidence
-for the combined site. The local merge from `main` resolved four additive
+The earlier remote preview predated Pull Request #69 and was not review evidence
+for the combined site. The merge from `main` resolved four additive
 conflict files while retaining both features; Gallery runtime files remain
 byte-for-byte inherited from `main`, and the diff against `main` contains News
 rather than deletions of Gallery. The first combined browser run exposed the
@@ -142,10 +142,10 @@ passed repository safety, vendor, CSV, Gallery validation and contract tests,
 News regressions, staged-export and reconciliation checks, artifact safety, the
 114-file build, and browser smoke coverage for both modes at desktop and mobile.
 Refreshed News and Gallery screenshots were reviewed without overflow or layout
-regression. The local merge is not yet pushed, so Pull Request #68 remains
-conflicted remotely until a separately authorized push triggers fresh checks
-and a new combined Deploy Preview. Nothing from Pull Request #68 has been
-merged, published, or released.
+regression. Merge commit `65190fe` is pushed to Pull Request #68. GitHub reports
+the PR clean and mergeable; the required `Test static site` check and the
+combined Netlify Deploy Preview both passed on that commit. Nothing from Pull
+Request #68 has been merged, published, or released.
 
 ## Prior work: owner-curated photo and video gallery, Phase 1
 
