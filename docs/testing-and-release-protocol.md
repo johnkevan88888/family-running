@@ -594,6 +594,24 @@ The promoted-root `pnpm test` run passed repository safety, vendor/CSV/Gallery
 validation, contract regressions, artifact safety/build, and browser smoke
 tests with responsive screenshots and no overflow.
 
+### News ranked-athlete-count extension status
+
+The later approved presentation/data follow-up grows the News header from 60
+to 64 columns. Immediately after every context's `RankAfter`, the workbook
+exports `RankedAthleteCountAfter`: the positive count of distinct athletes with
+a qualifying Official performance in that same selected-mode post-result
+snapshot. It is at least `RankAfter`, never inferred from a rank, and blank
+only with an unavailable table; 1 Mile Distance counts stay blank while 1 Mile
+Overall counts remain populated. News displays `#rank / count` and fails closed
+for a missing, malformed, zero, or below-rank count.
+
+The paired presentation refinement shortens a complete former-holder
+attribution to `Gold taken from Alex`. It keeps the exported identity and
+selected-mode link, but does not state the displaced athlete's later medal
+status. This is a new coordinated workbook/schema/validator/browser change
+requiring a fresh full 64-column bundle, reconciliation, promotion, complete
+suite, and both-mode responsive review before release.
+
 ## Manual Review Checklist For John
 
 Before approving a Pull Request:
@@ -637,7 +655,12 @@ Before approving a Pull Request:
   Silver-to-Bronze, and Bronze-to-No-medal handoff; confirm the named former
   holder is exported, linked in the selected mode, and never inferred from
   ranks. Confirm retained or ambiguous cases show no attribution and that
-  1 Mile Distance contexts keep the full ten-field group blank.
+  1 Mile Distance contexts keep the full eleven-field group blank.
+- For the ranked-athlete-count extension, review `#rank / count` in every
+  Current/All-Time and Distance/Overall context, including an unranked entry,
+  a tied rank, 1 Mile's blank Distance counts, and populated Overall counts.
+  Confirm the count is workbook-exported rather than derived and the former
+  holder statement does not name their later medal status.
 - For record changes, review the private workbook's `AbsoluteRecords` sheet and the staged `absolute_records.csv` files before approving tracked data promotion.
 - Confirm known limitations and rollback approach are documented.
 
@@ -669,6 +692,12 @@ The later 28-field medal-and-displacement contract (the 12 medal fields plus
 validator, and browser change. It requires a fresh 60-column full bundle,
 reconciliation that isolates the two News CSVs, explicit promotion approval,
 tracked-data validation, full-suite and responsive review before release.
+
+The later four-field ranked-athlete-count extension is likewise a coordinated
+workbook schema, data, validator, and browser change. It requires a fresh
+64-column full bundle, reconciliation that isolates the two News CSVs,
+explicit promotion approval, tracked-data validation, full-suite and
+responsive review before release.
 
 For validated lightweight data refreshes, no accepted eligibility gate, exact
 CSV diff review, and responsive screenshot review for both site modes, no

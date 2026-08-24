@@ -64,6 +64,7 @@ const officialNewsHeaders = [
     'AgeGradeImprovement',
     'CurrentDistanceRankBefore',
     'CurrentDistanceRankAfter',
+    'CurrentDistanceRankedAthleteCountAfter',
     'CurrentDistancePlacesGained',
     'CurrentDistanceMedalEntry',
     'CurrentDistanceMedalBefore',
@@ -74,6 +75,7 @@ const officialNewsHeaders = [
     'CurrentDistanceDisplacedMedalAfter',
     'CurrentOverallRankBefore',
     'CurrentOverallRankAfter',
+    'CurrentOverallRankedAthleteCountAfter',
     'CurrentOverallPlacesGained',
     'CurrentOverallMedalEntry',
     'CurrentOverallMedalBefore',
@@ -84,6 +86,7 @@ const officialNewsHeaders = [
     'CurrentOverallDisplacedMedalAfter',
     'AllTimeDistanceRankBefore',
     'AllTimeDistanceRankAfter',
+    'AllTimeDistanceRankedAthleteCountAfter',
     'AllTimeDistancePlacesGained',
     'AllTimeDistanceMedalEntry',
     'AllTimeDistanceMedalBefore',
@@ -94,6 +97,7 @@ const officialNewsHeaders = [
     'AllTimeDistanceDisplacedMedalAfter',
     'AllTimeOverallRankBefore',
     'AllTimeOverallRankAfter',
+    'AllTimeOverallRankedAthleteCountAfter',
     'AllTimeOverallPlacesGained',
     'AllTimeOverallMedalEntry',
     'AllTimeOverallMedalBefore',
@@ -108,6 +112,7 @@ const officialNewsRankContexts = [
     [
         'CurrentDistanceRankBefore',
         'CurrentDistanceRankAfter',
+        'CurrentDistanceRankedAthleteCountAfter',
         'CurrentDistancePlacesGained',
         'CurrentDistanceMedalEntry',
         'CurrentDistanceMedalBefore',
@@ -120,6 +125,7 @@ const officialNewsRankContexts = [
     [
         'CurrentOverallRankBefore',
         'CurrentOverallRankAfter',
+        'CurrentOverallRankedAthleteCountAfter',
         'CurrentOverallPlacesGained',
         'CurrentOverallMedalEntry',
         'CurrentOverallMedalBefore',
@@ -132,6 +138,7 @@ const officialNewsRankContexts = [
     [
         'AllTimeDistanceRankBefore',
         'AllTimeDistanceRankAfter',
+        'AllTimeDistanceRankedAthleteCountAfter',
         'AllTimeDistancePlacesGained',
         'AllTimeDistanceMedalEntry',
         'AllTimeDistanceMedalBefore',
@@ -144,6 +151,7 @@ const officialNewsRankContexts = [
     [
         'AllTimeOverallRankBefore',
         'AllTimeOverallRankAfter',
+        'AllTimeOverallRankedAthleteCountAfter',
         'AllTimeOverallPlacesGained',
         'AllTimeOverallMedalEntry',
         'AllTimeOverallMedalBefore',
@@ -1643,6 +1651,7 @@ function validateOfficialNewsRankContext(
     [
         beforeField,
         afterField,
+        rankedAthleteCountAfterField,
         gainField,
         medalEntryField,
         medalBeforeField,
@@ -1656,6 +1665,7 @@ function validateOfficialNewsRankContext(
 ) {
     const beforeText = String(row[beforeField] || '').trim();
     const afterText = String(row[afterField] || '').trim();
+    const rankedAthleteCountAfterText = String(row[rankedAthleteCountAfterField] || '').trim();
     const gainText = String(row[gainField] || '').trim();
     const medalEntryText = String(row[medalEntryField] || '').trim();
     const medalBeforeText = String(row[medalBeforeField] || '').trim();
@@ -1674,6 +1684,7 @@ function validateOfficialNewsRankContext(
         for (const field of [
             beforeField,
             afterField,
+            rankedAthleteCountAfterField,
             gainField,
             medalEntryField,
             medalBeforeField,
@@ -1708,6 +1719,25 @@ function validateOfficialNewsRankContext(
         afterField,
         { minimum: 1 }
     );
+    const rankedAthleteCountAfter = parseOfficialNewsInteger(
+        rankedAthleteCountAfterText,
+        file,
+        row.__rowNumber,
+        rankedAthleteCountAfterField,
+        { required: true, minimum: 1 }
+    );
+
+    if (
+        after !== null &&
+        rankedAthleteCountAfter !== null &&
+        rankedAthleteCountAfter < after
+    ) {
+        addError(
+            file,
+            row.__rowNumber,
+            `${rankedAthleteCountAfterField} ${rankedAthleteCountAfter} must be at least ${afterField} ${after}.`
+        );
+    }
 
     validateOfficialNewsMedalSnapshot(
         medalBeforeText,

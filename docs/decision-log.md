@@ -369,6 +369,37 @@ Unknown historical details are labelled rather than inferred.
   signal. The full 72-file export remains atomic, and only the two News CSVs
   change semantically.
 
+## News ranked-athlete counts remain workbook-owned
+
+- **Status:** Accepted product and architecture decision; coordinated schema
+  migration promoted locally and validated by the complete suite, awaiting PR
+  review
+- **Date:** 24 August 2026
+- **Decision:** Add one workbook-owned post-result count immediately after
+  each Official Results News `RankAfter`, growing the exact export from 60 to
+  64 columns: `CurrentDistanceRankedAthleteCountAfter`,
+  `CurrentOverallRankedAthleteCountAfter`,
+  `AllTimeDistanceRankedAthleteCountAfter`, and
+  `AllTimeOverallRankedAthleteCountAfter`. Each is the number of distinct
+  athletes represented in that exact selected-mode, period, and
+  Distance/Overall after-snapshot table with a qualifying Official
+  performance; it is positive, includes the News athlete, and is at least
+  that athlete's `RankAfter`.
+- **Rationale:** A rank alone hides the size of the eligible championship
+  field, while the browser has neither the historical table nor authority to
+  count it. Reusing the workbook's after snapshot lets News render `#1 / 12`
+  accurately, including when Current expiries or tied competition ranks make
+  the table size non-obvious.
+- **Consequences:** The count is never a raw result count, roster size,
+  maximum rank, or browser calculation. It is blank with an unavailable table,
+  including each 1 Mile Distance context, while 1 Mile Overall remains
+  populated. The page fails closed for a missing, malformed, zero, or
+  below-rank count and displays the compact displaced-holder attribution only
+  as `Gold taken from Alex`, without a claimed later medal status. The exact
+  header, workbook exporter, validator, fixtures, browser rendering, and
+  responsive review must change together; a fresh atomic full bundle remains
+  required.
+
 ## Production usage analytics are aggregate and cookie-free
 
 - **Status:** Accepted; scope of the third-party-runtime prohibition clarified

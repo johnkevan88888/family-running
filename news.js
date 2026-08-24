@@ -312,6 +312,10 @@
                 row[`${rankKey}RankBefore`],
                 row[`${rankKey}RankAfter`],
                 row[`${rankKey}PlacesGained`]
+            ) &&
+            isValidRankedAthleteCountAfter(
+                row[`${rankKey}RankAfter`],
+                row[`${rankKey}RankedAthleteCountAfter`]
             )
         );
         const movement = currentMovement || allTimeMovement
@@ -436,6 +440,7 @@
             'Distance',
             row[`${periodKey}DistanceRankBefore`],
             row[`${periodKey}DistanceRankAfter`],
+            row[`${periodKey}DistanceRankedAthleteCountAfter`],
             row[`${periodKey}DistancePlacesGained`],
             row[`${periodKey}DistanceMedalEntry`],
             row[`${periodKey}DistanceMedalBefore`],
@@ -451,6 +456,7 @@
             'Overall',
             row[`${periodKey}OverallRankBefore`],
             row[`${periodKey}OverallRankAfter`],
+            row[`${periodKey}OverallRankedAthleteCountAfter`],
             row[`${periodKey}OverallPlacesGained`],
             row[`${periodKey}OverallMedalEntry`],
             row[`${periodKey}OverallMedalBefore`],
@@ -482,6 +488,7 @@
         label,
         before,
         after,
+        rankedAthleteCountAfter,
         placesGained,
         medalEntry,
         medalBefore,
@@ -495,8 +502,14 @@
     ) {
         const rankBefore = String(before || '').trim();
         const rankAfter = String(after || '').trim();
+        const rankedAthleteCount = String(rankedAthleteCountAfter || '').trim();
         const gained = String(placesGained || '').trim();
         const medalPresentation = medalEntryPresentation(medalEntry);
+        const hasCompleteMovement = isCompleteRankMovement(rankBefore, rankAfter, gained);
+        const hasValidRankedAthleteCount = isValidRankedAthleteCountAfter(
+            rankAfter,
+            rankedAthleteCount
+        );
 
         if (!rankBefore && !rankAfter && !gained) {
             return '';
@@ -505,23 +518,24 @@
         let positions;
         let change;
 
-        if (!rankBefore && rankAfter && !gained) {
-            positions = `Unranked to #${escapeHTML(rankAfter)}`;
+        if (!hasCompleteMovement || !hasValidRankedAthleteCount) {
+            // The denominator is a mandatory workbook-owned post-result
+            // snapshot. Do not retain a partial rank label or use a row
+            // position to invent the total when an invalid export arrives.
+            positions = 'Movement unavailable';
+            change = '';
+        } else if (!rankBefore && rankAfter && !gained) {
+            positions = `Unranked to #${escapeHTML(rankAfter)} / ${escapeHTML(rankedAthleteCount)}`;
             change = 'Entered the table';
         } else if (rankBefore && rankAfter && gained) {
-            positions = `#${escapeHTML(rankBefore)} to #${escapeHTML(rankAfter)}`;
+            positions = `#${escapeHTML(rankBefore)} to #${escapeHTML(rankAfter)} / ${escapeHTML(rankedAthleteCount)}`;
             change = gained === '0'
                 ? 'No rank change'
                 : `Up ${escapeHTML(gained)} ${gained === '1' ? 'place' : 'places'}`;
-        } else {
-            // Published bundles are validated before release. If an invalid
-            // partial triplet reaches the page, display no invented movement.
-            positions = 'Movement unavailable';
-            change = '';
         }
 
         const hasMedalEntry = Boolean(
-            medalPresentation && isCompleteRankMovement(rankBefore, rankAfter, gained)
+            medalPresentation && hasCompleteMovement && hasValidRankedAthleteCount
         );
         const medalBadge = hasMedalEntry
             ? `
@@ -531,10 +545,10 @@
                 </span>
             `
             : '';
-        const medalPosition = !hasMedalEntry && isCompleteRankMovement(rankBefore, rankAfter, gained)
+        const medalPosition = !hasMedalEntry && hasCompleteMovement && hasValidRankedAthleteCount
             ? renderMedalPositionSnapshot(medalBefore, medalAfter)
             : '';
-        const medalDisplacement = isCompleteRankMovement(rankBefore, rankAfter, gained)
+        const medalDisplacement = hasCompleteMovement && hasValidRankedAthleteCount
             ? renderMedalDisplacement({
                 focalAthleteId,
                 focalMedalAfter: medalAfter,
@@ -597,15 +611,8 @@
 
         return `
             <span class="news-medal-displacement">
-                <span class="news-medal-displacement-label">Medal change:</span>
                 <span>${escapeHTML(medalBefore)} taken from</span>
                 ${athlete}
-                <span class="news-medal-displacement-separator" aria-hidden="true">&mdash;</span>
-                <span>${escapeHTML(athleteName)}:</span>
-                <span>${escapeHTML(medalBefore)}</span>
-                <span class="news-medal-displacement-arrow" aria-hidden="true">&#8594;</span>
-                <span class="news-medal-displacement-transition">to</span>
-                <span>${escapeHTML(medalAfter)}</span>
             </span>
         `;
     }
@@ -658,6 +665,22 @@
             (!rankBefore && rankAfter && !gained) ||
             (rankBefore && rankAfter && gained)
         );
+    }
+
+    function isValidRankedAthleteCountAfter(rankAfter, countAfter) {
+        const rank = String(rankAfter || '').trim();
+        const count = String(countAfter || '').trim();
+
+        if (!/^[1-9][0-9]*$/.test(rank) || !/^[1-9][0-9]*$/.test(count)) {
+            return false;
+        }
+
+        const rankNumber = Number(rank);
+        const countNumber = Number(count);
+
+        return Number.isSafeInteger(rankNumber) &&
+            Number.isSafeInteger(countNumber) &&
+            countNumber >= rankNumber;
     }
 
     function formatNewsDate(value) {

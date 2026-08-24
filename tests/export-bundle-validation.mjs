@@ -29,6 +29,7 @@ const officialNewsHeaders = [
     'AgeGradeImprovement',
     'CurrentDistanceRankBefore',
     'CurrentDistanceRankAfter',
+    'CurrentDistanceRankedAthleteCountAfter',
     'CurrentDistancePlacesGained',
     'CurrentDistanceMedalEntry',
     'CurrentDistanceMedalBefore',
@@ -39,6 +40,7 @@ const officialNewsHeaders = [
     'CurrentDistanceDisplacedMedalAfter',
     'CurrentOverallRankBefore',
     'CurrentOverallRankAfter',
+    'CurrentOverallRankedAthleteCountAfter',
     'CurrentOverallPlacesGained',
     'CurrentOverallMedalEntry',
     'CurrentOverallMedalBefore',
@@ -49,6 +51,7 @@ const officialNewsHeaders = [
     'CurrentOverallDisplacedMedalAfter',
     'AllTimeDistanceRankBefore',
     'AllTimeDistanceRankAfter',
+    'AllTimeDistanceRankedAthleteCountAfter',
     'AllTimeDistancePlacesGained',
     'AllTimeDistanceMedalEntry',
     'AllTimeDistanceMedalBefore',
@@ -59,6 +62,7 @@ const officialNewsHeaders = [
     'AllTimeDistanceDisplacedMedalAfter',
     'AllTimeOverallRankBefore',
     'AllTimeOverallRankAfter',
+    'AllTimeOverallRankedAthleteCountAfter',
     'AllTimeOverallPlacesGained',
     'AllTimeOverallMedalEntry',
     'AllTimeOverallMedalBefore',
@@ -70,6 +74,12 @@ const officialNewsHeaders = [
     'ExportBundleID'
 ];
 const officialNewsColumn = new Map(officialNewsHeaders.map((header, index) => [header, index]));
+const officialNewsRankContextPrefixes = [
+    'CurrentDistance',
+    'CurrentOverall',
+    'AllTimeDistance',
+    'AllTimeOverall'
+];
 const officialNewsMedalContextFixtures = [
     {
         label: 'Current Distance',
@@ -158,6 +168,7 @@ const officialNewsMedalSnapshotContextCases = officialNewsMedalContextFixtures.f
     }
 ]);
 const officialNewsOneMileMedalCases = [
+    'CurrentDistanceRankedAthleteCountAfter',
     'CurrentDistanceMedalEntry',
     'CurrentDistanceMedalBefore',
     'CurrentDistanceMedalAfter',
@@ -166,6 +177,7 @@ const officialNewsOneMileMedalCases = [
     'CurrentDistanceDisplacedMedalBefore',
     'CurrentDistanceDisplacedMedalAfter',
     'AllTimeDistanceMedalEntry',
+    'AllTimeDistanceRankedAthleteCountAfter',
     'AllTimeDistanceMedalBefore',
     'AllTimeDistanceMedalAfter',
     'AllTimeDistanceDisplacedAthleteID',
@@ -282,6 +294,41 @@ const cases = [
                 'CurrentDistanceRankAfter',
                 '1'
             );
+        }
+    },
+    {
+        name: 'official result News requires a post-result ranked-athlete count',
+        expected: 'CurrentDistanceRankedAthleteCountAfter is required.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceRankedAthleteCountAfter', '');
+        }
+    },
+    {
+        name: 'official result News rejects a non-integer post-result ranked-athlete count',
+        expected: 'CurrentDistanceRankedAthleteCountAfter "twelve" must be a non-negative integer.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceRankedAthleteCountAfter', 'twelve');
+        }
+    },
+    {
+        name: 'official result News rejects a zero post-result ranked-athlete count',
+        expected: 'CurrentDistanceRankedAthleteCountAfter "0" must be an integer of at least 1.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceRankedAthleteCountAfter', '0');
+        }
+    },
+    {
+        name: 'official result News rejects a post-result ranked-athlete count below the after rank',
+        expected: 'CurrentDistanceRankedAthleteCountAfter 2 must be at least CurrentDistanceRankAfter 3.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceRankedAthleteCountAfter', '2');
+        }
+    },
+    {
+        name: 'official result News accepts a ranked-athlete count above the competition rank',
+        expectPass: true,
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceRankedAthleteCountAfter', '4');
         }
     },
     {
@@ -684,6 +731,13 @@ const cases = [
             await mutateOfficialNewsRow(root, 'family', 1, 'CurrentDistanceRankAfter', '3');
             await mutateOfficialNewsRow(root, 'family', 1, 'CurrentDistanceMedalEntry', 'Bronze');
             await mutateOfficialNewsRow(root, 'family', 1, 'CurrentDistanceMedalAfter', 'Bronze');
+        }
+    },
+    {
+        name: 'cross-mode ranked-athlete counts remain site-specific',
+        expectPass: true,
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'family', 1, 'CurrentDistanceRankedAthleteCountAfter', '13');
         }
     },
     {
@@ -1467,8 +1521,22 @@ function validOfficialNewsRows(bundleId, mode) {
 }
 
 function officialNewsRow(values) {
+    const row = { ...values };
+
+    // These are fixed source-export values for the synthetic valid fixture,
+    // not a ranking calculation. Individual cases below mutate the counts to
+    // prove the validator's closed post-result-count contract.
+    for (const prefix of officialNewsRankContextPrefixes) {
+        const rankAfterField = `${prefix}RankAfter`;
+        const countAfterField = `${prefix}RankedAthleteCountAfter`;
+
+        if (!Object.prototype.hasOwnProperty.call(row, countAfterField) && String(row[rankAfterField] || '').trim()) {
+            row[countAfterField] = '20';
+        }
+    }
+
     return officialNewsHeaders
-        .map(header => String(values[header] ?? ''));
+        .map(header => String(row[header] ?? ''));
 }
 
 function csvCell(value) {

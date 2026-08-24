@@ -103,6 +103,19 @@ holder, or ambiguous handoff. This preserves the existing `MedalEntry`
 breakthrough semantics and requires a fresh full export, atomic promotion,
 validator/browser coverage, and responsive review.
 
+A sixth News follow-up was approved on 24 August 2026: each visible
+post-result position must show the size of its authoritative ranked field, for
+example `#1 / 12`. The contract grows from 60 to 64 columns by adding one
+workbook-owned `RankedAthleteCountAfter` immediately after each `RankAfter`.
+It counts distinct athletes with a qualifying Official performance in that
+same selected-mode after snapshot, not raw results, a roster, or a browser
+calculation. It is blank with unavailable Distance tables (including 1 Mile),
+positive and at least the exported rank otherwise, and may exceed a tied
+competition rank. The displacement copy becomes the shorter `Gold taken from
+Alex`; the former holder's later medal status is not displayed. This is another
+coordinated workbook, full-export, validator, browser, and responsive-review
+change requiring a fresh atomic bundle.
+
 ## Next candidate tasks
 
 1. **Mobile championship leaderboards are close to unreadable.** On
