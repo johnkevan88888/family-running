@@ -36,6 +36,12 @@ const officialNewsMilestoneTypes = [
     'Age Grade + Raw-Time PB'
 ];
 const officialNewsMedalEntries = ['Gold', 'Silver', 'Bronze'];
+const officialNewsDisplacedMedalAfterValues = [...officialNewsMedalEntries, 'No medal'];
+const officialNewsDisplacedMedalSuccessors = new Map([
+    ['Gold', 'Silver'],
+    ['Silver', 'Bronze'],
+    ['Bronze', 'No medal']
+]);
 const officialNewsHeaders = [
     'SortOrder',
     'SourceRow',
@@ -62,24 +68,40 @@ const officialNewsHeaders = [
     'CurrentDistanceMedalEntry',
     'CurrentDistanceMedalBefore',
     'CurrentDistanceMedalAfter',
+    'CurrentDistanceDisplacedAthleteID',
+    'CurrentDistanceDisplacedAthleteName',
+    'CurrentDistanceDisplacedMedalBefore',
+    'CurrentDistanceDisplacedMedalAfter',
     'CurrentOverallRankBefore',
     'CurrentOverallRankAfter',
     'CurrentOverallPlacesGained',
     'CurrentOverallMedalEntry',
     'CurrentOverallMedalBefore',
     'CurrentOverallMedalAfter',
+    'CurrentOverallDisplacedAthleteID',
+    'CurrentOverallDisplacedAthleteName',
+    'CurrentOverallDisplacedMedalBefore',
+    'CurrentOverallDisplacedMedalAfter',
     'AllTimeDistanceRankBefore',
     'AllTimeDistanceRankAfter',
     'AllTimeDistancePlacesGained',
     'AllTimeDistanceMedalEntry',
     'AllTimeDistanceMedalBefore',
     'AllTimeDistanceMedalAfter',
+    'AllTimeDistanceDisplacedAthleteID',
+    'AllTimeDistanceDisplacedAthleteName',
+    'AllTimeDistanceDisplacedMedalBefore',
+    'AllTimeDistanceDisplacedMedalAfter',
     'AllTimeOverallRankBefore',
     'AllTimeOverallRankAfter',
     'AllTimeOverallPlacesGained',
     'AllTimeOverallMedalEntry',
     'AllTimeOverallMedalBefore',
     'AllTimeOverallMedalAfter',
+    'AllTimeOverallDisplacedAthleteID',
+    'AllTimeOverallDisplacedAthleteName',
+    'AllTimeOverallDisplacedMedalBefore',
+    'AllTimeOverallDisplacedMedalAfter',
     'ExportBundleID'
 ];
 const officialNewsRankContexts = [
@@ -89,7 +111,11 @@ const officialNewsRankContexts = [
         'CurrentDistancePlacesGained',
         'CurrentDistanceMedalEntry',
         'CurrentDistanceMedalBefore',
-        'CurrentDistanceMedalAfter'
+        'CurrentDistanceMedalAfter',
+        'CurrentDistanceDisplacedAthleteID',
+        'CurrentDistanceDisplacedAthleteName',
+        'CurrentDistanceDisplacedMedalBefore',
+        'CurrentDistanceDisplacedMedalAfter'
     ],
     [
         'CurrentOverallRankBefore',
@@ -97,7 +123,11 @@ const officialNewsRankContexts = [
         'CurrentOverallPlacesGained',
         'CurrentOverallMedalEntry',
         'CurrentOverallMedalBefore',
-        'CurrentOverallMedalAfter'
+        'CurrentOverallMedalAfter',
+        'CurrentOverallDisplacedAthleteID',
+        'CurrentOverallDisplacedAthleteName',
+        'CurrentOverallDisplacedMedalBefore',
+        'CurrentOverallDisplacedMedalAfter'
     ],
     [
         'AllTimeDistanceRankBefore',
@@ -105,7 +135,11 @@ const officialNewsRankContexts = [
         'AllTimeDistancePlacesGained',
         'AllTimeDistanceMedalEntry',
         'AllTimeDistanceMedalBefore',
-        'AllTimeDistanceMedalAfter'
+        'AllTimeDistanceMedalAfter',
+        'AllTimeDistanceDisplacedAthleteID',
+        'AllTimeDistanceDisplacedAthleteName',
+        'AllTimeDistanceDisplacedMedalBefore',
+        'AllTimeDistanceDisplacedMedalAfter'
     ],
     [
         'AllTimeOverallRankBefore',
@@ -113,7 +147,11 @@ const officialNewsRankContexts = [
         'AllTimeOverallPlacesGained',
         'AllTimeOverallMedalEntry',
         'AllTimeOverallMedalBefore',
-        'AllTimeOverallMedalAfter'
+        'AllTimeOverallMedalAfter',
+        'AllTimeOverallDisplacedAthleteID',
+        'AllTimeOverallDisplacedAthleteName',
+        'AllTimeOverallDisplacedMedalBefore',
+        'AllTimeOverallDisplacedMedalAfter'
     ]
 ];
 // The workbook annotates participants with status markers, and a marker that
@@ -1289,7 +1327,9 @@ function validateOfficialResultNews(siteDir, siteMode) {
         for (const rankContext of officialNewsRankContexts) {
             const isDistanceContext = rankContext[0].includes('Distance');
             validateOfficialNewsRankContext(row, file, rankContext, {
-                tableAvailable: !(String(row.Distance || '').trim() === '1 Mile' && isDistanceContext)
+                tableAvailable: !(String(row.Distance || '').trim() === '1 Mile' && isDistanceContext),
+                siteAthleteIds,
+                siteMode
             });
         }
     }
@@ -1606,7 +1646,11 @@ function validateOfficialNewsRankContext(
         gainField,
         medalEntryField,
         medalBeforeField,
-        medalAfterField
+        medalAfterField,
+        displacedAthleteIdField,
+        displacedAthleteNameField,
+        displacedMedalBeforeField,
+        displacedMedalAfterField
     ],
     options = {}
 ) {
@@ -1633,7 +1677,11 @@ function validateOfficialNewsRankContext(
             gainField,
             medalEntryField,
             medalBeforeField,
-            medalAfterField
+            medalAfterField,
+            displacedAthleteIdField,
+            displacedAthleteNameField,
+            displacedMedalBeforeField,
+            displacedMedalAfterField
         ]) {
             if (String(row[field] || '').trim()) {
                 addError(
@@ -1718,6 +1766,20 @@ function validateOfficialNewsRankContext(
         );
     }
 
+    validateOfficialNewsDisplacement(
+        row,
+        file,
+        {
+            medalBeforeText,
+            medalAfterText,
+            athleteIdField: displacedAthleteIdField,
+            athleteNameField: displacedAthleteNameField,
+            medalBeforeField: displacedMedalBeforeField,
+            medalAfterField: displacedMedalAfterField
+        },
+        options
+    );
+
     if (!beforeText) {
         if (gainText) {
             addError(file, row.__rowNumber, `${gainField} must be blank when ${beforeField} is blank.`);
@@ -1749,6 +1811,130 @@ function validateOfficialNewsRankContext(
                 `${gainField} ${gain} must equal ${beforeField} minus ${afterField} (${expectedGain}).`
             );
         }
+    }
+}
+
+function validateOfficialNewsDisplacement(
+    row,
+    file,
+    {
+        medalBeforeText,
+        medalAfterText,
+        athleteIdField,
+        athleteNameField,
+        medalBeforeField,
+        medalAfterField
+    },
+    options
+) {
+    const displacedAthleteId = String(row[athleteIdField] || '').trim();
+    const displacedAthleteName = String(row[athleteNameField] || '').trim();
+    const displacedMedalBefore = String(row[medalBeforeField] || '').trim();
+    const displacedMedalAfter = String(row[medalAfterField] || '').trim();
+    const fields = [
+        athleteIdField,
+        athleteNameField,
+        medalBeforeField,
+        medalAfterField
+    ];
+    const values = [
+        displacedAthleteId,
+        displacedAthleteName,
+        displacedMedalBefore,
+        displacedMedalAfter
+    ];
+    const populated = values.filter(Boolean).length;
+
+    // A workbook may leave the entire group blank where the prior holder was
+    // absent or tied and therefore cannot be represented faithfully by this
+    // singular, person-level field group. Partial metadata is never safe for
+    // the display-only browser contract.
+    if (populated === 0) {
+        return;
+    }
+
+    if (populated !== values.length) {
+        addError(
+            file,
+            row.__rowNumber,
+            `${fields.join(', ')} must be either all blank or all populated.`
+        );
+        return;
+    }
+
+    if (
+        !officialNewsMedalEntries.includes(medalAfterText) ||
+        medalBeforeText === medalAfterText
+    ) {
+        addError(
+            file,
+            row.__rowNumber,
+            `${fields.join(', ')} must be blank unless the focal athlete moves into a different medal position.`
+        );
+        return;
+    }
+
+    validateAthleteId(displacedAthleteId, file, row.__rowNumber, athleteIdField, { required: true });
+    requireValue(displacedAthleteName, file, row.__rowNumber, athleteNameField);
+
+    if (options.siteAthleteIds && !options.siteAthleteIds.has(displacedAthleteId)) {
+        addError(
+            file,
+            row.__rowNumber,
+            `${athleteIdField} "${displacedAthleteId}" is not eligible for the ${options.siteMode} site mode.`
+        );
+    }
+
+    if (displacedAthleteId === String(row.AthleteID || '').trim()) {
+        addError(
+            file,
+            row.__rowNumber,
+            `${athleteIdField} must identify a different athlete from AthleteID.`
+        );
+    }
+
+    const publicIdentityMatches = athleteObjects.some(result =>
+        String(result.AthleteID || '').trim() === displacedAthleteId &&
+        String(result.Participant || '').trim() === displacedAthleteName
+    );
+    if (!publicIdentityMatches) {
+        addError(
+            file,
+            row.__rowNumber,
+            `${athleteIdField} and ${athleteNameField} must match one athlete identity in data/athlete_results.csv.`
+        );
+    }
+
+    if (!officialNewsMedalEntries.includes(displacedMedalBefore)) {
+        addError(
+            file,
+            row.__rowNumber,
+            `${medalBeforeField} "${displacedMedalBefore}" must be one of: ${officialNewsMedalEntries.join(', ')}.`
+        );
+    } else if (displacedMedalBefore !== medalAfterText) {
+        addError(
+            file,
+            row.__rowNumber,
+            `${medalBeforeField} must be "${medalAfterText}" because it is the focal athlete's MedalAfter.`
+        );
+    }
+
+    if (!officialNewsDisplacedMedalAfterValues.includes(displacedMedalAfter)) {
+        addError(
+            file,
+            row.__rowNumber,
+            `${medalAfterField} "${displacedMedalAfter}" must be one of: ${officialNewsDisplacedMedalAfterValues.join(', ')}.`
+        );
+        return;
+    }
+
+    const expectedDisplacedMedalAfter = officialNewsDisplacedMedalSuccessors.get(displacedMedalBefore);
+    if (expectedDisplacedMedalAfter && displacedMedalAfter !== expectedDisplacedMedalAfter) {
+        addError(
+            file,
+            row.__rowNumber,
+            `${medalAfterField} must be "${expectedDisplacedMedalAfter}" after ${medalBeforeField} "${displacedMedalBefore}".`
+        );
     }
 }
 

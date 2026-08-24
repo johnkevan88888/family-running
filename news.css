@@ -709,6 +709,52 @@
     line-height: 1;
 }
 
+.news-medal-displacement {
+    align-items: center;
+    background: #f6f8fa;
+    border: 1px solid #c5d3df;
+    border-radius: 7px;
+    color: #33495d;
+    display: inline-flex;
+    flex-wrap: wrap;
+    font-size: 0.69rem;
+    font-weight: 850;
+    gap: 2px 4px;
+    line-height: 1.2;
+    max-width: 100%;
+    padding: 4px 6px;
+    text-align: left;
+}
+
+.news-medal-displacement a {
+    color: inherit;
+    font-weight: 900;
+    overflow-wrap: anywhere;
+}
+
+.news-medal-displacement a:focus-visible {
+    outline: 3px solid #ffd700;
+    outline-offset: 2px;
+}
+
+.news-medal-displacement-separator,
+.news-medal-displacement-arrow {
+    color: #2b5c88;
+    font-size: 0.8rem;
+    line-height: 1;
+}
+
+.news-medal-displacement-label,
+.news-medal-displacement-transition {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
 @media (min-width: 701px) and (max-width: 1100px) {
     .news-flow {
         gap: 0;

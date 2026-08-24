@@ -1,13 +1,13 @@
 # Active Work
 
-## Current task: workbook-owned News medal-position snapshots
+## Current task: workbook-owned News medal positions and displaced holders
 
 ### Status — 24 August 2026
 
-Implemented and promoted locally on `codex/news-medal-position-labels`; no
-merge, deployment, or release has been performed. This is a follow-up to the
-already merged News baseline from Pull Request #68, not a replacement for the
-Gallery work on `main`.
+Implemented and promoted locally on `codex/news-medal-position-labels`.
+Pull Request #70 is open; no merge, deployment, or release has been performed.
+This is a follow-up to the already merged News baseline from Pull Request #68,
+not a replacement for the Gallery work on `main`.
 
 The private News draft workbook was backed up before this authorized change.
 The untouched backup is
@@ -19,7 +19,13 @@ fields: `MedalBefore` and `MedalAfter` for Current/All-Time and
 Distance/Overall. The existing four `MedalEntry` fields remain exclusively
 about entering a medal position.
 
-The new exact News schema is 44 columns. The browser never derives a medal
+Before the follow-up displaced-holder export change, the draft workbook was
+backed up again at
+`C:\GitHub\_private_workbooks\backups\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX BACKUP BEFORE NEWS MEDAL DISPLACEMENT 20260824-142249.xlsm`
+with SHA-256
+`077EC7E0F375F34F0ADEB2C903FF7B9B986D362CD5C6CA326368C86DA40AC849`.
+
+The exact News schema is now 60 columns. The browser never derives a medal
 from a rank: it shows an exported transition such as `Silver → Gold` only when
 both snapshot fields are valid. A snapshot transition remains neutral; only an
 exported `MedalEntry` can create the established `Medal breakthrough!` callout,
@@ -27,36 +33,43 @@ card accent, and `New … medal position` badge. Invalid or partial snapshots
 render nothing. The page announces the visual arrow as `to` for assistive
 technology.
 
+Each Current/All-Time and Distance/Overall context now also has four
+workbook-owned displaced-holder fields: an athlete ID, athlete name, prior
+medal, and resulting medal. A complete quartet identifies the former holder of
+the medal just claimed by the News athlete and can express only
+`Gold → Silver`, `Silver → Bronze`, or `Bronze → No medal`. The exporter
+leaves the entire quartet blank when no unique actual handoff exists. The
+browser displays only a complete valid quartet, links the exported athlete ID
+while preserving the selected mode, and does not fetch Gallery suppression data
+or infer a holder from rank.
+
 The fresh full staged export is retained at
-`test-artifacts/workbook-export-staging/run-20260824-104408-551` and passed
-`pnpm run workbook:validate:staged`. Reconciliation found exactly the intended
-two meaningful changes—Family and Everyone `official_result_news.csv`—with
-all existing News values unchanged after excluding the new snapshot columns and
-volatile bundle metadata. Carolyn Kevan's 26 August 2017 Family record now
-exports `Silver → Gold` for both All-Time Distance and All-Time Overall.
+`test-artifacts/workbook-export-staging/run-20260824-143417-090` and passed
+staged-bundle validation. Reconciliation found exactly the intended two
+meaningful changes—Family and Everyone `official_result_news.csv`—and a
+field-by-field comparison found every pre-existing News value unchanged.
+Carolyn Kevan's 26 August 2017 Family record now exports `Silver → Gold` and
+identifies David Graham-Kevan as the former Gold holder for both All-Time
+Distance and All-Time Overall.
 
 John approved full-bundle promotion on 24 August 2026. The promotion revalidated
 the staged candidate and atomically replaced tracked `data/`; the prior tracked
 bundle remains recoverable at
-`test-artifacts/workbook-export-promotion/20260824171418447/previous-data`.
+`test-artifacts/workbook-export-promotion/20260824190008107/previous-data`.
 
-The complete `pnpm test` suite first passed in an isolated temporary checkout
-using that staged bundle and then passed again against the promoted tracked
-data. This includes repository safety, vendored libraries, CSV and Gallery
-validation for both modes, News/export/staged-workflow regressions,
-preview-artifact safety and the 114-file build, and desktop/mobile browser
-smoke tests. Focused responsive screenshots were reviewed: entry callouts
-remain unchanged, snapshot pills are legible and neutral, and there is no
-horizontal overflow. The temporary validation worktree was removed after the
-run.
+The complete `pnpm test` suite passed against the promoted tracked data. This
+includes repository safety, vendored libraries, CSV and Gallery validation for
+both modes, News/export/staged-workflow regressions, preview-artifact safety and
+the 114-file build, and desktop/mobile browser smoke tests. Focused responsive
+screenshots were reviewed: entry callouts remain unchanged, displaced-holder
+statements are readable and neutral, and there is no horizontal overflow.
 
 ### Handoff
 
 - The complete staged bundle has been promoted atomically; do not selectively
   overwrite individual data files.
-- Do not merge or deploy this branch without separate explicit approval.
-- Commit `5696606` is pushed to
-  `origin/codex/news-medal-position-labels`; no pull request has been opened.
+- Pull Request #70 carries this branch; do not merge or deploy it without
+  separate explicit approval.
 
 ## Historical record: Official Results News first draft
 

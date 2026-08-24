@@ -215,7 +215,7 @@ the required static-site check and combined Deploy Preview passed, and GitHub
 reports the PR clean and mergeable. This verification does not merge or release
 the change.
 
-### News medal-position snapshot extension status
+### News medal-position snapshot extension status (historical baseline)
 
 Real-data review on 24 August 2026 showed that the entry-only fields correctly
 left an existing-medal upgrade unmarked: for example, an All-Time Rank 2 to
@@ -566,6 +566,34 @@ empty manifests exercise the branded fallback state.
 
 Generated screenshots and reports are ignored by Git.
 
+### News displaced-medal-holder extension status
+
+The later approved follow-up grows the News header from 44 to 60 columns by
+adding a workbook-owned displaced-holder quartet after each context's
+`MedalAfter`: athlete ID, athlete name, prior medal, and resulting medal. The
+quartet is all-or-blank and represents one verified former holder only. Its
+allowed chains are `Gold → Silver`, `Silver → Bronze`, and
+`Bronze → No medal`; it stays blank for retained positions, no former holder,
+or an ambiguous attribution. `MedalEntry` remains the only card-callout signal.
+
+The fresh 72-file bundle at
+`test-artifacts/workbook-export-staging/run-20260824-143417-090` passed
+staged validation. Reconciliation found only the two mode-specific News CSVs
+changed, and a field-by-field comparison found every prior News value unchanged.
+Carolyn Kevan's 26 August 2017 All-Time Distance and Overall `Silver → Gold`
+movement names David Graham-Kevan as the former Gold holder, who moves to
+Silver. John approved atomic promotion; the recoverable prior bundle is at
+`test-artifacts/workbook-export-promotion/20260824190008107/previous-data`.
+
+Focused contract coverage validates complete-or-blank quartets, selected-mode
+public identity, non-self attribution, focal-medal agreement, each permitted
+handoff chain, invalid/hostile values, and 1 Mile's blank Distance contexts.
+Browser coverage validates the visible statement, mode-preserving athlete link,
+screen-reader transition wording, all contexts, and desktop/mobile layout.
+The promoted-root `pnpm test` run passed repository safety, vendor/CSV/Gallery
+validation, contract regressions, artifact safety/build, and browser smoke
+tests with responsive screenshots and no overflow.
+
 ## Manual Review Checklist For John
 
 Before approving a Pull Request:
@@ -605,6 +633,11 @@ Before approving a Pull Request:
   Family/Everyone differences. Confirm the preview uses `entered a
   medal-winning position` only for a new entry, does not claim a final medal
   award, and makes every medal label clear without colour or icons.
+- For the displaced-medal-holder extension, review a Gold-to-Silver,
+  Silver-to-Bronze, and Bronze-to-No-medal handoff; confirm the named former
+  holder is exported, linked in the selected mode, and never inferred from
+  ranks. Confirm retained or ambiguous cases show no attribution and that
+  1 Mile Distance contexts keep the full ten-field group blank.
 - For record changes, review the private workbook's `AbsoluteRecords` sheet and the staged `absolute_records.csv` files before approving tracked data promotion.
 - Confirm known limitations and rollback approach are documented.
 
@@ -630,6 +663,12 @@ lightweight data route. Do not reuse the earlier 36-column acceptance record:
 the snapshot extension needs its own refreshed full-bundle validation,
 reconciliation, promotion, tracked-data validation, complete local suite, and
 both-mode responsive review before release.
+
+The later 28-field medal-and-displacement contract (the 12 medal fields plus
+16 displaced-holder fields) is likewise a coordinated workbook schema, data,
+validator, and browser change. It requires a fresh 60-column full bundle,
+reconciliation that isolates the two News CSVs, explicit promotion approval,
+tracked-data validation, full-suite and responsive review before release.
 
 For validated lightweight data refreshes, no accepted eligibility gate, exact
 CSV diff review, and responsive screenshot review for both site modes, no

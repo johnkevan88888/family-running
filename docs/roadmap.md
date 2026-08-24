@@ -92,6 +92,17 @@ labels and must never calculate a medal from rank numbers. This is a new
 coordinated workbook, full-export, validator, browser, and responsive-review
 change; the prior 36-column acceptance record does not complete it.
 
+A fifth News follow-up was approved on 24 August 2026: when a medal changes
+hands, the News card may show whose position was displaced. The contract grows
+from 44 to 60 columns by adding four workbook-owned fields after each
+`MedalAfter`: the displaced athlete's public ID and name plus their prior and
+resulting medal. The quartet is all-or-blank and represents one verified
+handoff only: `Gold → Silver`, `Silver → Bronze`, or
+`Bronze → No medal`. It stays blank for a retained medal, absent former
+holder, or ambiguous handoff. This preserves the existing `MedalEntry`
+breakthrough semantics and requires a fresh full export, atomic promotion,
+validator/browser coverage, and responsive review.
+
 ## Next candidate tasks
 
 1. **Mobile championship leaderboards are close to unreadable.** On

@@ -57,6 +57,17 @@
             icon: '&#129353;'
         }
     };
+    const displacedMedalAfterValues = new Set([
+        'Silver',
+        'Bronze',
+        'No medal'
+    ]);
+    const displacedMedalTransitions = new Map([
+        ['Gold', 'Silver'],
+        ['Silver', 'Bronze'],
+        ['Bronze', 'No medal']
+    ]);
+    const publicAthleteIdPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
     const medalEntryContexts = [
         ['CurrentDistance', 'CurrentDistanceMedalEntry'],
         ['CurrentOverall', 'CurrentOverallMedalEntry'],
@@ -429,6 +440,11 @@
             row[`${periodKey}DistanceMedalEntry`],
             row[`${periodKey}DistanceMedalBefore`],
             row[`${periodKey}DistanceMedalAfter`],
+            row.AthleteID,
+            row[`${periodKey}DistanceDisplacedAthleteID`],
+            row[`${periodKey}DistanceDisplacedAthleteName`],
+            row[`${periodKey}DistanceDisplacedMedalBefore`],
+            row[`${periodKey}DistanceDisplacedMedalAfter`],
             `${periodKey.toLowerCase()}-distance`
         );
         const overallMovement = renderRankMovement(
@@ -439,6 +455,11 @@
             row[`${periodKey}OverallMedalEntry`],
             row[`${periodKey}OverallMedalBefore`],
             row[`${periodKey}OverallMedalAfter`],
+            row.AthleteID,
+            row[`${periodKey}OverallDisplacedAthleteID`],
+            row[`${periodKey}OverallDisplacedAthleteName`],
+            row[`${periodKey}OverallDisplacedMedalBefore`],
+            row[`${periodKey}OverallDisplacedMedalAfter`],
             `${periodKey.toLowerCase()}-overall`
         );
 
@@ -465,6 +486,11 @@
         medalEntry,
         medalBefore,
         medalAfter,
+        focalAthleteId,
+        displacedAthleteId,
+        displacedAthleteName,
+        displacedMedalBefore,
+        displacedMedalAfter,
         contextKey
     ) {
         const rankBefore = String(before || '').trim();
@@ -508,6 +534,16 @@
         const medalPosition = !hasMedalEntry && isCompleteRankMovement(rankBefore, rankAfter, gained)
             ? renderMedalPositionSnapshot(medalBefore, medalAfter)
             : '';
+        const medalDisplacement = isCompleteRankMovement(rankBefore, rankAfter, gained)
+            ? renderMedalDisplacement({
+                focalAthleteId,
+                focalMedalAfter: medalAfter,
+                displacedAthleteId,
+                displacedAthleteName,
+                displacedMedalBefore,
+                displacedMedalAfter
+            })
+            : '';
 
         return `
             <div class="news-rank-row${hasMedalEntry ? ` news-rank-row-medal-entry news-rank-row-medal-${medalPresentation.className}` : ''}"
@@ -518,8 +554,59 @@
                     ${change ? `<span class="news-rank-change">${change}</span>` : ''}
                     ${medalBadge}
                     ${medalPosition}
+                    ${medalDisplacement}
                 </dd>
             </div>
+        `;
+    }
+
+    function renderMedalDisplacement({
+        focalAthleteId,
+        focalMedalAfter,
+        displacedAthleteId,
+        displacedAthleteName,
+        displacedMedalBefore,
+        displacedMedalAfter
+    }) {
+        const focalId = String(focalAthleteId || '').trim();
+        const focalAfter = String(focalMedalAfter || '').trim();
+        const athleteId = String(displacedAthleteId || '').trim();
+        const athleteName = String(displacedAthleteName || '').trim();
+        const medalBefore = String(displacedMedalBefore || '').trim();
+        const medalAfter = String(displacedMedalAfter || '').trim();
+
+        // Displacement is an optional, workbook-owned attribution. A blank
+        // source export (including an intentionally omitted identity) stays
+        // blank, and a partial or malformed context never becomes a guessed
+        // attribution in the browser.
+        if (
+            !publicAthleteIdPattern.test(focalId) ||
+            !medalEntryPresentation(focalAfter) ||
+            !publicAthleteIdPattern.test(athleteId) ||
+            !athleteName ||
+            !medalEntryPresentation(medalBefore) ||
+            !displacedMedalAfterValues.has(medalAfter) ||
+            displacedMedalTransitions.get(medalBefore) !== medalAfter ||
+            focalAfter !== medalBefore ||
+            athleteId === focalId
+        ) {
+            return '';
+        }
+
+        const athlete = athleteLink(athleteId, athleteName);
+
+        return `
+            <span class="news-medal-displacement">
+                <span class="news-medal-displacement-label">Medal change:</span>
+                <span>${escapeHTML(medalBefore)} taken from</span>
+                ${athlete}
+                <span class="news-medal-displacement-separator" aria-hidden="true">&mdash;</span>
+                <span>${escapeHTML(athleteName)}:</span>
+                <span>${escapeHTML(medalBefore)}</span>
+                <span class="news-medal-displacement-arrow" aria-hidden="true">&#8594;</span>
+                <span class="news-medal-displacement-transition">to</span>
+                <span>${escapeHTML(medalAfter)}</span>
+            </span>
         `;
     }
 

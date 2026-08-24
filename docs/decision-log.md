@@ -343,6 +343,32 @@ Unknown historical details are labelled rather than inferred.
   semantically changed public data files and the 72-file bundle shape remains
   unchanged, but a fresh atomic full export and full validation are required.
 
+## News displaced-medal holders remain workbook-owned
+
+- **Status:** Accepted product and architecture decision; coordinated schema
+  migration completed locally and awaiting PR review
+- **Date:** 24 August 2026
+- **Decision:** Extend each Official Results News medal context with four
+  workbook-owned fields after `MedalAfter`: the displaced athlete's public ID
+  and name, followed by their prior and resulting medal. This grows the exact
+  export from 44 to 60 columns. A complete quartet represents one verified
+  former holder of the News athlete's newly claimed medal and is allowed only
+  for `Gold → Silver`, `Silver → Bronze`, or `Bronze → No medal`; otherwise
+  all four fields remain blank.
+- **Rationale:** A new or upgraded medal position can displace another
+  athlete, but the browser has neither the historic full table nor authority
+  to infer who that was. A direct export preserves the current selected-mode
+  replay and source tie-break semantics while avoiding a misleading singular
+  attribution in absent or ambiguous cases.
+- **Consequences:** The workbook verifies the prior holder against its own
+  before/after snapshot. Repository validation requires a complete-or-blank,
+  public, selected-mode, non-self quartet with the allowed chain; browser code
+  only renders and links a complete valid export. Gallery's media-only
+  `hidden-athlete-ids.json` is not a News visibility policy and is never
+  fetched for this feature. `MedalEntry` remains the sole breakthrough callout
+  signal. The full 72-file export remains atomic, and only the two News CSVs
+  change semantically.
+
 ## Production usage analytics are aggregate and cookie-free
 
 - **Status:** Accepted; scope of the third-party-runtime prohibition clarified

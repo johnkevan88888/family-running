@@ -30,15 +30,18 @@
   Pull Request #68; GitHub reports it clean and mergeable, and the required
   static-site check plus combined Deploy Preview passed. Nothing is merged or
   released.
-- **Medal-position snapshot extension:** A real-data review on 24 August 2026
-  found that the 36-column entry-only contract correctly left a `MedalEntry`
-  blank for an existing-medal upgrade such as Rank 2 to Rank 1, but therefore
-  gave the page no workbook-owned way to label the Silver-to-Gold change. The
-  target contract is now 44 columns: the four threshold-only `MedalEntry`
-  fields remain, and each receives workbook-owned `MedalBefore` and
-  `MedalAfter` snapshots immediately after it. This is a coordinated workbook,
-  full-export, validator, browser, test, and documentation change. Earlier
-  36-column validation evidence is not acceptance evidence for this extension.
+- **Medal-position and displaced-holder extensions:** A real-data review on
+  24 August 2026 found that the 36-column entry-only contract correctly left a
+  `MedalEntry` blank for an existing-medal upgrade such as Rank 2 to Rank 1,
+  but therefore gave the page no workbook-owned way to label the
+  Silver-to-Gold change. The resulting 44-column snapshot contract retains the
+  four threshold-only `MedalEntry` fields and adds `MedalBefore`/
+  `MedalAfter` snapshots. A further approved follow-up grows the contract to
+  60 columns by adding a complete-or-blank displaced-holder quartet after each
+  `MedalAfter`. This is a coordinated workbook, full-export, validator,
+  browser, test, and documentation change; earlier 36- and 44-column evidence
+  is historical baseline evidence, not acceptance evidence for the later
+  extension.
 - **Scope:** Official-result milestones and their reconstructed championship
   effect. This is not an editorial news system.
 
@@ -201,15 +204,20 @@ Each file has the corresponding `family` or `everyone` manifest scope and must
 carry the current bundle's `ExportBundleID`. A mode with no qualifying rows
 still exports the header-only file.
 
-The exact ordered header is:
+The exact ordered header is the concatenation of the following five lines,
+with no line breaks inserted:
 
-```csv
-SortOrder,SourceRow,AthleteID,AthleteName,ResultDate,Distance,Time,AgeGrade,AgeGradeExact,Event,TimeClass,MilestoneType,PreviousBestTime,TimeImprovementSeconds,TimeImprovement,PreviousBestAgeGrade,PreviousBestAgeGradeExact,AgeGradeImprovementExact,AgeGradeImprovement,CurrentDistanceRankBefore,CurrentDistanceRankAfter,CurrentDistancePlacesGained,CurrentDistanceMedalEntry,CurrentDistanceMedalBefore,CurrentDistanceMedalAfter,CurrentOverallRankBefore,CurrentOverallRankAfter,CurrentOverallPlacesGained,CurrentOverallMedalEntry,CurrentOverallMedalBefore,CurrentOverallMedalAfter,AllTimeDistanceRankBefore,AllTimeDistanceRankAfter,AllTimeDistancePlacesGained,AllTimeDistanceMedalEntry,AllTimeDistanceMedalBefore,AllTimeDistanceMedalAfter,AllTimeOverallRankBefore,AllTimeOverallRankAfter,AllTimeOverallPlacesGained,AllTimeOverallMedalEntry,AllTimeOverallMedalBefore,AllTimeOverallMedalAfter,ExportBundleID
+```text
+SortOrder,SourceRow,AthleteID,AthleteName,ResultDate,Distance,Time,AgeGrade,AgeGradeExact,Event,TimeClass,MilestoneType,PreviousBestTime,TimeImprovementSeconds,TimeImprovement,PreviousBestAgeGrade,PreviousBestAgeGradeExact,AgeGradeImprovementExact,AgeGradeImprovement,
+CurrentDistanceRankBefore,CurrentDistanceRankAfter,CurrentDistancePlacesGained,CurrentDistanceMedalEntry,CurrentDistanceMedalBefore,CurrentDistanceMedalAfter,CurrentDistanceDisplacedAthleteID,CurrentDistanceDisplacedAthleteName,CurrentDistanceDisplacedMedalBefore,CurrentDistanceDisplacedMedalAfter,
+CurrentOverallRankBefore,CurrentOverallRankAfter,CurrentOverallPlacesGained,CurrentOverallMedalEntry,CurrentOverallMedalBefore,CurrentOverallMedalAfter,CurrentOverallDisplacedAthleteID,CurrentOverallDisplacedAthleteName,CurrentOverallDisplacedMedalBefore,CurrentOverallDisplacedMedalAfter,
+AllTimeDistanceRankBefore,AllTimeDistanceRankAfter,AllTimeDistancePlacesGained,AllTimeDistanceMedalEntry,AllTimeDistanceMedalBefore,AllTimeDistanceMedalAfter,AllTimeDistanceDisplacedAthleteID,AllTimeDistanceDisplacedAthleteName,AllTimeDistanceDisplacedMedalBefore,AllTimeDistanceDisplacedMedalAfter,
+AllTimeOverallRankBefore,AllTimeOverallRankAfter,AllTimeOverallPlacesGained,AllTimeOverallMedalEntry,AllTimeOverallMedalBefore,AllTimeOverallMedalAfter,AllTimeOverallDisplacedAthleteID,AllTimeOverallDisplacedAthleteName,AllTimeOverallDisplacedMedalBefore,AllTimeOverallDisplacedMedalAfter,ExportBundleID
 ```
 
-This is a 44-column contract. Each four-column rank triplet-plus-entry group
-now has its `MedalBefore` and `MedalAfter` snapshot fields immediately after
-the existing `MedalEntry` field.
+This is a 60-column contract. Each rank context has three rank fields, three
+medal fields, and four displaced-holder fields. The quartet follows that
+context's `MedalAfter` field.
 
 No column may be renamed, omitted, reordered, or added without a coordinated
 workbook, validator, browser, test, and documentation change.
@@ -370,14 +378,15 @@ exported integers.
 
 ### Medal-position fields
 
-Each rank context has three aligned workbook-owned medal fields:
+Each rank context has three aligned workbook-owned medal fields and an optional
+four-field displaced-holder attribution:
 
-| Rank context | Threshold entry | Before snapshot | After snapshot |
-| --- | --- | --- | --- |
-| Current Distance | `CurrentDistanceMedalEntry` | `CurrentDistanceMedalBefore` | `CurrentDistanceMedalAfter` |
-| Current Overall | `CurrentOverallMedalEntry` | `CurrentOverallMedalBefore` | `CurrentOverallMedalAfter` |
-| All Time Distance | `AllTimeDistanceMedalEntry` | `AllTimeDistanceMedalBefore` | `AllTimeDistanceMedalAfter` |
-| All Time Overall | `AllTimeOverallMedalEntry` | `AllTimeOverallMedalBefore` | `AllTimeOverallMedalAfter` |
+| Rank context | Threshold entry | Before snapshot | After snapshot | Displaced-holder quartet |
+| --- | --- | --- | --- | --- |
+| Current Distance | `CurrentDistanceMedalEntry` | `CurrentDistanceMedalBefore` | `CurrentDistanceMedalAfter` | `CurrentDistanceDisplacedAthleteID`, `CurrentDistanceDisplacedAthleteName`, `CurrentDistanceDisplacedMedalBefore`, `CurrentDistanceDisplacedMedalAfter` |
+| Current Overall | `CurrentOverallMedalEntry` | `CurrentOverallMedalBefore` | `CurrentOverallMedalAfter` | `CurrentOverallDisplacedAthleteID`, `CurrentOverallDisplacedAthleteName`, `CurrentOverallDisplacedMedalBefore`, `CurrentOverallDisplacedMedalAfter` |
+| All Time Distance | `AllTimeDistanceMedalEntry` | `AllTimeDistanceMedalBefore` | `AllTimeDistanceMedalAfter` | `AllTimeDistanceDisplacedAthleteID`, `AllTimeDistanceDisplacedAthleteName`, `AllTimeDistanceDisplacedMedalBefore`, `AllTimeDistanceDisplacedMedalAfter` |
+| All Time Overall | `AllTimeOverallMedalEntry` | `AllTimeOverallMedalBefore` | `AllTimeOverallMedalAfter` | `AllTimeOverallDisplacedAthleteID`, `AllTimeOverallDisplacedAthleteName`, `AllTimeOverallDisplacedMedalBefore`, `AllTimeOverallDisplacedMedalAfter` |
 
 Every one of these 12 fields is blank or exactly `Gold`, `Silver`, or
 `Bronze`. They are historical snapshot metadata owned by the workbook, not
@@ -405,12 +414,27 @@ blank `MedalEntry`, `Silver` `MedalBefore`, and `Gold` `MedalAfter`.
 position, or a generic after-medal label. Its blank value is valid for all of
 those cases.
 
+A displaced-holder quartet is populated only when the News athlete changed into
+a medal position and the workbook can identify one other selected-mode athlete
+who held that exact `MedalAfter` in the before snapshot and lost it in the
+after snapshot. All four fields are otherwise blank. A populated quartet has a
+public active athlete ID and matching public name; it must never name the News
+athlete. `DisplacedMedalBefore` equals the News athlete's `MedalAfter`, and
+the only permitted handoffs are `Gold → Silver`, `Silver → Bronze`, and
+`Bronze → No medal`. `No medal` is valid only as the resulting displaced
+state, never as a focal medal snapshot.
+
+The browser must render a handoff only from a complete valid quartet. It may
+link the exported displaced athlete ID, but it must not infer a former holder,
+choose among ties, derive a `No medal` state from rank, or fetch another
+export to repair a missing quartet.
+
 The four contexts are independent. One result can have different before and
-after medals in several tables, and Family and Everyone may legitimately differ
-for the same source result. `1 Mile` has no distance table, so all three fields
-for each of its Distance contexts (`MedalEntry`, `MedalBefore`, and
-`MedalAfter`) are blank while either Overall context may be populated. A wholly
-unavailable table also leaves all three aligned medal fields blank.
+after medals and different displaced holders in several tables, and Family and
+Everyone may legitimately differ for the same source result. `1 Mile` has no
+distance table, so all ten rank, medal, and displaced-holder fields for each of
+its Distance contexts are blank while either Overall context may be populated.
+A wholly unavailable table also leaves all ten aligned fields blank.
 
 Medal names follow the workbook's exported competition rank directly. Rank 1
 is Gold, Rank 2 is Silver, and Rank 3 is Bronze. A tied athlete carrying one of
@@ -440,8 +464,9 @@ For each site mode, Excel/VBA must:
 6. apply Current expiries before every before-snapshot;
 7. obtain all four rank snapshots from the same workbook ranking logic used by
    the existing Official tables;
-8. populate display, exact, delta, rank, all 12 medal-position fields,
-   blank-state, source-row, and ordering fields without relying on the browser;
+8. populate display, exact, delta, rank, all 12 medal-position fields, all 16
+   displaced-holder fields, blank-state, source-row, and ordering fields
+   without relying on the browser;
 9. emit only the four milestone types defined here, with one row per qualifying
    source result per mode;
 10. validate the replay and compare its final Current and All-Time state with
@@ -493,8 +518,11 @@ minimum:
   their corresponding before/after competition ranks exactly; require the
   exact after-rank `MedalEntry` only for an unranked/Rank 4+ crossing into Rank
   1/2/3; reject a missing, wrong, unsupported, or extraneous value; allow
-  independent multi-context and cross-mode values; and require all six 1 Mile
-  distance medal fields to be blank; and
+  independent multi-context and cross-mode values; and
+- require each displaced-holder quartet to be complete or blank, selected-mode
+  public, non-self-referential, aligned with the focal `MedalAfter`, and one of
+  the three allowed handoff chains; and require all ten 1 Mile distance context
+  fields to be blank; and
 - reject any row containing `Unofficial`, a vacancy placeholder, a distance
   outside the six-value contract, a zero/negative improvement, or an invented
   previous value for a first result; and require both distance-rank triplets to
@@ -506,11 +534,12 @@ replay as authoritative. Completeness of full-precision milestones and exact
 historical ranks remains a workbook export responsibility.
 
 Focused validation fixtures should prove rejection of every enum, chronology,
-source, delta, rank, medal-position, blank-state, and bundle failure above,
-including valid Gold/Silver/Bronze crossings, valid `Silver` to `Gold` and
-retained-medal snapshots, multiple contexts on one row, a tied competition
-rank, a within-medal move with a blank `MedalEntry`, and a valid tiny exact
-age-grade improvement whose one-decimal before and after values are equal.
+source, delta, rank, medal-position, displaced-holder, blank-state, and bundle
+failure above, including valid Gold/Silver/Bronze crossings, valid `Silver` to
+`Gold` and retained-medal snapshots, all three permitted handoffs, multiple
+contexts on one row, a tied competition rank, a within-medal move with a blank
+`MedalEntry`, and a valid tiny exact age-grade improvement whose one-decimal
+before and after values are equal.
 
 ## News page behavior
 
@@ -551,6 +580,9 @@ The eventual `news.html` page should:
   visible text rather than relying on colour alone. An entry row may retain its
   existing `New Gold medal position` label rather than duplicating a blank-to-
   Gold snapshot label;
+- when that same movement carries a complete displaced-holder quartet, show the
+  workbook-exported former holder and their exported handoff (for example,
+  `Gold taken from Alex — Alex: Gold to Silver`) beside the same row; and
 - omit an unavailable movement block, but show `no rank change` rather than
   hiding a valid zero movement;
 - render the neutral header-only state `No official result milestones have been
@@ -574,10 +606,11 @@ The browser may format ordinary presentation around validated values. It must
 not compare performances, subtract times or percentages, calculate rank gains,
 replay a rolling window, choose a milestone type, derive a medal from a rank,
 or repair a missing export. It may inspect the validated exported
-`MedalEntry`, `MedalBefore`, and `MedalAfter` values alongside the existing
-movement blank-pattern case to choose presentation, but it must not turn a
-rank number into a medal label. Only `MedalEntry` may trigger the card accent
-and `Medal breakthrough!` callout.
+`MedalEntry`, `MedalBefore`, `MedalAfter`, and complete displaced-holder
+quartet alongside the existing movement blank-pattern case to choose
+presentation, but it must not turn a rank number into a medal label or former
+holder. Only `MedalEntry` may trigger the card accent and `Medal
+breakthrough!` callout.
 
 ### Presentation filters and progressive reveal
 
@@ -623,9 +656,10 @@ prove that the page:
 - renders an explicit card-level medal breakthrough and per-context exported
   Gold/Silver/Bronze labels, supports multiple medal entries on one result,
   renders exported before/after labels for upgrades such as `Silver` to
-  `Gold`, does not mark a within-medal move as a new entry, and does not infer
-  either a medal marker or a medal snapshot from RankBefore/RankAfter when the
-  corresponding exported medal field is blank;
+  `Gold`, renders complete exported displaced-holder handoffs including
+  `Bronze` to `No medal`, does not mark a within-medal move as a new entry, and
+  does not infer either a medal marker, medal snapshot, or former holder from
+  RankBefore/RankAfter when the corresponding exported field is blank;
 - retains exported order, including multiple same-day results;
 - handles quoted commas, escaped quotes, and multiline event text through the
   shared whole-document CSV parser;

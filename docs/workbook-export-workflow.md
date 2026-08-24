@@ -77,10 +77,10 @@ The approved [Official Result News contract](official-news-contract.md) requires
 the site-specific
 `data/family/official_result_news.csv` and
 `data/everyone/official_result_news.csv` files in every complete export. A mode
-with no milestones still exports the exact 44-column header-only file. The four
-context-aligned `MedalEntry` columns and their eight `MedalBefore`/
-`MedalAfter` snapshot columns are part of that required header and must not be
-added to one mode without the other.
+with no milestones still exports the exact 60-column header-only file. The four
+context-aligned `MedalEntry` columns, their eight `MedalBefore`/
+`MedalAfter` snapshot columns, and 16 displaced-holder fields are part of that
+required header and must not be added to one mode without the other.
 
 ## Workbook guarantees
 
@@ -118,13 +118,19 @@ workbook-owned replay for each mode. The exporter must filter to currently
   export the milestone, exact/display improvements, and four applicable
   before/after rank triplets without delegating calculation to the website. For
   each rank context it must also export the three aligned medal fields. Every
-  field is blank, `Gold`, `Silver`, or `Bronze`: `MedalEntry` is populated only
+  medal field is blank, `Gold`, `Silver`, or `Bronze`: `MedalEntry` is populated only
   when a before rank that is blank or at least 4 is followed by Rank 1, 2, or 3;
   `MedalBefore` and `MedalAfter` are the corresponding competition-rank labels
   for the before and after snapshots. Thus a Rank 2 to Rank 1 upgrade has blank
   `MedalEntry`, `Silver` `MedalBefore`, and `Gold` `MedalAfter`. Competition
   rank supplies tie semantics, contexts are independent, and all six 1 Mile
-  Distance medal fields remain blank.
+  Distance medal fields remain blank. Immediately after each context's
+  `MedalAfter`, the exporter writes an all-or-blank displaced-holder quartet:
+  public athlete ID, public athlete name, prior medal, and resulting medal. A
+  complete quartet names the unique former holder of the News athlete's newly
+  claimed medal, uses only `Gold → Silver`, `Silver → Bronze`, or
+  `Bronze → No medal`, and remains blank where no unique genuine handoff
+  exists. All ten aligned Distance fields remain blank for 1 Mile.
   Before registering either file or writing the manifest, post-export
   validation must compare the
 replay's complete final Current and All-Time state with all 12 Official
@@ -241,10 +247,12 @@ pnpm run workbook:validate:staged --staged "<STAGED_EXPORT_ROOT>"
 
 This runs the existing full CSV and bundle validation and verifies the public
 file set, including both required Official Results News exports. For their
-44-column schema it also checks every Entry/Before/After medal value against
-its aligned workbook-exported before/after rank triplet, including
-multi-context rows, within-medal upgrades, retained medal positions, 1 Mile,
-and site-specific differences.
+60-column schema it also checks every Entry/Before/After medal value against
+its aligned workbook-exported before/after rank triplet and validates every
+displaced-holder quartet as complete-or-blank, public, selected-mode eligible,
+non-self-referential, and a permitted handoff. Coverage includes multi-context
+rows, within-medal upgrades, retained medal positions, 1 Mile, and
+site-specific differences.
 
 ### 3. Compare with tracked public data
 
