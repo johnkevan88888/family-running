@@ -71,14 +71,13 @@ rows. The repository contract and focused synthetic tests pass locally. A
 refreshed staged 72-file workbook export passed validation and reconciliation,
 only the two News CSVs changed meaningfully, and atomic tracked-data promotion
 plus validation passed. It contains 24 Family cards with 59 medal-entry
-contexts and 34 Everyone cards with 77. The complete `pnpm test` suite and
-107-file artifact build pass; both modes pass browser coverage at 1440px,
+contexts and 34 Everyone cards with 77. After integrating the Gallery baseline,
+the complete `pnpm test` suite and 114-file artifact build pass; both modes pass
+browser coverage at 1440px,
 720px, and 390px. Refreshed screenshots were manually reviewed with readable,
-contained medal treatment and no overflow. Commit `2b28907` is pushed to Pull
-Request #68 with green checks. The refreshed preview was verified in both
-modes: Family's initial 12 contain 5 medal cards and 10 badges, Everyone's 2
-cards and 4 badges, with correct mode titles/links and no overflow. This is not
-merged or released.
+contained medal treatment and no overflow. Pull Request #68 requires the local
+current-main integration to be pushed and a new combined preview to pass. This
+is not merged or released.
 
 ## Next candidate tasks
 

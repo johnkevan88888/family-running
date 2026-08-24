@@ -18,6 +18,7 @@
     <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
     <title>Family Running Championships</title>
     <link rel="stylesheet" href="site.css">
+    <link rel="stylesheet" href="gallery.css">
 </head>
 
 <body data-page="championships">
@@ -34,6 +35,17 @@
         </p>
     </section>
 
+    <section class="race-moments" data-gallery-highlights data-gallery-limit="3" hidden aria-labelledby="championship-race-moments-title">
+        <div class="race-moments-heading">
+            <div>
+                <p class="gallery-kicker">Beyond the finish time</p>
+                <h2 id="championship-race-moments-title">Race moments</h2>
+            </div>
+            <a class="race-moments-link" data-site-page="gallery" href="gallery.html?site=family">View the gallery</a>
+        </div>
+        <div class="race-moments-grid" data-gallery-highlight-grid></div>
+    </section>
+
     <div id="leaderboards"></div>
 </main>
 
@@ -45,6 +57,8 @@
 <script src="analytics.js" defer></script>
 <script src="utils.js" defer></script>
 <script src="site-navigation.js" defer></script>
+<script src="gallery-contract.js" defer></script>
+<script src="gallery.js" defer></script>
 <script src="leaderboard.js" defer></script>
 
 </body>

@@ -5,6 +5,7 @@
         news: 'news.html',
         'hall-of-fame': 'hall-of-fame.html',
         records: 'records.html',
+        gallery: 'gallery.html',
         'head-to-head': 'calculator.html',
         calculator: 'age-grade-calculator.html',
         overview: 'overview.html'
@@ -14,6 +15,7 @@
         news: 'News',
         'hall-of-fame': 'Hall of Fame',
         records: 'Records',
+        gallery: 'Gallery',
         'head-to-head': 'Head to Head',
         calculator: 'Calculator',
         overview: 'Overview'
@@ -40,6 +42,7 @@
         if (filename === 'overview.html') return 'overview';
         if (filename === 'hall-of-fame.html') return 'hall-of-fame';
         if (filename === 'records.html') return 'records';
+        if (filename === 'gallery.html') return 'gallery';
         if (filename === 'calculator.html') return 'head-to-head';
         if (filename === 'age-grade-calculator.html') return 'calculator';
         if (filename === 'athlete.html') return 'athlete';

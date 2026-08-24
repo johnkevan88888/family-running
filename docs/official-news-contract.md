@@ -22,14 +22,13 @@
   presentation are implemented locally. The refreshed staged 72-file workbook
   bundle passed validation and reconciliation, only the two News CSVs changed
   meaningfully, and atomic tracked-data promotion plus focused regression
-  validation passed. The complete `pnpm test` suite and 107-file artifact build
-  pass. Both modes pass browser coverage at 1440px, 720px, and 390px; refreshed
+  validation passed. After the merged Gallery baseline was integrated, the
+  complete `pnpm test` suite and combined 114-file artifact build pass. Both
+  modes pass browser coverage at 1440px, 720px, and 390px; refreshed
   responsive screenshots were manually reviewed with readable, contained
-  medal callouts and badges and no overflow. Pull Request #68 is updated at
-  commit `2b28907` with green checks. Its refreshed Deploy Preview was remotely
-  verified in both modes: the Family initial batch has 5 medal cards and 10
-  badges, Everyone has 2 cards and 4 badges, selected-mode titles and links are
-  correct, and neither mode overflows. Nothing is merged or released.
+  medal callouts and badges and no overflow. The current-main integration is
+  local only; Pull Request #68 requires a fresh push, checks, and combined
+  Deploy Preview before review. Nothing is merged or released.
 - **Scope:** Official-result milestones and their reconstructed championship
   effect. This is not an editorial news system.
 

@@ -9,8 +9,9 @@ Official Results News medal-position breakthroughs.
 Implemented locally on 23 August 2026 on `codex/news-official-results` in the
 isolated worktree
 `C:\GitHub\family-running\test-artifacts\worktrees\news-official-results`.
-The separate worktree preserves the uncommitted Gallery work in the primary
-checkout.
+The branch originally diverged from `main` immediately before the Gallery work.
+Current `main` at `f4e0305`, including merged Pull Request #69, is now integrated
+locally so this branch inherits the complete Gallery production baseline.
 
 The static News page loads only
 `data/<selected-site>/official_result_news.csv`, preserves `?site=`, renders the
@@ -79,7 +80,7 @@ The bundle was promoted atomically, with the previous tracked data retained at
 `test-artifacts/workbook-export-promotion/20260823235713853`, and tracked-data
 validation passes. It exports 24 Family cards carrying at least one medal
 entry, across 59 contexts, and 34 such Everyone cards across 77 contexts. The
-complete `pnpm test` suite now passes. The preview artifact contains 107 files,
+complete `pnpm test` suite now passes. The preview artifact contains 114 files,
 and browser smoke coverage passes in both modes at 1440px, the 720px
 intermediate probe, and 390px mobile. Responsive screenshots were refreshed and
 manually reviewed: the medal callout and per-context badges are readable,
@@ -91,6 +92,15 @@ shows `Updated 23 Aug 2026 7:52 PM`. Remote DOM verification found the Family
 initial batch contains 5 medal cards and 10 medal badges, while Everyone
 contains 2 cards and 4 badges. Both modes have the correct selected-mode title
 and links and no horizontal overflow.
+
+That remote preview predates Pull Request #69 and is no longer review evidence
+for the combined site. The local merge from `main` resolved four additive
+conflict files while retaining both features; Gallery runtime files remain
+byte-for-byte inherited from `main`, and the diff against `main` contains News
+rather than deletions of Gallery. The first combined browser run exposed the
+longer athlete Back to Championships navigation wrapping to a second desktop
+row. A narrow athlete-only desktop rule now keeps all eight links on one row and
+reduced the measured header from 223.6px to 177.6px.
 
 The private source workbook was copied and hash-verified before inspection. The
 unchanged backup is
@@ -122,15 +132,102 @@ ignored recovery folder
 The complete `pnpm test` suite passes against the promoted data: repository,
 vendor, CSV, 59 export-bundle regressions, staged workflow, reconciliation,
 artifact safety/build, and both-mode browser checks. The final artifact contains
-107 files. A separate real-data visual check rendered all 43 Family and 64
+114 files. A separate real-data visual check rendered all 43 Family and 64
 Everyone entries with no mobile overflow or browser warning/error. The first
 draft, filters, and compact presentation are on Pull Request #68 and passed
 their pre-medal preview checks. The medal-position extension is local work
 with its refreshed export promoted and its complete local suite and responsive
-review passing. Commit `2b28907`, the green PR checks, and the refreshed
-both-mode preview are verified. Nothing has been merged, published, or released.
+review passing. After the Gallery integration, the complete `pnpm test` suite
+passed repository safety, vendor, CSV, Gallery validation and contract tests,
+News regressions, staged-export and reconciliation checks, artifact safety, the
+114-file build, and browser smoke coverage for both modes at desktop and mobile.
+Refreshed News and Gallery screenshots were reviewed without overflow or layout
+regression. The local merge is not yet pushed, so Pull Request #68 remains
+conflicted remotely until a separately authorized push triggers fresh checks
+and a new combined Deploy Preview. Nothing from Pull Request #68 has been
+merged, published, or released.
 
-## Prior work: header refinement and workbook-locked age-grade calculator
+## Prior work: owner-curated photo and video gallery, Phase 1
+
+### Status
+
+Completed locally on 23 August 2026 on
+`codex/curated-gallery-phase-1`. The site now has a mode-preserving Gallery
+page with photo/video filters, responsive media cards, an accessible native
+viewer, deliberate empty and unavailable states, and featured Race moments
+panels on the landing, Championships, Overview, and athlete pages. The two
+mode-specific manifests are intentionally empty until approved media is ready;
+no private family photos or videos were invented, copied into Git, or
+published.
+
+Gallery media is owner-curated and hosted outside Git. The repository contains
+only mode-specific metadata in `gallery-data/family.json` and
+`gallery-data/everyone.json`; the preview artifact contract permits exactly
+those two JSON files and rejects a stray media file. Every entry is validated
+against the public result data and public athlete roster for its site mode.
+The public schema records race date, event, distance, and tagged athlete IDs,
+so a future authenticated uploader can first choose a date, then choose one of
+the exported event-and-distance races on that date, then tag people from the
+relevant site roster. Actual file transfer, authentication, consent capture,
+and moderation remain deliberately out of Phase 1 until a storage and access
+model is selected; no non-functional upload control is exposed on the public
+site. Captions are public manifest fields. Geotags and embedded device metadata
+remain private media-repository metadata; public derivatives strip them and the
+public manifest has no geotag field.
+
+The shared owner-maintained `gallery-data/hidden-athlete-ids.json` list now
+provides a person-tag opt-out. Adding one public athlete ID suppresses every
+tagged item from the Gallery, featured Race moments, and athlete profiles in
+both modes before the browser creates a media element, so hidden media is not
+requested during page rendering. The gallery fails closed if the list is
+missing or malformed. The file contains IDs only, never names or request
+reasons, and its public-static limitation is documented: complete takedown also
+requires removing the file from the external media host.
+
+Every non-vacant Current and All-Time championship table now has a photo podium
+made from its first three workbook-exported ranked rows. Overall and every
+distance dropdown retain the original Current-then-All-Time order, and each
+full table remains directly below its podium with every original column and row
+still present. The exported rank supplies matching medals in the card and the
+table. Category badges display only their first word while preserving the full
+exported value as an accessible label, and time/pace values use one consistent
+line break. Mobile keeps all three podium cards in one compact row instead of
+stacking them into a long page.
+
+Approved athlete-tagged gallery media decorates the corresponding podium card;
+manifest order remains the editorial choice, with a photograph preferred over
+a video poster. Suppression is applied first, and a missing, suppressed, or
+unavailable image leaves a branded initials fallback without changing the
+ranking. Vacant and no-result exports keep their valid tables without inventing
+a podium.
+
+Final `pnpm test` passed repository safety, vendored-library checks, CSV
+validation for both modes, gallery manifest and race/tag association checks,
+gallery contract regressions, the age-grade contract, analytics and release
+workflow regressions, export workflow regressions, preview-artifact safety and
+build checks, the 109-file preview artifact, and browser smoke tests. Browser
+coverage includes Gallery and championship podiums in both modes at 1440 x 900
+and 390 x 844, synthetic populated photo and video states, category and
+time/pace presentation, matching podium/table medals, opened distance groups,
+filtering, escaped hostile captions, viewer focus restoration, featured
+moments, athlete associations, global person-tag suppression without
+hidden-media requests, invalid-manifest and invalid-suppression fail-closed
+behavior, and mode isolation. Empty/fallback and populated desktop/mobile
+Championship and Gallery screenshots were reviewed; no horizontal overflow was
+found and the mobile podium remained a compact three-column row.
+
+Excel and the private workbook were not inspected or changed. Pull Request #69
+merged into `main` as `f4e0305`, and its GitHub Pages deployment succeeded. The
+Gallery UI, manifests, suppression contract, featured moments, and championship
+podiums are therefore the production baseline inherited by later work. The two
+mode-specific manifests remain intentionally empty until approved external
+media hosting and real media entries are supplied.
+
+## Prior work: header refinement, Head-to-Head rename, and workbook-locked age-grade calculator
+
+### Task title
+
+Header refinement, Head-to-Head rename, and workbook-locked age-grade calculator.
 
 ### Status
 

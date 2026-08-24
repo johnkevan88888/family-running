@@ -216,6 +216,15 @@
     display: inline-block;
     box-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
+
+.recreational,
+.club,
+.local,
+.regional,
+.national,
+.world {
+    white-space: nowrap;
+}
 .footer {
     text-align: center;
     color: #777;
@@ -966,11 +975,31 @@
     color: #0f2438;
 }
 
+/* Athlete profiles use a deliberately narrower 1200px content column. With
+   both News and Gallery present, its longer Back to Championships label needs
+   a compact desktop menu so all eight destinations remain on one row. */
+@media (min-width: 701px) {
+    body[data-page="athlete"] .site-nav {
+        gap: 8px;
+    }
+
+    body[data-page="athlete"] .site-nav-link {
+        font-size: 0.94rem;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+}
+
 .time-with-pace {
     align-items: baseline;
     display: inline-flex;
     flex-wrap: wrap;
     gap: 3px 7px;
+}
+
+.leaderboard-section .time-with-pace {
+    display: inline-grid;
+    gap: 2px;
 }
 
 .result-time {

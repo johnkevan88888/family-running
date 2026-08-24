@@ -103,6 +103,7 @@ try {
     await runBrandMetadataTests(browser);
     await runMobileLeaderboardCardTests(browser);
     await runDocumentTitleTests(browser);
+    await runGalleryEdgeCaseTests(browser);
     await runCalculatorComparisonUnavailableEdgeCaseTests(browser);
     await runCalculatorComparisonEdgeCaseTests(browser);
     await runAgeGradeCalculatorContractEdgeCaseTests(browser);
@@ -200,6 +201,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertBundleMetadataHidden(page, `${mode}/${viewport.name} championships page`);
 
         await assertLeaderboardDisplayLabels(page, mode, viewport);
+        await assertChampionshipPodiums(page, mode, viewport);
         await assertCollapsibleSections(page, mode, viewport);
         await assertAthleteNavigation(page, mode, viewport);
         await assertAthleteOfficialMedals(page, mode, viewport);
@@ -227,6 +229,16 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertAbsoluteRecordsPage(page, mode, viewport, requestedPaths.slice(recordsRequestStart));
         await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} records page`);
         await assertBundleMetadataHidden(page, `${mode}/${viewport.name} records page`);
+
+        const galleryRequestStart = requestedPaths.length;
+        await page.goto(`${preview.baseUrl}/gallery.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+        await waitForRenderedGallery(page, mode);
+        await waitForNetworkToSettle(page);
+        await assertPrimaryNavigation(page, mode, viewport, 'gallery');
+        await assertNoModeSwitch(page, mode, viewport, 'gallery');
+        await assertGalleryPage(page, mode, viewport, requestedPaths.slice(galleryRequestStart));
+        await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} gallery page`);
+        await assertBundleMetadataHidden(page, `${mode}/${viewport.name} gallery page`);
 
         const headToHeadRequestStart = requestedPaths.length;
         await page.goto(`${preview.baseUrl}/calculator.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
@@ -275,6 +287,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await capturePageScreenshot(page, mode, viewport, 'championships', waitForRenderedChampionship);
         await capturePageScreenshot(page, mode, viewport, 'hall-of-fame', waitForRenderedHallOfFame);
         await capturePageScreenshot(page, mode, viewport, 'records', waitForRenderedRecords);
+        await capturePageScreenshot(page, mode, viewport, 'gallery', waitForRenderedGallery);
         await capturePageScreenshot(page, mode, viewport, 'head-to-head', waitForRenderedCalculator);
         await capturePageScreenshot(page, mode, viewport, 'calculator', waitForRenderedAgeGradeCalculator);
         await capturePageScreenshot(page, mode, viewport, 'overview', waitForRenderedOverview);
@@ -1854,6 +1867,23 @@ async function waitForRenderedRecords(page, mode) {
     }, mode);
 }
 
+async function waitForRenderedGallery(page, mode) {
+    await page.waitForSelector('#site-title', { state: 'visible' });
+    await page.waitForFunction(() => {
+        const status = document.querySelector('#gallery-status');
+        const cards = document.querySelectorAll('#gallery-grid .gallery-card');
+        return cards.length > 0 || (status && !status.hidden && !status.textContent.includes('Loading'));
+    });
+    await page.waitForFunction(expectedMode => {
+        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
+        const expected = expectedMode === 'everyone'
+            ? 'Age-Graded Running Championships'
+            : 'Family Running Championships';
+
+        return title === expected;
+    }, mode);
+}
+
 async function waitForRenderedCalculator(page, mode) {
     await page.waitForSelector('#site-title', { state: 'visible' });
     await page.waitForSelector('#comparison-results[data-rendered="true"]');
@@ -2317,6 +2347,7 @@ async function assertPrimaryNavigation(page, mode, viewport, activePage) {
         ['News', 'news.html'],
         ['Hall of Fame', 'hall-of-fame.html'],
         ['Records', 'records.html'],
+        ['Gallery', 'gallery.html'],
         ['Head to Head', 'calculator.html'],
         ['Calculator', 'age-grade-calculator.html'],
         ['Overview', 'overview.html']
@@ -2444,6 +2475,7 @@ async function assertNavigationBetweenPublicPages(page, mode, viewport) {
     const targets = [
         { label: 'Hall of Fame', pageKey: 'hall-of-fame', waitFor: waitForRenderedHallOfFame },
         { label: 'Records', pageKey: 'records', waitFor: waitForRenderedRecords },
+        { label: 'Gallery', pageKey: 'gallery', waitFor: waitForRenderedGallery },
         { label: 'Head to Head', pageKey: 'head-to-head', waitFor: waitForRenderedCalculator },
         { label: 'Calculator', pageKey: 'calculator', waitFor: waitForRenderedAgeGradeCalculator },
         { label: 'Overview', pageKey: 'overview', waitFor: waitForRenderedOverview },
@@ -2484,11 +2516,65 @@ function pageFileForKey(pageKey) {
     if (pageKey === 'hall-of-fame') return 'hall-of-fame.html';
     if (pageKey === 'overview') return 'overview.html';
     if (pageKey === 'records') return 'records.html';
+    if (pageKey === 'gallery') return 'gallery.html';
     if (pageKey === 'head-to-head') return 'calculator.html';
     if (pageKey === 'calculator') return 'age-grade-calculator.html';
     if (pageKey === 'athlete') return 'athlete.html';
 
     return 'index.html';
+}
+
+async function assertGalleryPage(page, mode, viewport, requestedPaths) {
+    const context = `${mode}/${viewport.name}`;
+    const expectedFile = `gallery-data/${mode}.json`;
+    const suppressionFile = 'gallery-data/hidden-athlete-ids.json';
+    const otherMode = mode === 'family' ? 'everyone' : 'family';
+    const otherFile = `gallery-data/${otherMode}.json`;
+    const manifest = JSON.parse(
+        await fs.readFile(path.join(siteRoot, 'gallery-data', `${mode}.json`), 'utf8')
+    );
+    const suppressionDocument = JSON.parse(
+        await fs.readFile(path.join(siteRoot, ...suppressionFile.split('/')), 'utf8')
+    );
+    const hiddenAthleteIds = new Set(suppressionDocument.hiddenAthleteIds);
+    const visibleItems = manifest.items.filter(item =>
+        !item.athleteIds.some(athleteId => hiddenAthleteIds.has(athleteId))
+    );
+
+    if (!requestedPaths.includes(expectedFile)) {
+        failures.push(`${context}: Gallery did not request ${expectedFile}.`);
+    }
+    if (requestedPaths.includes(otherFile)) {
+        failures.push(`${context}: Gallery requested the other site mode's ${otherFile}.`);
+    }
+    if (!requestedPaths.includes(suppressionFile)) {
+        failures.push(`${context}: Gallery did not request the shared person-tag suppression list.`);
+    }
+
+    const cards = page.locator('#gallery-grid .gallery-card');
+    const cardCount = await cards.count();
+
+    if (cardCount !== visibleItems.length) {
+        failures.push(`${context}: Gallery rendered ${cardCount} cards, expected ${visibleItems.length} after tag suppression.`);
+    }
+
+    if (!visibleItems.length) {
+        await expectText(
+            page,
+            '#gallery-status',
+            'The gallery is ready for its first approved race moment. Photographs and videos will appear here after they have been reviewed for publication.',
+            `${context} gallery empty state`
+        );
+
+        if (!await page.locator('#gallery-filters').isHidden()) {
+            failures.push(`${context}: Gallery showed filters with no published items.`);
+        }
+        return;
+    }
+
+    if (await page.locator('#gallery-filters').isHidden()) {
+        failures.push(`${context}: Gallery hid its filters despite having published items.`);
+    }
 }
 
 async function assertAbsoluteRecordsPage(page, mode, viewport, requestedPaths) {
@@ -3277,6 +3363,374 @@ async function runRecentResultsWindowTests(browserInstance) {
     }
 }
 
+async function runGalleryEdgeCaseTests(browserInstance) {
+    const manifest = {
+        schemaVersion: '1.0',
+        items: [
+            {
+                id: 'finish-line-smile',
+                type: 'photo',
+                title: 'Finish-line smile',
+                caption: '<img data-gallery-injection src=x> is text, not markup.',
+                alt: 'A runner smiling after crossing the finish line',
+                raceDate: '2026-08-23',
+                raceEvent: 'Summer 5 km',
+                raceDistance: '5 km',
+                sourceUrl: 'https://media.example.com/full/finish-line-smile.jpg',
+                thumbnailUrl: 'https://media.example.com/thumb/finish-line-smile.webp',
+                featured: true,
+                athleteIds: ['carolyn-kevan']
+            },
+            {
+                id: 'finishing-kick-video',
+                type: 'video',
+                title: 'The finishing kick',
+                caption: 'The final turn and sprint for home.',
+                alt: 'A runner accelerating around the final bend',
+                raceDate: '2026-08-23',
+                raceEvent: 'Summer 5 km',
+                raceDistance: '5 km',
+                sourceUrl: 'https://media.example.com/video/finishing-kick.mp4',
+                thumbnailUrl: 'https://media.example.com/poster/finishing-kick.webp',
+                featured: false,
+                athleteIds: []
+            }
+        ]
+    };
+    const context = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const requestedPaths = [];
+    const image = await fs.readFile(path.join(repoRoot, 'assets', 'brand', 'og-image.png'));
+
+    page.on('request', request => {
+        if (isSameOrigin(request.url())) {
+            requestedPaths.push(sameOriginRequestPath(request.url()));
+        }
+    });
+    await page.route('**/gallery-data/family.json', route => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(manifest)
+    }));
+    await page.route('https://media.example.com/**', route => route.fulfill({
+        status: 200,
+        contentType: 'image/png',
+        body: image
+    }));
+
+    try {
+        await page.goto(`${preview.baseUrl}/gallery.html?site=family`, { waitUntil: 'domcontentloaded' });
+        await page.locator('#gallery-grid .gallery-card').nth(1).waitFor({ state: 'visible' });
+        await waitForNetworkToSettle(page);
+
+        if (await page.locator('#gallery-grid .gallery-card').count() !== 2) {
+            failures.push('gallery edge case: did not render both approved photo and video entries.');
+        }
+        if (!await page.locator('#gallery-status').isHidden()) {
+            failures.push('gallery edge case: loading status remained visible after cards rendered.');
+        }
+        if (!normalizeText(await page.locator('#gallery-grid').textContent()).includes('23 August 2026')) {
+            failures.push('gallery edge case: card dates did not use the shared website date format.');
+        }
+        if (await page.locator('[data-gallery-injection]').count() !== 0) {
+            failures.push('gallery edge case: caption markup created an element instead of rendering as text.');
+        }
+
+        await page.getByRole('button', { name: 'Videos', exact: true }).click();
+        const visibleTypes = await page.locator('#gallery-grid .gallery-card').evaluateAll(cards =>
+            cards.map(card => card.dataset.galleryType)
+        );
+        if (visibleTypes.join('|') !== 'video') {
+            failures.push(`gallery edge case: video filter rendered ${visibleTypes.join(', ') || 'no items'}.`);
+        }
+
+        await page.getByRole('button', { name: 'All moments', exact: true }).click();
+        const opener = page.locator('.gallery-card-open').first();
+        await opener.click();
+        await page.locator('#gallery-viewer[open]').waitFor({ state: 'visible' });
+        await expectText(
+            page,
+            '#gallery-viewer-title',
+            'Finish-line smile',
+            'gallery edge case viewer title'
+        );
+        if (await page.locator('#gallery-viewer-media img').count() !== 1) {
+            failures.push('gallery edge case: opening a photo did not render its large image.');
+        }
+        await page.getByRole('button', { name: 'Close gallery viewer' }).click();
+        const focusReturned = await opener.evaluate(element => document.activeElement === element);
+        if (!focusReturned) {
+            failures.push('gallery edge case: closing the viewer did not restore focus to its opener.');
+        }
+
+        await page.screenshot({
+            path: path.join(artifactsDir, 'gallery-populated-desktop.png'),
+            fullPage: true
+        });
+
+        await page.goto(`${preview.baseUrl}/index.html?site=family`, { waitUntil: 'domcontentloaded' });
+        await waitForRenderedChampionship(page, 'family');
+        await page.locator('.race-moments .race-moment-card').waitFor({ state: 'visible' });
+        if (await page.locator('.race-moments .race-moment-card').count() !== 1) {
+            failures.push('gallery edge case: Championships did not show exactly the featured moment.');
+        }
+        const galleryHref = await page.locator('.race-moments .race-moment-card').getAttribute('href');
+        if (!galleryHref?.includes('gallery.html?site=family#moment-finish-line-smile')) {
+            failures.push(`gallery edge case: featured moment link "${galleryHref}" did not preserve site mode.`);
+        }
+        const podiumPhoto = page.locator(
+            '[data-gallery-athlete-photo="carolyn-kevan"].has-gallery-media img'
+        ).first();
+        await podiumPhoto.waitFor({ state: 'visible' });
+        if (!(await podiumPhoto.getAttribute('src'))?.includes('finish-line-smile.webp')) {
+            failures.push('gallery edge case: Carolyn\'s approved photo did not decorate her championship podium card.');
+        }
+        await page.screenshot({
+            path: path.join(artifactsDir, 'championship-populated-desktop.png'),
+            fullPage: true
+        });
+
+        await page.goto(`${preview.baseUrl}/athlete.html?id=carolyn-kevan&site=family`, { waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => {
+            const name = document.querySelector('#athlete-name')?.textContent?.trim() || '';
+            return name && name !== 'Loading...';
+        });
+        await page.locator('.race-moments .race-moment-card').waitFor({ state: 'visible' });
+        if (await page.locator('.race-moments .race-moment-card').count() !== 1) {
+            failures.push('gallery edge case: athlete profile did not show its associated moment.');
+        }
+
+        if (requestedPaths.includes('gallery-data/everyone.json')) {
+            failures.push('gallery edge case: Family pages requested the Everyone gallery manifest.');
+        }
+    } catch (error) {
+        failures.push(`gallery edge case: ${error.message}`);
+    } finally {
+        await context.close();
+    }
+
+    const mobileContext = await browserInstance.newContext({
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true
+    });
+    const mobilePage = await mobileContext.newPage();
+
+    await mobilePage.route('**/gallery-data/family.json', route => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(manifest)
+    }));
+    await mobilePage.route('https://media.example.com/**', route => route.fulfill({
+        status: 200,
+        contentType: 'image/png',
+        body: image
+    }));
+
+    try {
+        await mobilePage.goto(`${preview.baseUrl}/gallery.html?site=family`, { waitUntil: 'domcontentloaded' });
+        await mobilePage.locator('#gallery-grid .gallery-card').nth(1).waitFor({ state: 'visible' });
+        const layout = await mobilePage.evaluate(() => ({
+            columns: getComputedStyle(document.querySelector('#gallery-grid')).gridTemplateColumns,
+            overflows: document.documentElement.scrollWidth > window.innerWidth
+        }));
+
+        if (layout.columns.trim().split(/\s+/).length !== 1) {
+            failures.push(`gallery mobile edge case: card grid did not collapse to one column (${layout.columns}).`);
+        }
+        if (layout.overflows) {
+            failures.push('gallery mobile edge case: populated gallery overflows horizontally.');
+        }
+
+        await mobilePage.locator('#gallery-grid .gallery-card').nth(1).scrollIntoViewIfNeeded();
+        const secondImageLoaded = await mobilePage.locator('#gallery-grid .gallery-card').nth(1).locator('img').evaluate(async imageElement => {
+            if (!imageElement.complete) {
+                await new Promise(resolve => {
+                    imageElement.addEventListener('load', resolve, { once: true });
+                    imageElement.addEventListener('error', resolve, { once: true });
+                });
+            }
+            if (typeof imageElement.decode === 'function' && imageElement.naturalWidth > 0) {
+                await imageElement.decode().catch(() => {});
+            }
+            return imageElement.naturalWidth > 0;
+        });
+        if (!secondImageLoaded) {
+            failures.push('gallery mobile edge case: second card thumbnail did not load before screenshot capture.');
+        }
+        await mobilePage.evaluate(() => window.scrollTo(0, 0));
+
+        await mobilePage.screenshot({
+            path: path.join(artifactsDir, 'gallery-populated-mobile.png'),
+            fullPage: true
+        });
+
+        await mobilePage.goto(`${preview.baseUrl}/index.html?site=family`, { waitUntil: 'domcontentloaded' });
+        await waitForRenderedChampionship(mobilePage, 'family');
+        await mobilePage.locator(
+            '[data-gallery-athlete-photo="carolyn-kevan"].has-gallery-media img'
+        ).first().waitFor({ state: 'visible' });
+        const podiumLayout = await mobilePage.locator('.championship-podium').first().evaluate(element => ({
+            columns: getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length,
+            height: Math.round(element.getBoundingClientRect().height),
+            overflows: document.documentElement.scrollWidth > window.innerWidth
+        }));
+        if (podiumLayout.columns !== 3 || podiumLayout.height > 280 || podiumLayout.overflows) {
+            failures.push(
+                `gallery mobile edge case: populated podium is not compact ` +
+                `(${podiumLayout.columns} columns, ${podiumLayout.height}px high, overflow ${podiumLayout.overflows}).`
+            );
+        }
+        await mobilePage.screenshot({
+            path: path.join(artifactsDir, 'championship-populated-mobile.png'),
+            fullPage: true
+        });
+    } catch (error) {
+        failures.push(`gallery mobile edge case: ${error.message}`);
+    } finally {
+        await mobileContext.close();
+    }
+
+    const suppressionContext = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
+    const suppressionPage = await suppressionContext.newPage();
+    const suppressionMediaRequests = [];
+
+    await suppressionPage.route('**/gallery-data/family.json', route => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(manifest)
+    }));
+    await suppressionPage.route('**/gallery-data/hidden-athlete-ids.json', route => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ schemaVersion: '1.0', hiddenAthleteIds: ['carolyn-kevan'] })
+    }));
+    await suppressionPage.route('https://media.example.com/**', route => {
+        suppressionMediaRequests.push(route.request().url());
+        return route.fulfill({
+            status: 200,
+            contentType: 'image/png',
+            body: image
+        });
+    });
+
+    try {
+        await suppressionPage.goto(`${preview.baseUrl}/gallery.html?site=family`, { waitUntil: 'domcontentloaded' });
+        await suppressionPage.locator('#moment-finishing-kick-video').waitFor({ state: 'visible' });
+        await waitForNetworkToSettle(suppressionPage);
+
+        if (await suppressionPage.locator('#gallery-grid .gallery-card').count() !== 1) {
+            failures.push('gallery tag suppression: did not leave exactly the untagged video visible.');
+        }
+        if (await suppressionPage.locator('#moment-finish-line-smile').count() !== 0) {
+            failures.push('gallery tag suppression: rendered a gallery card tagged with a hidden athlete ID.');
+        }
+        if (suppressionMediaRequests.some(url => url.includes('finish-line-smile'))) {
+            failures.push('gallery tag suppression: requested media for a hidden gallery item.');
+        }
+
+        await suppressionPage.goto(`${preview.baseUrl}/index.html?site=family`, { waitUntil: 'domcontentloaded' });
+        await waitForRenderedChampionship(suppressionPage, 'family');
+        await waitForNetworkToSettle(suppressionPage);
+        if (!await suppressionPage.locator('.race-moments').isHidden()) {
+            failures.push('gallery tag suppression: showed a hidden athlete\'s featured moment on Championships.');
+        }
+        if (await suppressionPage.locator(
+            '[data-gallery-athlete-photo="carolyn-kevan"].has-gallery-media img'
+        ).count() !== 0) {
+            failures.push('gallery tag suppression: decorated a podium with hidden athlete media.');
+        }
+
+        await suppressionPage.goto(
+            `${preview.baseUrl}/athlete.html?id=carolyn-kevan&site=family`,
+            { waitUntil: 'domcontentloaded' }
+        );
+        await suppressionPage.waitForFunction(() => {
+            const name = document.querySelector('#athlete-name')?.textContent?.trim() || '';
+            return name && name !== 'Loading...';
+        });
+        await waitForNetworkToSettle(suppressionPage);
+        if (!await suppressionPage.locator('.race-moments').isHidden()) {
+            failures.push('gallery tag suppression: showed a hidden athlete\'s moment on their profile.');
+        }
+    } catch (error) {
+        failures.push(`gallery tag suppression: ${error.message}`);
+    } finally {
+        await suppressionContext.close();
+    }
+
+    const invalidContext = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
+    const invalidPage = await invalidContext.newPage();
+    const invalidManifest = {
+        ...manifest,
+        items: [{ ...manifest.items[0], sourceUrl: 'javascript:alert(1)' }]
+    };
+
+    await invalidPage.route('**/gallery-data/family.json', route => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(invalidManifest)
+    }));
+
+    try {
+        await invalidPage.goto(`${preview.baseUrl}/gallery.html?site=family`, { waitUntil: 'domcontentloaded' });
+        await invalidPage.waitForFunction(() =>
+            document.querySelector('#gallery-status')?.textContent?.includes('temporarily unavailable')
+        );
+        await expectText(
+            invalidPage,
+            '#gallery-status',
+            'The gallery is temporarily unavailable. Championship results and records are unaffected.',
+            'gallery invalid-manifest fail-closed state'
+        );
+        if (await invalidPage.locator('#gallery-grid .gallery-card').count() !== 0) {
+            failures.push('gallery invalid-manifest: rendered cards instead of failing closed.');
+        }
+    } catch (error) {
+        failures.push(`gallery invalid-manifest: ${error.message}`);
+    } finally {
+        await invalidContext.close();
+    }
+
+    const invalidSuppressionContext = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
+    const invalidSuppressionPage = await invalidSuppressionContext.newPage();
+
+    await invalidSuppressionPage.route('**/gallery-data/family.json', route => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(manifest)
+    }));
+    await invalidSuppressionPage.route('**/gallery-data/hidden-athlete-ids.json', route => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ schemaVersion: '1.0', hiddenAthleteIds: 'carolyn-kevan' })
+    }));
+
+    try {
+        await invalidSuppressionPage.goto(
+            `${preview.baseUrl}/gallery.html?site=family`,
+            { waitUntil: 'domcontentloaded' }
+        );
+        await invalidSuppressionPage.waitForFunction(() =>
+            document.querySelector('#gallery-status')?.textContent?.includes('temporarily unavailable')
+        );
+        await expectText(
+            invalidSuppressionPage,
+            '#gallery-status',
+            'The gallery is temporarily unavailable. Championship results and records are unaffected.',
+            'gallery invalid-suppression-list fail-closed state'
+        );
+        if (await invalidSuppressionPage.locator('#gallery-grid .gallery-card').count() !== 0) {
+            failures.push('gallery invalid-suppression-list: rendered cards instead of failing closed.');
+        }
+    } catch (error) {
+        failures.push(`gallery invalid-suppression-list: ${error.message}`);
+    } finally {
+        await invalidSuppressionContext.close();
+    }
+}
+
 // Link previews and favicons fail silently: nothing on the page looks wrong when
 // an Open Graph tag is missing or its image 404s, so only a check like this
 // catches it. The asset requests are made from the page itself, so a path that
@@ -3289,6 +3743,7 @@ async function runBrandMetadataTests(browserInstance) {
         'news.html',
         'hall-of-fame.html',
         'records.html',
+        'gallery.html',
         'calculator.html',
         'age-grade-calculator.html',
         'overview.html',
@@ -3507,6 +3962,7 @@ async function runDocumentTitleTests(browserInstance) {
         'news.html',
         'hall-of-fame.html',
         'records.html',
+        'gallery.html',
         'calculator.html',
         'age-grade-calculator.html',
         'overview.html'
@@ -3814,6 +4270,25 @@ async function assertCollapsibleSections(page, mode, viewport) {
     );
     await content.locator('table').first().waitFor({ state: 'visible' });
     await waitForNetworkToSettle(page);
+    const structure = await content.evaluate(element => ({
+        sections: [...element.querySelectorAll(':scope > .leaderboard-section')].map(section => ({
+            title: section.querySelector('h4')?.textContent?.trim() || '',
+            podiums: section.querySelectorAll(':scope > .championship-podium').length,
+            tables: section.querySelectorAll(':scope > table').length,
+            hasRankedMedal: section.querySelectorAll(':scope > table tbody .medal').length > 0
+        }))
+    }));
+    if (structure.sections.length !== 2
+        || !structure.sections[0].title.startsWith('Current ')
+        || !structure.sections[1].title.startsWith('All Time ')
+        || structure.sections.some(section =>
+            section.tables !== 1 || section.podiums !== (section.hasRankedMedal ? 1 : 0)
+        )) {
+        failures.push(
+            `${mode}/${viewport.name}: an opened distance did not render Current podium/table ` +
+            'followed by All-Time podium/table.'
+        );
+    }
     await closedToggle.click();
     await page.waitForFunction(
         element => element.style.display === 'none',
@@ -3832,6 +4307,81 @@ async function assertLeaderboardDisplayLabels(page, mode, viewport) {
 
     if (labels.some(label => label.includes('10mile'))) {
         failures.push(`${mode}/${viewport.name}: 10 Mile leaderboard section is displayed as "10mile".`);
+    }
+}
+
+async function assertChampionshipPodiums(page, mode, viewport) {
+    const context = `${mode}/${viewport.name} championship podiums`;
+    const layout = await page.evaluate(() => {
+        const sections = [...document.querySelectorAll('#leaderboards .leaderboard-section')];
+        const firstPodium = document.querySelector('#leaderboards .championship-podium');
+        const firstTable = document.querySelector('#leaderboards .leaderboard-section table');
+        const firstTime = firstTable?.querySelector('.time-with-pace');
+        const visiblePace = firstTime?.querySelector('.pace-display:not([hidden])');
+        const categoryBadges = [...document.querySelectorAll(
+            '#leaderboards .recreational, #leaderboards .club, #leaderboards .local, ' +
+            '#leaderboards .regional, #leaderboards .national, #leaderboards .world'
+        )];
+
+        return {
+            sectionCount: sections.length,
+            podiumCount: sections.filter(section => section.querySelector(':scope > .championship-podium')).length,
+            podiumPrecedesTable: sections.every(section => {
+                const podium = section.querySelector(':scope > .championship-podium');
+                const table = section.querySelector(':scope > table');
+                return !podium || !table || Boolean(podium.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING);
+            }),
+            cardCount: firstPodium?.querySelectorAll('.championship-podium-card').length || 0,
+            cardMedalCount: firstPodium?.querySelectorAll('.championship-podium-medal').length || 0,
+            tableMedalCount: firstTable?.querySelectorAll('tbody .medal').length || 0,
+            fallbackCount: firstPodium?.querySelectorAll('.championship-podium-media[role="img"]').length || 0,
+            mediaCount: firstPodium?.querySelectorAll('.championship-podium-media.has-gallery-media img').length || 0,
+            columns: firstPodium ? getComputedStyle(firstPodium).gridTemplateColumns : '',
+            height: firstPodium ? Math.round(firstPodium.getBoundingClientRect().height) : 0,
+            overflows: document.documentElement.scrollWidth > window.innerWidth,
+            categoryLabels: categoryBadges.map(badge => badge.textContent.trim()),
+            categoryAriaLabels: categoryBadges.map(badge => badge.getAttribute('aria-label') || ''),
+            timeDisplay: firstTime ? getComputedStyle(firstTime).display : '',
+            timeTop: firstTime?.querySelector('.result-time')?.getBoundingClientRect().top || 0,
+            paceTop: visiblePace?.getBoundingClientRect().top || 0
+        };
+    });
+
+    if (layout.sectionCount < 2 || layout.podiumCount !== layout.sectionCount) {
+        failures.push(`${context}: every rendered Current/All-Time table did not retain its podium.`);
+    }
+    if (!layout.podiumPrecedesTable) {
+        failures.push(`${context}: a standings table appeared before its podium.`);
+    }
+    if (layout.cardCount !== 3 || layout.cardMedalCount !== 3 || layout.tableMedalCount !== 3) {
+        failures.push(
+            `${context}: expected three podium cards and matching card/table medals ` +
+            `(cards ${layout.cardCount}, card medals ${layout.cardMedalCount}, table medals ${layout.tableMedalCount}).`
+        );
+    }
+    if (layout.fallbackCount !== 3 || layout.mediaCount !== 0) {
+        failures.push(`${context}: tracked empty manifests did not leave three accessible media fallbacks.`);
+    }
+    if (layout.categoryLabels.some(label => label.split(/\s+/).length !== 1)) {
+        failures.push(`${context}: an age-graded category still displays more than its first word.`);
+    }
+    if (!layout.categoryAriaLabels.some(label => label.includes(' '))) {
+        failures.push(`${context}: shortened category badges lost their full exported accessible label.`);
+    }
+    if (!['grid', 'inline-grid'].includes(layout.timeDisplay) || !(layout.paceTop > layout.timeTop)) {
+        failures.push(`${context}: time and pace do not use the same deliberate line break.`);
+    }
+    if (viewport.name === 'mobile') {
+        const columnCount = layout.columns.trim().split(/\s+/).filter(Boolean).length;
+        if (columnCount !== 3 || layout.height > 280) {
+            failures.push(
+                `${context}: mobile podium did not stay compact in three columns ` +
+                `(${columnCount} columns, ${layout.height}px high).`
+            );
+        }
+    }
+    if (layout.overflows) {
+        failures.push(`${context}: podium or standings content overflows horizontally.`);
     }
 }
 
