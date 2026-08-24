@@ -55,8 +55,8 @@ run.
 - The complete staged bundle has been promoted atomically; do not selectively
   overwrite individual data files.
 - Do not merge or deploy this branch without separate explicit approval.
-- The next authorized step is to commit and push the verified branch; opening
-  a pull request remains a separate decision.
+- Commit `5696606` is pushed to
+  `origin/codex/news-medal-position-labels`; no pull request has been opened.
 
 ## Historical record: Official Results News first draft
 
