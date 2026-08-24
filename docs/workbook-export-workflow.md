@@ -77,9 +77,11 @@ The approved [Official Result News contract](official-news-contract.md) requires
 the site-specific
 `data/family/official_result_news.csv` and
 `data/everyone/official_result_news.csv` files in every complete export. A mode
-with no milestones still exports the exact 36-column header-only file. The four
-context-aligned `MedalEntry` columns are part of that required header and must
-not be added to one mode without the other.
+with no milestones still exports the exact 64-column header-only file. The four
+context-aligned `MedalEntry` columns, their eight `MedalBefore`/
+`MedalAfter` snapshot columns, 16 displaced-holder fields, and four
+post-result ranked-athlete counts are part of that required header and must not
+be added to one mode without the other.
 
 ## Workbook guarantees
 
@@ -115,12 +117,26 @@ workbook-owned replay for each mode. The exporter must filter to currently
   improvements use `HH:MM:SS[.fff]`; they must not be coerced to whole seconds
   merely because the public `athlete_results.csv` export may round. It must
   export the milestone, exact/display improvements, and four applicable
-  before/after rank triplets without delegating calculation to the website. For
-  each rank context it must also export blank, `Gold`, `Silver`, or `Bronze` in
-  the aligned medal-entry field. Only a before rank that is blank or at least 4
-  followed by an after rank of 1, 2, or 3 populates the field; movement within
-  existing medal places stays blank. Competition rank supplies tie semantics,
-  contexts are independent, and both 1 Mile distance fields remain blank.
+  before/after rank snapshots without delegating calculation to the website.
+  Immediately after each `RankAfter`, it must export the positive count of
+  distinct ranked athletes in that same selected-mode post-result snapshot; the
+  count includes the News athlete, is at least their exported rank, and is blank
+  only with an unavailable table. For each rank context it must also export the
+  three aligned medal fields. Every
+  medal field is blank, `Gold`, `Silver`, or `Bronze`: `MedalEntry` is populated only
+  when a before rank that is blank or at least 4 is followed by Rank 1, 2, or 3;
+  `MedalBefore` and `MedalAfter` are the corresponding competition-rank labels
+  for the before and after snapshots. Thus a Rank 2 to Rank 1 upgrade has blank
+  `MedalEntry`, `Silver` `MedalBefore`, and `Gold` `MedalAfter`. Competition
+  rank supplies tie semantics, contexts are independent, and all six 1 Mile
+  Distance medal fields remain blank. Immediately after each context's
+  `MedalAfter`, the exporter writes an all-or-blank displaced-holder quartet:
+  public athlete ID, public athlete name, prior medal, and resulting medal. A
+  complete quartet names the unique former holder of the News athlete's newly
+  claimed medal, uses only `Gold → Silver`, `Silver → Bronze`, or
+  `Bronze → No medal`, and remains blank where no unique genuine handoff
+  exists. All eleven aligned Distance fields, including the ranked-athlete
+  count, remain blank for 1 Mile.
   Before registering either file or writing the manifest, post-export
   validation must compare the
 replay's complete final Current and All-Time state with all 12 Official
@@ -237,9 +253,13 @@ pnpm run workbook:validate:staged --staged "<STAGED_EXPORT_ROOT>"
 
 This runs the existing full CSV and bundle validation and verifies the public
 file set, including both required Official Results News exports. For their
-36-column schema it also checks every medal-entry value against its aligned
-workbook-exported before/after rank triplet, including multi-context rows,
-within-medal blanks, 1 Mile, and site-specific differences.
+64-column schema it also checks every Entry/Before/After medal value against
+its aligned workbook-exported before/after rank/count context, requires each
+positive post-result count to be at least its `RankAfter`, and validates every
+displaced-holder quartet as complete-or-blank, public, selected-mode eligible,
+non-self-referential, and a permitted handoff. Coverage includes multi-context
+rows, within-medal upgrades, retained medal positions, 1 Mile, and
+site-specific differences.
 
 ### 3. Compare with tracked public data
 

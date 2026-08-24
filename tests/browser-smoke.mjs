@@ -32,20 +32,48 @@ const newsExportHeaders = [
     'AgeGradeImprovement',
     'CurrentDistanceRankBefore',
     'CurrentDistanceRankAfter',
+    'CurrentDistanceRankedAthleteCountAfter',
     'CurrentDistancePlacesGained',
     'CurrentDistanceMedalEntry',
+    'CurrentDistanceMedalBefore',
+    'CurrentDistanceMedalAfter',
+    'CurrentDistanceDisplacedAthleteID',
+    'CurrentDistanceDisplacedAthleteName',
+    'CurrentDistanceDisplacedMedalBefore',
+    'CurrentDistanceDisplacedMedalAfter',
     'CurrentOverallRankBefore',
     'CurrentOverallRankAfter',
+    'CurrentOverallRankedAthleteCountAfter',
     'CurrentOverallPlacesGained',
     'CurrentOverallMedalEntry',
+    'CurrentOverallMedalBefore',
+    'CurrentOverallMedalAfter',
+    'CurrentOverallDisplacedAthleteID',
+    'CurrentOverallDisplacedAthleteName',
+    'CurrentOverallDisplacedMedalBefore',
+    'CurrentOverallDisplacedMedalAfter',
     'AllTimeDistanceRankBefore',
     'AllTimeDistanceRankAfter',
+    'AllTimeDistanceRankedAthleteCountAfter',
     'AllTimeDistancePlacesGained',
     'AllTimeDistanceMedalEntry',
+    'AllTimeDistanceMedalBefore',
+    'AllTimeDistanceMedalAfter',
+    'AllTimeDistanceDisplacedAthleteID',
+    'AllTimeDistanceDisplacedAthleteName',
+    'AllTimeDistanceDisplacedMedalBefore',
+    'AllTimeDistanceDisplacedMedalAfter',
     'AllTimeOverallRankBefore',
     'AllTimeOverallRankAfter',
+    'AllTimeOverallRankedAthleteCountAfter',
     'AllTimeOverallPlacesGained',
     'AllTimeOverallMedalEntry',
+    'AllTimeOverallMedalBefore',
+    'AllTimeOverallMedalAfter',
+    'AllTimeOverallDisplacedAthleteID',
+    'AllTimeOverallDisplacedAthleteName',
+    'AllTimeOverallDisplacedMedalBefore',
+    'AllTimeOverallDisplacedMedalAfter',
     'ExportBundleID'
 ];
 // `isMobile` makes Chromium honour the page's meta viewport tag. Without it a
@@ -628,10 +656,10 @@ async function assertNewsFixtureRendered(page, mode, viewport, fixture) {
             .trim()
         );
     for (const expected of [
-        'Distance #5 to #3 Up 2 places New Bronze medal position',
-        'Overall #5 to #2 Up 3 places New Silver medal position',
-        'Distance Unranked to #2 Entered the table New Silver medal position',
-        'Overall #4 to #1 Up 3 places New Gold medal position'
+        'Distance #5 to #3 / 12 Up 2 places New Bronze medal position',
+        'Overall #5 to #2 / 18 Up 3 places New Silver medal position',
+        'Distance Unranked to #2 / 31 Entered the table New Silver medal position',
+        'Overall #4 to #1 / 42 Up 3 places New Gold medal position'
     ]) {
         if (!combinedMovement.some(movement => movement.includes(expected))) {
             failures.push(`${label}: combined milestone omitted rank state "${expected}".`);
@@ -661,8 +689,8 @@ async function assertNewsFixtureRendered(page, mode, viewport, fixture) {
         'Previous74.2%',
         'New74.2%',
         '+<0.01 pp',
-        '#4 to #1',
-        '#5 to #2'
+        'Movement unavailable',
+        '#5 to #2 / 22'
     ]) {
         if (!ageGradeText.includes(expected)) {
             failures.push(`${label}: age-grade milestone omitted exported text "${expected}".`);
@@ -688,7 +716,7 @@ async function assertNewsFixtureRendered(page, mode, viewport, fixture) {
             `${label}: 1 Mile rendered unavailable Distance ranks (${mileRankLabels.join(', ') || 'none'}).`
         );
     }
-    for (const expected of ['Unranked to #5', 'Unranked to #8']) {
+    for (const expected of ['Unranked to #5 / 11', 'Unranked to #8 / 26']) {
         if (!firstMileText.includes(expected)) {
             failures.push(`${label}: 1 Mile omitted Overall movement "${expected}".`);
         }
@@ -707,9 +735,37 @@ async function assertNewsFixtureRendered(page, mode, viewport, fixture) {
     const hiddenFieldNames = [
         ...hiddenValueFields,
         'CurrentDistanceMedalEntry',
+        'CurrentDistanceMedalBefore',
+        'CurrentDistanceMedalAfter',
+        'CurrentDistanceRankedAthleteCountAfter',
+        'CurrentDistanceDisplacedAthleteID',
+        'CurrentDistanceDisplacedAthleteName',
+        'CurrentDistanceDisplacedMedalBefore',
+        'CurrentDistanceDisplacedMedalAfter',
         'CurrentOverallMedalEntry',
+        'CurrentOverallMedalBefore',
+        'CurrentOverallMedalAfter',
+        'CurrentOverallRankedAthleteCountAfter',
+        'CurrentOverallDisplacedAthleteID',
+        'CurrentOverallDisplacedAthleteName',
+        'CurrentOverallDisplacedMedalBefore',
+        'CurrentOverallDisplacedMedalAfter',
         'AllTimeDistanceMedalEntry',
-        'AllTimeOverallMedalEntry'
+        'AllTimeDistanceMedalBefore',
+        'AllTimeDistanceMedalAfter',
+        'AllTimeDistanceRankedAthleteCountAfter',
+        'AllTimeDistanceDisplacedAthleteID',
+        'AllTimeDistanceDisplacedAthleteName',
+        'AllTimeDistanceDisplacedMedalBefore',
+        'AllTimeDistanceDisplacedMedalAfter',
+        'AllTimeOverallMedalEntry',
+        'AllTimeOverallMedalBefore',
+        'AllTimeOverallMedalAfter',
+        'AllTimeOverallRankedAthleteCountAfter',
+        'AllTimeOverallDisplacedAthleteID',
+        'AllTimeOverallDisplacedAthleteName',
+        'AllTimeOverallDisplacedMedalBefore',
+        'AllTimeOverallDisplacedMedalAfter'
     ];
 
     for (const field of hiddenFieldNames) {
@@ -749,13 +805,13 @@ async function assertNewsFixtureRendered(page, mode, viewport, fixture) {
         }
     }
 
-    await assertNewsMedalPresentation(page, cards, label);
+    await assertNewsMedalPresentation(page, cards, label, mode);
     await assertNewsMedalGeometry(page, label);
     await assertNewsFlowLayout(page, mode, viewport);
     await assertNewsControlsAndProgressiveLoading(page, mode, fixture);
 }
 
-async function assertNewsMedalPresentation(page, cards, label) {
+async function assertNewsMedalPresentation(page, cards, label, mode) {
     const medalCard = cards.nth(0);
     const callout = medalCard.locator('.news-medal-callout');
     const calloutCount = await callout.count();
@@ -849,51 +905,273 @@ async function assertNewsMedalPresentation(page, cards, label) {
         }
     }
 
-    for (const [cardIndex, description] of [
-        [1, 'within-podium and medal-threshold movements with blank markers'],
-        [2, 'movement with hostile or non-enum markers']
-    ]) {
-        const card = cards.nth(cardIndex);
+    if (await medalCard.locator('.news-medal-position-badge').count() !== 0) {
+        failures.push(`${label}: an entry card duplicated its established medal-entry treatment with snapshots.`);
+    }
+
+    const snapshotCard = cards.nth(1);
+    if (
+        await snapshotCard.evaluate(element => element.classList.contains('news-card-medal-entry')) ||
+        await snapshotCard.locator('.news-medal-callout').count() !== 0 ||
+        await snapshotCard.locator('.news-rank-row-medal-entry').count() !== 0 ||
+        await snapshotCard.locator('.news-medal-entry-badge').count() !== 0
+    ) {
+        failures.push(`${label}: an existing-podium movement was incorrectly presented as a new medal entry.`);
+    }
+
+    const snapshotRows = [
+        {
+            context: 'current-distance',
+            className: 'gold',
+            before: 'Silver',
+            after: 'Gold',
+            visibleLabels: ['Silver', 'Gold'],
+            transition: true
+        },
+        {
+            context: 'alltime-distance',
+            className: 'bronze',
+            before: 'Bronze',
+            after: 'Bronze',
+            visibleLabels: ['Bronze medal position retained'],
+            transition: false
+        }
+    ];
+
+    if (await snapshotCard.locator('.news-medal-position-badge').count() !== snapshotRows.length) {
+        failures.push(
+            `${label}: expected ${snapshotRows.length} workbook-owned medal snapshot badges on existing-podium movements.`
+        );
+    }
+
+    for (const expected of snapshotRows) {
+        const row = snapshotCard.locator(
+            `.news-rank-row[data-news-rank-context="${expected.context}"]`
+        );
+        const badge = row.locator('.news-medal-position-badge');
 
         if (
-            await card.evaluate(element => element.classList.contains('news-card-medal-entry')) ||
-            await card.locator('.news-medal-callout').count() !== 0 ||
-            await card.locator('.news-rank-row-medal-entry').count() !== 0 ||
-            await card.locator('.news-medal-entry-badge').count() !== 0
+            await badge.count() !== 1 ||
+            !await badge.isVisible() ||
+            !await badge.evaluate((element, className) =>
+                element.classList.contains(`news-medal-position-${className}`), expected.className
+            )
         ) {
-            failures.push(`${label}: ${description} received an invented medal-entry presentation.`);
+            failures.push(`${label}: ${expected.context} lacked its ${expected.className} medal snapshot badge.`);
+            continue;
+        }
+
+        const accessibleText = normalizeText(await badge.textContent());
+        if (
+            !accessibleText.includes('Medal position:') ||
+            !accessibleText.includes(expected.before) ||
+            !accessibleText.includes(expected.after) ||
+            (expected.transition && !accessibleText.includes('to')) ||
+            (!expected.transition && !accessibleText.includes('retained'))
+        ) {
+            failures.push(`${label}: ${expected.context} lacked a complete textual medal snapshot.`);
+        }
+
+        const visual = await badge.evaluate(element => {
+            const visibleLabels = [...element.querySelectorAll(':scope > span')]
+                .filter(span => !span.classList.contains('news-medal-position-label'))
+                .filter(span => !span.classList.contains('news-medal-position-transition'))
+                .filter(span => !span.classList.contains('news-medal-position-arrow'))
+                .map(span => span.textContent.replace(/\s+/g, ' ').trim());
+            const arrow = element.querySelector('.news-medal-position-arrow');
+            const transition = element.querySelector('.news-medal-position-transition');
+            const arrowBounds = arrow?.getBoundingClientRect();
+
+            return {
+                visibleLabels,
+                arrowText: arrow?.textContent?.trim() || '',
+                arrowHidden: arrow?.getAttribute('aria-hidden') || '',
+                arrowVisible: Boolean(arrowBounds && arrowBounds.width > 0 && arrowBounds.height > 0),
+                transitionText: transition?.textContent?.trim() || '',
+                transitionIsVisuallyHidden: Boolean(
+                    transition && getComputedStyle(transition).clipPath !== 'none'
+                )
+            };
+        });
+
+        if (visual.visibleLabels.join('|') !== expected.visibleLabels.join('|')) {
+            failures.push(
+                `${label}: ${expected.context} did not retain the visible medal labels ` +
+                `"${expected.visibleLabels.join(' -> ')}".`
+            );
+        }
+
+        if (expected.transition) {
+            if (
+                visual.arrowText !== '→' ||
+                visual.arrowHidden !== 'true' ||
+                !visual.arrowVisible ||
+                visual.transitionText !== 'to' ||
+                !visual.transitionIsVisuallyHidden
+            ) {
+                failures.push(
+                    `${label}: ${expected.context} did not provide a visible decorative arrow and hidden textual "to".`
+                );
+            }
+        } else if (visual.arrowText || visual.transitionText) {
+            failures.push(`${label}: ${expected.context} added a transition to a retained medal position.`);
         }
     }
 
-    const blankMarkerCard = cards.nth(1);
+    const invalidSnapshotCard = cards.nth(2);
+    if (
+        await invalidSnapshotCard.evaluate(element => element.classList.contains('news-card-medal-entry')) ||
+        await invalidSnapshotCard.locator('.news-medal-callout').count() !== 0 ||
+        await invalidSnapshotCard.locator('.news-rank-row-medal-entry').count() !== 0 ||
+        await invalidSnapshotCard.locator('.news-medal-entry-badge').count() !== 0 ||
+        await invalidSnapshotCard.locator('.news-medal-position-badge').count() !== 0
+    ) {
+        failures.push(`${label}: invalid medal markers or snapshots did not fail closed.`);
+    }
+
     for (const [context, expectedMovement] of [
-        ['current-distance', '#3 to #2 Up 1 place'],
-        ['current-overall', '#6 to #3 Up 3 places']
+        ['current-distance', '#2 to #1 / 14 Up 1 place'],
+        ['current-overall', '#6 to #3 / 20 Up 3 places'],
+        ['alltime-distance', '#3 to #3 / 41 No rank change']
     ]) {
-        const rowText = normalizeText(await blankMarkerCard
+        const rowText = normalizeText(await snapshotCard
             .locator(`.news-rank-row[data-news-rank-context="${context}"]`)
             .textContent());
 
         if (!rowText.includes(expectedMovement)) {
             failures.push(
-                `${label}: blank-marker ${context} control did not render movement "${expectedMovement}".`
+                `${label}: snapshot ${context} control did not render movement "${expectedMovement}".`
             );
         }
     }
 
-    const hostileCardText = normalizeText(await cards.nth(2).textContent());
+    const hostileCardText = normalizeText(await invalidSnapshotCard.textContent());
     if (
-        !hostileCardText.includes('#4 to #1 Up 3 places') ||
-        !hostileCardText.includes('#5 to #2 Up 3 places')
+        !hostileCardText.includes('Movement unavailable') ||
+        !hostileCardText.includes('#5 to #2 / 22 Up 3 places')
     ) {
-        failures.push(`${label}: hostile-marker control lost its ordinary exported rank movement.`);
+        failures.push(`${label}: invalid ranked-athlete count did not fail closed.`);
     }
     if (
         hostileCardText.includes('Gold<img data-medal-injection') ||
+        hostileCardText.includes('Silver<img data-medal-snapshot-injection') ||
+        hostileCardText.includes('Silver → gold') ||
         hostileCardText.includes('New gold medal position') ||
-        await page.locator('[data-medal-injection]').count() !== 0
+        await page.locator('[data-medal-injection]').count() !== 0 ||
+        await page.locator('[data-medal-snapshot-injection]').count() !== 0
     ) {
-        failures.push(`${label}: hostile or non-enum medal marker reached rendered content.`);
+        failures.push(`${label}: hostile or invalid medal marker/snapshot reached rendered content.`);
+    }
+
+    await assertNewsMedalDisplacements(page, medalCard, snapshotCard, invalidSnapshotCard, label, mode);
+}
+
+async function assertNewsMedalDisplacements(page, medalCard, snapshotCard, invalidSnapshotCard, label, mode) {
+    const modeLabel = mode === 'everyone' ? 'Everyone' : 'Family';
+    const expectedDisplacements = [
+        {
+            card: medalCard,
+            context: 'current-distance',
+            athleteId: `${mode}-news-displaced-bronze`,
+            athleteName: `${modeLabel} Blair`,
+            medalBefore: 'Bronze',
+            medalAfter: 'No medal'
+        },
+        {
+            card: medalCard,
+            context: 'current-overall',
+            athleteId: `${mode}-news-displaced-silver`,
+            athleteName: `${modeLabel} Sam`,
+            medalBefore: 'Silver',
+            medalAfter: 'Bronze'
+        },
+        {
+            card: medalCard,
+            context: 'alltime-distance',
+            athleteId: `${mode}-news-displaced-alltime-silver`,
+            athleteName: `${modeLabel} Drew`,
+            medalBefore: 'Silver',
+            medalAfter: 'Bronze'
+        },
+        {
+            card: medalCard,
+            context: 'alltime-overall',
+            athleteId: `${mode}-news-displaced-gold`,
+            athleteName: `${modeLabel} Alex`,
+            medalBefore: 'Gold',
+            medalAfter: 'Silver'
+        },
+        {
+            card: snapshotCard,
+            context: 'current-distance',
+            athleteId: `${mode}-news-displaced-snapshot-gold`,
+            athleteName: `${modeLabel} Avery`,
+            medalBefore: 'Gold',
+            medalAfter: 'Silver'
+        },
+        {
+            card: snapshotCard,
+            context: 'current-overall',
+            athleteId: `${mode}-news-escaped-fixture`,
+            athleteName: '<img data-displacement-injection src=x>',
+            medalBefore: 'Bronze',
+            medalAfter: 'No medal'
+        }
+    ];
+
+    for (const expected of expectedDisplacements) {
+        const row = expected.card.locator(
+            `.news-rank-row[data-news-rank-context="${expected.context}"]`
+        );
+        const displacement = row.locator('.news-medal-displacement');
+        const link = displacement.locator('a');
+        const expectedText =
+            `${expected.medalBefore} taken from ${expected.athleteName}`;
+
+        if (
+            await displacement.count() !== 1 ||
+            !await displacement.isVisible() ||
+            normalizeText(await displacement.textContent()) !== expectedText
+        ) {
+            failures.push(
+                `${label}: ${expected.context} did not render the complete workbook-owned displaced-medal statement.`
+            );
+            continue;
+        }
+
+        if (await link.count() !== 1) {
+            failures.push(`${label}: ${expected.context} did not link the exported displaced athlete.`);
+            continue;
+        }
+
+        const href = await link.getAttribute('href');
+        const params = new URL(href, preview.baseUrl).searchParams;
+
+        if (params.get('id') !== expected.athleteId || params.get('site') !== mode) {
+            failures.push(
+                `${label}: ${expected.context} displaced-athlete link "${href}" did not preserve its exported ID and site mode.`
+            );
+        }
+
+    }
+
+    const partialDisplacementRow = snapshotCard.locator(
+        '.news-rank-row[data-news-rank-context="alltime-overall"]'
+    );
+    if (
+        await partialDisplacementRow.locator('.news-medal-displacement').count() !== 0 ||
+        normalizeText(await snapshotCard.textContent()).includes('Omitted Fixture Athlete')
+    ) {
+        failures.push(`${label}: a partial displacement leaked an athlete identity.`);
+    }
+
+    if (
+        await invalidSnapshotCard.locator('.news-medal-displacement').count() !== 0 ||
+        await page.locator('[data-displacement-injection]').count() !== 0 ||
+        normalizeText(await invalidSnapshotCard.textContent()).includes('<img data-displacement-injection') ||
+        normalizeText(await invalidSnapshotCard.textContent()).includes(`${modeLabel} Rowan`)
+    ) {
+        failures.push(`${label}: an invalid rank count or hostile displacement did not fail closed.`);
     }
 }
 
@@ -1066,7 +1344,10 @@ async function assertNewsFlowLayout(page, mode, viewport) {
                 viewportWidth: document.documentElement.clientWidth
             };
         });
-        const maximumCompactCardHeight = viewport.name === 'desktop' ? 320 : 850;
+        // A card can contain four independently exported displaced-athlete
+        // statements. Keep the compact guard, while allowing that complete
+        // workbook-owned information to wrap accessibly at each viewport.
+        const maximumCompactCardHeight = viewport.name === 'desktop' ? 430 : 1160;
 
         if (layout.card.height > maximumCompactCardHeight) {
             failures.push(
@@ -1654,18 +1935,46 @@ function newsFixture(mode) {
             AgeGradeImprovement: '+0.52 pp',
             CurrentDistanceRankBefore: '5',
             CurrentDistanceRankAfter: '3',
+            CurrentDistanceRankedAthleteCountAfter: '12',
             CurrentDistancePlacesGained: '2',
             CurrentDistanceMedalEntry: 'Bronze',
+            CurrentDistanceMedalBefore: '',
+            CurrentDistanceMedalAfter: 'Bronze',
+            CurrentDistanceDisplacedAthleteID: `${mode}-news-displaced-bronze`,
+            CurrentDistanceDisplacedAthleteName: `${modeLabel} Blair`,
+            CurrentDistanceDisplacedMedalBefore: 'Bronze',
+            CurrentDistanceDisplacedMedalAfter: 'No medal',
             CurrentOverallRankBefore: '5',
             CurrentOverallRankAfter: '2',
+            CurrentOverallRankedAthleteCountAfter: '18',
             CurrentOverallPlacesGained: '3',
             CurrentOverallMedalEntry: 'Silver',
+            CurrentOverallMedalBefore: '',
+            CurrentOverallMedalAfter: 'Silver',
+            CurrentOverallDisplacedAthleteID: `${mode}-news-displaced-silver`,
+            CurrentOverallDisplacedAthleteName: `${modeLabel} Sam`,
+            CurrentOverallDisplacedMedalBefore: 'Silver',
+            CurrentOverallDisplacedMedalAfter: 'Bronze',
             AllTimeDistanceRankAfter: '2',
+            AllTimeDistanceRankedAthleteCountAfter: '31',
             AllTimeDistanceMedalEntry: 'Silver',
+            AllTimeDistanceMedalBefore: '',
+            AllTimeDistanceMedalAfter: 'Silver',
+            AllTimeDistanceDisplacedAthleteID: `${mode}-news-displaced-alltime-silver`,
+            AllTimeDistanceDisplacedAthleteName: `${modeLabel} Drew`,
+            AllTimeDistanceDisplacedMedalBefore: 'Silver',
+            AllTimeDistanceDisplacedMedalAfter: 'Bronze',
             AllTimeOverallRankBefore: '4',
             AllTimeOverallRankAfter: '1',
+            AllTimeOverallRankedAthleteCountAfter: '42',
             AllTimeOverallPlacesGained: '3',
             AllTimeOverallMedalEntry: 'Gold',
+            AllTimeOverallMedalBefore: '',
+            AllTimeOverallMedalAfter: 'Gold',
+            AllTimeOverallDisplacedAthleteID: `${mode}-news-displaced-gold`,
+            AllTimeOverallDisplacedAthleteName: `${modeLabel} Alex`,
+            AllTimeOverallDisplacedMedalBefore: 'Gold',
+            AllTimeOverallDisplacedMedalAfter: 'Silver',
             ExportBundleID: bundleId
         },
         {
@@ -1684,18 +1993,39 @@ function newsFixture(mode) {
             PreviousBestTime: '00:40:00.0',
             TimeImprovementSeconds: '0.1',
             TimeImprovement: '00:00:00.1',
-            CurrentDistanceRankBefore: '3',
-            CurrentDistanceRankAfter: '2',
+            CurrentDistanceRankBefore: '2',
+            CurrentDistanceRankAfter: '1',
+            CurrentDistanceRankedAthleteCountAfter: '14',
             CurrentDistancePlacesGained: '1',
+            CurrentDistanceMedalBefore: 'Silver',
+            CurrentDistanceMedalAfter: 'Gold',
+            CurrentDistanceDisplacedAthleteID: `${mode}-news-displaced-snapshot-gold`,
+            CurrentDistanceDisplacedAthleteName: `${modeLabel} Avery`,
+            CurrentDistanceDisplacedMedalBefore: 'Gold',
+            CurrentDistanceDisplacedMedalAfter: 'Silver',
             CurrentOverallRankBefore: '6',
             CurrentOverallRankAfter: '3',
+            CurrentOverallRankedAthleteCountAfter: '20',
             CurrentOverallPlacesGained: '3',
-            AllTimeDistanceRankBefore: '6',
-            AllTimeDistanceRankAfter: '6',
+            CurrentOverallMedalBefore: '',
+            CurrentOverallMedalAfter: 'Bronze',
+            CurrentOverallDisplacedAthleteID: `${mode}-news-escaped-fixture`,
+            CurrentOverallDisplacedAthleteName: '<img data-displacement-injection src=x>',
+            CurrentOverallDisplacedMedalBefore: 'Bronze',
+            CurrentOverallDisplacedMedalAfter: 'No medal',
+            AllTimeDistanceRankBefore: '3',
+            AllTimeDistanceRankAfter: '3',
+            AllTimeDistanceRankedAthleteCountAfter: '41',
             AllTimeDistancePlacesGained: '0',
+            AllTimeDistanceMedalBefore: 'Bronze',
+            AllTimeDistanceMedalAfter: 'Bronze',
             AllTimeOverallRankBefore: '9',
             AllTimeOverallRankAfter: '9',
+            AllTimeOverallRankedAthleteCountAfter: '55',
             AllTimeOverallPlacesGained: '0',
+            AllTimeOverallDisplacedAthleteID: `${mode}-news-omitted-fixture`,
+            AllTimeOverallDisplacedAthleteName: 'Omitted Fixture Athlete',
+            AllTimeOverallDisplacedMedalBefore: 'Bronze',
             ExportBundleID: bundleId
         },
         {
@@ -1717,17 +2047,29 @@ function newsFixture(mode) {
             AgeGradeImprovement: '+<0.01 pp',
             CurrentDistanceRankBefore: '4',
             CurrentDistanceRankAfter: '1',
+            CurrentDistanceRankedAthleteCountAfter: '0',
             CurrentDistancePlacesGained: '3',
-            CurrentDistanceMedalEntry: 'Gold<img data-medal-injection src=x>',
+            CurrentDistanceMedalEntry: 'Gold',
+            CurrentDistanceMedalBefore: '',
+            CurrentDistanceMedalAfter: 'Gold',
+            CurrentDistanceDisplacedAthleteID: `${mode}-news-valid-but-hidden`,
+            CurrentDistanceDisplacedAthleteName: `${modeLabel} Rowan`,
+            CurrentDistanceDisplacedMedalBefore: 'Gold',
+            CurrentDistanceDisplacedMedalAfter: 'Silver',
             CurrentOverallRankBefore: '5',
             CurrentOverallRankAfter: '2',
+            CurrentOverallRankedAthleteCountAfter: '22',
             CurrentOverallPlacesGained: '3',
-            CurrentOverallMedalEntry: 'gold',
+            CurrentOverallMedalEntry: 'Gold<img data-medal-injection src=x>',
+            CurrentOverallMedalBefore: 'Silver<img data-medal-snapshot-injection src=x>',
+            CurrentOverallMedalAfter: 'Gold',
             AllTimeDistanceRankBefore: '12',
             AllTimeDistanceRankAfter: '10',
+            AllTimeDistanceRankedAthleteCountAfter: '24',
             AllTimeDistancePlacesGained: '2',
             AllTimeOverallRankBefore: '30',
             AllTimeOverallRankAfter: '29',
+            AllTimeOverallRankedAthleteCountAfter: '48',
             AllTimeOverallPlacesGained: '1',
             ExportBundleID: bundleId
         },
@@ -1745,7 +2087,9 @@ function newsFixture(mode) {
             TimeClass: 'Official',
             MilestoneType: 'First Official Result',
             CurrentOverallRankAfter: '5',
+            CurrentOverallRankedAthleteCountAfter: '11',
             AllTimeOverallRankAfter: '8',
+            AllTimeOverallRankedAthleteCountAfter: '26',
             ExportBundleID: bundleId
         }
     ];
@@ -1790,13 +2134,17 @@ function newsFixture(mode) {
             TimeClass: 'Official',
             MilestoneType: 'First Official Result',
             CurrentOverallRankAfter: String(sortOrder),
+            CurrentOverallRankedAthleteCountAfter: String(sortOrder + 4),
             AllTimeOverallRankAfter: String(sortOrder + 5),
+            AllTimeOverallRankedAthleteCountAfter: String(sortOrder + 9),
             ExportBundleID: bundleId
         };
 
         if (distance !== '1 Mile') {
             row.CurrentDistanceRankAfter = String(sortOrder);
+            row.CurrentDistanceRankedAthleteCountAfter = String(sortOrder + 4);
             row.AllTimeDistanceRankAfter = String(sortOrder + 3);
+            row.AllTimeDistanceRankedAthleteCountAfter = String(sortOrder + 7);
         }
 
         rows.push(row);

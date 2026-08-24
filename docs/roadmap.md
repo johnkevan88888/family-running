@@ -63,11 +63,12 @@ medal-winning position visibly stand out. This is not a browser-derived medal:
 the News export grows from 32 to 36 columns with one workbook-owned blank or
 Gold/Silver/Bronze `MedalEntry` field for each Current/All-Time,
 Distance/Overall rank context. A field is populated only for an unranked or
-Rank 4+ to Rank 1/2/3 crossing; existing-medal upgrades stay blank, tied ranks
-use the workbook's competition rank, multiple contexts may populate, and 1 Mile
-remains Overall-only. The page uses the exported fields for the textual callout
-`Medal breakthrough!`, a card accent, and labelled badges on affected movement
-rows. The repository contract and focused synthetic tests pass locally. A
+Rank 4+ to Rank 1/2/3 crossing; an existing-medal upgrade keeps this
+entry-only field blank, tied ranks use the workbook's competition rank, multiple
+contexts may populate, and 1 Mile remains Overall-only. The page uses the
+exported fields for the textual callout `Medal breakthrough!`, a card accent,
+and labelled badges on affected movement rows. The repository contract and
+focused synthetic tests pass locally. A
 refreshed staged 72-file workbook export passed validation and reconciliation,
 only the two News CSVs changed meaningfully, and atomic tracked-data promotion
 plus validation passed. It contains 24 Family cards with 59 medal-entry
@@ -79,6 +80,41 @@ contained medal treatment and no overflow. Merge commit `65190fe` is pushed to
 Pull Request #68; the required static-site check and combined Deploy Preview
 passed, and GitHub reports the PR clean and mergeable. This is not merged or
 released.
+
+A fourth News follow-up was approved on 24 August 2026 after reviewing real
+cards: the entry-only field intentionally cannot describe an existing-medal
+upgrade such as `Silver` to `Gold`. The target contract grows from 36 to 44
+columns by adding workbook-owned `MedalBefore` and `MedalAfter` fields after
+each of the four existing `MedalEntry` fields. `MedalEntry` remains the only
+threshold-crossing and card-callout signal; the snapshots supply visible labels
+for upgrades and retained positions. The browser must display those exported
+labels and must never calculate a medal from rank numbers. This is a new
+coordinated workbook, full-export, validator, browser, and responsive-review
+change; the prior 36-column acceptance record does not complete it.
+
+A fifth News follow-up was approved on 24 August 2026: when a medal changes
+hands, the News card may show whose position was displaced. The contract grows
+from 44 to 60 columns by adding four workbook-owned fields after each
+`MedalAfter`: the displaced athlete's public ID and name plus their prior and
+resulting medal. The quartet is all-or-blank and represents one verified
+handoff only: `Gold → Silver`, `Silver → Bronze`, or
+`Bronze → No medal`. It stays blank for a retained medal, absent former
+holder, or ambiguous handoff. This preserves the existing `MedalEntry`
+breakthrough semantics and requires a fresh full export, atomic promotion,
+validator/browser coverage, and responsive review.
+
+A sixth News follow-up was approved on 24 August 2026: each visible
+post-result position must show the size of its authoritative ranked field, for
+example `#1 / 12`. The contract grows from 60 to 64 columns by adding one
+workbook-owned `RankedAthleteCountAfter` immediately after each `RankAfter`.
+It counts distinct athletes with a qualifying Official performance in that
+same selected-mode after snapshot, not raw results, a roster, or a browser
+calculation. It is blank with unavailable Distance tables (including 1 Mile),
+positive and at least the exported rank otherwise, and may exceed a tied
+competition rank. The displacement copy becomes the shorter `Gold taken from
+Alex`; the former holder's later medal status is not displayed. This is another
+coordinated workbook, full-export, validator, browser, and responsive-review
+change requiring a fresh atomic bundle.
 
 ## Next candidate tasks
 

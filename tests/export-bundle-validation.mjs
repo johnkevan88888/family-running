@@ -29,23 +29,57 @@ const officialNewsHeaders = [
     'AgeGradeImprovement',
     'CurrentDistanceRankBefore',
     'CurrentDistanceRankAfter',
+    'CurrentDistanceRankedAthleteCountAfter',
     'CurrentDistancePlacesGained',
     'CurrentDistanceMedalEntry',
+    'CurrentDistanceMedalBefore',
+    'CurrentDistanceMedalAfter',
+    'CurrentDistanceDisplacedAthleteID',
+    'CurrentDistanceDisplacedAthleteName',
+    'CurrentDistanceDisplacedMedalBefore',
+    'CurrentDistanceDisplacedMedalAfter',
     'CurrentOverallRankBefore',
     'CurrentOverallRankAfter',
+    'CurrentOverallRankedAthleteCountAfter',
     'CurrentOverallPlacesGained',
     'CurrentOverallMedalEntry',
+    'CurrentOverallMedalBefore',
+    'CurrentOverallMedalAfter',
+    'CurrentOverallDisplacedAthleteID',
+    'CurrentOverallDisplacedAthleteName',
+    'CurrentOverallDisplacedMedalBefore',
+    'CurrentOverallDisplacedMedalAfter',
     'AllTimeDistanceRankBefore',
     'AllTimeDistanceRankAfter',
+    'AllTimeDistanceRankedAthleteCountAfter',
     'AllTimeDistancePlacesGained',
     'AllTimeDistanceMedalEntry',
+    'AllTimeDistanceMedalBefore',
+    'AllTimeDistanceMedalAfter',
+    'AllTimeDistanceDisplacedAthleteID',
+    'AllTimeDistanceDisplacedAthleteName',
+    'AllTimeDistanceDisplacedMedalBefore',
+    'AllTimeDistanceDisplacedMedalAfter',
     'AllTimeOverallRankBefore',
     'AllTimeOverallRankAfter',
+    'AllTimeOverallRankedAthleteCountAfter',
     'AllTimeOverallPlacesGained',
     'AllTimeOverallMedalEntry',
+    'AllTimeOverallMedalBefore',
+    'AllTimeOverallMedalAfter',
+    'AllTimeOverallDisplacedAthleteID',
+    'AllTimeOverallDisplacedAthleteName',
+    'AllTimeOverallDisplacedMedalBefore',
+    'AllTimeOverallDisplacedMedalAfter',
     'ExportBundleID'
 ];
 const officialNewsColumn = new Map(officialNewsHeaders.map((header, index) => [header, index]));
+const officialNewsRankContextPrefixes = [
+    'CurrentDistance',
+    'CurrentOverall',
+    'AllTimeDistance',
+    'AllTimeOverall'
+];
 const officialNewsMedalContextFixtures = [
     {
         label: 'Current Distance',
@@ -111,9 +145,45 @@ const officialNewsMedalContextCases = officialNewsMedalContextFixtures.flatMap(c
         }
     }
 ]);
+const officialNewsMedalSnapshotContextCases = officialNewsMedalContextFixtures.flatMap(context => [
+    {
+        name: `official result News rejects a missing ${context.label} after-medal snapshot`,
+        expected:
+            `${context.prefix}MedalAfter must be "${context.medal}" because ` +
+            `${context.prefix}RankAfter is Rank ${context.after}.`,
+        mutate: async root => {
+            await configureOfficialNewsMedalCrossing(root, context, context.medal);
+            await mutateOfficialNewsRow(root, 'everyone', 3, `${context.prefix}MedalAfter`, '');
+        }
+    },
+    {
+        name: `official result News rejects a wrong ${context.label} after-medal snapshot`,
+        expected:
+            `${context.prefix}MedalAfter must be "${context.medal}" because ` +
+            `${context.prefix}RankAfter is Rank ${context.after}.`,
+        mutate: async root => {
+            await configureOfficialNewsMedalCrossing(root, context, context.medal);
+            await mutateOfficialNewsRow(root, 'everyone', 3, `${context.prefix}MedalAfter`, context.wrongMedal);
+        }
+    }
+]);
 const officialNewsOneMileMedalCases = [
+    'CurrentDistanceRankedAthleteCountAfter',
     'CurrentDistanceMedalEntry',
-    'AllTimeDistanceMedalEntry'
+    'CurrentDistanceMedalBefore',
+    'CurrentDistanceMedalAfter',
+    'CurrentDistanceDisplacedAthleteID',
+    'CurrentDistanceDisplacedAthleteName',
+    'CurrentDistanceDisplacedMedalBefore',
+    'CurrentDistanceDisplacedMedalAfter',
+    'AllTimeDistanceMedalEntry',
+    'AllTimeDistanceRankedAthleteCountAfter',
+    'AllTimeDistanceMedalBefore',
+    'AllTimeDistanceMedalAfter',
+    'AllTimeDistanceDisplacedAthleteID',
+    'AllTimeDistanceDisplacedAthleteName',
+    'AllTimeDistanceDisplacedMedalBefore',
+    'AllTimeDistanceDisplacedMedalAfter'
 ].map(field => ({
     name: `1 Mile News row cannot carry ${field}`,
     expected: `${field} must be blank because 1 Mile has no dedicated Official distance leaderboard.`,
@@ -227,6 +297,41 @@ const cases = [
         }
     },
     {
+        name: 'official result News requires a post-result ranked-athlete count',
+        expected: 'CurrentDistanceRankedAthleteCountAfter is required.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceRankedAthleteCountAfter', '');
+        }
+    },
+    {
+        name: 'official result News rejects a non-integer post-result ranked-athlete count',
+        expected: 'CurrentDistanceRankedAthleteCountAfter "twelve" must be a non-negative integer.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceRankedAthleteCountAfter', 'twelve');
+        }
+    },
+    {
+        name: 'official result News rejects a zero post-result ranked-athlete count',
+        expected: 'CurrentDistanceRankedAthleteCountAfter "0" must be an integer of at least 1.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceRankedAthleteCountAfter', '0');
+        }
+    },
+    {
+        name: 'official result News rejects a post-result ranked-athlete count below the after rank',
+        expected: 'CurrentDistanceRankedAthleteCountAfter 2 must be at least CurrentDistanceRankAfter 3.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceRankedAthleteCountAfter', '2');
+        }
+    },
+    {
+        name: 'official result News accepts a ranked-athlete count above the competition rank',
+        expectPass: true,
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceRankedAthleteCountAfter', '4');
+        }
+    },
+    {
         name: 'official result News exact age grade does not round to display',
         expected: 'AgeGradeExact "52.86%" does not round to AgeGrade "52.8%" at one decimal place.',
         mutate: async root => {
@@ -281,10 +386,12 @@ const cases = [
             const changes = [
                 ['CurrentOverallRankAfter', '2'],
                 ['CurrentOverallMedalEntry', 'Silver'],
+                ['CurrentOverallMedalAfter', 'Silver'],
                 ['AllTimeOverallRankBefore', '4'],
                 ['AllTimeOverallRankAfter', '1'],
                 ['AllTimeOverallPlacesGained', '3'],
-                ['AllTimeOverallMedalEntry', 'Gold']
+                ['AllTimeOverallMedalEntry', 'Gold'],
+                ['AllTimeOverallMedalAfter', 'Gold']
             ];
 
             for (const [field, value] of changes) {
@@ -301,17 +408,221 @@ const cases = [
         mutate: async root => {
             await mutateOfficialNewsRow(root, 'everyone', 4, 'CurrentOverallRankAfter', '2');
             await mutateOfficialNewsRow(root, 'everyone', 4, 'CurrentOverallMedalEntry', 'Silver');
+            await mutateOfficialNewsRow(root, 'everyone', 4, 'CurrentOverallMedalAfter', 'Silver');
         }
     },
     {
-        name: 'moving within existing medal positions is not a new medal entry',
+        name: 'moving from Bronze to Silver preserves snapshots without a new medal entry',
         expectPass: true,
         mutate: async root => {
             await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceRankAfter', '2');
             await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistancePlacesGained', '1');
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceMedalAfter', 'Silver');
+        }
+    },
+    {
+        name: 'moving from Silver to Gold preserves snapshots without a new medal entry',
+        expectPass: true,
+        mutate: async root => {
+            await configureOfficialNewsMedalSnapshot(root, 'CurrentDistance', {
+                before: '2',
+                after: '1',
+                gain: '1',
+                medalEntry: '',
+                medalBefore: 'Silver',
+                medalAfter: 'Gold'
+            });
+        }
+    },
+    {
+        name: 'official result News supports a complete Gold-to-Silver displaced-athlete snapshot',
+        expectPass: true,
+        mutate: async root => {
+            await configureOfficialNewsMedalSnapshot(root, 'CurrentDistance', {
+                before: '2',
+                after: '1',
+                gain: '1',
+                medalEntry: '',
+                medalBefore: 'Silver',
+                medalAfter: 'Gold'
+            });
+            await configureOfficialNewsDisplacement(root, 'everyone', 3, 'CurrentDistance', {
+                athleteId: 'ben-graham-kevan',
+                athleteName: 'Ben Graham-Kevan',
+                medalBefore: 'Gold',
+                medalAfter: 'Silver'
+            });
+        }
+    },
+    {
+        name: 'official result News supports a complete Silver-to-Bronze displaced-athlete snapshot',
+        expectPass: true,
+        mutate: async root => {
+            await configureOfficialNewsMedalSnapshot(root, 'CurrentDistance', {
+                before: '3',
+                after: '2',
+                gain: '1',
+                medalEntry: '',
+                medalBefore: 'Bronze',
+                medalAfter: 'Silver'
+            });
+            await configureOfficialNewsDisplacement(root, 'everyone', 3, 'CurrentDistance', {
+                athleteId: 'ben-graham-kevan',
+                athleteName: 'Ben Graham-Kevan',
+                medalBefore: 'Silver',
+                medalAfter: 'Bronze'
+            });
+        }
+    },
+    {
+        name: 'official result News rejects a partial displaced-athlete snapshot',
+        expected:
+            'CurrentDistanceDisplacedAthleteID, CurrentDistanceDisplacedAthleteName, ' +
+            'CurrentDistanceDisplacedMedalBefore, CurrentDistanceDisplacedMedalAfter ' +
+            'must be either all blank or all populated.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 2, 'CurrentDistanceDisplacedAthleteName', '');
+        }
+    },
+    {
+        name: 'official result News rejects a displaced-athlete snapshot on a retained medal position',
+        expected:
+            'CurrentDistanceDisplacedAthleteID, CurrentDistanceDisplacedAthleteName, ' +
+            'CurrentDistanceDisplacedMedalBefore, CurrentDistanceDisplacedMedalAfter ' +
+            'must be blank unless the focal athlete moves into a different medal position.',
+        mutate: async root => {
+            await configureOfficialNewsDisplacement(root, 'everyone', 1, 'CurrentDistance', {
+                athleteId: 'ben-graham-kevan',
+                athleteName: 'Ben Graham-Kevan',
+                medalBefore: 'Bronze',
+                medalAfter: 'No medal'
+            });
+        }
+    },
+    {
+        name: 'official result News rejects a displaced athlete outside the selected site mode',
+        expected: 'CurrentDistanceDisplacedAthleteID "jim-chambers" is not eligible for the family site mode.',
+        mutate: async root => {
+            await configureOfficialNewsMedalSnapshot(
+                root,
+                'CurrentDistance',
+                {
+                    before: '2',
+                    after: '1',
+                    gain: '1',
+                    medalEntry: '',
+                    medalBefore: 'Silver',
+                    medalAfter: 'Gold'
+                },
+                { mode: 'family', dataRowNumber: 1 }
+            );
+            await configureOfficialNewsDisplacement(root, 'family', 1, 'CurrentDistance', {
+                athleteId: 'jim-chambers',
+                athleteName: 'Jim Chambers',
+                medalBefore: 'Gold',
+                medalAfter: 'Silver'
+            });
+        }
+    },
+    {
+        name: 'official result News rejects a displaced athlete with a mismatched public name',
+        expected:
+            'CurrentDistanceDisplacedAthleteID and CurrentDistanceDisplacedAthleteName must match ' +
+            'one athlete identity in data/athlete_results.csv.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 2, 'CurrentDistanceDisplacedAthleteName', 'Jim Chambers');
+        }
+    },
+    {
+        name: 'official result News rejects an unknown displaced athlete ID',
+        expected:
+            'CurrentDistanceDisplacedAthleteID "not-a-real-athlete" does not exist in data/athlete_results.csv.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 2, 'CurrentDistanceDisplacedAthleteID', 'not-a-real-athlete');
+        }
+    },
+    {
+        name: 'official result News rejects the focal athlete as the displaced athlete',
+        expected: 'CurrentDistanceDisplacedAthleteID must identify a different athlete from AthleteID.',
+        mutate: async root => {
+            await configureOfficialNewsDisplacement(root, 'everyone', 2, 'CurrentDistance', {
+                athleteId: 'jim-chambers',
+                athleteName: 'Jim Chambers',
+                medalBefore: 'Bronze',
+                medalAfter: 'No medal'
+            });
+        }
+    },
+    {
+        name: 'official result News rejects a displaced medal that does not match the focal MedalAfter',
+        expected:
+            'CurrentDistanceDisplacedMedalBefore must be "Bronze" because it is the focal athlete\'s MedalAfter.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 2, 'CurrentDistanceDisplacedMedalBefore', 'Gold');
+        }
+    },
+    {
+        name: 'official result News rejects an unsupported displaced before-medal label',
+        expected:
+            'CurrentDistanceDisplacedMedalBefore "Platinum" must be one of: Gold, Silver, Bronze.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 2, 'CurrentDistanceDisplacedMedalBefore', 'Platinum');
+        }
+    },
+    {
+        name: 'official result News rejects an unsupported displaced after-medal label',
+        expected:
+            'CurrentDistanceDisplacedMedalAfter "Platinum" must be one of: Gold, Silver, Bronze, No medal.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 2, 'CurrentDistanceDisplacedMedalAfter', 'Platinum');
+        }
+    },
+    {
+        name: 'official result News rejects a displaced medal successor that skips the required chain',
+        expected:
+            'CurrentDistanceDisplacedMedalAfter must be "No medal" after ' +
+            'CurrentDistanceDisplacedMedalBefore "Bronze".',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 2, 'CurrentDistanceDisplacedMedalAfter', 'Silver');
+        }
+    },
+    {
+        name: 'retained Bronze medal position carries matching snapshots',
+        expectPass: true,
+        mutate: async root => {
+            await configureOfficialNewsMedalSnapshot(root, 'CurrentDistance', {
+                before: '3',
+                after: '3',
+                gain: '0',
+                medalEntry: '',
+                medalBefore: 'Bronze',
+                medalAfter: 'Bronze'
+            });
+        }
+    },
+    {
+        name: 'official result News rejects a missing prior-medal snapshot for a retained podium rank',
+        expected: 'CurrentDistanceMedalBefore must be "Bronze" because CurrentDistanceRankBefore is Rank 3.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceMedalBefore', '');
+        }
+    },
+    {
+        name: 'official result News rejects an unsupported medal-after snapshot',
+        expected: 'CurrentDistanceMedalAfter "Platinum" must be blank or one of: Gold, Silver, Bronze.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceMedalAfter', 'Platinum');
+        }
+    },
+    {
+        name: 'official result News rejects a medal snapshot for a non-medal rank',
+        expected: 'AllTimeDistanceMedalAfter must be blank because AllTimeDistanceRankAfter 6 is not a medal position.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'AllTimeDistanceMedalAfter', 'Bronze');
         }
     },
     ...officialNewsMedalContextCases,
+    ...officialNewsMedalSnapshotContextCases,
     {
         name: 'official result News rejects an unsupported medal entry',
         expected: 'CurrentDistanceMedalEntry "Platinum" must be blank or one of: Gold, Silver, Bronze.',
@@ -419,6 +730,14 @@ const cases = [
         mutate: async root => {
             await mutateOfficialNewsRow(root, 'family', 1, 'CurrentDistanceRankAfter', '3');
             await mutateOfficialNewsRow(root, 'family', 1, 'CurrentDistanceMedalEntry', 'Bronze');
+            await mutateOfficialNewsRow(root, 'family', 1, 'CurrentDistanceMedalAfter', 'Bronze');
+        }
+    },
+    {
+        name: 'cross-mode ranked-athlete counts remain site-specific',
+        expectPass: true,
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'family', 1, 'CurrentDistanceRankedAthleteCountAfter', '13');
         }
     },
     {
@@ -949,6 +1268,8 @@ function validOfficialNewsRows(bundleId, mode) {
             CurrentDistanceRankBefore: '3',
             CurrentDistanceRankAfter: '3',
             CurrentDistancePlacesGained: '0',
+            CurrentDistanceMedalBefore: 'Bronze',
+            CurrentDistanceMedalAfter: 'Bronze',
             CurrentOverallRankBefore: '5',
             CurrentOverallRankAfter: '5',
             CurrentOverallPlacesGained: '0',
@@ -981,6 +1302,11 @@ function validOfficialNewsRows(bundleId, mode) {
             CurrentDistanceRankAfter: '3',
             CurrentDistancePlacesGained: '1',
             CurrentDistanceMedalEntry: 'Bronze',
+            CurrentDistanceMedalAfter: 'Bronze',
+            CurrentDistanceDisplacedAthleteID: 'ben-graham-kevan',
+            CurrentDistanceDisplacedAthleteName: 'Ben Graham-Kevan',
+            CurrentDistanceDisplacedMedalBefore: 'Bronze',
+            CurrentDistanceDisplacedMedalAfter: 'No medal',
             CurrentOverallRankBefore: '6',
             CurrentOverallRankAfter: '5',
             CurrentOverallPlacesGained: '1',
@@ -1195,8 +1521,22 @@ function validOfficialNewsRows(bundleId, mode) {
 }
 
 function officialNewsRow(values) {
+    const row = { ...values };
+
+    // These are fixed source-export values for the synthetic valid fixture,
+    // not a ranking calculation. Individual cases below mutate the counts to
+    // prove the validator's closed post-result-count contract.
+    for (const prefix of officialNewsRankContextPrefixes) {
+        const rankAfterField = `${prefix}RankAfter`;
+        const countAfterField = `${prefix}RankedAthleteCountAfter`;
+
+        if (!Object.prototype.hasOwnProperty.call(row, countAfterField) && String(row[rankAfterField] || '').trim()) {
+            row[countAfterField] = '20';
+        }
+    }
+
     return officialNewsHeaders
-        .map(header => String(values[header] ?? ''));
+        .map(header => String(row[header] ?? ''));
 }
 
 function csvCell(value) {
@@ -1237,15 +1577,56 @@ async function mutateOfficialNewsRow(root, mode, dataRowNumber, field, value) {
 }
 
 async function configureOfficialNewsMedalCrossing(root, context, medalEntry) {
+    await configureOfficialNewsMedalSnapshot(root, context.prefix, {
+        before: context.before,
+        after: context.after,
+        gain: context.gain,
+        medalEntry,
+        medalBefore: '',
+        medalAfter: context.medal
+    });
+}
+
+async function configureOfficialNewsMedalSnapshot(root, prefix, {
+    before,
+    after,
+    gain,
+    medalEntry,
+    medalBefore,
+    medalAfter
+}, {
+    mode = 'everyone',
+    dataRowNumber = 3
+} = {}) {
     const changes = [
-        [`${context.prefix}RankBefore`, context.before],
-        [`${context.prefix}RankAfter`, context.after],
-        [`${context.prefix}PlacesGained`, context.gain],
-        [`${context.prefix}MedalEntry`, medalEntry]
+        [`${prefix}RankBefore`, before],
+        [`${prefix}RankAfter`, after],
+        [`${prefix}PlacesGained`, gain],
+        [`${prefix}MedalEntry`, medalEntry],
+        [`${prefix}MedalBefore`, medalBefore],
+        [`${prefix}MedalAfter`, medalAfter]
     ];
 
     for (const [field, value] of changes) {
-        await mutateOfficialNewsRow(root, 'everyone', 3, field, value);
+        await mutateOfficialNewsRow(root, mode, dataRowNumber, field, value);
+    }
+}
+
+async function configureOfficialNewsDisplacement(root, mode, dataRowNumber, prefix, {
+    athleteId,
+    athleteName,
+    medalBefore,
+    medalAfter
+}) {
+    const changes = [
+        [`${prefix}DisplacedAthleteID`, athleteId],
+        [`${prefix}DisplacedAthleteName`, athleteName],
+        [`${prefix}DisplacedMedalBefore`, medalBefore],
+        [`${prefix}DisplacedMedalAfter`, medalAfter]
+    ];
+
+    for (const [field, value] of changes) {
+        await mutateOfficialNewsRow(root, mode, dataRowNumber, field, value);
     }
 }
 

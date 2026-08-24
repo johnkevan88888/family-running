@@ -57,6 +57,17 @@
             icon: '&#129353;'
         }
     };
+    const displacedMedalAfterValues = new Set([
+        'Silver',
+        'Bronze',
+        'No medal'
+    ]);
+    const displacedMedalTransitions = new Map([
+        ['Gold', 'Silver'],
+        ['Silver', 'Bronze'],
+        ['Bronze', 'No medal']
+    ]);
+    const publicAthleteIdPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
     const medalEntryContexts = [
         ['CurrentDistance', 'CurrentDistanceMedalEntry'],
         ['CurrentOverall', 'CurrentOverallMedalEntry'],
@@ -301,6 +312,10 @@
                 row[`${rankKey}RankBefore`],
                 row[`${rankKey}RankAfter`],
                 row[`${rankKey}PlacesGained`]
+            ) &&
+            isValidRankedAthleteCountAfter(
+                row[`${rankKey}RankAfter`],
+                row[`${rankKey}RankedAthleteCountAfter`]
             )
         );
         const movement = currentMovement || allTimeMovement
@@ -425,16 +440,32 @@
             'Distance',
             row[`${periodKey}DistanceRankBefore`],
             row[`${periodKey}DistanceRankAfter`],
+            row[`${periodKey}DistanceRankedAthleteCountAfter`],
             row[`${periodKey}DistancePlacesGained`],
             row[`${periodKey}DistanceMedalEntry`],
+            row[`${periodKey}DistanceMedalBefore`],
+            row[`${periodKey}DistanceMedalAfter`],
+            row.AthleteID,
+            row[`${periodKey}DistanceDisplacedAthleteID`],
+            row[`${periodKey}DistanceDisplacedAthleteName`],
+            row[`${periodKey}DistanceDisplacedMedalBefore`],
+            row[`${periodKey}DistanceDisplacedMedalAfter`],
             `${periodKey.toLowerCase()}-distance`
         );
         const overallMovement = renderRankMovement(
             'Overall',
             row[`${periodKey}OverallRankBefore`],
             row[`${periodKey}OverallRankAfter`],
+            row[`${periodKey}OverallRankedAthleteCountAfter`],
             row[`${periodKey}OverallPlacesGained`],
             row[`${periodKey}OverallMedalEntry`],
+            row[`${periodKey}OverallMedalBefore`],
+            row[`${periodKey}OverallMedalAfter`],
+            row.AthleteID,
+            row[`${periodKey}OverallDisplacedAthleteID`],
+            row[`${periodKey}OverallDisplacedAthleteName`],
+            row[`${periodKey}OverallDisplacedMedalBefore`],
+            row[`${periodKey}OverallDisplacedMedalAfter`],
             `${periodKey.toLowerCase()}-overall`
         );
 
@@ -453,11 +484,32 @@
         `;
     }
 
-    function renderRankMovement(label, before, after, placesGained, medalEntry, contextKey) {
+    function renderRankMovement(
+        label,
+        before,
+        after,
+        rankedAthleteCountAfter,
+        placesGained,
+        medalEntry,
+        medalBefore,
+        medalAfter,
+        focalAthleteId,
+        displacedAthleteId,
+        displacedAthleteName,
+        displacedMedalBefore,
+        displacedMedalAfter,
+        contextKey
+    ) {
         const rankBefore = String(before || '').trim();
         const rankAfter = String(after || '').trim();
+        const rankedAthleteCount = String(rankedAthleteCountAfter || '').trim();
         const gained = String(placesGained || '').trim();
         const medalPresentation = medalEntryPresentation(medalEntry);
+        const hasCompleteMovement = isCompleteRankMovement(rankBefore, rankAfter, gained);
+        const hasValidRankedAthleteCount = isValidRankedAthleteCountAfter(
+            rankAfter,
+            rankedAthleteCount
+        );
 
         if (!rankBefore && !rankAfter && !gained) {
             return '';
@@ -466,22 +518,26 @@
         let positions;
         let change;
 
-        if (!rankBefore && rankAfter && !gained) {
-            positions = `Unranked to #${escapeHTML(rankAfter)}`;
+        if (!hasCompleteMovement || !hasValidRankedAthleteCount) {
+            // The denominator is a mandatory workbook-owned post-result
+            // snapshot. Do not retain a partial rank label or use a row
+            // position to invent the total when an invalid export arrives.
+            positions = 'Movement unavailable';
+            change = '';
+        } else if (!rankBefore && rankAfter && !gained) {
+            positions = `Unranked to #${escapeHTML(rankAfter)} / ${escapeHTML(rankedAthleteCount)}`;
             change = 'Entered the table';
         } else if (rankBefore && rankAfter && gained) {
-            positions = `#${escapeHTML(rankBefore)} to #${escapeHTML(rankAfter)}`;
+            positions = `#${escapeHTML(rankBefore)} to #${escapeHTML(rankAfter)} / ${escapeHTML(rankedAthleteCount)}`;
             change = gained === '0'
                 ? 'No rank change'
                 : `Up ${escapeHTML(gained)} ${gained === '1' ? 'place' : 'places'}`;
-        } else {
-            // Published bundles are validated before release. If an invalid
-            // partial triplet reaches the page, display no invented movement.
-            positions = 'Movement unavailable';
-            change = '';
         }
 
-        const medalBadge = medalPresentation && isCompleteRankMovement(rankBefore, rankAfter, gained)
+        const hasMedalEntry = Boolean(
+            medalPresentation && hasCompleteMovement && hasValidRankedAthleteCount
+        );
+        const medalBadge = hasMedalEntry
             ? `
                 <span class="news-medal-entry-badge news-medal-entry-${medalPresentation.className}">
                     <span class="news-medal-entry-icon" aria-hidden="true">${medalPresentation.icon}</span>
@@ -489,17 +545,108 @@
                 </span>
             `
             : '';
+        const medalPosition = !hasMedalEntry && hasCompleteMovement && hasValidRankedAthleteCount
+            ? renderMedalPositionSnapshot(medalBefore, medalAfter)
+            : '';
+        const medalDisplacement = hasCompleteMovement && hasValidRankedAthleteCount
+            ? renderMedalDisplacement({
+                focalAthleteId,
+                focalMedalAfter: medalAfter,
+                displacedAthleteId,
+                displacedAthleteName,
+                displacedMedalBefore,
+                displacedMedalAfter
+            })
+            : '';
 
         return `
-            <div class="news-rank-row${medalBadge ? ` news-rank-row-medal-entry news-rank-row-medal-${medalPresentation.className}` : ''}"
+            <div class="news-rank-row${hasMedalEntry ? ` news-rank-row-medal-entry news-rank-row-medal-${medalPresentation.className}` : ''}"
                  data-news-rank-context="${escapeHTML(contextKey)}">
                 <dt>${escapeHTML(label)}</dt>
                 <dd>
                     <span class="news-rank-positions">${positions}</span>
                     ${change ? `<span class="news-rank-change">${change}</span>` : ''}
                     ${medalBadge}
+                    ${medalPosition}
+                    ${medalDisplacement}
                 </dd>
             </div>
+        `;
+    }
+
+    function renderMedalDisplacement({
+        focalAthleteId,
+        focalMedalAfter,
+        displacedAthleteId,
+        displacedAthleteName,
+        displacedMedalBefore,
+        displacedMedalAfter
+    }) {
+        const focalId = String(focalAthleteId || '').trim();
+        const focalAfter = String(focalMedalAfter || '').trim();
+        const athleteId = String(displacedAthleteId || '').trim();
+        const athleteName = String(displacedAthleteName || '').trim();
+        const medalBefore = String(displacedMedalBefore || '').trim();
+        const medalAfter = String(displacedMedalAfter || '').trim();
+
+        // Displacement is an optional, workbook-owned attribution. A blank
+        // source export (including an intentionally omitted identity) stays
+        // blank, and a partial or malformed context never becomes a guessed
+        // attribution in the browser.
+        if (
+            !publicAthleteIdPattern.test(focalId) ||
+            !medalEntryPresentation(focalAfter) ||
+            !publicAthleteIdPattern.test(athleteId) ||
+            !athleteName ||
+            !medalEntryPresentation(medalBefore) ||
+            !displacedMedalAfterValues.has(medalAfter) ||
+            displacedMedalTransitions.get(medalBefore) !== medalAfter ||
+            focalAfter !== medalBefore ||
+            athleteId === focalId
+        ) {
+            return '';
+        }
+
+        const athlete = athleteLink(athleteId, athleteName);
+
+        return `
+            <span class="news-medal-displacement">
+                <span>${escapeHTML(medalBefore)} taken from</span>
+                ${athlete}
+            </span>
+        `;
+    }
+
+    function renderMedalPositionSnapshot(before, after) {
+        const beforeText = String(before || '').trim();
+        const afterText = String(after || '').trim();
+        const beforePresentation = medalEntryPresentation(beforeText);
+        const afterPresentation = medalEntryPresentation(afterText);
+
+        // Snapshot values are workbook-owned fields. Do not manufacture a
+        // medal label from the rank numbers if an invalid or partial export
+        // reaches the browser.
+        if (!beforePresentation || !afterPresentation) {
+            return '';
+        }
+
+        if (beforeText === afterText) {
+            return `
+                <span class="news-medal-position-badge news-medal-position-${afterPresentation.className}">
+                    <span class="news-medal-position-label">Medal position:</span>
+                    <span>${escapeHTML(afterText)} medal position retained</span>
+                </span>
+            `;
+        }
+
+        return `
+            <span class="news-medal-position-badge news-medal-position-${afterPresentation.className}">
+                <span class="news-medal-position-label">Medal position:</span>
+                <span>${escapeHTML(beforeText)}</span>
+                <span class="news-medal-position-arrow" aria-hidden="true">&#8594;</span>
+                <span class="news-medal-position-transition">to</span>
+                <span>${escapeHTML(afterText)}</span>
+            </span>
         `;
     }
 
@@ -518,6 +665,22 @@
             (!rankBefore && rankAfter && !gained) ||
             (rankBefore && rankAfter && gained)
         );
+    }
+
+    function isValidRankedAthleteCountAfter(rankAfter, countAfter) {
+        const rank = String(rankAfter || '').trim();
+        const count = String(countAfter || '').trim();
+
+        if (!/^[1-9][0-9]*$/.test(rank) || !/^[1-9][0-9]*$/.test(count)) {
+            return false;
+        }
+
+        const rankNumber = Number(rank);
+        const countNumber = Number(count);
+
+        return Number.isSafeInteger(rankNumber) &&
+            Number.isSafeInteger(countNumber) &&
+            countNumber >= rankNumber;
     }
 
     function formatNewsDate(value) {

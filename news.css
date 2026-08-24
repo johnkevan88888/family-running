@@ -665,6 +665,77 @@
     line-height: 1;
 }
 
+.news-medal-position-badge {
+    align-items: center;
+    background: #f6f8fa;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    display: inline-flex;
+    flex-wrap: wrap;
+    font-size: 0.7rem;
+    font-weight: 900;
+    gap: 3px;
+    line-height: 1.15;
+    max-width: 100%;
+    padding: 3px 7px;
+    text-align: left;
+}
+
+.news-medal-position-gold {
+    color: #705400;
+}
+
+.news-medal-position-silver {
+    color: #53616d;
+}
+
+.news-medal-position-bronze {
+    color: #884817;
+}
+
+.news-medal-position-label,
+.news-medal-position-transition {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
+.news-medal-position-arrow {
+    font-size: 0.82rem;
+    line-height: 1;
+}
+
+.news-medal-displacement {
+    align-items: center;
+    background: #f6f8fa;
+    border: 1px solid #c5d3df;
+    border-radius: 7px;
+    color: #33495d;
+    display: inline-flex;
+    flex-wrap: wrap;
+    font-size: 0.69rem;
+    font-weight: 850;
+    line-height: 1.2;
+    max-width: 100%;
+    padding: 3px 6px;
+    text-align: left;
+}
+
+.news-medal-displacement a {
+    color: inherit;
+    font-weight: 900;
+    overflow-wrap: anywhere;
+}
+
+.news-medal-displacement a:focus-visible {
+    outline: 3px solid #ffd700;
+    outline-offset: 2px;
+}
+
 @media (min-width: 701px) and (max-width: 1100px) {
     .news-flow {
         gap: 0;

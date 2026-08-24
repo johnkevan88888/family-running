@@ -1,10 +1,100 @@
 # Active Work
 
-## Task title
+## Current task: workbook-owned News medal positions, displaced holders, and ranked-athlete counts
+
+### Status — 24 August 2026
+
+The ranked-athlete-count follow-up is implemented and promoted locally on
+`codex/news-medal-position-labels`. Pull Request #70 is the review target; no
+merge, deployment, or release has been performed for this follow-up.
+This is a follow-up to the already merged News baseline from Pull Request #68,
+not a replacement for the Gallery work on `main`.
+
+The private News draft workbook was backed up before this authorized change.
+The untouched backup is
+`C:\GitHub\_private_workbooks\backups\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX BACKUP BEFORE NEWS MEDAL SNAPSHOTS 20260824-124900.xlsm`
+with SHA-256
+`EC88F72559AF66CC877AAFCCD11A2A496178457EEFFB3EF0D3031276DA5EB0A5`.
+The workbook exporter now writes eight additional, workbook-owned snapshot
+fields: `MedalBefore` and `MedalAfter` for Current/All-Time and
+Distance/Overall. The existing four `MedalEntry` fields remain exclusively
+about entering a medal position.
+
+Before the follow-up displaced-holder export change, the draft workbook was
+backed up again at
+`C:\GitHub\_private_workbooks\backups\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX BACKUP BEFORE NEWS MEDAL DISPLACEMENT 20260824-142249.xlsm`
+with SHA-256
+`077EC7E0F375F34F0ADEB2C903FF7B9B986D362CD5C6CA326368C86DA40AC849`.
+
+The prior displaced-holder extension made the exact News schema 60 columns. The
+ranked-athlete-count follow-up extends its candidate schema to 64 columns by
+adding `CurrentDistanceRankedAthleteCountAfter`,
+`CurrentOverallRankedAthleteCountAfter`,
+`AllTimeDistanceRankedAthleteCountAfter`, and
+`AllTimeOverallRankedAthleteCountAfter` immediately after their corresponding
+`RankAfter` fields. Each is the workbook's post-result count of distinct
+eligible athletes in that precise ranked table; it is never a raw-result count,
+roster count, maximum rank, or browser calculation. It must be positive and at
+least the exported after-rank. Dedicated 1 Mile distance contexts remain blank,
+while their Overall contexts are populated.
+
+Before the authorized count extension, the updated private News draft workbook
+was backed up at
+`C:\GitHub\_private_workbooks\backups\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX BACKUP BEFORE NEWS RANKED ATHLETE COUNTS 20260824-152830.xlsm`
+with SHA-256
+`C2BDFA9104A1A7DFEAD6A1998331C3335AC9FA808668C3D5FF821CA905CD5562`.
+
+The browser never derives a medal from a rank: it shows an exported transition
+such as `Silver → Gold` only when both snapshot fields are valid. A snapshot
+transition remains neutral; only an exported `MedalEntry` can create the
+established `Medal breakthrough!` callout, card accent, and `New … medal
+position` badge. Invalid or partial snapshots render nothing. The page
+announces the visual arrow as `to` for assistive technology.
+
+Each Current/All-Time and Distance/Overall context now also has four
+workbook-owned displaced-holder fields: an athlete ID, athlete name, prior
+medal, and resulting medal. A complete quartet identifies the former holder of
+the medal just claimed by the News athlete and can express only
+`Gold → Silver`, `Silver → Bronze`, or `Bronze → No medal`. The exporter
+leaves the entire quartet blank when no unique actual handoff exists. The
+browser displays only a complete valid quartet, links the exported athlete ID
+while preserving the selected mode, and does not fetch Gallery suppression data
+or infer a holder from rank. Its compact visible phrasing is now simply
+`Gold taken from David Graham-Kevan`; it deliberately omits the former holder's
+resulting status.
+
+The fresh full 64-column staged export is retained at
+`test-artifacts/workbook-export-staging/run-20260824-155838-506` and passed
+staged-bundle validation for all 72 public CSVs. Reconciliation found exactly
+the intended two meaningful changes—Family and Everyone
+`official_result_news.csv`—with every other exported file unchanged. Carolyn
+Kevan's 26 August 2017 Family record now exports `#2 to #1 / 5` for All-Time
+Distance and `#2 to #1 / 6` for All-Time Overall, attributed compactly as Gold
+taken from David Graham-Kevan.
+
+John approved promotion on 24 August 2026. The promotion revalidated the staged
+candidate and atomically replaced tracked `data/`; the prior tracked bundle is
+retained locally at
+`test-artifacts/workbook-export-promotion/20260824204022069/previous-data`.
+The complete `pnpm test` suite then passed against the promoted data, including
+repository safety, vendored libraries, CSV and Gallery validation, News/export
+and staged-workflow regressions, preview-artifact safety and build, plus both
+desktop and mobile browser smoke/screenshot checks.
+
+### Handoff
+
+- The complete 64-column bundle has been promoted atomically; do not selectively
+  overwrite individual data files.
+- Pull Request #70 carries this branch; do not merge or deploy this follow-up
+  without separate explicit approval.
+
+## Historical record: Official Results News first draft
+
+### Original task title
 
 Official Results News medal-position breakthroughs.
 
-## Status
+### Historical status
 
 Implemented locally on 23 August 2026 on `codex/news-official-results` in the
 isolated worktree

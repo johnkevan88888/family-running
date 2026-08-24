@@ -315,6 +315,91 @@ Unknown historical details are labelled rather than inferred.
   it clean and mergeable, and both the required static-site check and combined
   Deploy Preview passed. This is not merged or released.
 
+## News medal-position snapshots remain workbook-owned
+
+- **Status:** Accepted product and architecture decision; coordinated schema
+  migration required before release
+- **Date:** 24 August 2026
+- **Decision:** Retain the four threshold-only `MedalEntry` fields and add
+  workbook-owned `MedalBefore` and `MedalAfter` fields immediately after each
+  one, growing the Official Results News export from 36 to 44 columns. Each
+  snapshot is blank, `Gold`, `Silver`, or `Bronze` and records that same
+  context's workbook-owned before or after competition-rank medal state. The
+  page uses the exported snapshots to label existing-medal transitions such as
+  `Silver` to `Gold`; it must not translate ranks into medal labels.
+- **Rationale:** `MedalEntry` correctly answers a narrow question—whether this
+  result newly crossed into the medal positions—but intentionally stays blank
+  for Rank 3 to Rank 2, Rank 2 to Rank 1, and retained medal positions. The
+  missing label is therefore missing source data, not a presentation inference
+  for JavaScript to repair. Adding separate snapshots preserves the existing
+  breakthrough semantics while carrying the information required to render all
+  actual medal-position movements safely.
+- **Consequences:** The exact header, workbook exporter and post-export checks,
+  validator, export-bundle fixtures, browser fixtures, News rendering, and
+  responsive review must migrate together. A Rank 2 to Rank 1 row has blank
+  `MedalEntry`, `Silver` `MedalBefore`, and `Gold` `MedalAfter`. Entry into a
+  medal position retains its existing explicit callout; an upgrade or retained
+  position does not become a new entry. The two News files remain the only
+  semantically changed public data files and the 72-file bundle shape remains
+  unchanged, but a fresh atomic full export and full validation are required.
+
+## News displaced-medal holders remain workbook-owned
+
+- **Status:** Accepted product and architecture decision; coordinated schema
+  migration completed locally and awaiting PR review
+- **Date:** 24 August 2026
+- **Decision:** Extend each Official Results News medal context with four
+  workbook-owned fields after `MedalAfter`: the displaced athlete's public ID
+  and name, followed by their prior and resulting medal. This grows the exact
+  export from 44 to 60 columns. A complete quartet represents one verified
+  former holder of the News athlete's newly claimed medal and is allowed only
+  for `Gold → Silver`, `Silver → Bronze`, or `Bronze → No medal`; otherwise
+  all four fields remain blank.
+- **Rationale:** A new or upgraded medal position can displace another
+  athlete, but the browser has neither the historic full table nor authority
+  to infer who that was. A direct export preserves the current selected-mode
+  replay and source tie-break semantics while avoiding a misleading singular
+  attribution in absent or ambiguous cases.
+- **Consequences:** The workbook verifies the prior holder against its own
+  before/after snapshot. Repository validation requires a complete-or-blank,
+  public, selected-mode, non-self quartet with the allowed chain; browser code
+  only renders and links a complete valid export. Gallery's media-only
+  `hidden-athlete-ids.json` is not a News visibility policy and is never
+  fetched for this feature. `MedalEntry` remains the sole breakthrough callout
+  signal. The full 72-file export remains atomic, and only the two News CSVs
+  change semantically.
+
+## News ranked-athlete counts remain workbook-owned
+
+- **Status:** Accepted product and architecture decision; coordinated schema
+  migration promoted locally and validated by the complete suite, awaiting PR
+  review
+- **Date:** 24 August 2026
+- **Decision:** Add one workbook-owned post-result count immediately after
+  each Official Results News `RankAfter`, growing the exact export from 60 to
+  64 columns: `CurrentDistanceRankedAthleteCountAfter`,
+  `CurrentOverallRankedAthleteCountAfter`,
+  `AllTimeDistanceRankedAthleteCountAfter`, and
+  `AllTimeOverallRankedAthleteCountAfter`. Each is the number of distinct
+  athletes represented in that exact selected-mode, period, and
+  Distance/Overall after-snapshot table with a qualifying Official
+  performance; it is positive, includes the News athlete, and is at least
+  that athlete's `RankAfter`.
+- **Rationale:** A rank alone hides the size of the eligible championship
+  field, while the browser has neither the historical table nor authority to
+  count it. Reusing the workbook's after snapshot lets News render `#1 / 12`
+  accurately, including when Current expiries or tied competition ranks make
+  the table size non-obvious.
+- **Consequences:** The count is never a raw result count, roster size,
+  maximum rank, or browser calculation. It is blank with an unavailable table,
+  including each 1 Mile Distance context, while 1 Mile Overall remains
+  populated. The page fails closed for a missing, malformed, zero, or
+  below-rank count and displays the compact displaced-holder attribution only
+  as `Gold taken from Alex`, without a claimed later medal status. The exact
+  header, workbook exporter, validator, fixtures, browser rendering, and
+  responsive review must change together; a fresh atomic full bundle remains
+  required.
+
 ## Production usage analytics are aggregate and cookie-free
 
 - **Status:** Accepted; scope of the third-party-runtime prohibition clarified
