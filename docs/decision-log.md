@@ -315,6 +315,34 @@ Unknown historical details are labelled rather than inferred.
   it clean and mergeable, and both the required static-site check and combined
   Deploy Preview passed. This is not merged or released.
 
+## News medal-position snapshots remain workbook-owned
+
+- **Status:** Accepted product and architecture decision; coordinated schema
+  migration required before release
+- **Date:** 24 August 2026
+- **Decision:** Retain the four threshold-only `MedalEntry` fields and add
+  workbook-owned `MedalBefore` and `MedalAfter` fields immediately after each
+  one, growing the Official Results News export from 36 to 44 columns. Each
+  snapshot is blank, `Gold`, `Silver`, or `Bronze` and records that same
+  context's workbook-owned before or after competition-rank medal state. The
+  page uses the exported snapshots to label existing-medal transitions such as
+  `Silver` to `Gold`; it must not translate ranks into medal labels.
+- **Rationale:** `MedalEntry` correctly answers a narrow question—whether this
+  result newly crossed into the medal positions—but intentionally stays blank
+  for Rank 3 to Rank 2, Rank 2 to Rank 1, and retained medal positions. The
+  missing label is therefore missing source data, not a presentation inference
+  for JavaScript to repair. Adding separate snapshots preserves the existing
+  breakthrough semantics while carrying the information required to render all
+  actual medal-position movements safely.
+- **Consequences:** The exact header, workbook exporter and post-export checks,
+  validator, export-bundle fixtures, browser fixtures, News rendering, and
+  responsive review must migrate together. A Rank 2 to Rank 1 row has blank
+  `MedalEntry`, `Silver` `MedalBefore`, and `Gold` `MedalAfter`. Entry into a
+  medal position retains its existing explicit callout; an upgrade or retained
+  position does not become a new entry. The two News files remain the only
+  semantically changed public data files and the 72-file bundle shape remains
+  unchanged, but a fresh atomic full export and full validation are required.
+
 ## Production usage analytics are aggregate and cookie-free
 
 - **Status:** Accepted; scope of the third-party-runtime prohibition clarified

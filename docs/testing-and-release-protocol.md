@@ -178,7 +178,7 @@ same release. The tracked public bundle contains 72 CSV files: 71 manifest
 entries plus
 `data/export_manifest.csv`.
 
-### News medal-position extension status
+### News medal-entry extension status (historical baseline)
 
 The approved medal-position refinement changes only the two News CSV headers,
 their workbook population, repository validation, and News presentation; it
@@ -215,7 +215,27 @@ the required static-site check and combined Deploy Preview passed, and GitHub
 reports the PR clean and mergeable. This verification does not merge or release
 the change.
 
-Focused CSV validation must require the exact ordered 36-column News header and
+### News medal-position snapshot extension status
+
+Real-data review on 24 August 2026 showed that the entry-only fields correctly
+left an existing-medal upgrade unmarked: for example, an All-Time Rank 2 to
+Rank 1 movement has no new entry but must visibly say `Silver` to `Gold`. The
+exact News schema therefore grows from 36 to 44 columns. Immediately after each
+existing `MedalEntry`, the workbook must export the matching `MedalBefore` and
+`MedalAfter` fields for Current Distance, Current Overall, All Time Distance,
+and All Time Overall. `MedalEntry` remains threshold-only: it is populated only
+for an unranked/Rank 4+ to Rank 1/2/3 crossing and remains blank for upgrades
+or retained medal positions.
+
+Every snapshot field is blank, `Gold`, `Silver`, or `Bronze`, and must match
+the corresponding workbook-owned before or after competition rank exactly. The
+fields are mode- and context-specific. A 1 Mile Distance context leaves all
+three aligned medal fields blank; a table-unavailable context does the same.
+The prior 36-column export evidence above is historical baseline evidence only:
+the 44-column change requires a fresh full staged export, reconciliation,
+promotion, focused validation, complete suite, and both-mode responsive review.
+
+Focused CSV validation must require the exact ordered 44-column News header and
 enforce the complete contract: one selected-site file, literal `Official`, the
 six canonical distances, contiguous newest-first `SortOrder`, unique positive
 `SourceRow`, descending dates and reverse source order within a date,
@@ -238,19 +258,21 @@ wrong delta arithmetic, partial rank triplets, and a mode or source mismatch.
 Age-grade subtraction and two-decimal display rounding must be checked with
 exact fixed-decimal arithmetic, including half-up boundary cases. Cross-mode
 validation must require every Family milestone to match the same public source
-result and non-rank/non-medal-entry values in Everyone while allowing
-mode-specific order, rank triplets, and medal entries. Every medal-entry field
-must be checked against its own aligned rank triplet: reject missing, wrong,
-extraneous, or unsupported values; accept Gold/Silver/Bronze, multiple contexts
-on one row, and direct competition-rank tie semantics; keep within-medal moves
-and unavailable 1 Mile distance contexts blank.
+result and non-rank/non-medal-position values in Everyone while allowing
+mode-specific order, rank triplets, and all medal fields. Every `MedalEntry`,
+`MedalBefore`, and `MedalAfter` field must be checked against its own aligned
+rank snapshot: reject missing, wrong, extraneous, or unsupported values; accept
+Gold/Silver/Bronze, multiple contexts on one row, and direct competition-rank
+tie semantics; require a within-medal upgrade such as `Silver` to `Gold` to
+retain its blank entry field while supplying both snapshots; and keep
+unavailable 1 Mile Distance contexts blank.
 
 The repository may validate exported arithmetic and public-source agreement,
 but it must not generate milestones or ranks. Before the manifest is written,
 workbook post-export validation must replay date/`SourceRow` order, preserve
 source time through millisecond precision, apply the
 strict historical Current rule (`result date > D - 365 days` and
-`result date <= D`), populate each medal-entry field from the same
+`result date <= D`), populate all three aligned medal fields from the same
 workbook-owned historical rank context, and compare its complete terminal
 Current and All-Time state with all 12 Official leaderboard files in each mode.
 This workbook check is required because rounded public rows cannot independently
@@ -262,11 +284,12 @@ mode-preserving navigation and athlete links, exact exported order including
 same-day rows, all four milestone types, first/tiny/combined improvements,
 fractional raw-time values and improvements, unranked, unchanged, gained-place,
 unavailable-table, header-only, and failed-load states. It must also prove
-that only exported medal-entry fields trigger the explicit card callout and
-per-context Gold/Silver/Bronze labels, that multiple contexts render, that
-within-medal movement is not called a new entry, and that rank numbers alone do
-not cause the browser to infer a medal. The treatment must use visible text as
-well as colour and decorative icons. It must also prove there is no fallback
+that only exported `MedalEntry` fields trigger the explicit card callout, that
+exported `MedalBefore`/`MedalAfter` labels render an existing-medal upgrade such
+as `Silver` to `Gold`, that multiple contexts render, that a within-medal move
+is not called a new entry, and that rank numbers alone do not cause the browser
+to infer a medal or snapshot. The treatment must use visible text as well as
+colour and decorative icons. It must also prove there is no fallback
 calculation from
 `athlete_results.csv`, no leaked `SourceRow`, exact age grade, `SortOrder`, or
 bundle metadata, no script or same-origin request failure, and no horizontal
@@ -575,12 +598,13 @@ Before approving a Pull Request:
   values and improvements, the strict 365-day Current boundary, all four
   before/after rank contexts, the two new manifest rows, and final-state
   agreement with every Official leaderboard before data promotion.
-- For the News medal-position extension, review all four new header fields,
-  representative unranked and Rank 4+ entries into Gold/Silver/Bronze,
-  multi-context rows, a within-medal move that remains unmarked, 1 Mile's blank
-  distance fields, and mode-specific Family/Everyone differences. Confirm the
-  preview says `entered a medal-winning position` rather than claiming a final
-  medal award, and that text remains clear without colour or icons.
+- For the News medal-position snapshot extension, review all 12 aligned medal
+  fields, representative unranked and Rank 4+ entries into Gold/Silver/Bronze,
+  a Rank 2 to Rank 1 `Silver` to `Gold` upgrade, retained medal positions,
+  multi-context rows, 1 Mile's blank Distance fields, and mode-specific
+  Family/Everyone differences. Confirm the preview uses `entered a
+  medal-winning position` only for a new entry, does not claim a final medal
+  award, and makes every medal label clear without colour or icons.
 - For record changes, review the private workbook's `AbsoluteRecords` sheet and the staged `absolute_records.csv` files before approving tracked data promotion.
 - Confirm known limitations and rollback approach are documented.
 
@@ -599,12 +623,13 @@ only one release gate. No completed focused failure coverage, successful full
 suite, both-mode browser and responsive screenshot review, tracked-data
 promotion, and explicit approval, no News release.
 
-The four-field medal-position extension is also a coordinated workbook schema,
-data, validator, and browser change. It is not eligible for the existing-schema
-lightweight data route. Its refreshed full-bundle validation, reconciliation,
-promotion, tracked-data validation, complete local suite, and both-mode
-responsive review pass. The updated Deploy Preview and PR checks also pass. No
-explicit merge approval and completed merge, no release of the extension.
+The 12-field medal-position contract (four existing threshold-entry fields plus
+eight before/after snapshots) is also a coordinated workbook schema, data,
+validator, and browser change. It is not eligible for the existing-schema
+lightweight data route. Do not reuse the earlier 36-column acceptance record:
+the snapshot extension needs its own refreshed full-bundle validation,
+reconciliation, promotion, tracked-data validation, complete local suite, and
+both-mode responsive review before release.
 
 For validated lightweight data refreshes, no accepted eligibility gate, exact
 CSV diff review, and responsive screenshot review for both site modes, no

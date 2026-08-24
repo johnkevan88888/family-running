@@ -427,6 +427,8 @@
             row[`${periodKey}DistanceRankAfter`],
             row[`${periodKey}DistancePlacesGained`],
             row[`${periodKey}DistanceMedalEntry`],
+            row[`${periodKey}DistanceMedalBefore`],
+            row[`${periodKey}DistanceMedalAfter`],
             `${periodKey.toLowerCase()}-distance`
         );
         const overallMovement = renderRankMovement(
@@ -435,6 +437,8 @@
             row[`${periodKey}OverallRankAfter`],
             row[`${periodKey}OverallPlacesGained`],
             row[`${periodKey}OverallMedalEntry`],
+            row[`${periodKey}OverallMedalBefore`],
+            row[`${periodKey}OverallMedalAfter`],
             `${periodKey.toLowerCase()}-overall`
         );
 
@@ -453,7 +457,16 @@
         `;
     }
 
-    function renderRankMovement(label, before, after, placesGained, medalEntry, contextKey) {
+    function renderRankMovement(
+        label,
+        before,
+        after,
+        placesGained,
+        medalEntry,
+        medalBefore,
+        medalAfter,
+        contextKey
+    ) {
         const rankBefore = String(before || '').trim();
         const rankAfter = String(after || '').trim();
         const gained = String(placesGained || '').trim();
@@ -481,7 +494,10 @@
             change = '';
         }
 
-        const medalBadge = medalPresentation && isCompleteRankMovement(rankBefore, rankAfter, gained)
+        const hasMedalEntry = Boolean(
+            medalPresentation && isCompleteRankMovement(rankBefore, rankAfter, gained)
+        );
+        const medalBadge = hasMedalEntry
             ? `
                 <span class="news-medal-entry-badge news-medal-entry-${medalPresentation.className}">
                     <span class="news-medal-entry-icon" aria-hidden="true">${medalPresentation.icon}</span>
@@ -489,17 +505,54 @@
                 </span>
             `
             : '';
+        const medalPosition = !hasMedalEntry && isCompleteRankMovement(rankBefore, rankAfter, gained)
+            ? renderMedalPositionSnapshot(medalBefore, medalAfter)
+            : '';
 
         return `
-            <div class="news-rank-row${medalBadge ? ` news-rank-row-medal-entry news-rank-row-medal-${medalPresentation.className}` : ''}"
+            <div class="news-rank-row${hasMedalEntry ? ` news-rank-row-medal-entry news-rank-row-medal-${medalPresentation.className}` : ''}"
                  data-news-rank-context="${escapeHTML(contextKey)}">
                 <dt>${escapeHTML(label)}</dt>
                 <dd>
                     <span class="news-rank-positions">${positions}</span>
                     ${change ? `<span class="news-rank-change">${change}</span>` : ''}
                     ${medalBadge}
+                    ${medalPosition}
                 </dd>
             </div>
+        `;
+    }
+
+    function renderMedalPositionSnapshot(before, after) {
+        const beforeText = String(before || '').trim();
+        const afterText = String(after || '').trim();
+        const beforePresentation = medalEntryPresentation(beforeText);
+        const afterPresentation = medalEntryPresentation(afterText);
+
+        // Snapshot values are workbook-owned fields. Do not manufacture a
+        // medal label from the rank numbers if an invalid or partial export
+        // reaches the browser.
+        if (!beforePresentation || !afterPresentation) {
+            return '';
+        }
+
+        if (beforeText === afterText) {
+            return `
+                <span class="news-medal-position-badge news-medal-position-${afterPresentation.className}">
+                    <span class="news-medal-position-label">Medal position:</span>
+                    <span>${escapeHTML(afterText)} medal position retained</span>
+                </span>
+            `;
+        }
+
+        return `
+            <span class="news-medal-position-badge news-medal-position-${afterPresentation.className}">
+                <span class="news-medal-position-label">Medal position:</span>
+                <span>${escapeHTML(beforeText)}</span>
+                <span class="news-medal-position-arrow" aria-hidden="true">&#8594;</span>
+                <span class="news-medal-position-transition">to</span>
+                <span>${escapeHTML(afterText)}</span>
+            </span>
         `;
     }
 

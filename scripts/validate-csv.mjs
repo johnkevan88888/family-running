@@ -60,18 +60,26 @@ const officialNewsHeaders = [
     'CurrentDistanceRankAfter',
     'CurrentDistancePlacesGained',
     'CurrentDistanceMedalEntry',
+    'CurrentDistanceMedalBefore',
+    'CurrentDistanceMedalAfter',
     'CurrentOverallRankBefore',
     'CurrentOverallRankAfter',
     'CurrentOverallPlacesGained',
     'CurrentOverallMedalEntry',
+    'CurrentOverallMedalBefore',
+    'CurrentOverallMedalAfter',
     'AllTimeDistanceRankBefore',
     'AllTimeDistanceRankAfter',
     'AllTimeDistancePlacesGained',
     'AllTimeDistanceMedalEntry',
+    'AllTimeDistanceMedalBefore',
+    'AllTimeDistanceMedalAfter',
     'AllTimeOverallRankBefore',
     'AllTimeOverallRankAfter',
     'AllTimeOverallPlacesGained',
     'AllTimeOverallMedalEntry',
+    'AllTimeOverallMedalBefore',
+    'AllTimeOverallMedalAfter',
     'ExportBundleID'
 ];
 const officialNewsRankContexts = [
@@ -79,25 +87,33 @@ const officialNewsRankContexts = [
         'CurrentDistanceRankBefore',
         'CurrentDistanceRankAfter',
         'CurrentDistancePlacesGained',
-        'CurrentDistanceMedalEntry'
+        'CurrentDistanceMedalEntry',
+        'CurrentDistanceMedalBefore',
+        'CurrentDistanceMedalAfter'
     ],
     [
         'CurrentOverallRankBefore',
         'CurrentOverallRankAfter',
         'CurrentOverallPlacesGained',
-        'CurrentOverallMedalEntry'
+        'CurrentOverallMedalEntry',
+        'CurrentOverallMedalBefore',
+        'CurrentOverallMedalAfter'
     ],
     [
         'AllTimeDistanceRankBefore',
         'AllTimeDistanceRankAfter',
         'AllTimeDistancePlacesGained',
-        'AllTimeDistanceMedalEntry'
+        'AllTimeDistanceMedalEntry',
+        'AllTimeDistanceMedalBefore',
+        'AllTimeDistanceMedalAfter'
     ],
     [
         'AllTimeOverallRankBefore',
         'AllTimeOverallRankAfter',
         'AllTimeOverallPlacesGained',
-        'AllTimeOverallMedalEntry'
+        'AllTimeOverallMedalEntry',
+        'AllTimeOverallMedalBefore',
+        'AllTimeOverallMedalAfter'
     ]
 ];
 // The workbook annotates participants with status markers, and a marker that
@@ -1584,13 +1600,22 @@ function validateOfficialNewsAgeGradeImprovement(row, file) {
 function validateOfficialNewsRankContext(
     row,
     file,
-    [beforeField, afterField, gainField, medalEntryField],
+    [
+        beforeField,
+        afterField,
+        gainField,
+        medalEntryField,
+        medalBeforeField,
+        medalAfterField
+    ],
     options = {}
 ) {
     const beforeText = String(row[beforeField] || '').trim();
     const afterText = String(row[afterField] || '').trim();
     const gainText = String(row[gainField] || '').trim();
     const medalEntryText = String(row[medalEntryField] || '').trim();
+    const medalBeforeText = String(row[medalBeforeField] || '').trim();
+    const medalAfterText = String(row[medalAfterField] || '').trim();
     const medalEntryIsAllowed = !medalEntryText || officialNewsMedalEntries.includes(medalEntryText);
 
     if (!medalEntryIsAllowed) {
@@ -1602,7 +1627,14 @@ function validateOfficialNewsRankContext(
     }
 
     if (options.tableAvailable === false) {
-        for (const field of [beforeField, afterField, gainField, medalEntryField]) {
+        for (const field of [
+            beforeField,
+            afterField,
+            gainField,
+            medalEntryField,
+            medalBeforeField,
+            medalAfterField
+        ]) {
             if (String(row[field] || '').trim()) {
                 addError(
                     file,
@@ -1627,6 +1659,25 @@ function validateOfficialNewsRankContext(
         row.__rowNumber,
         afterField,
         { minimum: 1 }
+    );
+
+    validateOfficialNewsMedalSnapshot(
+        medalBeforeText,
+        medalBeforeField,
+        beforeText,
+        before,
+        beforeField,
+        row,
+        file
+    );
+    validateOfficialNewsMedalSnapshot(
+        medalAfterText,
+        medalAfterField,
+        afterText,
+        after,
+        afterField,
+        row,
+        file
     );
 
     if (
@@ -1696,6 +1747,53 @@ function validateOfficialNewsRankContext(
                 file,
                 row.__rowNumber,
                 `${gainField} ${gain} must equal ${beforeField} minus ${afterField} (${expectedGain}).`
+            );
+        }
+    }
+}
+
+function validateOfficialNewsMedalSnapshot(
+    medalText,
+    medalField,
+    rankText,
+    rank,
+    rankField,
+    row,
+    file
+) {
+    if (medalText && !officialNewsMedalEntries.includes(medalText)) {
+        addError(
+            file,
+            row.__rowNumber,
+            `${medalField} "${medalText}" must be blank or one of: ${officialNewsMedalEntries.join(', ')}.`
+        );
+        return;
+    }
+
+    if (!rankText) {
+        if (medalText) {
+            addError(file, row.__rowNumber, `${medalField} must be blank when ${rankField} is blank.`);
+        }
+        return;
+    }
+
+    if (rank === null) {
+        return;
+    }
+
+    const expectedMedal = officialNewsMedalForRank(rank);
+    if (medalText !== expectedMedal) {
+        if (expectedMedal) {
+            addError(
+                file,
+                row.__rowNumber,
+                `${medalField} must be "${expectedMedal}" because ${rankField} is Rank ${rank}.`
+            );
+        } else {
+            addError(
+                file,
+                row.__rowNumber,
+                `${medalField} must be blank because ${rankField} ${rank} is not a medal position.`
             );
         }
     }

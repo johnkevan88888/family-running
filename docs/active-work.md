@@ -1,10 +1,70 @@
 # Active Work
 
-## Task title
+## Current task: workbook-owned News medal-position snapshots
+
+### Status — 24 August 2026
+
+Implemented and promoted locally on `codex/news-medal-position-labels`; no
+merge, deployment, or release has been performed. This is a follow-up to the
+already merged News baseline from Pull Request #68, not a replacement for the
+Gallery work on `main`.
+
+The private News draft workbook was backed up before this authorized change.
+The untouched backup is
+`C:\GitHub\_private_workbooks\backups\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX BACKUP BEFORE NEWS MEDAL SNAPSHOTS 20260824-124900.xlsm`
+with SHA-256
+`EC88F72559AF66CC877AAFCCD11A2A496178457EEFFB3EF0D3031276DA5EB0A5`.
+The workbook exporter now writes eight additional, workbook-owned snapshot
+fields: `MedalBefore` and `MedalAfter` for Current/All-Time and
+Distance/Overall. The existing four `MedalEntry` fields remain exclusively
+about entering a medal position.
+
+The new exact News schema is 44 columns. The browser never derives a medal
+from a rank: it shows an exported transition such as `Silver → Gold` only when
+both snapshot fields are valid. A snapshot transition remains neutral; only an
+exported `MedalEntry` can create the established `Medal breakthrough!` callout,
+card accent, and `New … medal position` badge. Invalid or partial snapshots
+render nothing. The page announces the visual arrow as `to` for assistive
+technology.
+
+The fresh full staged export is retained at
+`test-artifacts/workbook-export-staging/run-20260824-104408-551` and passed
+`pnpm run workbook:validate:staged`. Reconciliation found exactly the intended
+two meaningful changes—Family and Everyone `official_result_news.csv`—with
+all existing News values unchanged after excluding the new snapshot columns and
+volatile bundle metadata. Carolyn Kevan's 26 August 2017 Family record now
+exports `Silver → Gold` for both All-Time Distance and All-Time Overall.
+
+John approved full-bundle promotion on 24 August 2026. The promotion revalidated
+the staged candidate and atomically replaced tracked `data/`; the prior tracked
+bundle remains recoverable at
+`test-artifacts/workbook-export-promotion/20260824171418447/previous-data`.
+
+The complete `pnpm test` suite first passed in an isolated temporary checkout
+using that staged bundle and then passed again against the promoted tracked
+data. This includes repository safety, vendored libraries, CSV and Gallery
+validation for both modes, News/export/staged-workflow regressions,
+preview-artifact safety and the 114-file build, and desktop/mobile browser
+smoke tests. Focused responsive screenshots were reviewed: entry callouts
+remain unchanged, snapshot pills are legible and neutral, and there is no
+horizontal overflow. The temporary validation worktree was removed after the
+run.
+
+### Handoff
+
+- The complete staged bundle has been promoted atomically; do not selectively
+  overwrite individual data files.
+- Do not merge or deploy this branch without separate explicit approval.
+- The next authorized step is to commit and push the verified branch; opening
+  a pull request remains a separate decision.
+
+## Historical record: Official Results News first draft
+
+### Original task title
 
 Official Results News medal-position breakthroughs.
 
-## Status
+### Historical status
 
 Implemented locally on 23 August 2026 on `codex/news-official-results` in the
 isolated worktree
