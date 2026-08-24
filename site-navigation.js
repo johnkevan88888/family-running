@@ -2,6 +2,7 @@
     const validSites = new Set(['family', 'everyone']);
     const pageFiles = {
         championships: 'index.html',
+        news: 'news.html',
         'hall-of-fame': 'hall-of-fame.html',
         records: 'records.html',
         gallery: 'gallery.html',
@@ -11,6 +12,7 @@
     };
     const pageLabels = {
         championships: 'Championships',
+        news: 'News',
         'hall-of-fame': 'Hall of Fame',
         records: 'Records',
         gallery: 'Gallery',
@@ -36,6 +38,7 @@
         const filename = window.location.pathname.split('/').pop() || 'index.html';
 
         if (filename === 'championships.html') return 'championships';
+        if (filename === 'news.html') return 'news';
         if (filename === 'overview.html') return 'overview';
         if (filename === 'hall-of-fame.html') return 'hall-of-fame';
         if (filename === 'records.html') return 'records';

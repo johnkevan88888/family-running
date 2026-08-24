@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, follow">
+    <meta name="description" content="Official running milestones and their reconstructed movement through age-graded championship standings.">
+    <meta name="theme-color" content="#102A43">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ace of Race">
+    <meta property="og:title" content="News | Ace of Race">
+    <meta property="og:description" content="Official running milestones and reconstructed championship movement.">
+    <meta property="og:image" content="https://www.aceofrace.com/assets/brand/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" href="assets/brand/ace-of-race-mark.svg" type="image/svg+xml">
+    <link rel="icon" href="assets/brand/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+    <title>News | Ace of Race</title>
+    <link rel="stylesheet" href="site.css">
+    <link rel="stylesheet" href="news.css">
+</head>
+
+<body data-page="news">
+
+<header data-site-header></header>
+
+<main>
+    <section class="page-intro news-intro" aria-labelledby="news-page-title">
+        <p class="news-kicker">Official results only</p>
+        <h2 id="news-page-title">News</h2>
+        <p>
+            Milestones are personal to each athlete and supported distance. Follow
+            the first official result and each new age-grade or raw-time personal best.
+        </p>
+        <ul class="news-caveats" role="list">
+            <li>
+                Positions are reconstructed from the championship's currently valid
+                result history, so corrections or eligibility changes can revise older entries.
+            </li>
+            <li>
+                Current positions use the workbook's rolling 365-day window ending
+                on the race date.
+            </li>
+            <li>
+                Rank movement comes from age-graded championship tables, so a
+                raw-time personal best can show no position change.
+            </li>
+        </ul>
+    </section>
+
+    <section class="news-shell" aria-labelledby="official-news-title">
+        <div class="news-heading">
+            <p class="news-kicker">Reconstructed milestone history</p>
+            <h2 id="official-news-title">Official result milestones</h2>
+        </div>
+
+        <div
+            id="official-news-controls"
+            class="news-controls"
+            role="group"
+            aria-label="Filter official result milestones"
+            hidden>
+            <div class="news-filter-grid">
+                <label for="news-athlete-filter">
+                    <span>Athlete</span>
+                    <select id="news-athlete-filter">
+                        <option value="">All athletes</option>
+                    </select>
+                </label>
+                <label for="news-year-filter">
+                    <span>Year</span>
+                    <select id="news-year-filter">
+                        <option value="">All years</option>
+                    </select>
+                </label>
+                <label for="news-distance-filter">
+                    <span>Distance</span>
+                    <select id="news-distance-filter">
+                        <option value="">All distances</option>
+                    </select>
+                </label>
+            </div>
+            <div class="news-filter-footer">
+                <p
+                    id="news-result-summary"
+                    class="news-result-summary"
+                    role="status"
+                    aria-live="polite"></p>
+                <button
+                    id="news-reset-filters"
+                    class="news-reset-filters"
+                    type="button"
+                    disabled>
+                    Reset filters
+                </button>
+            </div>
+        </div>
+
+        <div
+            id="official-news-status"
+            class="news-status"
+            role="status"
+            aria-live="polite">
+            Loading official result milestones...
+        </div>
+        <div id="official-result-news"></div>
+        <div class="news-more-row">
+            <button
+                id="news-show-older"
+                class="news-show-older"
+                type="button"
+                aria-controls="official-result-news"
+                hidden>
+                Show older milestones
+            </button>
+        </div>
+    </section>
+</main>
+
+<footer class="site-privacy-note">
+    Privacy-friendly, cookie-free visit statistics are provided by
+    <a href="https://www.goatcounter.com/" rel="external">GoatCounter</a>.
+</footer>
+
+<script src="analytics.js" defer></script>
+<script src="utils.js" defer></script>
+<script src="site-navigation.js" defer></script>
+<script src="news.js" defer></script>
+
+</body>
+</html>

@@ -2,9 +2,154 @@
 
 ## Task title
 
-Owner-curated photo and video gallery, Phase 1.
+Official Results News medal-position breakthroughs.
 
 ## Status
+
+Implemented locally on 23 August 2026 on `codex/news-official-results` in the
+isolated worktree
+`C:\GitHub\family-running\test-artifacts\worktrees\news-official-results`.
+The branch originally diverged from `main` immediately before the Gallery work.
+Current `main` at `f4e0305`, including merged Pull Request #69, is now integrated
+locally so this branch inherits the complete Gallery production baseline.
+
+The static News page loads only
+`data/<selected-site>/official_result_news.csv`, preserves `?site=`, renders the
+workbook's exported order, improvements, and before/after Current and All-Time
+distance/Overall positions, and performs no PB or ranking calculation. The
+repository validator requires the exact 36-column export, both mode-specific
+manifest paths, the complete Official leaderboard matrix, source agreement,
+milestone chains, rank-field arithmetic, 1 Mile's Overall-only movement, and
+genuine source-time precision through milliseconds. Four workbook-owned
+`MedalEntry` fields align with the four rank contexts and tell the browser when
+a result crossed from unranked or Rank 4+ into Gold, Silver, or Bronze. The
+browser does not derive that meaning from the rank numbers.
+
+John approved the next presentation refinement on 23 August 2026: optional
+athlete, year, and distance filters plus a latest-first initial batch with a
+`Show older` control. The controls operate only on the already loaded selected-
+site News rows. The page starts with the 12 newest matches; each filter change
+resets the view to the 12 newest matching entries, and `Show older` reveals the
+next 12 without changing their exported order. `Reset filters` clears all three
+controls and restores the first 12 newest entries. Filter choices, the `Showing
+X of Y milestones` summary, and progressive reveal are browser presentation
+only: they do not select milestones, compare results, recalculate improvements
+or ranks, or require a workbook/data-schema change. The implementation is
+complete. The full `pnpm test` suite passes, including long filtered histories,
+filter-reset batching, combined no-match, header-only/error, both-mode desktop
+and mobile, and overflow coverage. Real-data review confirmed the Everyone
+5 km history moves from 12 of 43 to 24 of 43 after one reveal, and the mobile
+controls render without overflow or browser warnings/errors.
+
+John approved a second presentation-only refinement on 23 August 2026 to make
+each milestone substantially more compact. At desktop widths, each card leads
+left to right from Result, through the exported PB improvement or first-result
+baseline, to the exported Championship movement, with decorative arrows
+guiding the eye between stages and down the feed. Mobile keeps the same content
+and reading order in a compact vertical flow. This changes no workbook logic,
+CSV schema, milestone selection, calculation, value, or rank. The refinement is
+implemented and the full `pnpm test` suite passes. Browser smoke coverage passed
+for both modes at 1440 x 900, a 720px intermediate-width probe, and 390 x 844;
+responsive screenshots were reviewed with no overflow. Representative
+real-data cards remain within the tested 320px desktop and 850px mobile height
+ceilings. The visible history is about 55% shorter on desktop and 37% shorter
+on mobile than the preceding layout.
+
+John requested a further refinement on 23 August 2026 to make entry into a
+medal-winning position stand out. The settled contract adds
+`CurrentDistanceMedalEntry`, `CurrentOverallMedalEntry`,
+`AllTimeDistanceMedalEntry`, and `AllTimeOverallMedalEntry`, each blank or one
+of `Gold`, `Silver`, and `Bronze`. A field is populated only when that context's
+workbook-owned before rank is blank or at least 4 and its after rank is 1, 2,
+or 3. Movement within the existing medal positions is not a new entry. Each
+context is independent, tied competition ranks use their exported rank
+directly, and 1 Mile's distance fields remain blank. The local page uses only
+those exported values to add an explicit `Medal breakthrough!` callout, a
+celebratory card accent, and a labelled medal badge on every affected movement
+row; colour and decorative icons are not the only indication.
+
+The 36-column repository validator and focused export-bundle regression
+fixtures are implemented. Syntax checks and `pnpm run test:export-bundle`
+pass, including Gold, Silver, Bronze, multi-context, tied-rank, within-podium,
+missing, wrong, extraneous, unsupported, 1 Mile, and cross-mode cases. The
+backed-up News draft workbook produced staged 72-file export
+`test-artifacts/workbook-export-staging/run-20260823-195159-167-medal`, which
+passed the updated validator. Reconciliation found only the two News CSVs
+meaningfully changed; every prior News fact, rank, and delta remained identical.
+The bundle was promoted atomically, with the previous tracked data retained at
+`test-artifacts/workbook-export-promotion/20260823235713853`, and tracked-data
+validation passes. It exports 24 Family cards carrying at least one medal
+entry, across 59 contexts, and 34 such Everyone cards across 77 contexts. The
+complete `pnpm test` suite now passes. The preview artifact contains 114 files,
+and browser smoke coverage passes in both modes at 1440px, the 720px
+intermediate probe, and 390px mobile. Responsive screenshots were refreshed and
+manually reviewed: the medal callout and per-context badges are readable,
+contained within their cards, and introduce no horizontal overflow. Commit
+`2b28907` is pushed to Pull Request #68 and all remote checks are green. The
+refreshed Deploy Preview at
+`https://deploy-preview-68--thunderous-moxie-c5aac5.netlify.app/news.html`
+shows `Updated 23 Aug 2026 7:52 PM`. Remote DOM verification found the Family
+initial batch contains 5 medal cards and 10 medal badges, while Everyone
+contains 2 cards and 4 badges. Both modes have the correct selected-mode title
+and links and no horizontal overflow.
+
+The earlier remote preview predated Pull Request #69 and was not review evidence
+for the combined site. The merge from `main` resolved four additive
+conflict files while retaining both features; Gallery runtime files remain
+byte-for-byte inherited from `main`, and the diff against `main` contains News
+rather than deletions of Gallery. The first combined browser run exposed the
+longer athlete Back to Championships navigation wrapping to a second desktop
+row. A narrow athlete-only desktop rule now keeps all eight links on one row and
+reduced the measured header from 223.6px to 177.6px.
+
+The private source workbook was copied and hash-verified before inspection. The
+unchanged backup is
+`C:\GitHub\_private_workbooks\backups\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX BACKUP BEFORE OFFICIAL NEWS 20260823-163247.xlsm`
+with SHA-256
+`4B1D11EA6946F0A8A58691B767610CA417D12DE7BAC5F0C9EAD43B368C439AB9`.
+All News changes were made in the separate draft
+`C:\GitHub\_private_workbooks\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX OFFICIAL NEWS DRAFT 20260823-164900.xlsm`;
+the named working copy was not modified. The draft replay agrees with all 24
+final Official leaderboard exports and produced 43 Family milestones and 64
+Everyone milestones.
+
+A hardened replacement 72-file workbook export succeeded at
+`test-artifacts/workbook-export-staging/run-20260823-173218-385`. Its staged
+bundle and CSV validation passed. Reconciliation found every existing CSV
+semantically unchanged; the only meaningful differences are the two new News
+CSVs and the two new rows in `data/export_manifest.csv`. Exact fixed-decimal
+age-grade validation, millisecond time comparison, duplicate public-source
+detection, and Family-to-Everyone source agreement are covered by the passing
+59-case export-bundle regression suite. Repository safety, vendored-library and
+syntax checks, focused frontend rendering, preview-artifact publication, and
+both-mode desktop/mobile browser coverage have passed. The four responsive
+screenshots were reviewed with no overflow or presentation defect found.
+
+John approved promotion on 23 August 2026. The validated bundle is now the
+tracked 72-file `data/` contract. The previous tracked data is retained in the
+ignored recovery folder
+`test-artifacts/workbook-export-promotion/20260823215439556/previous-data`.
+The complete `pnpm test` suite passes against the promoted data: repository,
+vendor, CSV, 59 export-bundle regressions, staged workflow, reconciliation,
+artifact safety/build, and both-mode browser checks. The final artifact contains
+114 files. A separate real-data visual check rendered all 43 Family and 64
+Everyone entries with no mobile overflow or browser warning/error. The first
+draft, filters, and compact presentation are on Pull Request #68 and passed
+their pre-medal preview checks. The medal-position extension is local work
+with its refreshed export promoted and its complete local suite and responsive
+review passing. After the Gallery integration, the complete `pnpm test` suite
+passed repository safety, vendor, CSV, Gallery validation and contract tests,
+News regressions, staged-export and reconciliation checks, artifact safety, the
+114-file build, and browser smoke coverage for both modes at desktop and mobile.
+Refreshed News and Gallery screenshots were reviewed without overflow or layout
+regression. Merge commit `65190fe` is pushed to Pull Request #68. GitHub reports
+the PR clean and mergeable; the required `Test static site` check and the
+combined Netlify Deploy Preview both passed on that commit. Nothing from Pull
+Request #68 has been merged, published, or released.
+
+## Prior work: owner-curated photo and video gallery, Phase 1
+
+### Status
 
 Completed locally on 23 August 2026 on
 `codex/curated-gallery-phase-1`. The site now has a mode-preserving Gallery
@@ -71,12 +216,12 @@ behavior, and mode isolation. Empty/fallback and populated desktop/mobile
 Championship and Gallery screenshots were reviewed; no horizontal overflow was
 found and the mobile podium remained a compact three-column row.
 
-Excel and the private workbook were not inspected or changed. No merge,
-deployment, or publication has been performed. Pull Request #69 was opened from
-`codex/curated-gallery-phase-1` to `main` as a standard preview-backed change:
-https://github.com/johnkevan88888/family-running/pull/69. Review must wait for
-the required GitHub check and a successful Netlify Deploy Preview, then cover
-both Family and Everyone links before any separate merge approval.
+Excel and the private workbook were not inspected or changed. Pull Request #69
+merged into `main` as `f4e0305`, and its GitHub Pages deployment succeeded. The
+Gallery UI, manifests, suppression contract, featured moments, and championship
+podiums are therefore the production baseline inherited by later work. The two
+mode-specific manifests remain intentionally empty until approved external
+media hosting and real media entries are supplied.
 
 ## Prior work: header refinement, Head-to-Head rename, and workbook-locked age-grade calculator
 

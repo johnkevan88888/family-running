@@ -7,8 +7,530 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const validatorPath = path.join(repoRoot, 'scripts', 'validate-csv.mjs');
 const sourceData = path.join(repoRoot, 'data');
+const officialNewsHeaders = [
+    'SortOrder',
+    'SourceRow',
+    'AthleteID',
+    'AthleteName',
+    'ResultDate',
+    'Distance',
+    'Time',
+    'AgeGrade',
+    'AgeGradeExact',
+    'Event',
+    'TimeClass',
+    'MilestoneType',
+    'PreviousBestTime',
+    'TimeImprovementSeconds',
+    'TimeImprovement',
+    'PreviousBestAgeGrade',
+    'PreviousBestAgeGradeExact',
+    'AgeGradeImprovementExact',
+    'AgeGradeImprovement',
+    'CurrentDistanceRankBefore',
+    'CurrentDistanceRankAfter',
+    'CurrentDistancePlacesGained',
+    'CurrentDistanceMedalEntry',
+    'CurrentOverallRankBefore',
+    'CurrentOverallRankAfter',
+    'CurrentOverallPlacesGained',
+    'CurrentOverallMedalEntry',
+    'AllTimeDistanceRankBefore',
+    'AllTimeDistanceRankAfter',
+    'AllTimeDistancePlacesGained',
+    'AllTimeDistanceMedalEntry',
+    'AllTimeOverallRankBefore',
+    'AllTimeOverallRankAfter',
+    'AllTimeOverallPlacesGained',
+    'AllTimeOverallMedalEntry',
+    'ExportBundleID'
+];
+const officialNewsColumn = new Map(officialNewsHeaders.map((header, index) => [header, index]));
+const officialNewsMedalContextFixtures = [
+    {
+        label: 'Current Distance',
+        prefix: 'CurrentDistance',
+        medal: 'Bronze',
+        wrongMedal: 'Gold',
+        before: '4',
+        after: '3',
+        gain: '1'
+    },
+    {
+        label: 'Current Overall',
+        prefix: 'CurrentOverall',
+        medal: 'Silver',
+        wrongMedal: 'Gold',
+        before: '4',
+        after: '2',
+        gain: '2'
+    },
+    {
+        label: 'All-Time Distance',
+        prefix: 'AllTimeDistance',
+        medal: 'Bronze',
+        wrongMedal: 'Silver',
+        before: '4',
+        after: '3',
+        gain: '1'
+    },
+    {
+        label: 'All-Time Overall',
+        prefix: 'AllTimeOverall',
+        medal: 'Gold',
+        wrongMedal: 'Bronze',
+        before: '4',
+        after: '1',
+        gain: '3'
+    }
+];
+const officialNewsMedalContextCases = officialNewsMedalContextFixtures.flatMap(context => [
+    {
+        name: `official result News rejects a missing ${context.label} medal entry`,
+        expected:
+            `${context.prefix}MedalEntry must be "${context.medal}" because the result ` +
+            `entered a medal position at Rank ${context.after}.`,
+        mutate: async root => {
+            await configureOfficialNewsMedalCrossing(root, context, '');
+        }
+    },
+    {
+        name: `official result News rejects a wrong ${context.label} medal entry`,
+        expected:
+            `${context.prefix}MedalEntry must be "${context.medal}" because the result ` +
+            `entered a medal position at Rank ${context.after}.`,
+        mutate: async root => {
+            await configureOfficialNewsMedalCrossing(root, context, context.wrongMedal);
+        }
+    },
+    {
+        name: `official result News rejects an extraneous ${context.label} medal entry`,
+        expected: `${context.prefix}MedalEntry must be blank because the result did not enter a new medal position.`,
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, `${context.prefix}MedalEntry`, context.medal);
+        }
+    }
+]);
+const officialNewsOneMileMedalCases = [
+    'CurrentDistanceMedalEntry',
+    'AllTimeDistanceMedalEntry'
+].map(field => ({
+    name: `1 Mile News row cannot carry ${field}`,
+    expected: `${field} must be blank because 1 Mile has no dedicated Official distance leaderboard.`,
+    mutate: async root => {
+        await mutateOfficialNewsRow(root, 'everyone', 4, field, 'Gold');
+    }
+}));
 
 const cases = [
+    {
+        name: 'valid official result News exports',
+        expectPass: true,
+        mutate: async () => {}
+    },
+    {
+        name: 'header-only official result News exports',
+        expectPass: true,
+        mutate: async root => {
+            for (const mode of ['family', 'everyone']) {
+                await writeOfficialNews(root, mode, [officialNewsHeaders]);
+                await setManifestRowCount(root, `data/${mode}/official_result_news.csv`, 0);
+            }
+        }
+    },
+    {
+        name: 'required official result News manifest path missing',
+        expected: 'Missing required manifest path "data/family/official_result_news.csv".',
+        mutate: async root => {
+            await fs.rm(officialNewsPath(root, 'family'));
+            const manifestFile = path.join(root, 'data', 'export_manifest.csv');
+            const lines = splitLines(await fs.readFile(manifestFile, 'utf8'))
+                .filter(line => !line.includes(',data/family/official_result_news.csv,'));
+            await fs.writeFile(manifestFile, `${lines.join('\r\n')}\r\n`);
+        }
+    },
+    {
+        name: 'incomplete Official leaderboard matrix',
+        expected: 'Official leaderboard matrix requires exactly one webtables.csv row for "5km-current-official-family.csv", found 0.',
+        mutate: async root => {
+            const file = path.join(root, 'data', 'family', 'webtables.csv');
+            const lines = splitLines(await fs.readFile(file, 'utf8'))
+                .filter(line => !line.includes(',5km-current-official-family.csv,'));
+            await fs.writeFile(file, `${lines.join('\r\n')}\r\n`);
+            await setManifestRowCount(root, 'data/family/webtables.csv', lines.length - 1);
+        }
+    },
+    {
+        name: 'Official leaderboard matrix rejects a non-Official populated row',
+        expected: 'Official leaderboard matrix row must have Time Class "Official", found "All".',
+        mutate: async root => {
+            const file = path.join(root, 'data', 'family', '5km-current-official-family.csv');
+            const lines = splitLines(await fs.readFile(file, 'utf8'));
+            lines[1] = replaceCsvField(lines[1], 3, 'All');
+            await fs.writeFile(file, `${lines.join('\r\n')}\r\n`);
+        }
+    },
+    {
+        name: 'official result News header out of order',
+        expected: 'Header must exactly match:',
+        mutate: async root => {
+            const rows = await readOfficialNews(root, 'family');
+            [rows[0][7], rows[0][8]] = [rows[0][8], rows[0][7]];
+            await writeOfficialNews(root, 'family', rows);
+        }
+    },
+    {
+        name: 'unofficial row in official result News',
+        expected: 'TimeClass "Unofficial" does not match the Official Result News contract value "Official".',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'family', 1, 'TimeClass', 'Unofficial');
+        }
+    },
+    {
+        name: 'official result News SortOrder gap',
+        expected: 'SortOrder 3 is out of sequence: file row 2 must be SortOrder 2.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'family', 2, 'SortOrder', '3');
+        }
+    },
+    {
+        name: 'official result News source performance mismatch',
+        expected: 'Displayed source performance must match exactly one Official row in data/athlete_results.csv; found 0.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'family', 1, 'Event', 'Not the exported event');
+        }
+    },
+    {
+        name: 'subsecond News time must round to the public source time',
+        expected: 'Displayed source performance must match exactly one Official row in data/athlete_results.csv; found 0.',
+        mutate: async root => {
+            await mutateOfficialNewsMatchingRow(
+                root,
+                'everyone',
+                row => row.AthleteID === 'jess-graham-kevan',
+                'Time',
+                '00:11:18.6'
+            );
+        }
+    },
+    {
+        name: '1 Mile News row has no dedicated distance rank',
+        expected: 'CurrentDistanceRankAfter must be blank because 1 Mile has no dedicated Official distance leaderboard.',
+        mutate: async root => {
+            await mutateOfficialNewsMatchingRow(
+                root,
+                'everyone',
+                row => row.AthleteID === 'jess-graham-kevan',
+                'CurrentDistanceRankAfter',
+                '1'
+            );
+        }
+    },
+    {
+        name: 'official result News exact age grade does not round to display',
+        expected: 'AgeGradeExact "52.86%" does not round to AgeGrade "52.8%" at one decimal place.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'family', 1, 'AgeGradeExact', '52.86%');
+        }
+    },
+    {
+        name: 'first official result contains invented previous value',
+        expected: 'PreviousBestTime must be blank for MilestoneType "First Official Result".',
+        mutate: async root => {
+            const rows = await readOfficialNews(root, 'family');
+            await mutateOfficialNewsRow(
+                root,
+                'family',
+                rows.length - 1,
+                'PreviousBestTime',
+                '00:30:00'
+            );
+        }
+    },
+    {
+        name: 'official result News raw-time delta mismatch',
+        expected: 'TimeImprovementSeconds 25 must equal PreviousBestTime minus Time (26).',
+        mutate: async root => {
+            await mutateOfficialNewsMatchingRow(
+                root,
+                'family',
+                row => row.ResultDate === '31/08/2019',
+                'TimeImprovementSeconds',
+                '25'
+            );
+        }
+    },
+    {
+        name: 'official result News tiny age-grade improvement rendered as zero',
+        expected: 'AgeGradeImprovement "+0.00 pp" must be "+<0.01 pp"',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'AgeGradeImprovement', '+0.00 pp');
+        }
+    },
+    {
+        name: 'official result News rank gain mismatch',
+        expected: 'AllTimeOverallPlacesGained 0 must equal AllTimeOverallRankBefore minus AllTimeOverallRankAfter (1).',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'AllTimeOverallPlacesGained', '0');
+        }
+    },
+    {
+        name: 'official result News supports independent multi-context medal entries',
+        expectPass: true,
+        mutate: async root => {
+            const changes = [
+                ['CurrentOverallRankAfter', '2'],
+                ['CurrentOverallMedalEntry', 'Silver'],
+                ['AllTimeOverallRankBefore', '4'],
+                ['AllTimeOverallRankAfter', '1'],
+                ['AllTimeOverallPlacesGained', '3'],
+                ['AllTimeOverallMedalEntry', 'Gold']
+            ];
+
+            for (const [field, value] of changes) {
+                await mutateOfficialNewsRow(root, 'everyone', 4, field, value);
+            }
+        }
+    },
+    // The News row carries the workbook's competition rank, not a leaderboard
+    // row offset. A tied Rank 2 therefore follows the same direct Silver rule;
+    // the repository neither detects nor breaks the tie.
+    {
+        name: 'competition Rank 2 maps directly to a Silver medal entry',
+        expectPass: true,
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 4, 'CurrentOverallRankAfter', '2');
+            await mutateOfficialNewsRow(root, 'everyone', 4, 'CurrentOverallMedalEntry', 'Silver');
+        }
+    },
+    {
+        name: 'moving within existing medal positions is not a new medal entry',
+        expectPass: true,
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceRankAfter', '2');
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistancePlacesGained', '1');
+        }
+    },
+    ...officialNewsMedalContextCases,
+    {
+        name: 'official result News rejects an unsupported medal entry',
+        expected: 'CurrentDistanceMedalEntry "Platinum" must be blank or one of: Gold, Silver, Bronze.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 2, 'CurrentDistanceMedalEntry', 'Platinum');
+        }
+    },
+    ...officialNewsOneMileMedalCases,
+    {
+        name: 'official result News duplicate SourceRow',
+        expected: 'Duplicate SourceRow 54.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'family', 2, 'SourceRow', '54');
+        }
+    },
+    {
+        name: 'official result News previous exact best breaks the exported chain',
+        expected: 'PreviousBestAgeGradeExact "66.996%" does not match the prior exported exact best.',
+        mutate: async root => {
+            const changes = [
+                ['PreviousBestAgeGradeExact', '66.996%'],
+                ['AgeGradeImprovementExact', '0.005%'],
+                ['AgeGradeImprovement', '+0.01 pp']
+            ];
+            for (const [field, value] of changes) {
+                await mutateOfficialNewsRow(root, 'everyone', 1, field, value);
+            }
+        }
+    },
+    {
+        name: 'official result News time delta exceeds thousandth precision',
+        expected: 'TimeImprovementSeconds "7.1000" must be a non-negative decimal with at most 3 places.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 3, 'TimeImprovementSeconds', '7.1000');
+        }
+    },
+    {
+        name: 'exact age-grade improvement rounds half-up at a binary-hostile boundary',
+        expectPass: true,
+        mutate: async root => {
+            const newsChanges = [
+                ['07/10/2017', 'AgeGrade', '51.3%'],
+                ['07/10/2017', 'AgeGradeExact', '51.31%'],
+                ['14/10/2017', 'AgeGrade', '53.4%'],
+                ['14/10/2017', 'AgeGradeExact', '53.445%'],
+                ['14/10/2017', 'PreviousBestAgeGrade', '51.3%'],
+                ['14/10/2017', 'PreviousBestAgeGradeExact', '51.31%'],
+                ['14/10/2017', 'AgeGradeImprovementExact', '2.135%'],
+                ['14/10/2017', 'AgeGradeImprovement', '+2.14 pp'],
+                ['11/11/2017', 'PreviousBestAgeGrade', '53.4%'],
+                ['11/11/2017', 'PreviousBestAgeGradeExact', '53.445%'],
+                ['11/11/2017', 'AgeGradeImprovementExact', '0.455%'],
+                ['11/11/2017', 'AgeGradeImprovement', '+0.46 pp']
+            ];
+
+            for (const mode of ['family', 'everyone']) {
+                for (const [resultDate, field, value] of newsChanges) {
+                    await mutateOfficialNewsMatchingRow(
+                        root,
+                        mode,
+                        row => row.AthleteID === 'ben-graham-kevan' && row.ResultDate === resultDate,
+                        field,
+                        value
+                    );
+                }
+            }
+
+            for (const [date, ageGrade] of [
+                ['07/10/2017', '51.3%'],
+                ['14/10/2017', '53.4%']
+            ]) {
+                await mutateBundleCsvMatchingRow(
+                    root,
+                    'data/athlete_results.csv',
+                    row => row.AthleteID === 'ben-graham-kevan' && row.Date === date,
+                    'AgeGrade',
+                    ageGrade
+                );
+            }
+        }
+    },
+    {
+        name: 'exact age-grade arithmetic rejects a near-equal decimal',
+        expected: 'AgeGradeImprovementExact "0.0040000005%" must equal AgeGradeExact minus PreviousBestAgeGradeExact.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(
+                root,
+                'everyone',
+                1,
+                'AgeGradeImprovementExact',
+                '0.0040000005%'
+            );
+        }
+    },
+    {
+        name: 'numerically equivalent prior raw-time precision is accepted',
+        expectPass: true,
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'family', 1, 'PreviousBestTime', '00:25:17.000');
+        }
+    },
+    {
+        name: 'cross-mode rank differences remain site-specific',
+        expectPass: true,
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'family', 1, 'CurrentDistanceRankAfter', '3');
+            await mutateOfficialNewsRow(root, 'family', 1, 'CurrentDistanceMedalEntry', 'Bronze');
+        }
+    },
+    {
+        name: 'cross-mode source row mismatch',
+        expected: 'Cross-mode SourceRow disagrees for data/athlete_results.csv row',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'family', 1, 'SourceRow', '55');
+        }
+    },
+    {
+        name: 'Family milestone missing from Everyone News',
+        expected: 'Family News source at data/athlete_results.csv row',
+        mutate: async root => {
+            await removeOfficialNewsMatchingRow(
+                root,
+                'everyone',
+                row => row.AthleteID === 'ben-graham-kevan' && row.ResultDate === '31/08/2019'
+            );
+        }
+    },
+    {
+        name: 'duplicate News rows for one public source result',
+        expected: 'Duplicate News rows match data/athlete_results.csv row',
+        mutate: async root => {
+            for (const [field, value] of [
+                ['ResultDate', '31/08/2019'],
+                ['Time', '00:24:51'],
+                ['AgeGrade', '52.8%'],
+                ['AgeGradeExact', '52.8%']
+            ]) {
+                await mutateOfficialNewsRow(root, 'family', 2, field, value);
+            }
+        }
+    },
+    {
+        name: 'quoted comma quote and multiline source Event validates',
+        expectPass: true,
+        mutate: async root => {
+            const event = 'Worcester, "Riverside"\nSecond line';
+            for (const mode of ['family', 'everyone']) {
+                await mutateOfficialNewsMatchingRow(
+                    root,
+                    mode,
+                    row => row.AthleteID === 'ben-graham-kevan' && row.ResultDate === '07/10/2017',
+                    'Event',
+                    event
+                );
+            }
+            await mutateBundleCsvMatchingRow(
+                root,
+                'data/athlete_results.csv',
+                row => row.AthleteID === 'ben-graham-kevan' && row.Date === '07/10/2017',
+                'Event',
+                event
+            );
+        }
+    },
+    {
+        name: 'unsupported News distance',
+        expected: 'Distance "3 km" must be one of:',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'family', 1, 'Distance', '3 km');
+        }
+    },
+    {
+        name: 'unsupported News milestone type',
+        expected: 'MilestoneType "Personal Best" must be one of:',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'family', 1, 'MilestoneType', 'Personal Best');
+        }
+    },
+    {
+        name: 'same-day News source chronology is reversed',
+        expected: 'Rows on the same ResultDate must be in descending authoritative SourceRow order.',
+        mutate: async root => {
+            await mutateOfficialNewsMatchingRow(
+                root,
+                'everyone',
+                row => row.AthleteID === 'jess-graham-kevan',
+                'SourceRow',
+                '85'
+            );
+        }
+    },
+    {
+        name: 'zero exact age-grade improvement',
+        expected: 'AgeGradeImprovementExact "0%" must be positive.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'AgeGradeImprovementExact', '0%');
+        }
+    },
+    {
+        name: 'negative raw-time improvement',
+        expected: 'TimeImprovementSeconds "-1" must be a non-negative decimal with at most 3 places.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'family', 1, 'TimeImprovementSeconds', '-1');
+        }
+    },
+    {
+        name: 'partial News rank triplet',
+        expected: 'CurrentDistanceRankAfter is required because the complete Official leaderboard matrix is required.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'everyone', 1, 'CurrentDistanceRankAfter', '');
+        }
+    },
+    {
+        name: 'News athlete is in the wrong site mode',
+        expected: 'AthleteID "jim-chambers" is not eligible for the family site mode.',
+        mutate: async root => {
+            await mutateOfficialNewsRow(root, 'family', 1, 'AthleteID', 'jim-chambers');
+        }
+    },
     {
         name: 'changed CSV bundle ID',
         expected: 'data/family/10km-current-official-family.csv:2: ExportBundleID',
@@ -354,6 +876,7 @@ for (const testCase of cases) {
 
     try {
         await fs.cp(sourceData, path.join(root, 'data'), { recursive: true });
+        await installValidOfficialNewsExports(root);
         await testCase.mutate(root);
         const result = await runValidator(root);
         const output = `${result.stdout}\n${result.stderr}`;
@@ -380,6 +903,475 @@ for (const testCase of cases) {
 }
 
 console.log('Export bundle validation regression tests passed.');
+
+async function installValidOfficialNewsExports(root) {
+    const manifestFile = path.join(root, 'data', 'export_manifest.csv');
+    const manifestLines = splitLines(await fs.readFile(manifestFile, 'utf8'));
+    const [bundleId, exportedAt, schemaVersion] = manifestLines[1].split(',');
+
+    for (const mode of ['family', 'everyone']) {
+        const fixtureRows = validOfficialNewsRows(bundleId, mode);
+        await writeOfficialNews(root, mode, [officialNewsHeaders, ...fixtureRows]);
+
+        const relativePath = `data/${mode}/official_result_news.csv`;
+        const manifestRow = `${bundleId},${exportedAt},${schemaVersion},${mode},${relativePath},${fixtureRows.length}`;
+        const rowIndex = manifestLines.findIndex(line => line.includes(`,${relativePath},`));
+
+        if (rowIndex >= 0) {
+            manifestLines[rowIndex] = manifestRow;
+        } else {
+            manifestLines.push(manifestRow);
+        }
+    }
+
+    await fs.writeFile(manifestFile, `${manifestLines.join('\r\n')}\r\n`);
+}
+
+function validOfficialNewsRows(bundleId, mode) {
+    const rows = [
+        officialNewsRow({
+            SortOrder: '1',
+            SourceRow: '163',
+            AthleteID: 'jim-chambers',
+            AthleteName: 'Jim Chambers',
+            ResultDate: '15/08/2026',
+            Distance: '5 km',
+            Time: '00:26:01',
+            AgeGrade: '67.0%',
+            AgeGradeExact: '67.001%',
+            Event: 'Kingston Parkrun',
+            TimeClass: 'Official',
+            MilestoneType: 'Age Grade PB',
+            PreviousBestAgeGrade: '67.0%',
+            PreviousBestAgeGradeExact: '66.997%',
+            AgeGradeImprovementExact: '0.004%',
+            AgeGradeImprovement: '+<0.01 pp',
+            CurrentDistanceRankBefore: '3',
+            CurrentDistanceRankAfter: '3',
+            CurrentDistancePlacesGained: '0',
+            CurrentOverallRankBefore: '5',
+            CurrentOverallRankAfter: '5',
+            CurrentOverallPlacesGained: '0',
+            AllTimeDistanceRankBefore: '7',
+            AllTimeDistanceRankAfter: '6',
+            AllTimeDistancePlacesGained: '1',
+            AllTimeOverallRankBefore: '9',
+            AllTimeOverallRankAfter: '8',
+            AllTimeOverallPlacesGained: '1',
+            ExportBundleID: bundleId
+        }),
+        officialNewsRow({
+            SortOrder: '2',
+            SourceRow: '151',
+            AthleteID: 'jim-chambers',
+            AthleteName: 'Jim Chambers',
+            ResultDate: '01/08/2026',
+            Distance: '5 km',
+            Time: '00:26:01',
+            AgeGrade: '67.0%',
+            AgeGradeExact: '66.997%',
+            Event: 'Derry City Parkrun',
+            TimeClass: 'Official',
+            MilestoneType: 'Age Grade PB',
+            PreviousBestAgeGrade: '66.8%',
+            PreviousBestAgeGradeExact: '66.76%',
+            AgeGradeImprovementExact: '0.237%',
+            AgeGradeImprovement: '+0.24 pp',
+            CurrentDistanceRankBefore: '4',
+            CurrentDistanceRankAfter: '3',
+            CurrentDistancePlacesGained: '1',
+            CurrentDistanceMedalEntry: 'Bronze',
+            CurrentOverallRankBefore: '6',
+            CurrentOverallRankAfter: '5',
+            CurrentOverallPlacesGained: '1',
+            AllTimeDistanceRankBefore: '8',
+            AllTimeDistanceRankAfter: '7',
+            AllTimeDistancePlacesGained: '1',
+            AllTimeOverallRankBefore: '10',
+            AllTimeOverallRankAfter: '9',
+            AllTimeOverallPlacesGained: '1',
+            ExportBundleID: bundleId
+        }),
+        officialNewsRow({
+            SortOrder: '3',
+            SourceRow: '112',
+            AthleteID: 'jim-chambers',
+            AthleteName: 'Jim Chambers',
+            ResultDate: '23/02/2026',
+            Distance: '5 km',
+            Time: '00:25:47.1',
+            AgeGrade: '66.8%',
+            AgeGradeExact: '66.76%',
+            Event: 'Strabane Triathlon Club Lifford 5k',
+            TimeClass: 'Official',
+            MilestoneType: 'Age Grade + Raw-Time PB',
+            PreviousBestTime: '00:25:54.2',
+            TimeImprovementSeconds: '7.1',
+            TimeImprovement: '00:00:07.1',
+            PreviousBestAgeGrade: '66.5%',
+            PreviousBestAgeGradeExact: '66.51%',
+            AgeGradeImprovementExact: '0.25%',
+            AgeGradeImprovement: '+0.25 pp',
+            CurrentDistanceRankBefore: '5',
+            CurrentDistanceRankAfter: '4',
+            CurrentDistancePlacesGained: '1',
+            CurrentOverallRankBefore: '7',
+            CurrentOverallRankAfter: '6',
+            CurrentOverallPlacesGained: '1',
+            AllTimeDistanceRankBefore: '9',
+            AllTimeDistanceRankAfter: '8',
+            AllTimeDistancePlacesGained: '1',
+            AllTimeOverallRankBefore: '11',
+            AllTimeOverallRankAfter: '10',
+            AllTimeOverallPlacesGained: '1',
+            ExportBundleID: bundleId
+        }),
+        officialNewsRow({
+            SortOrder: '4',
+            SourceRow: '91',
+            AthleteID: 'jess-graham-kevan',
+            AthleteName: 'Jess Graham-Kevan',
+            ResultDate: '13/09/2025',
+            Distance: '1 Mile',
+            Time: '00:11:18.2',
+            AgeGrade: '46.3%',
+            AgeGradeExact: '46.31%',
+            Event: 'Worcester Half',
+            TimeClass: 'Official',
+            MilestoneType: 'First Official Result',
+            CurrentOverallRankAfter: '12',
+            AllTimeOverallRankAfter: '15',
+            ExportBundleID: bundleId
+        }),
+        officialNewsRow({
+            SortOrder: '5',
+            SourceRow: '86',
+            AthleteID: 'jim-chambers',
+            AthleteName: 'Jim Chambers',
+            ResultDate: '13/09/2025',
+            Distance: '5 km',
+            Time: '00:25:54.2',
+            AgeGrade: '66.5%',
+            AgeGradeExact: '66.51%',
+            Event: 'Derry City Parkrun',
+            TimeClass: 'Official',
+            MilestoneType: 'First Official Result',
+            CurrentDistanceRankAfter: '5',
+            CurrentOverallRankBefore: '8',
+            CurrentOverallRankAfter: '7',
+            CurrentOverallPlacesGained: '1',
+            AllTimeDistanceRankAfter: '9',
+            AllTimeOverallRankBefore: '12',
+            AllTimeOverallRankAfter: '11',
+            AllTimeOverallPlacesGained: '1',
+            ExportBundleID: bundleId
+        }),
+        officialNewsRow({
+            SortOrder: '6',
+            SourceRow: '54',
+            AthleteID: 'ben-graham-kevan',
+            AthleteName: 'Ben Graham-Kevan',
+            ResultDate: '31/08/2019',
+            Distance: '5 km',
+            Time: '00:24:51',
+            AgeGrade: '52.8%',
+            AgeGradeExact: '52.8%',
+            Event: 'Worcester Parkrun',
+            TimeClass: 'Official',
+            MilestoneType: 'Raw-Time PB',
+            PreviousBestTime: '00:25:17',
+            TimeImprovementSeconds: '26',
+            TimeImprovement: '00:00:26',
+            CurrentDistanceRankAfter: '4',
+            CurrentOverallRankAfter: '7',
+            AllTimeDistanceRankBefore: '8',
+            AllTimeDistanceRankAfter: '8',
+            AllTimeDistancePlacesGained: '0',
+            AllTimeOverallRankBefore: '10',
+            AllTimeOverallRankAfter: '10',
+            AllTimeOverallPlacesGained: '0',
+            ExportBundleID: bundleId
+        }),
+        officialNewsRow({
+            SortOrder: '7',
+            SourceRow: '32',
+            AthleteID: 'ben-graham-kevan',
+            AthleteName: 'Ben Graham-Kevan',
+            ResultDate: '11/11/2017',
+            Distance: '5 km',
+            Time: '00:25:17',
+            AgeGrade: '53.9%',
+            AgeGradeExact: '53.90%',
+            Event: 'Worcester Parkrun',
+            TimeClass: 'Official',
+            MilestoneType: 'Age Grade + Raw-Time PB',
+            PreviousBestTime: '00:26:32',
+            TimeImprovementSeconds: '75',
+            TimeImprovement: '00:01:15',
+            PreviousBestAgeGrade: '51.3%',
+            PreviousBestAgeGradeExact: '51.31%',
+            AgeGradeImprovementExact: '2.59%',
+            AgeGradeImprovement: '+2.59 pp',
+            CurrentDistanceRankBefore: '6',
+            CurrentDistanceRankAfter: '5',
+            CurrentDistancePlacesGained: '1',
+            CurrentOverallRankBefore: '9',
+            CurrentOverallRankAfter: '8',
+            CurrentOverallPlacesGained: '1',
+            AllTimeDistanceRankBefore: '6',
+            AllTimeDistanceRankAfter: '5',
+            AllTimeDistancePlacesGained: '1',
+            AllTimeOverallRankBefore: '9',
+            AllTimeOverallRankAfter: '8',
+            AllTimeOverallPlacesGained: '1',
+            ExportBundleID: bundleId
+        }),
+        officialNewsRow({
+            SortOrder: '8',
+            SourceRow: '30',
+            AthleteID: 'ben-graham-kevan',
+            AthleteName: 'Ben Graham-Kevan',
+            ResultDate: '14/10/2017',
+            Distance: '5 km',
+            Time: '00:26:32',
+            AgeGrade: '51.3%',
+            AgeGradeExact: '51.31%',
+            Event: 'Worcester Parkrun',
+            TimeClass: 'Official',
+            MilestoneType: 'Age Grade + Raw-Time PB',
+            PreviousBestTime: '00:26:42',
+            TimeImprovementSeconds: '10',
+            TimeImprovement: '00:00:10',
+            PreviousBestAgeGrade: '51.0%',
+            PreviousBestAgeGradeExact: '51.01%',
+            AgeGradeImprovementExact: '0.30%',
+            AgeGradeImprovement: '+0.30 pp',
+            CurrentDistanceRankBefore: '7',
+            CurrentDistanceRankAfter: '6',
+            CurrentDistancePlacesGained: '1',
+            CurrentOverallRankBefore: '10',
+            CurrentOverallRankAfter: '9',
+            CurrentOverallPlacesGained: '1',
+            AllTimeDistanceRankBefore: '7',
+            AllTimeDistanceRankAfter: '6',
+            AllTimeDistancePlacesGained: '1',
+            AllTimeOverallRankBefore: '10',
+            AllTimeOverallRankAfter: '9',
+            AllTimeOverallPlacesGained: '1',
+            ExportBundleID: bundleId
+        }),
+        officialNewsRow({
+            SortOrder: '9',
+            SourceRow: '29',
+            AthleteID: 'ben-graham-kevan',
+            AthleteName: 'Ben Graham-Kevan',
+            ResultDate: '07/10/2017',
+            Distance: '5 km',
+            Time: '00:26:42',
+            AgeGrade: '51.0%',
+            AgeGradeExact: '51.01%',
+            Event: 'Worcester Parkrun',
+            TimeClass: 'Official',
+            MilestoneType: 'First Official Result',
+            CurrentDistanceRankAfter: '7',
+            CurrentOverallRankAfter: '10',
+            AllTimeDistanceRankAfter: '7',
+            AllTimeOverallRankAfter: '10',
+            ExportBundleID: bundleId
+        })
+    ];
+
+    if (mode === 'family') {
+        return rows
+            .filter(row => row[officialNewsColumn.get('AthleteID')] === 'ben-graham-kevan')
+            .map((row, index) => {
+                const siteRow = [...row];
+                siteRow[officialNewsColumn.get('SortOrder')] = String(index + 1);
+                return siteRow;
+            });
+    }
+
+    return rows;
+}
+
+function officialNewsRow(values) {
+    return officialNewsHeaders
+        .map(header => String(values[header] ?? ''));
+}
+
+function csvCell(value) {
+    const text = String(value);
+    return /[",\r\n]/.test(text)
+        ? `"${text.replace(/"/g, '""')}"`
+        : text;
+}
+
+function officialNewsPath(root, mode) {
+    return path.join(root, 'data', mode, 'official_result_news.csv');
+}
+
+async function readOfficialNews(root, mode) {
+    return parseCsvDocument(await fs.readFile(officialNewsPath(root, mode), 'utf8'));
+}
+
+async function writeOfficialNews(root, mode, rows) {
+    await fs.writeFile(
+        officialNewsPath(root, mode),
+        `${rows.map(row => row.map(csvCell).join(',')).join('\r\n')}\r\n`
+    );
+}
+
+async function mutateOfficialNewsRow(root, mode, dataRowNumber, field, value) {
+    const rows = await readOfficialNews(root, mode);
+    const columnIndex = officialNewsColumn.get(field);
+
+    if (columnIndex === undefined) {
+        throw new Error(`Unknown Official News field ${field}.`);
+    }
+    if (!rows[dataRowNumber]) {
+        throw new Error(`Official News fixture has no data row ${dataRowNumber}.`);
+    }
+
+    rows[dataRowNumber][columnIndex] = String(value);
+    await writeOfficialNews(root, mode, rows);
+}
+
+async function configureOfficialNewsMedalCrossing(root, context, medalEntry) {
+    const changes = [
+        [`${context.prefix}RankBefore`, context.before],
+        [`${context.prefix}RankAfter`, context.after],
+        [`${context.prefix}PlacesGained`, context.gain],
+        [`${context.prefix}MedalEntry`, medalEntry]
+    ];
+
+    for (const [field, value] of changes) {
+        await mutateOfficialNewsRow(root, 'everyone', 3, field, value);
+    }
+}
+
+async function mutateOfficialNewsMatchingRow(root, mode, predicate, field, value) {
+    const rows = await readOfficialNews(root, mode);
+    const headers = rows[0];
+    const rowIndex = rows.findIndex((row, index) =>
+        index > 0 && predicate(csvRowObject(headers, row))
+    );
+
+    if (rowIndex < 0) {
+        throw new Error(`Could not find matching ${mode} Official News fixture row.`);
+    }
+
+    const columnIndex = officialNewsColumn.get(field);
+    rows[rowIndex][columnIndex] = String(value);
+    await writeOfficialNews(root, mode, rows);
+}
+
+async function removeOfficialNewsMatchingRow(root, mode, predicate) {
+    const rows = await readOfficialNews(root, mode);
+    const headers = rows[0];
+    const matchingIndexes = rows
+        .map((row, index) => ({ index, record: csvRowObject(headers, row) }))
+        .filter(({ index, record }) => index > 0 && predicate(record))
+        .map(({ index }) => index);
+
+    if (matchingIndexes.length !== 1) {
+        throw new Error(
+            `Expected exactly one removable ${mode} Official News row, found ${matchingIndexes.length}.`
+        );
+    }
+
+    rows.splice(matchingIndexes[0], 1);
+    for (let index = 1; index < rows.length; index += 1) {
+        rows[index][officialNewsColumn.get('SortOrder')] = String(index);
+    }
+
+    await writeOfficialNews(root, mode, rows);
+    await setManifestRowCount(root, `data/${mode}/official_result_news.csv`, rows.length - 1);
+}
+
+async function mutateBundleCsvMatchingRow(root, relativePath, predicate, field, value) {
+    const file = path.join(root, ...relativePath.split('/'));
+    const rows = parseCsvDocument(await fs.readFile(file, 'utf8'));
+    const headers = rows[0];
+    const columnIndex = headers.indexOf(field);
+    const matchingIndexes = rows
+        .map((row, index) => ({ index, record: csvRowObject(headers, row) }))
+        .filter(({ index, record }) => index > 0 && predicate(record))
+        .map(({ index }) => index);
+
+    if (columnIndex < 0) {
+        throw new Error(`${relativePath} has no field ${field}.`);
+    }
+    if (matchingIndexes.length !== 1) {
+        throw new Error(
+            `Expected one ${relativePath} fixture row for ${field}, found ${matchingIndexes.length}.`
+        );
+    }
+
+    rows[matchingIndexes[0]][columnIndex] = String(value);
+    await fs.writeFile(
+        file,
+        `${rows.map(row => row.map(csvCell).join(',')).join('\r\n')}\r\n`
+    );
+}
+
+function csvRowObject(headers, row) {
+    return Object.fromEntries(headers.map((header, index) => [header, row[index] ?? '']));
+}
+
+function parseCsvDocument(text) {
+    const rows = [];
+    let row = [];
+    let value = '';
+    let insideQuotes = false;
+
+    for (let index = 0; index < text.length; index += 1) {
+        const character = text[index];
+        const next = text[index + 1];
+
+        if (character === '"') {
+            if (insideQuotes && next === '"') {
+                value += '"';
+                index += 1;
+            } else {
+                insideQuotes = !insideQuotes;
+            }
+            continue;
+        }
+
+        if (character === ',' && !insideQuotes) {
+            row.push(value.trim());
+            value = '';
+            continue;
+        }
+
+        if ((character === '\r' || character === '\n') && !insideQuotes) {
+            row.push(value.trim());
+            rows.push(row);
+            row = [];
+            value = '';
+
+            if (character === '\r' && next === '\n') {
+                index += 1;
+            }
+            continue;
+        }
+
+        value += character;
+    }
+
+    if (insideQuotes) {
+        throw new Error('Unclosed quoted CSV field in test fixture.');
+    }
+
+    if (value.length || row.length) {
+        row.push(value.trim());
+        rows.push(row);
+    }
+
+    return rows.filter((candidate, index) =>
+        !(index === rows.length - 1 && candidate.length === 1 && candidate[0] === '')
+    );
+}
 
 function splitLines(text) {
     return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trimEnd().split('\n');

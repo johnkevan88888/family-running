@@ -28,6 +28,78 @@ const manifestSchemaVersion = '1.0';
 // against one definition rather than three.
 const absoluteRecordSexes = ['Men', 'Women'];
 const absoluteRecordDistances = ['Marathon', 'Half Marathon', '10 Mile', '10 km', '5 km'];
+const officialNewsDistances = ['Marathon', 'Half Marathon', '10 Mile', '10 km', '5 km', '1 Mile'];
+const officialNewsMilestoneTypes = [
+    'First Official Result',
+    'Age Grade PB',
+    'Raw-Time PB',
+    'Age Grade + Raw-Time PB'
+];
+const officialNewsMedalEntries = ['Gold', 'Silver', 'Bronze'];
+const officialNewsHeaders = [
+    'SortOrder',
+    'SourceRow',
+    'AthleteID',
+    'AthleteName',
+    'ResultDate',
+    'Distance',
+    'Time',
+    'AgeGrade',
+    'AgeGradeExact',
+    'Event',
+    'TimeClass',
+    'MilestoneType',
+    'PreviousBestTime',
+    'TimeImprovementSeconds',
+    'TimeImprovement',
+    'PreviousBestAgeGrade',
+    'PreviousBestAgeGradeExact',
+    'AgeGradeImprovementExact',
+    'AgeGradeImprovement',
+    'CurrentDistanceRankBefore',
+    'CurrentDistanceRankAfter',
+    'CurrentDistancePlacesGained',
+    'CurrentDistanceMedalEntry',
+    'CurrentOverallRankBefore',
+    'CurrentOverallRankAfter',
+    'CurrentOverallPlacesGained',
+    'CurrentOverallMedalEntry',
+    'AllTimeDistanceRankBefore',
+    'AllTimeDistanceRankAfter',
+    'AllTimeDistancePlacesGained',
+    'AllTimeDistanceMedalEntry',
+    'AllTimeOverallRankBefore',
+    'AllTimeOverallRankAfter',
+    'AllTimeOverallPlacesGained',
+    'AllTimeOverallMedalEntry',
+    'ExportBundleID'
+];
+const officialNewsRankContexts = [
+    [
+        'CurrentDistanceRankBefore',
+        'CurrentDistanceRankAfter',
+        'CurrentDistancePlacesGained',
+        'CurrentDistanceMedalEntry'
+    ],
+    [
+        'CurrentOverallRankBefore',
+        'CurrentOverallRankAfter',
+        'CurrentOverallPlacesGained',
+        'CurrentOverallMedalEntry'
+    ],
+    [
+        'AllTimeDistanceRankBefore',
+        'AllTimeDistanceRankAfter',
+        'AllTimeDistancePlacesGained',
+        'AllTimeDistanceMedalEntry'
+    ],
+    [
+        'AllTimeOverallRankBefore',
+        'AllTimeOverallRankAfter',
+        'AllTimeOverallPlacesGained',
+        'AllTimeOverallMedalEntry'
+    ]
+];
 // The workbook annotates participants with status markers, and a marker that
 // reaches AthleteID silently renames the athlete. Nothing downstream notices:
 // every exported table carries the same renamed key, so all the reference
@@ -55,6 +127,7 @@ const athleteRows = readCsvRequired('data/athlete_results.csv', [
 ]);
 const athleteObjects = toObjects(athleteRows, 'data/athlete_results.csv');
 const athleteIds = new Set();
+const officialNewsObjectsBySite = new Map();
 
 for (const row of athleteObjects) {
     const rowNumber = row.__rowNumber;
@@ -88,6 +161,8 @@ if (athleteIds.size === 0) {
 for (const siteMode of siteModes) {
     validateSite(siteMode);
 }
+
+validateOfficialNewsCrossModeAgreement();
 
 if (warnings.length) {
     console.warn('CSV validation warnings:');
@@ -436,6 +511,37 @@ function discoverPublicCsvFiles() {
     }
 }
 
+function requireManifestEntry(relativePath, expectedScope) {
+    const rows = parseCsvFile(manifestFile);
+    const matches = toObjects(rows, manifestFile).filter(
+        row => String(row.RelativePath || '').trim() === relativePath
+    );
+
+    if (matches.length === 0) {
+        addError(manifestFile, 1, `Missing required manifest path "${relativePath}".`);
+        return null;
+    }
+
+    if (matches.length > 1) {
+        // The bundle-integrity pass reports the duplicate rows themselves. One
+        // matrix-level error keeps this requirement explicit without guessing
+        // which duplicate should define the file.
+        addError(manifestFile, 1, `Required manifest path "${relativePath}" is not unique.`);
+        return null;
+    }
+
+    const row = matches[0];
+    if (String(row.Scope || '').trim() !== expectedScope) {
+        addError(
+            manifestFile,
+            row.__rowNumber,
+            `Required manifest path "${relativePath}" must have scope "${expectedScope}".`
+        );
+    }
+
+    return row;
+}
+
 function validateSite(siteMode) {
     const siteDir = `data/${siteMode}`;
 
@@ -483,6 +589,7 @@ function validateSite(siteMode) {
     }
 
     validateLeaderboardIndex(siteDir, siteMode, webtables);
+    validateOfficialLeaderboardMatrix(siteDir, siteMode, webtables);
     validateHallOfFame(siteDir, siteMode, webtables);
     validateCrownHistory(siteDir);
     validateOfficialMedals(siteDir, siteMode, webtables);
@@ -491,6 +598,7 @@ function validateSite(siteMode) {
     validateAgeGradeStandards(siteDir);
     validateAgeGradeCalculator(siteDir);
     validateAthleteComparisonTargets(siteDir);
+    validateOfficialResultNews(siteDir, siteMode);
 
     const enabledTables = webtables.filter(row => String(row.Enabled || '').toUpperCase() === 'TRUE');
 
@@ -916,6 +1024,1097 @@ function validateLeaderboardIndex(siteDir, siteMode, webtables) {
             addError(`${siteDir}/webtables.csv`, 1, `Leaderboard export "${fileName}" exists but is not referenced by webtables.csv.`);
         }
     }
+}
+
+// News rank snapshots name Current/All-Time Distance/Overall positions. Those
+// states are only a closed contract if every corresponding Official standings
+// export exists. Do not let webtables.csv silently shrink that source matrix:
+// require all six categories in both periods, independently for each mode.
+function validateOfficialLeaderboardMatrix(siteDir, siteMode, webtables) {
+    for (const fileName of expectedOfficialLeaderboardFiles(siteMode)) {
+        const relativePath = `${siteDir}/${fileName}`;
+        const matchingRows = webtables.filter(
+            row => String(row.FileName || '').trim() === fileName
+        );
+
+        requireManifestEntry(relativePath, siteMode);
+
+        if (!fs.existsSync(path.join(validationRoot, relativePath))) {
+            addError(relativePath, 1, 'Required Official leaderboard matrix file is missing.');
+        } else {
+            const leaderboardRows = toObjects(
+                readCsvRequired(relativePath, ['Participant', 'Time Class']),
+                relativePath
+            );
+            for (const leaderboardRow of leaderboardRows) {
+                // Vacant/no-eligible placeholders deliberately carry blank
+                // result fields. The file and webtables metadata establish
+                // that they are Official; populated standings must repeat it.
+                if (isNoEligibleRow(leaderboardRow) || isVacantParticipant(leaderboardRow.Participant)) {
+                    continue;
+                }
+                if (String(leaderboardRow['Time Class'] || '').trim() !== 'Official') {
+                    addError(
+                        relativePath,
+                        leaderboardRow.__rowNumber,
+                        `Official leaderboard matrix row must have Time Class "Official", found "${leaderboardRow['Time Class']}".`
+                    );
+                }
+            }
+        }
+
+        if (matchingRows.length !== 1) {
+            addError(
+                `${siteDir}/webtables.csv`,
+                1,
+                `Official leaderboard matrix requires exactly one webtables.csv row for "${fileName}", found ${matchingRows.length}.`
+            );
+            continue;
+        }
+
+        const row = matchingRows[0];
+        if (String(row.TimeClass || '').trim() !== 'Official') {
+            addError(
+                `${siteDir}/webtables.csv`,
+                row.__rowNumber,
+                `Official leaderboard matrix row "${fileName}" must have TimeClass "Official".`
+            );
+        }
+        if (String(row.Enabled || '').trim().toUpperCase() !== 'TRUE') {
+            addError(
+                `${siteDir}/webtables.csv`,
+                row.__rowNumber,
+                `Official leaderboard matrix row "${fileName}" must be enabled.`
+            );
+        }
+    }
+}
+
+function expectedOfficialLeaderboardFiles(siteMode) {
+    const distances = ['overall', 'marathon', 'halfmarathon', '10mile', '10km', '5km'];
+    const periods = ['current', 'alltime'];
+    const files = [];
+
+    for (const distance of distances) {
+        for (const period of periods) {
+            files.push(`${distance}-${period}-official-${siteMode}.csv`);
+        }
+    }
+
+    return files;
+}
+
+function validateOfficialResultNews(siteDir, siteMode) {
+    const file = `${siteDir}/official_result_news.csv`;
+    requireManifestEntry(file, siteMode);
+
+    const rows = readCsvRequired(file, officialNewsHeaders);
+    const actualHeaders = rows[0] || [];
+
+    if (
+        actualHeaders.length !== officialNewsHeaders.length ||
+        actualHeaders.some((header, index) => header !== officialNewsHeaders[index])
+    ) {
+        addError(file, 1, `Header must exactly match: ${officialNewsHeaders.join(',')}.`);
+    }
+
+    const objects = toObjects(rows, file);
+    const siteAthleteIds = new Set(
+        toObjects(
+            readCsvRequired(`${siteDir}/age_grade_standards.csv`, ['AthleteId']),
+            `${siteDir}/age_grade_standards.csv`
+        )
+            .map(row => String(row.AthleteId || '').trim())
+            .filter(Boolean)
+    );
+    const seenSortOrders = new Set();
+    const seenSourceRows = new Set();
+    const seenPublicSourceRows = new Set();
+    const seenMilestones = new Set();
+    let previousDate = null;
+    let previousSourceRow = null;
+
+    for (let index = 0; index < objects.length; index += 1) {
+        const row = objects[index];
+        const sortOrder = parseOfficialNewsInteger(
+            row.SortOrder,
+            file,
+            row.__rowNumber,
+            'SortOrder',
+            { required: true, minimum: 1 }
+        );
+        const sourceRow = parseOfficialNewsInteger(
+            row.SourceRow,
+            file,
+            row.__rowNumber,
+            'SourceRow',
+            { required: true, minimum: 1 }
+        );
+
+        if (sortOrder !== null) {
+            if (seenSortOrders.has(sortOrder)) {
+                addError(file, row.__rowNumber, `Duplicate SortOrder ${sortOrder}.`);
+            }
+            seenSortOrders.add(sortOrder);
+
+            if (sortOrder !== index + 1) {
+                addError(
+                    file,
+                    row.__rowNumber,
+                    `SortOrder ${sortOrder} is out of sequence: file row ${index + 1} must be SortOrder ${index + 1}.`
+                );
+            }
+        }
+
+        if (sourceRow !== null) {
+            if (seenSourceRows.has(sourceRow)) {
+                addError(file, row.__rowNumber, `Duplicate SourceRow ${sourceRow}.`);
+            }
+            seenSourceRows.add(sourceRow);
+        }
+
+        validateAthleteId(row.AthleteID, file, row.__rowNumber, 'AthleteID', { required: true });
+        requireValue(row.AthleteName, file, row.__rowNumber, 'AthleteName');
+        validateStrictUkDate(row.ResultDate, file, row.__rowNumber, 'ResultDate', { required: true });
+        validateAllowed(row.Distance, officialNewsDistances, file, row.__rowNumber, 'Distance');
+        validateOfficialNewsTime(row.Time, file, row.__rowNumber, 'Time', { required: true });
+        validateOfficialNewsDisplayAgeGrade(row.AgeGrade, file, row.__rowNumber, 'AgeGrade', { required: true });
+        const ageGradeExact = parseOfficialNewsExactPercent(
+            row.AgeGradeExact,
+            file,
+            row.__rowNumber,
+            'AgeGradeExact',
+            { required: true, positive: true }
+        );
+        const ageGrade = parseOfficialNewsDisplayPercent(row.AgeGrade);
+        if (
+            ageGradeExact !== null &&
+            ageGrade !== null &&
+            !officialNewsRoundsTo(ageGradeExact, ageGrade, 1)
+        ) {
+            addError(
+                file,
+                row.__rowNumber,
+                `AgeGradeExact "${row.AgeGradeExact}" does not round to AgeGrade "${row.AgeGrade}" at one decimal place.`
+            );
+        }
+
+        compareExportedValue(
+            row.TimeClass,
+            'Official',
+            file,
+            row.__rowNumber,
+            'TimeClass',
+            'the Official Result News contract'
+        );
+        validateAllowed(
+            row.MilestoneType,
+            officialNewsMilestoneTypes,
+            file,
+            row.__rowNumber,
+            'MilestoneType'
+        );
+
+        const athleteId = String(row.AthleteID || '').trim();
+        if (athleteId && !siteAthleteIds.has(athleteId)) {
+            addError(
+                file,
+                row.__rowNumber,
+                `AthleteID "${athleteId}" is not eligible for the ${siteMode} site mode.`
+            );
+        }
+
+        const resultDate = parseUkDate(String(row.ResultDate || '').trim());
+        if (resultDate && previousDate) {
+            if (resultDate > previousDate) {
+                addError(file, row.__rowNumber, 'News rows must be in descending ResultDate order.');
+            } else if (
+                resultDate.getTime() === previousDate.getTime() &&
+                sourceRow !== null &&
+                previousSourceRow !== null &&
+                sourceRow >= previousSourceRow
+            ) {
+                addError(
+                    file,
+                    row.__rowNumber,
+                    'Rows on the same ResultDate must be in descending authoritative SourceRow order.'
+                );
+            }
+        }
+        if (resultDate) {
+            previousDate = resultDate;
+            previousSourceRow = sourceRow;
+        }
+
+        const milestoneKey = [
+            athleteId,
+            row.ResultDate,
+            row.Distance,
+            row.SourceRow
+        ].join('|');
+        if (seenMilestones.has(milestoneKey)) {
+            addError(file, row.__rowNumber, 'Duplicate official result News milestone row.');
+        }
+        seenMilestones.add(milestoneKey);
+
+        const sourceResult = validateOfficialNewsSourceAgreement(row, file);
+        if (sourceResult) {
+            row.__sourceResultRowNumber = sourceResult.__rowNumber;
+            if (seenPublicSourceRows.has(sourceResult.__rowNumber)) {
+                addError(
+                    file,
+                    row.__rowNumber,
+                    `Duplicate News rows match data/athlete_results.csv row ${sourceResult.__rowNumber}.`
+                );
+            }
+            seenPublicSourceRows.add(sourceResult.__rowNumber);
+        }
+        validateOfficialNewsMilestoneFields(row, file);
+        for (const rankContext of officialNewsRankContexts) {
+            const isDistanceContext = rankContext[0].includes('Distance');
+            validateOfficialNewsRankContext(row, file, rankContext, {
+                tableAvailable: !(String(row.Distance || '').trim() === '1 Mile' && isDistanceContext)
+            });
+        }
+    }
+
+    validateOfficialNewsMilestoneChains(objects, file);
+    officialNewsObjectsBySite.set(siteMode, objects);
+}
+
+function validateOfficialNewsSourceAgreement(row, file) {
+    const newsTimeMilliseconds = parseOfficialNewsTimeToMilliseconds(row.Time);
+    const matches = athleteObjects.filter(result =>
+        String(result.AthleteID || '').trim() === String(row.AthleteID || '').trim() &&
+        String(result.Participant || '').trim() === String(row.AthleteName || '').trim() &&
+        String(result.Date || '').trim() === String(row.ResultDate || '').trim() &&
+        canonicalDistanceLabel(result.Distance) === String(row.Distance || '').trim() &&
+        officialNewsTimeMatchesPublicDisplay(newsTimeMilliseconds, result.Time) &&
+        String(result.AgeGrade || '').trim() === String(row.AgeGrade || '').trim() &&
+        officialNewsEventMatchesPublicExport(row.Event, result.Event) &&
+        String(result.TimeClass || '').trim() === 'Official'
+    );
+
+    if (matches.length !== 1) {
+        addError(
+            file,
+            row.__rowNumber,
+            `Displayed source performance must match exactly one Official row in data/athlete_results.csv; found ${matches.length}.`
+        );
+        return null;
+    }
+
+    return matches[0];
+}
+
+function validateOfficialNewsCrossModeAgreement() {
+    const familyRows = officialNewsObjectsBySite.get('family');
+    const everyoneRows = officialNewsObjectsBySite.get('everyone');
+
+    if (!familyRows || !everyoneRows) {
+        return;
+    }
+
+    const everyoneBySourceRow = new Map(
+        everyoneRows
+            .filter(row => Number.isInteger(row.__sourceResultRowNumber))
+            .map(row => [row.__sourceResultRowNumber, row])
+    );
+    const rankFields = new Set(officialNewsRankContexts.flat());
+    const ignoredFields = new Set(['SortOrder', 'ExportBundleID', ...rankFields]);
+
+    for (const familyRow of familyRows) {
+        if (!Number.isInteger(familyRow.__sourceResultRowNumber)) {
+            continue;
+        }
+
+        const everyoneRow = everyoneBySourceRow.get(familyRow.__sourceResultRowNumber);
+        if (!everyoneRow) {
+            // Family is a strict subset of Everyone and milestone qualification
+            // is independent of mode. Everyone-only rows are valid, but every
+            // Family milestone must have the same source milestone in Everyone.
+            addError(
+                'data/family/official_result_news.csv',
+                familyRow.__rowNumber,
+                `Family News source at data/athlete_results.csv row ` +
+                `${familyRow.__sourceResultRowNumber} is missing from Everyone News.`
+            );
+            continue;
+        }
+
+        for (const field of officialNewsHeaders) {
+            if (ignoredFields.has(field)) {
+                continue;
+            }
+
+            if (!officialNewsCrossModeValuesEqual(field, familyRow[field], everyoneRow[field])) {
+                addError(
+                    'data/family/official_result_news.csv',
+                    familyRow.__rowNumber,
+                    `Cross-mode ${field} disagrees for data/athlete_results.csv row ` +
+                    `${familyRow.__sourceResultRowNumber}: family "${familyRow[field]}"; ` +
+                    `everyone "${everyoneRow[field]}".`
+                );
+            }
+        }
+    }
+}
+
+function officialNewsCrossModeValuesEqual(field, familyValue, everyoneValue) {
+    const familyText = String(familyValue || '').trim();
+    const everyoneText = String(everyoneValue || '').trim();
+
+    if (['Time', 'PreviousBestTime', 'TimeImprovement'].includes(field)) {
+        const familyMilliseconds = parseOfficialNewsTimeToMilliseconds(familyText);
+        const everyoneMilliseconds = parseOfficialNewsTimeToMilliseconds(everyoneText);
+
+        return familyMilliseconds === null || everyoneMilliseconds === null
+            ? familyText === everyoneText
+            : familyMilliseconds === everyoneMilliseconds;
+    }
+
+    if (field === 'TimeImprovementSeconds') {
+        const familyMilliseconds = parseOfficialNewsSecondsToMilliseconds(familyText);
+        const everyoneMilliseconds = parseOfficialNewsSecondsToMilliseconds(everyoneText);
+
+        return familyMilliseconds === null || everyoneMilliseconds === null
+            ? familyText === everyoneText
+            : familyMilliseconds === everyoneMilliseconds;
+    }
+
+    if ([
+        'AgeGradeExact',
+        'PreviousBestAgeGradeExact',
+        'AgeGradeImprovementExact'
+    ].includes(field)) {
+        const familyDecimal = parseOfficialNewsPercentDecimal(familyText);
+        const everyoneDecimal = parseOfficialNewsPercentDecimal(everyoneText);
+
+        return familyDecimal === null || everyoneDecimal === null
+            ? familyText === everyoneText
+            : officialNewsDecimalsEqual(familyDecimal, everyoneDecimal);
+    }
+
+    return familyText === everyoneText;
+}
+
+function officialNewsEventMatchesPublicExport(newsEvent, publicEvent) {
+    const newsValue = String(newsEvent || '').trim();
+    const publicValue = String(publicEvent || '').trim();
+
+    return newsValue === publicValue || (!newsValue && publicValue === 'UNKNOWN');
+}
+
+function validateOfficialNewsMilestoneFields(row, file) {
+    const type = String(row.MilestoneType || '').trim();
+    const isFirst = type === 'First Official Result';
+    const improvesTime = ['Raw-Time PB', 'Age Grade + Raw-Time PB'].includes(type);
+    const improvesAgeGrade = ['Age Grade PB', 'Age Grade + Raw-Time PB'].includes(type);
+    const timeFields = ['PreviousBestTime', 'TimeImprovementSeconds', 'TimeImprovement'];
+    const ageGradeFields = [
+        'PreviousBestAgeGrade',
+        'PreviousBestAgeGradeExact',
+        'AgeGradeImprovementExact',
+        'AgeGradeImprovement'
+    ];
+
+    if (isFirst) {
+        validateOfficialNewsBlankFields(row, file, [...timeFields, ...ageGradeFields]);
+        return;
+    }
+
+    if (improvesTime) {
+        validateOfficialNewsTimeImprovement(row, file);
+    } else {
+        validateOfficialNewsBlankFields(row, file, timeFields);
+    }
+
+    if (improvesAgeGrade) {
+        validateOfficialNewsAgeGradeImprovement(row, file);
+    } else {
+        validateOfficialNewsBlankFields(row, file, ageGradeFields);
+    }
+}
+
+function validateOfficialNewsBlankFields(row, file, fields) {
+    for (const field of fields) {
+        if (String(row[field] || '').trim()) {
+            addError(
+                file,
+                row.__rowNumber,
+                `${field} must be blank for MilestoneType "${row.MilestoneType}".`
+            );
+        }
+    }
+}
+
+function validateOfficialNewsTimeImprovement(row, file) {
+    validateOfficialNewsTime(
+        row.PreviousBestTime,
+        file,
+        row.__rowNumber,
+        'PreviousBestTime',
+        { required: true }
+    );
+    const currentMilliseconds = parseOfficialNewsTimeToMilliseconds(row.Time);
+    const previousMilliseconds = parseOfficialNewsTimeToMilliseconds(row.PreviousBestTime);
+    const improvementSeconds = parseOfficialNewsDecimal(
+        row.TimeImprovementSeconds,
+        file,
+        row.__rowNumber,
+        'TimeImprovementSeconds',
+        { required: true, positive: true, maximumDecimalPlaces: 3 }
+    );
+    const improvementMilliseconds = improvementSeconds === null
+        ? null
+        : parseOfficialNewsSecondsToMilliseconds(row.TimeImprovementSeconds);
+    const improvement = String(row.TimeImprovement || '').trim();
+    let formattedMilliseconds = null;
+
+    validateOfficialNewsTime(
+        improvement,
+        file,
+        row.__rowNumber,
+        'TimeImprovement',
+        { required: true }
+    );
+    formattedMilliseconds = parseOfficialNewsTimeToMilliseconds(improvement);
+
+    if (
+        currentMilliseconds !== null &&
+        previousMilliseconds !== null &&
+        improvementMilliseconds !== null &&
+        previousMilliseconds - currentMilliseconds !== improvementMilliseconds
+    ) {
+        const expectedMilliseconds = previousMilliseconds - currentMilliseconds;
+        addError(
+            file,
+            row.__rowNumber,
+            `TimeImprovementSeconds ${row.TimeImprovementSeconds} must equal PreviousBestTime minus Time ` +
+            `(${officialNewsMillisecondsToDecimalSeconds(expectedMilliseconds)}).`
+        );
+    }
+
+    if (
+        improvementMilliseconds !== null &&
+        formattedMilliseconds !== null &&
+        improvementMilliseconds !== formattedMilliseconds
+    ) {
+        addError(
+            file,
+            row.__rowNumber,
+            `TimeImprovement "${improvement}" does not equal TimeImprovementSeconds ${improvementSeconds}.`
+        );
+    }
+}
+
+function validateOfficialNewsAgeGradeImprovement(row, file) {
+    validateOfficialNewsDisplayAgeGrade(
+        row.PreviousBestAgeGrade,
+        file,
+        row.__rowNumber,
+        'PreviousBestAgeGrade',
+        { required: true }
+    );
+    const previousExact = parseOfficialNewsExactPercent(
+        row.PreviousBestAgeGradeExact,
+        file,
+        row.__rowNumber,
+        'PreviousBestAgeGradeExact',
+        { required: true, positive: true }
+    );
+    const currentExact = parseOfficialNewsExactPercent(
+        row.AgeGradeExact,
+        file,
+        row.__rowNumber,
+        'AgeGradeExact',
+        { required: true, positive: true, reportFormat: false }
+    );
+    const improvementExact = parseOfficialNewsExactPercent(
+        row.AgeGradeImprovementExact,
+        file,
+        row.__rowNumber,
+        'AgeGradeImprovementExact',
+        { required: true, positive: true }
+    );
+    const previousDisplay = parseOfficialNewsDisplayPercent(row.PreviousBestAgeGrade);
+
+    if (
+        previousExact !== null &&
+        previousDisplay !== null &&
+        !officialNewsRoundsTo(previousExact, previousDisplay, 1)
+    ) {
+        addError(
+            file,
+            row.__rowNumber,
+            `PreviousBestAgeGradeExact "${row.PreviousBestAgeGradeExact}" does not round to PreviousBestAgeGrade "${row.PreviousBestAgeGrade}" at one decimal place.`
+        );
+    }
+
+    if (
+        currentExact !== null &&
+        previousExact !== null &&
+        improvementExact !== null &&
+        !officialNewsDecimalsEqual(
+            officialNewsSubtractDecimals(currentExact, previousExact),
+            improvementExact
+        )
+    ) {
+        addError(
+            file,
+            row.__rowNumber,
+            `AgeGradeImprovementExact "${row.AgeGradeImprovementExact}" must equal AgeGradeExact minus PreviousBestAgeGradeExact.`
+        );
+    }
+
+    if (improvementExact !== null) {
+        const expectedDisplay = officialNewsAgeGradeImprovementDisplay(improvementExact);
+        if (String(row.AgeGradeImprovement || '').trim() !== expectedDisplay) {
+            addError(
+                file,
+                row.__rowNumber,
+                `AgeGradeImprovement "${row.AgeGradeImprovement}" must be "${expectedDisplay}" for exact improvement ${row.AgeGradeImprovementExact}.`
+            );
+        }
+    } else if (!String(row.AgeGradeImprovement || '').trim()) {
+        addError(file, row.__rowNumber, 'AgeGradeImprovement is required.');
+    }
+}
+
+function validateOfficialNewsRankContext(
+    row,
+    file,
+    [beforeField, afterField, gainField, medalEntryField],
+    options = {}
+) {
+    const beforeText = String(row[beforeField] || '').trim();
+    const afterText = String(row[afterField] || '').trim();
+    const gainText = String(row[gainField] || '').trim();
+    const medalEntryText = String(row[medalEntryField] || '').trim();
+    const medalEntryIsAllowed = !medalEntryText || officialNewsMedalEntries.includes(medalEntryText);
+
+    if (!medalEntryIsAllowed) {
+        addError(
+            file,
+            row.__rowNumber,
+            `${medalEntryField} "${medalEntryText}" must be blank or one of: ${officialNewsMedalEntries.join(', ')}.`
+        );
+    }
+
+    if (options.tableAvailable === false) {
+        for (const field of [beforeField, afterField, gainField, medalEntryField]) {
+            if (String(row[field] || '').trim()) {
+                addError(
+                    file,
+                    row.__rowNumber,
+                    `${field} must be blank because 1 Mile has no dedicated Official distance leaderboard.`
+                );
+            }
+        }
+        return;
+    }
+
+    const before = parseOfficialNewsInteger(
+        beforeText,
+        file,
+        row.__rowNumber,
+        beforeField,
+        { minimum: 1 }
+    );
+    const after = parseOfficialNewsInteger(
+        afterText,
+        file,
+        row.__rowNumber,
+        afterField,
+        { minimum: 1 }
+    );
+
+    if (
+        medalEntryIsAllowed &&
+        after !== null &&
+        (!beforeText || before !== null)
+    ) {
+        const afterMedal = officialNewsMedalForRank(after);
+        const enteredMedalPosition = afterMedal && (!beforeText || before > 3);
+        const expectedMedalEntry = enteredMedalPosition ? afterMedal : '';
+
+        if (medalEntryText !== expectedMedalEntry) {
+            if (expectedMedalEntry) {
+                addError(
+                    file,
+                    row.__rowNumber,
+                    `${medalEntryField} must be "${expectedMedalEntry}" because the result entered a medal position at Rank ${after}.`
+                );
+            } else {
+                addError(
+                    file,
+                    row.__rowNumber,
+                    `${medalEntryField} must be blank because the result did not enter a new medal position.`
+                );
+            }
+        }
+    }
+
+    // The separately validated 12-file Official matrix makes all four table
+    // contexts available for every supported News distance. The contract's
+    // all-blank "table unavailable" state is therefore not valid in this
+    // repository configuration.
+    if (!afterText) {
+        addError(
+            file,
+            row.__rowNumber,
+            `${afterField} is required because the complete Official leaderboard matrix is required.`
+        );
+    }
+
+    if (!beforeText) {
+        if (gainText) {
+            addError(file, row.__rowNumber, `${gainField} must be blank when ${beforeField} is blank.`);
+        }
+        return;
+    }
+
+    const gain = parseOfficialNewsInteger(
+        gainText,
+        file,
+        row.__rowNumber,
+        gainField,
+        { required: true, minimum: 0 }
+    );
+
+    if (before !== null && after !== null && gain !== null) {
+        const expectedGain = before - after;
+        if (expectedGain < 0) {
+            addError(
+                file,
+                row.__rowNumber,
+                `${afterField} ${after} must not be worse than ${beforeField} ${before}.`
+            );
+        }
+        if (gain !== expectedGain) {
+            addError(
+                file,
+                row.__rowNumber,
+                `${gainField} ${gain} must equal ${beforeField} minus ${afterField} (${expectedGain}).`
+            );
+        }
+    }
+}
+
+function officialNewsMedalForRank(rank) {
+    // Rank is workbook-owned competition rank. Tied athletes therefore carry
+    // the same rank and medal; skipped competition ranks award no medal. This
+    // consistency check never uses row position or invents a tie-break.
+    return {
+        1: 'Gold',
+        2: 'Silver',
+        3: 'Bronze'
+    }[rank] || '';
+}
+
+function validateOfficialNewsMilestoneChains(objects, file) {
+    const histories = new Map();
+
+    // The file is newest first; replay each history oldest first. This verifies
+    // the denormalized previous-best fields without deriving any rank.
+    for (const row of [...objects].reverse()) {
+        const athleteId = String(row.AthleteID || '').trim();
+        const distance = String(row.Distance || '').trim();
+        const key = `${athleteId}|${distance}`;
+        const type = String(row.MilestoneType || '').trim();
+        const currentTime = String(row.Time || '').trim();
+        const currentMilliseconds = parseOfficialNewsTimeToMilliseconds(currentTime);
+        const currentExact = parseOfficialNewsExactPercent(
+            row.AgeGradeExact,
+            file,
+            row.__rowNumber,
+            'AgeGradeExact',
+            { reportFormat: false }
+        );
+        const state = histories.get(key);
+
+        if (!state) {
+            if (type !== 'First Official Result') {
+                addError(
+                    file,
+                    row.__rowNumber,
+                    `The oldest News row for ${athleteId} ${distance} must be First Official Result.`
+                );
+            }
+            validateOfficialNewsFirstSourceDate(row, file);
+            histories.set(key, {
+                bestTime: currentTime,
+                bestTimeMilliseconds: currentMilliseconds,
+                bestAgeGrade: String(row.AgeGrade || '').trim(),
+                bestAgeGradeExact: currentExact
+            });
+            continue;
+        }
+
+        if (type === 'First Official Result') {
+            addError(file, row.__rowNumber, `Duplicate First Official Result for ${athleteId} ${distance}.`);
+            continue;
+        }
+
+        const improvesTime = ['Raw-Time PB', 'Age Grade + Raw-Time PB'].includes(type);
+        const improvesAgeGrade = ['Age Grade PB', 'Age Grade + Raw-Time PB'].includes(type);
+
+        if (currentMilliseconds !== null && state.bestTimeMilliseconds !== null) {
+            if (improvesTime) {
+                const previousBestMilliseconds = parseOfficialNewsTimeToMilliseconds(row.PreviousBestTime);
+                if (previousBestMilliseconds !== state.bestTimeMilliseconds) {
+                    addError(
+                        file,
+                        row.__rowNumber,
+                        `PreviousBestTime "${row.PreviousBestTime}" does not match the prior exported raw-time best "${state.bestTime}".`
+                    );
+                }
+                if (currentMilliseconds >= state.bestTimeMilliseconds) {
+                    addError(file, row.__rowNumber, 'Raw-Time PB must be strictly faster than the prior exported best.');
+                } else {
+                    state.bestTime = currentTime;
+                    state.bestTimeMilliseconds = currentMilliseconds;
+                }
+            } else if (currentMilliseconds < state.bestTimeMilliseconds) {
+                addError(file, row.__rowNumber, 'MilestoneType omits a strict raw-time improvement.');
+            }
+        }
+
+        if (currentExact !== null && state.bestAgeGradeExact !== null) {
+            if (improvesAgeGrade) {
+                if (String(row.PreviousBestAgeGrade || '').trim() !== state.bestAgeGrade) {
+                    addError(
+                        file,
+                        row.__rowNumber,
+                        `PreviousBestAgeGrade "${row.PreviousBestAgeGrade}" does not match the prior exported display best "${state.bestAgeGrade}".`
+                    );
+                }
+                const previousExact = parseOfficialNewsExactPercent(
+                    row.PreviousBestAgeGradeExact,
+                    file,
+                    row.__rowNumber,
+                    'PreviousBestAgeGradeExact',
+                    { reportFormat: false }
+                );
+                if (
+                    previousExact !== null &&
+                    !officialNewsDecimalsEqual(previousExact, state.bestAgeGradeExact)
+                ) {
+                    addError(
+                        file,
+                        row.__rowNumber,
+                        `PreviousBestAgeGradeExact "${row.PreviousBestAgeGradeExact}" does not match the prior exported exact best.`
+                    );
+                }
+                if (officialNewsCompareDecimals(currentExact, state.bestAgeGradeExact) <= 0) {
+                    addError(file, row.__rowNumber, 'Age Grade PB must be a strict full-precision improvement.');
+                } else {
+                    state.bestAgeGrade = String(row.AgeGrade || '').trim();
+                    state.bestAgeGradeExact = currentExact;
+                }
+            } else if (officialNewsCompareDecimals(currentExact, state.bestAgeGradeExact) > 0) {
+                addError(file, row.__rowNumber, 'MilestoneType omits a strict full-precision age-grade improvement.');
+            }
+        }
+    }
+}
+
+function validateOfficialNewsFirstSourceDate(row, file) {
+    const resultDate = parseUkDate(String(row.ResultDate || '').trim());
+    if (!resultDate) {
+        return;
+    }
+
+    const hasEarlierPublicResult = athleteObjects.some(result => {
+        if (
+            String(result.AthleteID || '').trim() !== String(row.AthleteID || '').trim() ||
+            String(result.TimeClass || '').trim() !== 'Official' ||
+            canonicalDistanceLabel(result.Distance) !== String(row.Distance || '').trim()
+        ) {
+            return false;
+        }
+
+        const sourceDate = parseUkDate(String(result.Date || '').trim());
+        return sourceDate && sourceDate < resultDate;
+    });
+
+    if (hasEarlierPublicResult) {
+        addError(
+            file,
+            row.__rowNumber,
+            'First Official Result has an earlier public Official result for the same athlete and canonical distance.'
+        );
+    }
+}
+
+function validateOfficialNewsDisplayAgeGrade(value, file, rowNumber, column, options = {}) {
+    const text = String(value || '').trim();
+
+    if (!text) {
+        if (options.required) {
+            addError(file, rowNumber, `${column} is required.`);
+        }
+        return;
+    }
+
+    if (!/^\d+\.\d%$/.test(text) || Number(text.slice(0, -1)) <= 0) {
+        addError(file, rowNumber, `${column} "${text}" must be a positive percentage with one decimal place.`);
+    }
+}
+
+function validateOfficialNewsTime(value, file, rowNumber, column, options = {}) {
+    const text = String(value || '').trim();
+
+    if (!text) {
+        if (options.required) {
+            addError(file, rowNumber, `${column} is required.`);
+        }
+        return;
+    }
+
+    if (!/^\d{2,3}:[0-5]\d:[0-5]\d(?:\.\d{1,3})?$/.test(text)) {
+        addError(file, rowNumber, `${column} "${text}" must use HH:MM:SS with optional .fff.`);
+    }
+}
+
+function parseOfficialNewsTimeToMilliseconds(value) {
+    const text = String(value || '').trim();
+    if (!/^\d{2,3}:[0-5]\d:[0-5]\d(?:\.\d{1,3})?$/.test(text)) {
+        return null;
+    }
+
+    const [hoursText, minutesText, secondsText] = text.split(':');
+    const [wholeSeconds, fraction = ''] = secondsText.split('.');
+
+    return (
+        (Number(hoursText) * 3600 * 1000) +
+        (Number(minutesText) * 60 * 1000) +
+        (Number(wholeSeconds) * 1000) +
+        Number(fraction.padEnd(3, '0') || 0)
+    );
+}
+
+function officialNewsTimeMatchesPublicDisplay(newsMilliseconds, publicTime) {
+    const publicSeconds = parseTimeToSeconds(publicTime);
+
+    return newsMilliseconds !== null &&
+        publicSeconds !== null &&
+        Math.floor((newsMilliseconds + 500) / 1000) === publicSeconds;
+}
+
+function parseOfficialNewsSecondsToMilliseconds(value) {
+    const text = String(value || '').trim();
+    const match = text.match(/^(0|[1-9]\d*)(?:\.(\d{1,3}))?$/);
+
+    if (!match) {
+        return null;
+    }
+
+    const wholeSeconds = Number(match[1]);
+    const fractionalMilliseconds = Number((match[2] || '').padEnd(3, '0') || 0);
+    const milliseconds = (wholeSeconds * 1000) + fractionalMilliseconds;
+
+    return Number.isSafeInteger(milliseconds) ? milliseconds : null;
+}
+
+function officialNewsMillisecondsToDecimalSeconds(milliseconds) {
+    const sign = milliseconds < 0 ? '-' : '';
+    const absolute = Math.abs(milliseconds);
+    const wholeSeconds = Math.floor(absolute / 1000);
+    const fraction = String(absolute % 1000).padStart(3, '0').replace(/0+$/, '');
+
+    return `${sign}${wholeSeconds}${fraction ? `.${fraction}` : ''}`;
+}
+
+function parseOfficialNewsDisplayPercent(value) {
+    const text = String(value || '').trim();
+    return /^\d+\.\d%$/.test(text)
+        ? parseOfficialNewsDecimalValue(text.slice(0, -1))
+        : null;
+}
+
+function parseOfficialNewsExactPercent(value, file, rowNumber, column, options = {}) {
+    const text = String(value || '').trim();
+
+    if (!text) {
+        if (options.required) {
+            addError(file, rowNumber, `${column} is required.`);
+        }
+        return null;
+    }
+
+    if (!/^(?:0|[1-9]\d*)(?:\.\d+)?%$/.test(text)) {
+        if (options.reportFormat !== false) {
+            addError(file, rowNumber, `${column} "${text}" must be a decimal percentage including %.`);
+        }
+        return null;
+    }
+
+    const decimal = parseOfficialNewsPercentDecimal(text);
+    if (decimal === null || (options.positive && officialNewsCompareDecimals(decimal, officialNewsZeroDecimal()) <= 0)) {
+        if (options.reportFormat !== false) {
+            addError(file, rowNumber, `${column} "${text}" must be positive.`);
+        }
+        return null;
+    }
+
+    return decimal;
+}
+
+function parseOfficialNewsInteger(value, file, rowNumber, column, options = {}) {
+    const text = String(value || '').trim();
+
+    if (!text) {
+        if (options.required) {
+            addError(file, rowNumber, `${column} is required.`);
+        }
+        return null;
+    }
+
+    if (!/^(0|[1-9]\d*)$/.test(text)) {
+        addError(file, rowNumber, `${column} "${text}" must be a non-negative integer.`);
+        return null;
+    }
+
+    const number = Number(text);
+    if (!Number.isSafeInteger(number) || number < (options.minimum ?? 0)) {
+        addError(
+            file,
+            rowNumber,
+            `${column} "${text}" must be an integer of at least ${options.minimum ?? 0}.`
+        );
+        return null;
+    }
+
+    return number;
+}
+
+function parseOfficialNewsDecimal(value, file, rowNumber, column, options = {}) {
+    const text = String(value || '').trim();
+
+    if (!text) {
+        if (options.required) {
+            addError(file, rowNumber, `${column} is required.`);
+        }
+        return null;
+    }
+
+    const decimalPattern = new RegExp(`^(?:0|[1-9]\\d*)(?:\\.\\d{1,${options.maximumDecimalPlaces ?? 3}})?$`);
+    if (!decimalPattern.test(text)) {
+        addError(
+            file,
+            rowNumber,
+            `${column} "${text}" must be a non-negative decimal with at most ${options.maximumDecimalPlaces ?? 3} places.`
+        );
+        return null;
+    }
+
+    const number = Number(text);
+    if (!Number.isFinite(number) || (options.positive && number <= 0)) {
+        addError(file, rowNumber, `${column} "${text}" must be positive.`);
+        return null;
+    }
+
+    return number;
+}
+
+function officialNewsRoundsTo(exact, display, decimalPlaces) {
+    return officialNewsDecimalsEqual(
+        officialNewsRoundDecimal(exact, decimalPlaces),
+        display
+    );
+}
+
+function parseOfficialNewsPercentDecimal(value) {
+    const text = String(value || '').trim();
+
+    if (!text.endsWith('%')) {
+        return null;
+    }
+
+    return parseOfficialNewsDecimalValue(text.slice(0, -1));
+}
+
+function parseOfficialNewsDecimalValue(value) {
+    const text = String(value || '').trim();
+    const match = text.match(/^(0|[1-9]\d*)(?:\.(\d+))?$/);
+
+    if (!match) {
+        return null;
+    }
+
+    const fraction = match[2] || '';
+    return {
+        coefficient: BigInt(`${match[1]}${fraction}`),
+        scale: fraction.length
+    };
+}
+
+function officialNewsZeroDecimal() {
+    return { coefficient: 0n, scale: 0 };
+}
+
+function officialNewsCompareDecimals(left, right) {
+    const scale = Math.max(left.scale, right.scale);
+    const leftCoefficient = officialNewsScaledCoefficient(left, scale);
+    const rightCoefficient = officialNewsScaledCoefficient(right, scale);
+
+    if (leftCoefficient < rightCoefficient) return -1;
+    if (leftCoefficient > rightCoefficient) return 1;
+    return 0;
+}
+
+function officialNewsDecimalsEqual(left, right) {
+    return officialNewsCompareDecimals(left, right) === 0;
+}
+
+function officialNewsSubtractDecimals(left, right) {
+    const scale = Math.max(left.scale, right.scale);
+    return {
+        coefficient:
+            officialNewsScaledCoefficient(left, scale) -
+            officialNewsScaledCoefficient(right, scale),
+        scale
+    };
+}
+
+function officialNewsScaledCoefficient(decimal, scale) {
+    return decimal.coefficient * (10n ** BigInt(scale - decimal.scale));
+}
+
+function officialNewsRoundDecimal(decimal, decimalPlaces) {
+    if (decimal.scale <= decimalPlaces) {
+        return {
+            coefficient: officialNewsScaledCoefficient(decimal, decimalPlaces),
+            scale: decimalPlaces
+        };
+    }
+
+    const divisor = 10n ** BigInt(decimal.scale - decimalPlaces);
+    const negative = decimal.coefficient < 0n;
+    const magnitude = negative ? -decimal.coefficient : decimal.coefficient;
+    let roundedMagnitude = magnitude / divisor;
+    const remainder = magnitude % divisor;
+
+    if ((remainder * 2n) >= divisor) {
+        roundedMagnitude += 1n;
+    }
+
+    return {
+        coefficient: negative ? -roundedMagnitude : roundedMagnitude,
+        scale: decimalPlaces
+    };
+}
+
+function officialNewsAgeGradeImprovementDisplay(improvementExact) {
+    const rounded = officialNewsRoundDecimal(improvementExact, 2);
+    if (rounded.coefficient === 0n) {
+        return '+<0.01 pp';
+    }
+
+    const whole = rounded.coefficient / 100n;
+    const fraction = String(rounded.coefficient % 100n).padStart(2, '0');
+    return `+${whole}.${fraction} pp`;
 }
 
 function validateLeaderboardDisplayLabels(row, siteMode, file) {

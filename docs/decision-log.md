@@ -227,6 +227,94 @@ Unknown historical details are labelled rather than inferred.
   must not infer missing history, synthetic vacancies, prior holders, or
   Current/12-Month crown events.
 
+## Official Results News is a workbook-owned historical replay
+
+- **Status:** Accepted and implemented locally; approved 72-file data bundle
+  promoted and validated; medal-entry extension complete; not released
+- **Date:** 23 August 2026
+- **Decision:** Excel/VBA independently reconstructs Family and Everyone
+  Official-result milestone history from the presently valid result set. A
+  milestone is a first Official result at one of the six contracted distances,
+  a strict full-precision age-grade personal best at that athlete/distance, a
+  strict Official raw-time personal best at that athlete/distance, or both.
+  Genuine source-time precision is preserved through milliseconds for raw
+  times and improvements, formatted `HH:MM:SS[.fff]`; the coarser public
+  `athlete_results.csv` time must not force News values to whole seconds.
+  Same-day replay is ascending result date then authoritative `SourceRow`.
+  Current rank snapshots apply expiries before the result and use the
+  workbook's strict rolling rule, `result date > D - 365 days` and
+  `result date <= D`; All-Time snapshots contain every earlier replayed
+  Official result. The browser displays the exported milestone, deltas, and
+  before/after ranks without recalculating them. Athlete, year, and distance
+  filters and a latest-first `Show older` control may select and progressively
+  reveal already exported rows while preserving `SortOrder`; they remain
+  presentation behavior and do not create a second replay or ranking path.
+  Individual cards may compactly arrange the same exported content as a
+  desktop left-to-right Result, PB improvement or baseline, and Championship
+  movement flow, then stack those stages in the same order on mobile.
+  Connector arrows are decorative and carry no information unavailable from
+  the semantic content order. A result entering a medal position is also
+  workbook-owned. Four context-aligned fields independently export blank,
+  `Gold`, `Silver`, or `Bronze` for Current Distance, Current Overall, All Time
+  Distance, and All Time Overall. They populate only for a crossing from
+  unranked or Rank 4+ into Rank 1/2/3; movement within an existing medal
+  position is not a new entry. Competition rank supplies tie semantics, and
+  the browser may celebrate only the exported values rather than inferring a
+  medal from before/after ranks.
+- **Rationale:** Exact milestone selection and historical positions depend on
+  full-precision age grades, source order, site eligibility, the workbook's
+  rolling-window rule, and the same ranking logic as the live Official tables.
+  Public result rows and current leaderboard snapshots do not carry enough
+  information to reproduce those decisions safely. Although the News row
+  carries before/after ranks for display, having the browser convert them into
+  medals would create a second championship-award rule. Four aligned enums are
+  the smallest robust export shape that preserves which of several simultaneous
+  contexts changed and which medal each one entered.
+- **Consequences:** The first draft adds required site-specific
+  `data/family/official_result_news.csv` and
+  `data/everyone/official_result_news.csv` exports. The workbook draft produced
+  a staged 72-file bundle with authoritative row counts of 43 for Family and 64
+  for Everyone. The staged validator passed, and reconciliation against tracked
+  data found only the two new News CSVs plus the manifest. After explicit
+  approval, that bundle became the tracked 72-file contract and passed the
+  complete repository, artifact, browser, and responsive validation suite.
+  Corrections, deactivation, or eligibility changes may legitimately rewrite
+  older News because this is a replay of current valid history, not an archive
+  of previously published pages. Current-window expiries and administrative
+  changes do not create standalone entries. The workbook must compare the
+  replay's final Current and All-Time state with the same bundle's complete
+  Official leaderboards before it may write the manifest. The exact schema,
+  blank rules, display behavior, and acceptance plan are in
+  [Official Result News Contract](official-news-contract.md). Promotion and
+  local validation do not publish the feature; release remains a separate
+  explicit approval. Filtering and progressive reveal require no workbook or
+  schema change: clearing filters and revealing all batches must reproduce the
+  complete selected-mode export in its authoritative order. Compact card flow
+  likewise changes no export, calculation, milestone, improvement, or rank;
+  it only changes how each already exported row uses the available width. The
+  completed responsive validation covered both modes at 1440 x 900, a 720px
+  intermediate width, and 390 x 844, with reviewed screenshots and no
+  overflow. All tested real-data cards remained within the 320px desktop and
+  850px mobile height ceilings, making the visible history about 55% shorter on
+  desktop and 37% shorter on mobile than the preceding layout. The medal-entry
+  extension expands the News header from 32 to 36 columns without adding
+  another public file or changing milestone selection. One result may carry
+  several medal entries, Family and Everyone may differ, and 1 Mile remains
+  Overall-only. The page uses an explicit `Medal breakthrough!` callout and
+  labelled per-context medal badges, so colour is not the only signal and the
+  wording does not claim a permanent award. The refreshed staged 72-file export
+  passed validation; reconciliation found only the two News CSVs meaningfully
+  changed and preserved every prior News fact, rank, and delta. Atomic promotion
+  and tracked-data validation pass. The promoted rows contain 24 Family cards
+  with 59 medal-entry contexts and 34 Everyone cards with 77. The focused
+  synthetic regression suite and complete `pnpm test` suite pass. After current
+  `main`, including the Gallery baseline, was integrated locally, the combined
+  114-file artifact and both-mode desktop/mobile browser coverage also passed.
+  Refreshed News and Gallery screenshots were manually reviewed without
+  overflow. Merge commit `65190fe` is pushed to Pull Request #68; GitHub reports
+  it clean and mergeable, and both the required static-site check and combined
+  Deploy Preview passed. This is not merged or released.
+
 ## Production usage analytics are aggregate and cookie-free
 
 - **Status:** Accepted; scope of the third-party-runtime prohibition clarified

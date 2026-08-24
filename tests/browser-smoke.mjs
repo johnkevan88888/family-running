@@ -10,6 +10,44 @@ const siteRoot = process.env.SITE_ROOT
     : repoRoot;
 const artifactsDir = path.join(repoRoot, 'test-artifacts', 'screenshots');
 const modes = ['family', 'everyone'];
+const newsExportHeaders = [
+    'SortOrder',
+    'SourceRow',
+    'AthleteID',
+    'AthleteName',
+    'ResultDate',
+    'Distance',
+    'Time',
+    'AgeGrade',
+    'AgeGradeExact',
+    'Event',
+    'TimeClass',
+    'MilestoneType',
+    'PreviousBestTime',
+    'TimeImprovementSeconds',
+    'TimeImprovement',
+    'PreviousBestAgeGrade',
+    'PreviousBestAgeGradeExact',
+    'AgeGradeImprovementExact',
+    'AgeGradeImprovement',
+    'CurrentDistanceRankBefore',
+    'CurrentDistanceRankAfter',
+    'CurrentDistancePlacesGained',
+    'CurrentDistanceMedalEntry',
+    'CurrentOverallRankBefore',
+    'CurrentOverallRankAfter',
+    'CurrentOverallPlacesGained',
+    'CurrentOverallMedalEntry',
+    'AllTimeDistanceRankBefore',
+    'AllTimeDistanceRankAfter',
+    'AllTimeDistancePlacesGained',
+    'AllTimeDistanceMedalEntry',
+    'AllTimeOverallRankBefore',
+    'AllTimeOverallRankAfter',
+    'AllTimeOverallPlacesGained',
+    'AllTimeOverallMedalEntry',
+    'ExportBundleID'
+];
 // `isMobile` makes Chromium honour the page's meta viewport tag. Without it a
 // 390px context lays out at 390px regardless, so mobile assertions and
 // screenshots would not reflect a real phone. A page missing the tag lays out at
@@ -31,6 +69,7 @@ const viewports = [
     }
 ];
 const updateScreenshots = process.argv.includes('--update-screenshots');
+const newsBatchSize = 12;
 
 const { chromium } = loadPlaywright();
 await fs.mkdir(artifactsDir, { recursive: true });
@@ -52,6 +91,10 @@ try {
         }
     }
 
+    await runNewsPageTests(browser);
+    await runNewsIntermediateLayoutTests(browser);
+    await runNewsEmptyAndUnavailableTests(browser);
+    await runNewsInvalidSiteFallbackTest(browser);
     await runCrownHistoryEdgeCaseTests(browser);
     await runAbsoluteRecordsEdgeCaseTests(browser);
     await runHostileExportedValueTests(browser);
@@ -269,6 +312,1505 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
 
         await context.close();
     }
+}
+
+// The News export is workbook-owned. Exercise the exact public CSV contract in
+// memory so every presentation state, the longer-history controls, navigation,
+// responsive layout, and screenshots are deterministic without inventing a
+// browser-side history calculation.
+async function runNewsPageTests(browserInstance) {
+    for (const mode of modes) {
+        for (const viewport of viewports) {
+            const label = `${mode}/${viewport.name} News`;
+            const selectedFile = `data/${mode}/official_result_news.csv`;
+            const otherMode = mode === 'family' ? 'everyone' : 'family';
+            const otherFile = `data/${otherMode}/official_result_news.csv`;
+            const fixture = newsFixture(mode);
+            const context = await browserInstance.newContext(viewport.contextOptions);
+            const page = await context.newPage();
+            const requestedPaths = [];
+            const consoleErrors = [];
+            const pageErrors = [];
+            const sameOriginFailures = [];
+
+            page.setDefaultTimeout(10000);
+            page.setDefaultNavigationTimeout(10000);
+            page.on('request', request => {
+                if (isSameOrigin(request.url())) {
+                    requestedPaths.push(sameOriginRequestPath(request.url()));
+                }
+            });
+            page.on('console', message => {
+                const locationUrl = message.location().url;
+
+                if (message.type() === 'error' && (!locationUrl || isSameOrigin(locationUrl))) {
+                    consoleErrors.push(message.text());
+                }
+            });
+            page.on('pageerror', error => pageErrors.push(error.message));
+            page.on('requestfailed', request => {
+                if (isSameOrigin(request.url())) {
+                    sameOriginFailures.push(
+                        `${request.url()} failed: ${request.failure()?.errorText || 'unknown error'}`
+                    );
+                }
+            });
+            page.on('response', response => {
+                if (isSameOrigin(response.url()) && response.status() >= 400) {
+                    sameOriginFailures.push(`${response.url()} returned HTTP ${response.status()}`);
+                }
+            });
+
+            await page.route(`**/${selectedFile}`, route => route.fulfill({
+                status: 200,
+                contentType: 'text/csv; charset=utf-8',
+                body: fixture.csv
+            }));
+
+            try {
+                await page.goto(`${preview.baseUrl}/news.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+                await waitForRenderedNews(page, mode);
+                await waitForNetworkToSettle(page);
+
+                await assertPrimaryNavigation(page, mode, viewport, 'news');
+                await assertNoModeSwitch(page, mode, viewport, 'news');
+                await assertResponsiveViewport(page, viewport, label);
+                await assertNoHorizontalOverflow(page, label);
+                await assertBundleMetadataHidden(page, label);
+                await assertNewsFixtureRendered(page, mode, viewport, fixture);
+
+                const newsRequests = requestedPaths.filter(path => path.endsWith('/official_result_news.csv'));
+                if (newsRequests.length !== 1 || newsRequests[0] !== selectedFile) {
+                    failures.push(
+                        `${label}: requested News exports ${newsRequests.join(', ') || '(none)'}, expected only ${selectedFile}.`
+                    );
+                }
+                if (requestedPaths.includes(otherFile)) {
+                    failures.push(`${label}: requested the other mode's News export ${otherFile}.`);
+                }
+                if (requestedPaths.includes('data/athlete_results.csv')) {
+                    failures.push(`${label}: requested athlete_results.csv as a News fallback.`);
+                }
+
+                await page.screenshot({
+                    path: path.join(artifactsDir, `${mode}-news-${viewport.name}.png`),
+                    fullPage: true
+                });
+
+                if (updateScreenshots) {
+                    console.log(`Updated ${mode} ${viewport.name} News screenshot`);
+                }
+            } catch (error) {
+                failures.push(`${label}: ${error.message}`);
+            } finally {
+                for (const error of consoleErrors) {
+                    failures.push(`${label}: console error: ${error}`);
+                }
+                for (const error of pageErrors) {
+                    failures.push(`${label}: JavaScript exception: ${error}`);
+                }
+                for (const error of sameOriginFailures) {
+                    failures.push(`${label}: same-origin request failure: ${error}`);
+                }
+
+                await context.close();
+            }
+        }
+    }
+}
+
+async function runNewsIntermediateLayoutTests(browserInstance) {
+    const contextOptions = { viewport: { width: 720, height: 900 } };
+
+    for (const mode of modes) {
+        const label = `${mode}/intermediate News flow`;
+        const selectedFile = `data/${mode}/official_result_news.csv`;
+        const fixture = newsFixture(mode);
+        const context = await browserInstance.newContext(contextOptions);
+        const page = await context.newPage();
+        const consoleErrors = [];
+        const pageErrors = [];
+
+        page.setDefaultTimeout(10000);
+        page.setDefaultNavigationTimeout(10000);
+        page.on('console', message => {
+            const locationUrl = message.location().url;
+
+            if (message.type() === 'error' && (!locationUrl || isSameOrigin(locationUrl))) {
+                consoleErrors.push(message.text());
+            }
+        });
+        page.on('pageerror', error => pageErrors.push(error.message));
+        await page.route(`**/${selectedFile}`, route => route.fulfill({
+            status: 200,
+            contentType: 'text/csv; charset=utf-8',
+            body: fixture.csv
+        }));
+
+        try {
+            await page.goto(`${preview.baseUrl}/news.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+            await waitForRenderedNews(page, mode);
+            await waitForNetworkToSettle(page);
+            await assertNoHorizontalOverflow(page, label);
+            await assertNewsMedalGeometry(page, label);
+
+            const layouts = await page.locator('.news-timeline > .news-timeline-item .news-flow')
+                .evaluateAll(flows => flows.map(flow => {
+                    const rect = target => {
+                        const bounds = target.getBoundingClientRect();
+                        return {
+                            top: bounds.top,
+                            right: bounds.right,
+                            bottom: bounds.bottom,
+                            left: bounds.left
+                        };
+                    };
+                    const result = flow.querySelector(':scope > .news-flow-result');
+                    const improvement = flow.querySelector(':scope > .news-flow-improvement');
+                    const ranks = flow.querySelector(':scope > .news-flow-ranks');
+                    const arrows = [...flow.querySelectorAll(':scope > .news-flow-arrow')];
+
+                    return {
+                        flow: rect(flow),
+                        result: rect(result),
+                        improvement: rect(improvement),
+                        ranks: rect(ranks),
+                        arrows: arrows.map(rect),
+                        secondArrowTransform: arrows[1]
+                            ? getComputedStyle(arrows[1]).transform
+                            : 'missing'
+                    };
+                }));
+
+            if (layouts.length !== newsBatchSize) {
+                failures.push(`${label}: rendered ${layouts.length} compact flows, expected ${newsBatchSize}.`);
+            }
+
+            for (let index = 0; index < layouts.length; index += 1) {
+                const layout = layouts[index];
+                const firstRowBottom = Math.max(layout.result.bottom, layout.improvement.bottom);
+                const resultAndImprovementShareRow =
+                    layout.result.left < layout.improvement.left &&
+                    Math.max(layout.result.top, layout.improvement.top) <
+                        Math.min(layout.result.bottom, layout.improvement.bottom);
+                const firstArrowLeadsAcross =
+                    layout.arrows.length === 2 &&
+                    layout.arrows[0].left >= layout.result.right - 2 &&
+                    layout.arrows[0].right <= layout.improvement.left + 2;
+                const secondArrowLeadsDown =
+                    layout.arrows.length === 2 &&
+                    layout.arrows[1].top >= firstRowBottom - 2 &&
+                    layout.arrows[1].bottom <= layout.ranks.top + 2 &&
+                    layout.secondArrowTransform !== 'none';
+                const ranksFollowBelow =
+                    layout.ranks.top > Math.max(layout.result.top, layout.improvement.top) &&
+                    Math.abs(layout.ranks.left - layout.flow.left) <= 2 &&
+                    Math.abs(layout.ranks.right - layout.flow.right) <= 2;
+
+                if (!resultAndImprovementShareRow || !firstArrowLeadsAcross) {
+                    failures.push(
+                        `${label}: card ${index + 1} did not keep Result -> improvement on its first row.`
+                    );
+                }
+                if (!secondArrowLeadsDown || !ranksFollowBelow) {
+                    failures.push(
+                        `${label}: card ${index + 1} did not lead down from improvement to the ranks row.`
+                    );
+                }
+            }
+
+            const timelineArrowContent = await page.locator('.news-timeline-item').first().evaluate(item =>
+                getComputedStyle(item, '::after').content
+            );
+            const unquotedTimelineArrowContent = String(timelineArrowContent || '')
+                .replace(/^(["'])(.*)\1$/, '$2');
+
+            if (timelineArrowContent !== 'none' && unquotedTimelineArrowContent !== '') {
+                failures.push(
+                    `${label}: timeline connector exposed generated text content ${timelineArrowContent}.`
+                );
+            }
+        } catch (error) {
+            failures.push(`${label}: ${error.message}`);
+        } finally {
+            for (const error of consoleErrors) {
+                failures.push(`${label}: console error: ${error}`);
+            }
+            for (const error of pageErrors) {
+                failures.push(`${label}: JavaScript exception: ${error}`);
+            }
+
+            await context.close();
+        }
+    }
+}
+
+async function assertNewsFixtureRendered(page, mode, viewport, fixture) {
+    const label = `${mode} News fixture`;
+    const cards = page.locator('.news-timeline > .news-timeline-item .news-card');
+    const initiallyVisibleRows = fixture.rows.slice(0, newsBatchSize);
+    const expectedMilestones = initiallyVisibleRows.map(row => row.MilestoneType);
+    const cardCount = await cards.count();
+
+    if (cardCount !== expectedMilestones.length) {
+        throw new Error(`${label} rendered ${cardCount} cards, expected ${expectedMilestones.length}.`);
+    }
+
+    for (let index = 0; index < expectedMilestones.length; index += 1) {
+        const badge = normalizeText(await cards.nth(index).locator('.news-milestone-badge').textContent());
+        if (!badge.includes(expectedMilestones[index])) {
+            failures.push(
+                `${label}: card ${index + 1} was not kept in exported order; badge was "${badge}", ` +
+                `expected "${expectedMilestones[index]}".`
+            );
+        }
+    }
+
+    const introText = normalizeText(await page.locator('.news-intro').textContent()).toLowerCase();
+    for (const expected of [
+        'official results only',
+        'milestones are personal to each athlete and supported distance',
+        'currently valid result history',
+        'rolling 365-day window',
+        'raw-time personal best can show no position change'
+    ]) {
+        if (!introText.includes(expected)) {
+            failures.push(`${label}: introductory caveats omitted "${expected}".`);
+        }
+    }
+
+    const combined = cards.nth(0);
+    const rawTime = cards.nth(1);
+    const ageGrade = cards.nth(2);
+    const firstMile = cards.nth(3);
+    const combinedText = normalizeText(await combined.textContent());
+    const rawTimeText = normalizeText(await rawTime.textContent());
+    const ageGradeText = normalizeText(await ageGrade.textContent());
+    const firstMileText = normalizeText(await firstMile.textContent());
+
+    for (const expected of [
+        '22 August 2026',
+        fixture.rows[0].AthleteName,
+        '5 km',
+        fixture.rows[0].Event.replace(/\s+/g, ' '),
+        'Official time 00:19:59.125',
+        'Age grade 78.4%',
+        'Previous77.9%',
+        'New78.4%',
+        '+0.52 pp',
+        'Previous00:20:00.875',
+        'New00:19:59.125',
+        '00:00:01.750 faster'
+    ]) {
+        if (!combinedText.includes(expected)) {
+            failures.push(`${label}: combined milestone omitted exported text "${expected}".`);
+        }
+    }
+
+    if (await combined.locator('[data-news-injection]').count() !== 0) {
+        failures.push(`${label}: hostile exported markup created an element instead of rendering as text.`);
+    }
+
+    const athleteLink = combined.locator('h3 a');
+    const athleteHref = await athleteLink.getAttribute('href');
+    const athleteParams = new URL(athleteHref, preview.baseUrl).searchParams;
+    if (
+        athleteParams.get('id') !== fixture.rows[0].AthleteID ||
+        athleteParams.get('site') !== mode
+    ) {
+        failures.push(`${label}: athlete link "${athleteHref}" did not preserve exported ID and site mode.`);
+    }
+
+    const combinedMovement = (await combined.locator('.news-rank-row').allTextContents())
+        .map(value => normalizeText(value)
+            .replace(/[🥇🥈🥉]/gu, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+        );
+    for (const expected of [
+        'Distance #5 to #3 Up 2 places New Bronze medal position',
+        'Overall #5 to #2 Up 3 places New Silver medal position',
+        'Distance Unranked to #2 Entered the table New Silver medal position',
+        'Overall #4 to #1 Up 3 places New Gold medal position'
+    ]) {
+        if (!combinedMovement.some(movement => movement.includes(expected))) {
+            failures.push(`${label}: combined milestone omitted rank state "${expected}".`);
+        }
+    }
+
+    for (const expected of [
+        'Official time 00:39:59.9',
+        'Previous00:40:00.0',
+        'New00:39:59.9',
+        '00:00:00.1 faster',
+        'No rank change'
+    ]) {
+        if (!rawTimeText.includes(expected)) {
+            failures.push(`${label}: raw-time milestone omitted exported text "${expected}".`);
+        }
+    }
+    if (rawTimeText.includes('Age-grade personal best')) {
+        failures.push(`${label}: raw-time-only milestone invented an age-grade improvement.`);
+    }
+    if (await rawTime.locator('.news-result-context span').count() !== 0) {
+        failures.push(`${label}: blank Event rendered a placeholder field.`);
+    }
+
+    for (const expected of [
+        'Age-grade personal best',
+        'Previous74.2%',
+        'New74.2%',
+        '+<0.01 pp',
+        '#4 to #1',
+        '#5 to #2'
+    ]) {
+        if (!ageGradeText.includes(expected)) {
+            failures.push(`${label}: age-grade milestone omitted exported text "${expected}".`);
+        }
+    }
+    if (ageGradeText.includes('Raw-time personal best')) {
+        failures.push(`${label}: age-grade-only milestone invented a raw-time improvement.`);
+    }
+
+    if (
+        !firstMileText.includes('1 Mile') ||
+        !firstMileText.includes('Established the first official age-grade and raw-time baselines')
+    ) {
+        failures.push(`${label}: first 1 Mile result did not render its exported distance and baseline explanation.`);
+    }
+    if (await firstMile.locator('.news-improvement').count() !== 0) {
+        failures.push(`${label}: first result fabricated a numeric improvement.`);
+    }
+
+    const mileRankLabels = (await firstMile.locator('.news-rank-row dt').allTextContents()).map(normalizeText);
+    if (mileRankLabels.join('|') !== 'Overall|Overall') {
+        failures.push(
+            `${label}: 1 Mile rendered unavailable Distance ranks (${mileRankLabels.join(', ') || 'none'}).`
+        );
+    }
+    for (const expected of ['Unranked to #5', 'Unranked to #8']) {
+        if (!firstMileText.includes(expected)) {
+            failures.push(`${label}: 1 Mile omitted Overall movement "${expected}".`);
+        }
+    }
+
+    const bodyText = normalizeText(await page.locator('body').textContent());
+    const hiddenValueFields = [
+        'SortOrder',
+        'SourceRow',
+        'AgeGradeExact',
+        'TimeImprovementSeconds',
+        'PreviousBestAgeGradeExact',
+        'AgeGradeImprovementExact',
+        'ExportBundleID'
+    ];
+    const hiddenFieldNames = [
+        ...hiddenValueFields,
+        'CurrentDistanceMedalEntry',
+        'CurrentOverallMedalEntry',
+        'AllTimeDistanceMedalEntry',
+        'AllTimeOverallMedalEntry'
+    ];
+
+    for (const field of hiddenFieldNames) {
+        if (bodyText.includes(field)) {
+            failures.push(`${label}: rendered hidden audit/exact field name "${field}".`);
+        }
+    }
+
+    // A display duration necessarily contains its seconds delta as a substring
+    // (for example 1.75 inside 00:00:01.750). Compare whole rendered text nodes
+    // so every hidden value is covered without falsely rejecting its approved
+    // formatted display counterpart.
+    const renderedTextNodes = new Set(await page.evaluate(() => {
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        const values = [];
+        let node;
+
+        while ((node = walker.nextNode())) {
+            const value = String(node.nodeValue || '').replace(/\s+/g, ' ').trim();
+            if (value) values.push(value);
+        }
+
+        return values;
+    }));
+    const hiddenValues = new Map();
+
+    for (const row of fixture.rows) {
+        for (const field of hiddenValueFields) {
+            const value = normalizeText(row[field]);
+            if (value) hiddenValues.set(value, field);
+        }
+    }
+
+    for (const [value, field] of hiddenValues) {
+        if (renderedTextNodes.has(value)) {
+            failures.push(`${label}: rendered hidden ${field} value "${value}".`);
+        }
+    }
+
+    await assertNewsMedalPresentation(page, cards, label);
+    await assertNewsMedalGeometry(page, label);
+    await assertNewsFlowLayout(page, mode, viewport);
+    await assertNewsControlsAndProgressiveLoading(page, mode, fixture);
+}
+
+async function assertNewsMedalPresentation(page, cards, label) {
+    const medalCard = cards.nth(0);
+    const callout = medalCard.locator('.news-medal-callout');
+    const calloutCount = await callout.count();
+    const calloutHeading = calloutCount === 1
+        ? normalizeText(await callout.locator('strong').textContent())
+        : '';
+    const calloutDetail = calloutCount === 1
+        ? normalizeText(await callout.locator(':scope > span:not(.news-medal-callout-icon)').textContent())
+        : '';
+
+    if (!await medalCard.evaluate(card => card.classList.contains('news-card-medal-entry'))) {
+        failures.push(`${label}: a card with exported medal entries did not receive the medal-card treatment.`);
+    }
+    if (
+        calloutCount !== 1 ||
+        !await callout.isVisible() ||
+        calloutHeading !== 'Medal breakthrough!' ||
+        calloutDetail !== 'Entered a medal-winning position'
+    ) {
+        failures.push(
+            `${label}: medal card callout was not one visible exact ` +
+            `'Medal breakthrough! Entered a medal-winning position' message.`
+        );
+    }
+    if (await callout.locator('.news-medal-callout-icon[aria-hidden="true"]').count() !== 1) {
+        failures.push(`${label}: medal callout icon was not hidden from assistive technology.`);
+    }
+
+    const medalRows = [
+        {
+            context: 'current-distance',
+            medal: 'Bronze',
+            className: 'bronze'
+        },
+        {
+            context: 'current-overall',
+            medal: 'Silver',
+            className: 'silver'
+        },
+        {
+            context: 'alltime-distance',
+            medal: 'Silver',
+            className: 'silver'
+        },
+        {
+            context: 'alltime-overall',
+            medal: 'Gold',
+            className: 'gold'
+        }
+    ];
+
+    if (await medalCard.locator('.news-rank-row-medal-entry').count() !== medalRows.length) {
+        failures.push(
+            `${label}: multi-context medal card did not highlight exactly ${medalRows.length} rank rows.`
+        );
+    }
+
+    for (const expected of medalRows) {
+        const row = medalCard.locator(
+            `.news-rank-row[data-news-rank-context="${expected.context}"]`
+        );
+        const badge = row.locator('.news-medal-entry-badge');
+        const badgeLabel = badge.locator(':scope > span:not(.news-medal-entry-icon)');
+        const expectedBadgeText = `New ${expected.medal} medal position`;
+
+        if (await row.count() !== 1) {
+            failures.push(`${label}: missing unique ${expected.context} rank row.`);
+            continue;
+        }
+        if (!await row.evaluate((element, className) =>
+            element.classList.contains('news-rank-row-medal-entry') &&
+            element.classList.contains(`news-rank-row-medal-${className}`), expected.className
+        )) {
+            failures.push(`${label}: ${expected.context} row lacked its ${expected.medal} medal treatment.`);
+        }
+        if (
+            await badge.count() !== 1 ||
+            !await badge.isVisible() ||
+            await badgeLabel.count() !== 1 ||
+            normalizeText(await badgeLabel.textContent()) !== expectedBadgeText ||
+            !await badge.evaluate((element, className) =>
+                element.classList.contains(`news-medal-entry-${className}`), expected.className
+            )
+        ) {
+            failures.push(
+                `${label}: ${expected.context} did not show one exact visible "${expectedBadgeText}" badge.`
+            );
+        }
+        if (await badge.locator('.news-medal-entry-icon[aria-hidden="true"]').count() !== 1) {
+            failures.push(`${label}: ${expected.context} medal icon was not hidden from assistive technology.`);
+        }
+    }
+
+    for (const [cardIndex, description] of [
+        [1, 'within-podium and medal-threshold movements with blank markers'],
+        [2, 'movement with hostile or non-enum markers']
+    ]) {
+        const card = cards.nth(cardIndex);
+
+        if (
+            await card.evaluate(element => element.classList.contains('news-card-medal-entry')) ||
+            await card.locator('.news-medal-callout').count() !== 0 ||
+            await card.locator('.news-rank-row-medal-entry').count() !== 0 ||
+            await card.locator('.news-medal-entry-badge').count() !== 0
+        ) {
+            failures.push(`${label}: ${description} received an invented medal-entry presentation.`);
+        }
+    }
+
+    const blankMarkerCard = cards.nth(1);
+    for (const [context, expectedMovement] of [
+        ['current-distance', '#3 to #2 Up 1 place'],
+        ['current-overall', '#6 to #3 Up 3 places']
+    ]) {
+        const rowText = normalizeText(await blankMarkerCard
+            .locator(`.news-rank-row[data-news-rank-context="${context}"]`)
+            .textContent());
+
+        if (!rowText.includes(expectedMovement)) {
+            failures.push(
+                `${label}: blank-marker ${context} control did not render movement "${expectedMovement}".`
+            );
+        }
+    }
+
+    const hostileCardText = normalizeText(await cards.nth(2).textContent());
+    if (
+        !hostileCardText.includes('#4 to #1 Up 3 places') ||
+        !hostileCardText.includes('#5 to #2 Up 3 places')
+    ) {
+        failures.push(`${label}: hostile-marker control lost its ordinary exported rank movement.`);
+    }
+    if (
+        hostileCardText.includes('Gold<img data-medal-injection') ||
+        hostileCardText.includes('New gold medal position') ||
+        await page.locator('[data-medal-injection]').count() !== 0
+    ) {
+        failures.push(`${label}: hostile or non-enum medal marker reached rendered content.`);
+    }
+}
+
+async function assertNewsMedalGeometry(page, label) {
+    const medalCard = page.locator('.news-card-medal-entry').first();
+    const medalCardCount = await medalCard.count();
+
+    if (medalCardCount !== 1) {
+        failures.push(`${label}: expected one medal card for geometry checks.`);
+        return;
+    }
+    const calloutCount = await medalCard.locator('.news-medal-callout').count();
+    const medalRowCount = await medalCard.locator('.news-rank-row-medal-entry').count();
+    const medalBadgeCount = await medalCard.locator('.news-medal-entry-badge').count();
+
+    if (calloutCount !== 1 || medalRowCount !== 4 || medalBadgeCount !== 4) {
+        failures.push(
+            `${label}: medal geometry precondition failed ` +
+            `(${calloutCount} callout, ${medalRowCount} rows, ${medalBadgeCount} badges).`
+        );
+        return;
+    }
+
+    const geometry = await medalCard.evaluate(card => {
+        const rect = element => {
+            const bounds = element.getBoundingClientRect();
+
+            return {
+                top: bounds.top,
+                right: bounds.right,
+                bottom: bounds.bottom,
+                left: bounds.left,
+                width: bounds.width,
+                height: bounds.height
+            };
+        };
+        const callout = card.querySelector('.news-medal-callout');
+        const rows = [...card.querySelectorAll('.news-rank-row-medal-entry')];
+        const badges = [...card.querySelectorAll('.news-medal-entry-badge')];
+
+        return {
+            card: rect(card),
+            callout: rect(callout),
+            rows: rows.map(rect),
+            badges: badges.map(rect),
+            cardScrollWidth: card.scrollWidth,
+            cardClientWidth: card.clientWidth,
+            cardBoxShadow: getComputedStyle(card).boxShadow,
+            rowBackgrounds: rows.map(row => getComputedStyle(row).backgroundImage),
+            badgeBackgrounds: badges.map(badge => getComputedStyle(badge).backgroundColor)
+        };
+    });
+    const liesInside = (inner, outer) =>
+        inner.top >= outer.top - 1 &&
+        inner.right <= outer.right + 1 &&
+        inner.bottom <= outer.bottom + 1 &&
+        inner.left >= outer.left - 1 &&
+        inner.width > 0 &&
+        inner.height > 0;
+
+    if (geometry.cardScrollWidth > geometry.cardClientWidth + 1) {
+        failures.push(
+            `${label}: medal presentation overflowed its card ` +
+            `(${geometry.cardScrollWidth}px > ${geometry.cardClientWidth}px).`
+        );
+    }
+    if (!liesInside(geometry.callout, geometry.card)) {
+        failures.push(`${label}: medal callout was not visibly contained within its card.`);
+    }
+    if (
+        geometry.rows.length !== 4 ||
+        geometry.badges.length !== 4 ||
+        geometry.rows.some(row => !liesInside(row, geometry.card)) ||
+        geometry.badges.some(badge => !liesInside(badge, geometry.card))
+    ) {
+        failures.push(`${label}: one or more multi-context medal rows or badges escaped the card.`);
+    }
+    if (
+        geometry.cardBoxShadow === 'none' ||
+        geometry.rowBackgrounds.some(background => background === 'none') ||
+        geometry.badgeBackgrounds.some(background => background === 'rgba(0, 0, 0, 0)')
+    ) {
+        failures.push(`${label}: medal card, rows, or badges lacked visible non-text emphasis.`);
+    }
+}
+
+async function assertNewsFlowLayout(page, mode, viewport) {
+    const label = `${mode}/${viewport.name} News flow`;
+    const cards = page.locator('.news-timeline > .news-timeline-item .news-card');
+    const cardCount = await cards.count();
+    const expectedChildClasses = [
+        'news-flow-result',
+        'news-flow-arrow',
+        'news-flow-improvement',
+        'news-flow-arrow',
+        'news-flow-ranks'
+    ];
+
+    for (let index = 0; index < cardCount; index += 1) {
+        const card = cards.nth(index);
+        const flows = card.locator(':scope > .news-flow');
+
+        if (await flows.count() !== 1) {
+            failures.push(`${label}: card ${index + 1} did not render exactly one compact flow.`);
+            continue;
+        }
+
+        const flow = flows.first();
+        const childClasses = await flow.locator(':scope > *').evaluateAll(elements =>
+            elements.map(element => [...element.classList].find(className =>
+                className === 'news-flow-result' ||
+                className === 'news-flow-improvement' ||
+                className === 'news-flow-ranks' ||
+                className === 'news-flow-arrow'
+            ) || '')
+        );
+
+        if (JSON.stringify(childClasses) !== JSON.stringify(expectedChildClasses)) {
+            failures.push(
+                `${label}: card ${index + 1} flow order was ${childClasses.join(' -> ') || '(empty)'}, ` +
+                `expected Result -> arrow -> improvement -> arrow -> ranks.`
+            );
+            continue;
+        }
+
+        const arrows = flow.locator(':scope > .news-flow-arrow');
+        const hiddenArrows = flow.locator(':scope > .news-flow-arrow[aria-hidden="true"]');
+
+        if (await arrows.count() !== 2 || await hiddenArrows.count() !== 2) {
+            failures.push(
+                `${label}: card ${index + 1} must render two connectors and hide both from assistive technology.`
+            );
+            continue;
+        }
+
+        for (let arrowIndex = 0; arrowIndex < 2; arrowIndex += 1) {
+            const arrow = arrows.nth(arrowIndex);
+            const box = await arrow.boundingBox();
+
+            if (!await arrow.isVisible() || !box || box.width < 1 || box.height < 1) {
+                failures.push(`${label}: card ${index + 1} connector ${arrowIndex + 1} was not visibly rendered.`);
+            }
+        }
+
+        const layout = await flow.evaluate(element => {
+            const rect = target => {
+                const bounds = target.getBoundingClientRect();
+                return {
+                    top: bounds.top,
+                    right: bounds.right,
+                    bottom: bounds.bottom,
+                    left: bounds.left,
+                    width: bounds.width,
+                    height: bounds.height
+                };
+            };
+            const result = element.querySelector(':scope > .news-flow-result');
+            const improvement = element.querySelector(':scope > .news-flow-improvement');
+            const ranks = element.querySelector(':scope > .news-flow-ranks');
+            const arrows = [...element.querySelectorAll(':scope > .news-flow-arrow')];
+            const card = element.closest('.news-card');
+
+            return {
+                flow: rect(element),
+                card: rect(card),
+                result: rect(result),
+                improvement: rect(improvement),
+                ranks: rect(ranks),
+                arrows: arrows.map(rect),
+                viewportWidth: document.documentElement.clientWidth
+            };
+        });
+        const maximumCompactCardHeight = viewport.name === 'desktop' ? 320 : 850;
+
+        if (layout.card.height > maximumCompactCardHeight) {
+            failures.push(
+                `${label}: card ${index + 1} was ${Math.round(layout.card.height)}px tall, ` +
+                `above the ${maximumCompactCardHeight}px compact-layout ceiling.`
+            );
+        }
+
+        if (viewport.name === 'desktop') {
+            const stagesIncreaseLeft =
+                layout.result.left < layout.improvement.left &&
+                layout.improvement.left < layout.ranks.left;
+            const arrowsLeadBetweenStages =
+                layout.arrows[0].left >= layout.result.right - 2 &&
+                layout.arrows[0].right <= layout.improvement.left + 2 &&
+                layout.arrows[1].left >= layout.improvement.right - 2 &&
+                layout.arrows[1].right <= layout.ranks.left + 2;
+            const stagesShareVerticalBand =
+                Math.max(layout.result.top, layout.improvement.top, layout.ranks.top) <
+                Math.min(layout.result.bottom, layout.improvement.bottom, layout.ranks.bottom);
+
+            if (!stagesIncreaseLeft || !arrowsLeadBetweenStages || !stagesShareVerticalBand) {
+                failures.push(
+                    `${label}: card ${index + 1} did not form a horizontal Result -> improvement -> ranks flow.`
+                );
+            }
+        } else {
+            const stagesIncreaseTop =
+                layout.result.top < layout.improvement.top &&
+                layout.improvement.top < layout.ranks.top;
+            const arrowsLeadBetweenStages =
+                layout.arrows[0].top >= layout.result.bottom - 2 &&
+                layout.arrows[0].bottom <= layout.improvement.top + 2 &&
+                layout.arrows[1].top >= layout.improvement.bottom - 2 &&
+                layout.arrows[1].bottom <= layout.ranks.top + 2;
+            const stagesUseCompactColumn = [layout.result, layout.improvement, layout.ranks]
+                .every(stage =>
+                    Math.abs(stage.left - layout.flow.left) <= 2 &&
+                    Math.abs(stage.right - layout.flow.right) <= 2
+                );
+            const staysInsideViewport =
+                layout.card.left >= -1 &&
+                layout.card.right <= layout.viewportWidth + 1;
+
+            if (!stagesIncreaseTop || !arrowsLeadBetweenStages || !stagesUseCompactColumn) {
+                failures.push(
+                    `${label}: card ${index + 1} did not form a compact vertical Result -> improvement -> ranks flow.`
+                );
+            }
+            if (!staysInsideViewport) {
+                failures.push(
+                    `${label}: card ${index + 1} escaped the mobile viewport ` +
+                    `(${layout.card.left}px to ${layout.card.right}px of ${layout.viewportWidth}px).`
+                );
+            }
+        }
+    }
+}
+
+async function assertNewsControlsAndProgressiveLoading(page, mode, fixture) {
+    const label = `${mode} News filters`;
+    const controls = page.locator('#official-news-controls');
+    const athleteFilter = page.locator('#news-athlete-filter');
+    const yearFilter = page.locator('#news-year-filter');
+    const distanceFilter = page.locator('#news-distance-filter');
+    const reset = page.locator('#news-reset-filters');
+    const showOlder = page.locator('#news-show-older');
+    const cards = page.locator('.news-timeline > .news-timeline-item .news-card');
+
+    if (!await controls.isVisible()) {
+        failures.push(`${label}: controls were not visible after a populated export loaded.`);
+    }
+
+    for (const [locator, defaultLabel, selector] of [
+        [athleteFilter, 'All athletes', '#news-athlete-filter'],
+        [yearFilter, 'All years', '#news-year-filter'],
+        [distanceFilter, 'All distances', '#news-distance-filter']
+    ]) {
+        if (await locator.count() !== 1) {
+            failures.push(`${label}: expected one ${selector} control.`);
+            continue;
+        }
+
+        if (await locator.inputValue() !== '') {
+            failures.push(`${label}: ${selector} did not default to its unfiltered value.`);
+        }
+
+        const firstOption = normalizeText(await locator.locator('option').first().textContent());
+        if (firstOption !== defaultLabel) {
+            failures.push(`${label}: ${selector} default option was "${firstOption}", expected "${defaultLabel}".`);
+        }
+    }
+
+    await assertNewsFilterOptions(
+        athleteFilter,
+        fixture.rows.map(row => row.AthleteID),
+        `${label} athlete options`
+    );
+    await assertNewsFilterOptions(
+        yearFilter,
+        fixture.rows.map(row => row.ResultDate.slice(-4)),
+        `${label} year options`
+    );
+    await assertNewsFilterOptions(
+        distanceFilter,
+        fixture.rows.map(row => row.Distance),
+        `${label} distance options`
+    );
+
+    await expectText(
+        page,
+        '#news-result-summary',
+        `Showing ${newsBatchSize} of ${fixture.rows.length} milestones.`,
+        `${label} initial summary`
+    );
+    await expectText(
+        page,
+        '#news-show-older',
+        `Show ${newsBatchSize} older milestones`,
+        `${label} initial batch control`
+    );
+    await assertNewsRenderedRowOrder(page, fixture.rows.slice(0, newsBatchSize), mode, `${label} initial batch`);
+
+    await showOlder.click();
+    await waitForNewsCardCount(page, Math.min(newsBatchSize * 2, fixture.rows.length));
+    await expectText(
+        page,
+        '#news-result-summary',
+        `Showing ${newsBatchSize * 2} of ${fixture.rows.length} milestones.`,
+        `${label} second-batch summary`
+    );
+    await expectText(
+        page,
+        '#news-show-older',
+        `Show ${fixture.rows.length - newsBatchSize * 2} older milestones`,
+        `${label} final partial-batch control`
+    );
+    await assertNewsRenderedRowOrder(page, fixture.rows.slice(0, newsBatchSize * 2), mode, `${label} second batch`);
+
+    await showOlder.click();
+    await waitForNewsCardCount(page, fixture.rows.length);
+    await expectText(
+        page,
+        '#news-result-summary',
+        `Showing ${fixture.rows.length} of ${fixture.rows.length} milestones.`,
+        `${label} complete-history summary`
+    );
+    if (!await showOlder.isHidden()) {
+        failures.push(`${label}: Show older remained visible after every matching milestone was rendered.`);
+    }
+    await assertNewsRenderedRowOrder(page, fixture.rows, mode, `${label} complete history`);
+
+    // Changing a filter after expanding the full history must reset batching.
+    // This distance deliberately has more than one page of matches, so a
+    // stale visibleEntryCount would render all of them and fail here.
+    const distance = '5 km';
+    const distanceMatches = fixture.rows.filter(row => row.Distance === distance);
+    await distanceFilter.selectOption(distance);
+    await waitForNewsCardCount(page, newsBatchSize);
+    await expectText(
+        page,
+        '#news-result-summary',
+        `Showing ${newsBatchSize} of ${distanceMatches.length} matching milestones.`,
+        `${label} reset distance summary`
+    );
+    await expectText(
+        page,
+        '#news-show-older',
+        `Show ${distanceMatches.length - newsBatchSize} older milestones`,
+        `${label} filtered partial-batch control`
+    );
+    await assertNewsRenderedRowOrder(
+        page,
+        distanceMatches.slice(0, newsBatchSize),
+        mode,
+        `${label} reset distance batch`
+    );
+    const renderedDistances = (await cards.locator('.news-result-context strong').allTextContents()).map(normalizeText);
+    if (renderedDistances.some(value => value !== distance)) {
+        failures.push(`${label}: distance filter rendered ${renderedDistances.join(', ')}, expected only ${distance}.`);
+    }
+
+    await showOlder.click();
+    await waitForNewsCardCount(page, distanceMatches.length);
+    await expectText(
+        page,
+        '#news-result-summary',
+        `Showing ${distanceMatches.length} of ${distanceMatches.length} matching milestones.`,
+        `${label} complete distance summary`
+    );
+    if (!await showOlder.isHidden()) {
+        failures.push(`${label}: Show older remained visible after every distance match was rendered.`);
+    }
+    await assertNewsRenderedRowOrder(page, distanceMatches, mode, `${label} complete distance results`);
+
+    await reset.click();
+    await waitForNewsCardCount(page, newsBatchSize);
+    await assertNewsFiltersReset(page, fixture, `${label} reset after distance filter`);
+
+    const targetAthlete = fixture.rows[0];
+    await athleteFilter.selectOption(targetAthlete.AthleteID);
+    await waitForNewsCardCount(page, 1);
+    await expectText(
+        page,
+        '#news-result-summary',
+        'Showing 1 of 1 matching milestones.',
+        `${label} athlete summary`
+    );
+    await assertNewsRenderedRowOrder(page, [targetAthlete], mode, `${label} athlete result`);
+    if (!await showOlder.isHidden()) {
+        failures.push(`${label}: Show older was visible when the athlete filter had one complete match.`);
+    }
+
+    await reset.click();
+    await waitForNewsCardCount(page, newsBatchSize);
+    await assertNewsFiltersReset(page, fixture, `${label} reset after athlete filter`);
+
+    const year = '2025';
+    const yearMatches = fixture.rows.filter(row => row.ResultDate.endsWith(year));
+    await yearFilter.selectOption(year);
+    await waitForNewsCardCount(page, yearMatches.length);
+    await expectText(
+        page,
+        '#news-result-summary',
+        `Showing ${yearMatches.length} of ${yearMatches.length} matching milestones.`,
+        `${label} year summary`
+    );
+    await assertNewsRenderedRowOrder(page, yearMatches, mode, `${label} year results`);
+    const renderedYears = (await cards.locator('.news-date').allTextContents()).map(value => normalizeText(value).slice(-4));
+    if (renderedYears.some(value => value !== year)) {
+        failures.push(`${label}: year filter rendered ${renderedYears.join(', ')}, expected only ${year}.`);
+    }
+
+    await reset.click();
+    await waitForNewsCardCount(page, newsBatchSize);
+    await assertNewsFiltersReset(page, fixture, `${label} reset after year filter`);
+
+    await athleteFilter.selectOption(targetAthlete.AthleteID);
+    await yearFilter.selectOption(year);
+    await distanceFilter.selectOption('Marathon');
+    await waitForNewsCardCount(page, 0);
+    await expectText(
+        page,
+        '#news-result-summary',
+        'No matching milestones.',
+        `${label} combined no-match summary`
+    );
+    await expectText(
+        page,
+        '#official-result-news',
+        'No official result milestones match these filters.',
+        `${label} combined no-match state`
+    );
+    if (!await showOlder.isHidden()) {
+        failures.push(`${label}: Show older was visible for a combined filter with no matches.`);
+    }
+
+    await reset.click();
+    await waitForNewsCardCount(page, newsBatchSize);
+    await assertNewsFiltersReset(page, fixture, `${label} final reset`);
+    await assertNewsRenderedRowOrder(page, fixture.rows.slice(0, newsBatchSize), mode, `${label} reset latest batch`);
+
+    const currentUrl = new URL(page.url());
+    if (currentUrl.searchParams.get('site') !== mode) {
+        failures.push(`${label}: filter interactions changed the selected site in "${page.url()}".`);
+    }
+    const renderedAthleteLinks = page.locator('.news-card h3 a');
+    for (let index = 0; index < await renderedAthleteLinks.count(); index += 1) {
+        const href = await renderedAthleteLinks.nth(index).getAttribute('href');
+        if (new URL(href, preview.baseUrl).searchParams.get('site') !== mode) {
+            failures.push(`${label}: filtered athlete link "${href}" lost the selected site mode.`);
+        }
+    }
+}
+
+async function assertNewsFilterOptions(locator, values, label) {
+    const expected = [...new Set(values)].sort((a, b) => a.localeCompare(b));
+    const actual = (await locator.locator('option').evaluateAll(options =>
+        options.map(option => option.value).filter(Boolean)
+    )).sort((a, b) => a.localeCompare(b));
+
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+        failures.push(`${label}: values were ${actual.join(', ')}, expected ${expected.join(', ')}.`);
+    }
+}
+
+async function assertNewsFiltersReset(page, fixture, label) {
+    for (const selector of ['#news-athlete-filter', '#news-year-filter', '#news-distance-filter']) {
+        if (await page.locator(selector).inputValue() !== '') {
+            failures.push(`${label}: ${selector} was not cleared.`);
+        }
+    }
+
+    await expectText(
+        page,
+        '#news-result-summary',
+        `Showing ${newsBatchSize} of ${fixture.rows.length} milestones.`,
+        `${label} summary`
+    );
+    await expectText(
+        page,
+        '#news-show-older',
+        `Show ${newsBatchSize} older milestones`,
+        `${label} Show older control`
+    );
+}
+
+async function assertNewsRenderedRowOrder(page, expectedRows, mode, label) {
+    const cards = page.locator('.news-timeline > .news-timeline-item .news-card');
+    const cardCount = await cards.count();
+
+    if (cardCount !== expectedRows.length) {
+        failures.push(`${label}: rendered ${cardCount} cards, expected ${expectedRows.length}.`);
+        return;
+    }
+
+    for (let index = 0; index < expectedRows.length; index += 1) {
+        const link = cards.nth(index).locator('h3 a');
+        const href = await link.getAttribute('href');
+        const params = new URL(href, preview.baseUrl).searchParams;
+        const actualName = normalizeText(await link.textContent());
+        const expectedName = normalizeText(expectedRows[index].AthleteName);
+
+        if (params.get('id') !== expectedRows[index].AthleteID || actualName !== expectedName) {
+            failures.push(
+                `${label}: card ${index + 1} was ${params.get('id')} / "${actualName}", ` +
+                `expected ${expectedRows[index].AthleteID} / "${expectedName}".`
+            );
+        }
+        if (params.get('site') !== mode) {
+            failures.push(`${label}: card ${index + 1} link "${href}" did not preserve ${mode}.`);
+        }
+    }
+}
+
+async function waitForNewsCardCount(page, expectedCount) {
+    await page.waitForFunction(count =>
+        document.querySelectorAll('.news-timeline > .news-timeline-item .news-card').length === count,
+        expectedCount
+    );
+}
+
+async function runNewsEmptyAndUnavailableTests(browserInstance) {
+    const cases = [
+        {
+            mode: 'family',
+            viewport: viewports[0],
+            status: 200,
+            body: `${newsExportHeaders.join(',')}\r\n`,
+            expectedText: 'No official result milestones have been exported.',
+            expectedClass: 'news-status-empty',
+            name: 'header-only'
+        },
+        {
+            mode: 'everyone',
+            viewport: viewports[1],
+            status: 503,
+            body: 'temporarily unavailable',
+            expectedText: 'Official result milestones are unavailable right now.',
+            expectedClass: 'news-status-error',
+            name: 'failed-load'
+        }
+    ];
+
+    for (const testCase of cases) {
+        const { mode, viewport } = testCase;
+        const label = `${mode}/${viewport.name} News ${testCase.name}`;
+        const selectedFile = `data/${mode}/official_result_news.csv`;
+        const otherMode = mode === 'family' ? 'everyone' : 'family';
+        const context = await browserInstance.newContext(viewport.contextOptions);
+        const page = await context.newPage();
+        const requestedPaths = [];
+        const pageErrors = [];
+        const sameOriginFailures = [];
+
+        page.on('request', request => {
+            if (isSameOrigin(request.url())) {
+                requestedPaths.push(sameOriginRequestPath(request.url()));
+            }
+        });
+        page.on('pageerror', error => pageErrors.push(error.message));
+        page.on('requestfailed', request => {
+            if (isSameOrigin(request.url())) {
+                sameOriginFailures.push(
+                    `${request.url()} failed: ${request.failure()?.errorText || 'unknown error'}`
+                );
+            }
+        });
+        page.on('response', response => {
+            if (!isSameOrigin(response.url()) || response.status() < 400) return;
+
+            const pathName = sameOriginRequestPath(response.url());
+            const expectedFailure =
+                pathName === selectedFile &&
+                testCase.status >= 400 &&
+                response.status() === testCase.status;
+
+            if (!expectedFailure) {
+                sameOriginFailures.push(`${response.url()} returned HTTP ${response.status()}`);
+            }
+        });
+        await page.route(`**/${selectedFile}`, route => route.fulfill({
+            status: testCase.status,
+            contentType: 'text/csv; charset=utf-8',
+            body: testCase.body
+        }));
+
+        try {
+            await page.goto(`${preview.baseUrl}/news.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+            await waitForRenderedNews(page, mode);
+            await waitForNetworkToSettle(page);
+
+            await expectText(page, '#official-news-status', testCase.expectedText, label);
+            if (!await page.locator('#official-news-status').evaluate(
+                (node, expectedClass) => node.classList.contains(expectedClass),
+                testCase.expectedClass
+            )) {
+                failures.push(`${label}: status did not use ${testCase.expectedClass}.`);
+            }
+            if (await page.locator('.news-card').count() !== 0) {
+                failures.push(`${label}: rendered News cards despite the ${testCase.name} state.`);
+            }
+            if (!await page.locator('#official-news-controls').isHidden()) {
+                failures.push(`${label}: filter controls remained visible in the ${testCase.name} state.`);
+            }
+            if (!await page.locator('#news-show-older').isHidden()) {
+                failures.push(`${label}: Show older remained visible in the ${testCase.name} state.`);
+            }
+            if (normalizeText(await page.locator('#news-result-summary').textContent())) {
+                failures.push(`${label}: retained a result summary in the ${testCase.name} state.`);
+            }
+
+            const newsRequests = requestedPaths.filter(path => path.endsWith('/official_result_news.csv'));
+            if (newsRequests.length !== 1 || newsRequests[0] !== selectedFile) {
+                failures.push(
+                    `${label}: requested News exports ${newsRequests.join(', ') || '(none)'}, expected only ${selectedFile}.`
+                );
+            }
+            if (requestedPaths.includes(`data/${otherMode}/official_result_news.csv`)) {
+                failures.push(`${label}: fell back to the other mode's News export.`);
+            }
+            if (requestedPaths.includes('data/athlete_results.csv')) {
+                failures.push(`${label}: fell back to athlete_results.csv.`);
+            }
+
+            await assertResponsiveViewport(page, viewport, label);
+            await assertNoHorizontalOverflow(page, label);
+        } catch (error) {
+            failures.push(`${label}: ${error.message}`);
+        } finally {
+            for (const error of pageErrors) {
+                failures.push(`${label}: JavaScript exception: ${error}`);
+            }
+            for (const error of sameOriginFailures) {
+                failures.push(`${label}: unexpected same-origin request failure: ${error}`);
+            }
+            await context.close();
+        }
+    }
+}
+
+// news.js has a deliberately narrow fallback for the unlikely case where the
+// shared navigation script cannot initialise. An invalid query value must not
+// be interpolated into the data path or select Everyone by resemblance.
+async function runNewsInvalidSiteFallbackTest(browserInstance) {
+    const context = await browserInstance.newContext(viewports[0].contextOptions);
+    const page = await context.newPage();
+    const fixture = newsFixture('family');
+    const requestedPaths = [];
+    const label = 'News invalid-site fallback';
+    const sameOriginFailures = [];
+    const pageErrors = [];
+
+    page.on('request', request => {
+        if (isSameOrigin(request.url())) {
+            requestedPaths.push(sameOriginRequestPath(request.url()));
+        }
+    });
+    page.on('requestfailed', request => {
+        if (isSameOrigin(request.url())) {
+            sameOriginFailures.push(
+                `${request.url()} failed: ${request.failure()?.errorText || 'unknown error'}`
+            );
+        }
+    });
+    page.on('response', response => {
+        if (isSameOrigin(response.url()) && response.status() >= 400) {
+            sameOriginFailures.push(`${response.url()} returned HTTP ${response.status()}`);
+        }
+    });
+    page.on('pageerror', error => pageErrors.push(error.message));
+    await page.route('**/site-navigation.js', route => route.fulfill({
+        status: 200,
+        contentType: 'text/javascript; charset=utf-8',
+        body: '/* shared navigation intentionally unavailable for fallback coverage */'
+    }));
+    await page.route('**/data/family/official_result_news.csv', route => route.fulfill({
+        status: 200,
+        contentType: 'text/csv; charset=utf-8',
+        body: fixture.csv
+    }));
+
+    try {
+        await page.goto(`${preview.baseUrl}/news.html?site=..%2Feveryone`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#official-result-news[data-rendered="true"]', { state: 'attached' });
+        await page.locator('.news-card').first().waitFor({ state: 'visible' });
+        await waitForNetworkToSettle(page);
+
+        const newsRequests = requestedPaths.filter(path => path.endsWith('/official_result_news.csv'));
+        if (
+            newsRequests.length !== 1 ||
+            newsRequests[0] !== 'data/family/official_result_news.csv'
+        ) {
+            failures.push(
+                `${label}: invalid query requested ${newsRequests.join(', ') || '(none)'} instead of the Family fallback.`
+            );
+        }
+
+        const href = await page.locator('.news-card h3 a').first().getAttribute('href');
+        if (new URL(href, preview.baseUrl).searchParams.get('site') !== 'family') {
+            failures.push(`${label}: athlete link "${href}" did not use the safe Family fallback.`);
+        }
+    } catch (error) {
+        failures.push(`${label}: ${error.message}`);
+    } finally {
+        for (const error of pageErrors) {
+            failures.push(`${label}: JavaScript exception: ${error}`);
+        }
+        for (const error of sameOriginFailures) {
+            failures.push(`${label}: same-origin request failure: ${error}`);
+        }
+        await context.close();
+    }
+}
+
+async function waitForRenderedNews(page, mode) {
+    await page.waitForSelector('#official-result-news[data-rendered="true"]', { state: 'attached' });
+    await page.waitForSelector('#site-title', { state: 'visible' });
+    await page.waitForFunction(expectedMode => {
+        const title = document.querySelector('#site-title')?.textContent?.trim() || '';
+        const expected = expectedMode === 'everyone'
+            ? 'Age-Graded Running Championships'
+            : 'Family Running Championships';
+
+        return title === expected;
+    }, mode);
+}
+
+async function assertNoHorizontalOverflow(page, label) {
+    const dimensions = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth
+    }));
+
+    if (dimensions.scrollWidth > dimensions.clientWidth + 1) {
+        failures.push(
+            `${label}: page has horizontal overflow (${dimensions.scrollWidth}px > ${dimensions.clientWidth}px).`
+        );
+    }
+}
+
+function newsFixture(mode) {
+    const modeLabel = mode === 'everyone' ? 'Everyone' : 'Family';
+    const bundleId = `${mode}-synthetic-news-bundle-20260823`;
+    const rows = [
+        {
+            SortOrder: '1',
+            SourceRow: '704',
+            AthleteID: `${mode}-news-combined`,
+            AthleteName: `${modeLabel} Ada & <b data-news-injection>Runner</b>`,
+            ResultDate: '22/08/2026',
+            Distance: '5 km',
+            Time: '00:19:59.125',
+            AgeGrade: '78.4%',
+            AgeGradeExact: '78.432109%',
+            Event: `Harbour, "Gold" <img data-news-injection src=x>\nSecond line`,
+            TimeClass: 'Official',
+            MilestoneType: 'Age Grade + Raw-Time PB',
+            PreviousBestTime: '00:20:00.875',
+            TimeImprovementSeconds: '1.75',
+            TimeImprovement: '00:00:01.750',
+            PreviousBestAgeGrade: '77.9%',
+            PreviousBestAgeGradeExact: '77.912345%',
+            AgeGradeImprovementExact: '0.519764%',
+            AgeGradeImprovement: '+0.52 pp',
+            CurrentDistanceRankBefore: '5',
+            CurrentDistanceRankAfter: '3',
+            CurrentDistancePlacesGained: '2',
+            CurrentDistanceMedalEntry: 'Bronze',
+            CurrentOverallRankBefore: '5',
+            CurrentOverallRankAfter: '2',
+            CurrentOverallPlacesGained: '3',
+            CurrentOverallMedalEntry: 'Silver',
+            AllTimeDistanceRankAfter: '2',
+            AllTimeDistanceMedalEntry: 'Silver',
+            AllTimeOverallRankBefore: '4',
+            AllTimeOverallRankAfter: '1',
+            AllTimeOverallPlacesGained: '3',
+            AllTimeOverallMedalEntry: 'Gold',
+            ExportBundleID: bundleId
+        },
+        {
+            SortOrder: '2',
+            SourceRow: '703',
+            AthleteID: `${mode}-news-time`,
+            AthleteName: `${modeLabel} Ben`,
+            ResultDate: '22/08/2026',
+            Distance: '10 km',
+            Time: '00:39:59.9',
+            AgeGrade: '71.0%',
+            AgeGradeExact: '70.950001%',
+            Event: '',
+            TimeClass: 'Official',
+            MilestoneType: 'Raw-Time PB',
+            PreviousBestTime: '00:40:00.0',
+            TimeImprovementSeconds: '0.1',
+            TimeImprovement: '00:00:00.1',
+            CurrentDistanceRankBefore: '3',
+            CurrentDistanceRankAfter: '2',
+            CurrentDistancePlacesGained: '1',
+            CurrentOverallRankBefore: '6',
+            CurrentOverallRankAfter: '3',
+            CurrentOverallPlacesGained: '3',
+            AllTimeDistanceRankBefore: '6',
+            AllTimeDistanceRankAfter: '6',
+            AllTimeDistancePlacesGained: '0',
+            AllTimeOverallRankBefore: '9',
+            AllTimeOverallRankAfter: '9',
+            AllTimeOverallPlacesGained: '0',
+            ExportBundleID: bundleId
+        },
+        {
+            SortOrder: '3',
+            SourceRow: '699',
+            AthleteID: `${mode}-news-age-grade`,
+            AthleteName: `${modeLabel} Casey`,
+            ResultDate: '21/08/2026',
+            Distance: 'Half Marathon',
+            Time: '01:30:00',
+            AgeGrade: '74.2%',
+            AgeGradeExact: '74.20004%',
+            Event: 'Riverside Half',
+            TimeClass: 'Official',
+            MilestoneType: 'Age Grade PB',
+            PreviousBestAgeGrade: '74.2%',
+            PreviousBestAgeGradeExact: '74.20001%',
+            AgeGradeImprovementExact: '0.00003%',
+            AgeGradeImprovement: '+<0.01 pp',
+            CurrentDistanceRankBefore: '4',
+            CurrentDistanceRankAfter: '1',
+            CurrentDistancePlacesGained: '3',
+            CurrentDistanceMedalEntry: 'Gold<img data-medal-injection src=x>',
+            CurrentOverallRankBefore: '5',
+            CurrentOverallRankAfter: '2',
+            CurrentOverallPlacesGained: '3',
+            CurrentOverallMedalEntry: 'gold',
+            AllTimeDistanceRankBefore: '12',
+            AllTimeDistanceRankAfter: '10',
+            AllTimeDistancePlacesGained: '2',
+            AllTimeOverallRankBefore: '30',
+            AllTimeOverallRankAfter: '29',
+            AllTimeOverallPlacesGained: '1',
+            ExportBundleID: bundleId
+        },
+        {
+            SortOrder: '4',
+            SourceRow: '688',
+            AthleteID: `${mode}-news-first-mile`,
+            AthleteName: `${modeLabel} Drew`,
+            ResultDate: '20/08/2026',
+            Distance: '1 Mile',
+            Time: '00:05:01.250',
+            AgeGrade: '69.8%',
+            AgeGradeExact: '69.812345%',
+            Event: 'Track opener',
+            TimeClass: 'Official',
+            MilestoneType: 'First Official Result',
+            CurrentOverallRankAfter: '5',
+            AllTimeOverallRankAfter: '8',
+            ExportBundleID: bundleId
+        }
+    ];
+    const historySpecs = [
+        ['19/08/2026', '5 km'],
+        ['18/08/2026', '5 km'],
+        ['17/08/2026', '5 km'],
+        ['16/08/2026', '5 km'],
+        ['15/08/2026', '5 km'],
+        ['14/08/2026', '5 km'],
+        ['13/08/2026', '5 km'],
+        ['12/08/2026', '5 km'],
+        ['31/12/2025', '5 km'],
+        ['30/11/2025', '5 km'],
+        ['31/10/2025', '5 km'],
+        ['30/09/2025', '5 km'],
+        ['31/08/2025', '5 km'],
+        ['31/07/2025', '10 km'],
+        ['30/06/2025', 'Half Marathon'],
+        ['31/05/2025', 'Marathon'],
+        ['31/12/2024', '10 Mile'],
+        ['30/11/2024', '1 Mile'],
+        ['31/10/2024', '5 km'],
+        ['30/09/2024', '10 km'],
+        ['31/08/2024', 'Half Marathon'],
+        ['31/07/2024', 'Marathon']
+    ];
+
+    for (const [index, [resultDate, distance]] of historySpecs.entries()) {
+        const sortOrder = index + 5;
+        const row = {
+            SortOrder: String(sortOrder),
+            SourceRow: String(688 - sortOrder),
+            AthleteID: `${mode}-news-history-${sortOrder}`,
+            AthleteName: `${modeLabel} History Runner ${sortOrder}`,
+            ResultDate: resultDate,
+            Distance: distance,
+            Time: `00:30:${String(sortOrder).padStart(2, '0')}`,
+            AgeGrade: '65.0%',
+            AgeGradeExact: '65.000001%',
+            Event: `History checkpoint ${sortOrder}`,
+            TimeClass: 'Official',
+            MilestoneType: 'First Official Result',
+            CurrentOverallRankAfter: String(sortOrder),
+            AllTimeOverallRankAfter: String(sortOrder + 5),
+            ExportBundleID: bundleId
+        };
+
+        if (distance !== '1 Mile') {
+            row.CurrentDistanceRankAfter = String(sortOrder);
+            row.AllTimeDistanceRankAfter = String(sortOrder + 3);
+        }
+
+        rows.push(row);
+    }
+
+    const dataRows = rows.map(row =>
+        newsExportHeaders.map(header => quoteCsvField(row[header] || '')).join(',')
+    );
+
+    return {
+        bundleId,
+        rows,
+        csv: `${newsExportHeaders.join(',')}\r\n${dataRows.join('\r\n')}\r\n`
+    };
 }
 
 async function waitForRenderedChampionship(page, mode) {
@@ -802,6 +2344,7 @@ async function assertPrimaryNavigation(page, mode, viewport, activePage) {
         : 'Championships';
     const expected = new Map([
         [championshipsLabel, 'index.html'],
+        ['News', 'news.html'],
         ['Hall of Fame', 'hall-of-fame.html'],
         ['Records', 'records.html'],
         ['Gallery', 'gallery.html'],
@@ -969,6 +2512,7 @@ async function capturePageScreenshot(page, mode, viewport, pageKey, waitForPage)
 }
 
 function pageFileForKey(pageKey) {
+    if (pageKey === 'news') return 'news.html';
     if (pageKey === 'hall-of-fame') return 'hall-of-fame.html';
     if (pageKey === 'overview') return 'overview.html';
     if (pageKey === 'records') return 'records.html';
@@ -2196,6 +3740,7 @@ async function runBrandMetadataTests(browserInstance) {
     const pages = [
         'index.html',
         'championships.html',
+        'news.html',
         'hall-of-fame.html',
         'records.html',
         'gallery.html',
@@ -2414,6 +3959,7 @@ async function runDocumentTitleTests(browserInstance) {
     const pages = [
         'index.html',
         'championships.html',
+        'news.html',
         'hall-of-fame.html',
         'records.html',
         'gallery.html',

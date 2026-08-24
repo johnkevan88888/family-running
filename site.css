@@ -975,6 +975,21 @@
     color: #0f2438;
 }
 
+/* Athlete profiles use a deliberately narrower 1200px content column. With
+   both News and Gallery present, its longer Back to Championships label needs
+   a compact desktop menu so all eight destinations remain on one row. */
+@media (min-width: 701px) {
+    body[data-page="athlete"] .site-nav {
+        gap: 8px;
+    }
+
+    body[data-page="athlete"] .site-nav-link {
+        font-size: 0.94rem;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+}
+
 .time-with-pace {
     align-items: baseline;
     display: inline-flex;
