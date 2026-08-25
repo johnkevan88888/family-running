@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,18 +7,34 @@ import {
     assessDataPullRequestIdentity,
     assessPublishableDataChange,
     assessRequiredDataChecks,
+    createPreparationFailureAfterCleanup,
+    createWorkbookExportArguments,
     createDataBranchName,
     createDataPullRequestTitle,
     formatComparisonSummary,
+    formatPreparationFailure,
+    mayDeleteFailedPreparationBranch,
+    mayRestorePreparationStartingBranch,
     parseUpdateArguments,
+    preparationRestoreArguments,
+    requireWorkbookExportCapability,
     resolvePromotionRoot,
-    validateUpdateState
+    validateUpdateState,
+    workbookContractSignature
 } from '../scripts/simple-data-update.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const launcher = await fs.readFile(path.join(repoRoot, 'update-website-data.cmd'), 'utf8');
 const updater = await fs.readFile(path.join(repoRoot, 'scripts', 'simple-data-update.mjs'), 'utf8');
 const promoter = await fs.readFile(path.join(repoRoot, 'scripts', 'promote-staged-export.mjs'), 'utf8');
+const workbookRunner = await fs.readFile(
+    path.join(repoRoot, 'scripts', 'run-workbook-staged-export.ps1'),
+    'utf8'
+);
+const contractDefinition = JSON.parse(await fs.readFile(
+    path.join(repoRoot, 'scripts', 'workbook-export-contract.json'),
+    'utf8'
+));
 
 assert.doesNotMatch(launcher, /call pnpm run data:update/i);
 assert.match(launcher, /where node\.exe/i);
@@ -46,6 +63,209 @@ function functionSource(source, signature) {
 
     return source.slice(start, start + end.index);
 }
+
+const expectedWorkbookSignature = workbookContractSignature(contractDefinition);
+const csvFiles = (await listCsvFiles(path.join(repoRoot, 'data')))
+    .sort((first, second) => first < second ? -1 : first > second ? 1 : 0);
+const descriptorParts = [`${contractDefinition.schemaDescriptorPrefix}\n`];
+
+for (const file of csvFiles) {
+    const relativePath = path.relative(repoRoot, file).split(path.sep).join('/');
+    const text = (await fs.readFile(file, 'utf8')).replace(/^\uFEFF/, '');
+    const header = text.split(/\r\n|\n|\r/, 1)[0];
+    descriptorParts.push(`${relativePath}\n${header}\n`);
+}
+
+const descriptor = descriptorParts.join('');
+const schemaFingerprint = createHash('sha256')
+    .update(descriptor, 'utf8')
+    .digest('hex')
+    .toUpperCase();
+
+assert.equal(contractDefinition.version, 1);
+assert.equal(csvFiles.length, contractDefinition.publicCsvCount);
+assert.equal(Buffer.byteLength(descriptor, 'utf8'), 14901);
+assert.equal(schemaFingerprint, contractDefinition.schemaFingerprintSha256);
+assert.equal(
+    expectedWorkbookSignature,
+    `${contractDefinition.contractId}:schema-sha256=${schemaFingerprint}`
+);
+
+const manifestLines = (await fs.readFile(
+    path.join(repoRoot, 'data', 'export_manifest.csv'),
+    'utf8'
+)).trim().split(/\r\n|\n|\r/);
+assert.equal(manifestLines.length - 1, contractDefinition.manifestEntryCount);
+
+for (const scope of ['family', 'everyone']) {
+    const header = (await fs.readFile(
+        path.join(repoRoot, 'data', scope, 'official_result_news.csv'),
+        'utf8'
+    )).split(/\r\n|\n|\r/, 1)[0];
+    assert.equal(
+        header.split(',').length,
+        contractDefinition.officialResultNewsColumnCount
+    );
+}
+
+assert.equal(
+    requireWorkbookExportCapability(
+        `Workbook: C:\\Private\\source.xlsm\r\nWORKBOOK_EXPORT_CAPABILITY=${expectedWorkbookSignature}\r\n`,
+        expectedWorkbookSignature
+    ),
+    expectedWorkbookSignature
+);
+assert.throws(
+    () => requireWorkbookExportCapability('', expectedWorkbookSignature),
+    /exactly one capability marker/
+);
+assert.throws(
+    () => requireWorkbookExportCapability(
+        'WORKBOOK_EXPORT_CAPABILITY=\r\n',
+        expectedWorkbookSignature
+    ),
+    /mismatch/
+);
+assert.throws(
+    () => requireWorkbookExportCapability(
+        `WORKBOOK_EXPORT_CAPABILITY=${expectedWorkbookSignature}\n` +
+        `WORKBOOK_EXPORT_CAPABILITY=${expectedWorkbookSignature}\n`,
+        expectedWorkbookSignature
+    ),
+    /exactly one capability marker/
+);
+assert.throws(
+    () => requireWorkbookExportCapability(
+        'WORKBOOK_EXPORT_CAPABILITY=website-data/70;official-result-news/0\n',
+        expectedWorkbookSignature
+    ),
+    /mismatch/
+);
+
+const overrideWorkbook = 'C:\\Private\\source.xlsm';
+const preflightArguments = createWorkbookExportArguments({
+    workbookPath: overrideWorkbook,
+    preflightOnly: true,
+    expectedContractSignature: expectedWorkbookSignature
+});
+const exportArguments = createWorkbookExportArguments({
+    workbookPath: overrideWorkbook,
+    expectedContractSignature: expectedWorkbookSignature
+});
+
+assert(preflightArguments.includes('-PreflightOnly'));
+assert(!exportArguments.includes('-PreflightOnly'));
+assert(preflightArguments.includes(path.resolve(overrideWorkbook)));
+assert(exportArguments.includes(path.resolve(overrideWorkbook)));
+assert(preflightArguments.includes(expectedWorkbookSignature));
+assert(exportArguments.includes(expectedWorkbookSignature));
+
+assert.deepEqual(
+    preparationRestoreArguments({ branch: 'main', commit: 'a'.repeat(40) }),
+    ['switch', 'main']
+);
+assert.deepEqual(
+    preparationRestoreArguments({ branch: '', commit: 'a'.repeat(40) }),
+    ['switch', '--detach', 'a'.repeat(40)]
+);
+assert.throws(
+    () => preparationRestoreArguments({ branch: '', commit: 'not-a-commit' }),
+    /detached-HEAD commit is invalid/
+);
+assert.equal(mayDeleteFailedPreparationBranch({
+    temporaryHead: 'a'.repeat(40),
+    baseHead: 'a'.repeat(40)
+}), true);
+assert.equal(mayDeleteFailedPreparationBranch({
+    temporaryHead: 'a'.repeat(40),
+    baseHead: 'b'.repeat(40)
+}), false);
+assert.equal(mayDeleteFailedPreparationBranch({
+    temporaryHead: 'not-a-commit',
+    baseHead: 'not-a-commit'
+}), false);
+
+const formattedPreparationFailure = formatPreparationFailure({
+    errorMessage: 'Staged validation failed.',
+    cleanupMessages: ['Restored main.', 'Removed empty temporary branch data/refresh-test.'],
+    stagedRoot: path.join(repoRoot, 'test-artifacts', 'workbook-export-staging', 'run-test')
+});
+assert.match(formattedPreparationFailure, /No resumable data update was saved/);
+assert.match(formattedPreparationFailure, /Diagnostic staged export retained at/);
+assert.match(formattedPreparationFailure, /without --resume/);
+
+const primaryPreparationError = new Error('Staged validation failed.');
+const cleanupInspectionFailure = createPreparationFailureAfterCleanup({
+    error: primaryPreparationError,
+    stagedRoot: null,
+    cleanup: () => {
+        throw new Error('git status could not run');
+    }
+});
+assert.match(cleanupInspectionFailure.message, /^Staged validation failed\./);
+assert.match(
+    cleanupInspectionFailure.message,
+    /Automatic failed-preparation cleanup could not be completed: git status could not run/
+);
+assert.equal(cleanupInspectionFailure.cause, primaryPreparationError);
+
+assert.equal(mayRestorePreparationStartingBranch({
+    recordedHead: 'a'.repeat(40),
+    currentHead: 'a'.repeat(40)
+}), true);
+assert.equal(mayRestorePreparationStartingBranch({
+    recordedHead: 'a'.repeat(40),
+    currentHead: 'b'.repeat(40)
+}), false);
+assert.equal(mayRestorePreparationStartingBranch({
+    recordedHead: 'not-a-commit',
+    currentHead: 'not-a-commit'
+}), false);
+
+assert.match(workbookRunner, /\[switch\]\$PreflightOnly/);
+assert.match(
+    workbookRunner,
+    /Workbooks\.Open\(\$WorkbookPath, 0, \[bool\]\$PreflightOnly\)/
+);
+const contractQueryIndex = workbookRunner.indexOf('GetWebsiteExportContractForAutomation');
+const preflightReturnIndex = workbookRunner.indexOf('if ($PreflightOnly)');
+const disableEventsIndex = workbookRunner.indexOf('$excel.EnableEvents = $false');
+const workbookOpenIndex = workbookRunner.indexOf('$excel.Workbooks.Open');
+const exportMacroIndex = workbookRunner.indexOf(
+    'ExportWebsiteDataIncludingAthleteComparisonForAutomation'
+);
+const workbookSaveIndex = workbookRunner.indexOf('$workbook.Save()');
+assert(contractQueryIndex >= 0 && contractQueryIndex < preflightReturnIndex);
+assert(disableEventsIndex >= 0 && disableEventsIndex < workbookOpenIndex);
+assert(preflightReturnIndex < exportMacroIndex);
+assert(exportMacroIndex < workbookSaveIndex);
+
+const prepareBody = functionSource(updater, 'function prepareUpdate');
+const preflightIndex = prepareBody.indexOf("label: 'Workbook contract preflight'");
+const baseCommitIndex = prepareBody.indexOf("['rev-parse', 'origin/main']");
+const pinnedContractIndex = prepareBody.indexOf(
+    "['show', `${baseCommit}:scripts/workbook-export-contract.json`]"
+);
+const branchCreationIndex = prepareBody.indexOf("['switch', '--create'");
+const fullExportIndex = prepareBody.indexOf("label: 'Workbook export'");
+assert(baseCommitIndex >= 0 && baseCommitIndex < pinnedContractIndex);
+assert(pinnedContractIndex < preflightIndex);
+assert(preflightIndex >= 0 && preflightIndex < branchCreationIndex);
+assert(branchCreationIndex < fullExportIndex);
+assert.match(prepareBody, /\['switch', '--create', branch, baseCommit\]/);
+assert.doesNotMatch(prepareBody, /origin\/main:scripts\/workbook-export-contract\.json/);
+assert.doesNotMatch(prepareBody, /\['switch', '--create', branch, 'origin\/main'\]/);
+
+const failedCleanupBody = functionSource(updater, 'function cleanupFailedPreparation');
+assert.match(failedCleanupBody, /fs\.existsSync\(statePath\)/);
+assert.match(failedCleanupBody, /currentBranch !== branch/);
+assert.match(failedCleanupBody, /status\.trim\(\)/);
+assert.match(failedCleanupBody, /refs\/heads\/\$\{startingPoint\.branch\}/);
+assert.match(failedCleanupBody, /mayRestorePreparationStartingBranch/);
+assert.match(failedCleanupBody, /preparationRestoreArguments\(startingPoint\)/);
+assert.match(failedCleanupBody, /'update-ref',[\s\S]*'--delete'/);
+assert.match(failedCleanupBody, /`refs\/heads\/\$\{branch\}`/);
+assert.doesNotMatch(failedCleanupBody, /['"]push['"]|refs\/remotes|origin\//);
 
 const waitBody = functionSource(updater, 'async function waitForRequiredChecks');
 assert.doesNotMatch(
@@ -268,3 +488,19 @@ try {
 }
 
 console.log('Simple data-update workflow tests passed.');
+
+async function listCsvFiles(directory) {
+    const files = [];
+
+    for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
+        const entryPath = path.join(directory, entry.name);
+
+        if (entry.isDirectory()) {
+            files.push(...await listCsvFiles(entryPath));
+        } else if (entry.isFile() && entry.name.endsWith('.csv')) {
+            files.push(entryPath);
+        }
+    }
+
+    return files;
+}

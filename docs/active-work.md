@@ -1,14 +1,83 @@
 # Active Work
 
-## Current task: workbook-owned News medal positions, displaced holders, and ranked-athlete counts
+## Current task: canonical workbook and guided data-updater contract repair
+
+### Status — 25 August 2026
+
+The routine updater failed safely after Pull Request #70 merged to `main` because
+the repository required the 72-file, 64-column Official Results News contract
+while its default `CODEX WORKING COPY.xlsm` still contained the valid pre-News
+70-file exporter. The News implementation had been developed in a separate
+feature draft and had never been reconciled back into the stable workbook path.
+The failed run promoted no data, saved no resumable updater state, made no commit
+or push, and left only an empty refresh branch plus its ignored staged output.
+The empty branch was verified at the same commit as `origin/main` and removed.
+
+John explicitly authorized private-workbook inspection and repair. Before any
+change, the working copy and News draft were copied and SHA-256 verified:
+
+- working-copy backup:
+  `C:\GitHub\_private_workbooks\backups\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX BACKUP BEFORE DATA UPDATE REPAIR WORKING COPY 20260825-084048.xlsm`,
+  SHA-256 `3FF022831704B01259B54F75969785F503337031C3C83F73E9A271AA2B8A3A90`;
+- News-draft backup:
+  `C:\GitHub\_private_workbooks\backups\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX BACKUP BEFORE DATA UPDATE REPAIR NEWS DRAFT 20260825-084048.xlsm`,
+  SHA-256 `B123E27299879A937AA9BD9ED4F3F62A25886438BA3B5DEEEBEDDF75B7AF6ECC`.
+
+The current working copy had 183 race-result rows and 23 participants, versus
+171 and 22 in the feature draft. The verified 64-column `OfficialNewsExport`
+module and its 20-line automation integration were therefore ported into a copy
+of the newer working workbook; the older whole draft was not substituted and no
+result data was discarded. A full export from that candidate passed staged CSV
+and bundle validation for all 72 public CSVs. The repaired canonical working
+copy also exposes a side-effect-free export-contract query coupled to the
+repository's path-and-header fingerprint. Its current SHA-256 is
+`1D6AAB753E9BD7B0FAB7CC1DC2721EB9A4CD9B6BB8578460C3AFD570A852BCEE`;
+the repaired pre-marker copy remains backed up with SHA-256
+`220D71CFC5463E6410AE3566DF44F64D7C098D9943EEC916689B35B464E1F129`.
+
+Repository hardening is implemented locally on
+`codex/data-update-workbook-repair`. Before creating a data branch, the updater
+now opens the selected workbook read-only and requires the tracked contract ID
+plus schema fingerprint. A missing or stale marker fails with a targeted
+pre-News explanation and creates neither a staged run nor a refresh branch. The
+full export repeats the check, and any later pre-state preparation failure
+restores the original Git position only while its recorded ref is unchanged,
+then compare-and-swap deletes only the exact unchanged temporary branch. The
+exact staged file/header/content validators remain authoritative.
+
+Final candidate export
+`test-artifacts/workbook-export-staging/run-20260825-085938-959` passed the
+72-file validator with 43 Family and 75 Everyone News milestones. Reconciliation
+found 18 meaningful public CSV differences arising from the newer workbook data,
+including 12 additional shared result rows. Those data changes have not been
+promoted or published and still require the updater's normal review and explicit
+approvals after this code repair follows the standard Pull Request path.
+
+Final repository validation passed on 25 August 2026. The complete `pnpm test`
+suite passed repository safety, vendored-library checks, both-mode CSV and
+Gallery validation, age-grade and Gallery contracts, analytics and release-path
+regressions, the export-bundle and staged-workflow suites, reconciliation,
+preview-artifact safety, the 114-file preview build, and both-mode desktop/mobile
+browser smoke and screenshot checks. `git diff --check` also passed apart from
+Git's expected LF-to-CRLF working-copy notices.
+
+### Handoff
+
+- Do not replace the canonical workbook with the dated News draft; it lacks the
+  newer result and participant rows.
+- Do not use `--resume` for the failed 25 August run; no state was saved.
+- Do not promote the retained staged export as part of this code repair. Start a
+  fresh routine update after the updater repair is reviewed and merged.
+
+## Prior task: workbook-owned News medal positions, displaced holders, and ranked-athlete counts
 
 ### Status — 24 August 2026
 
-The ranked-athlete-count follow-up is implemented and promoted locally on
-`codex/news-medal-position-labels`. Pull Request #70 is the review target; no
-merge, deployment, or release has been performed for this follow-up.
-This is a follow-up to the already merged News baseline from Pull Request #68,
-not a replacement for the Gallery work on `main`.
+The ranked-athlete-count follow-up was implemented and promoted locally on
+`codex/news-medal-position-labels`, then merged to `main` through Pull Request
+#70 on 24 August 2026. This historical section records the pre-merge evidence.
+It followed the News baseline from Pull Request #68 and preserved the Gallery
+work already on `main`.
 
 The private News draft workbook was backed up before this authorized change.
 The untouched backup is
@@ -85,8 +154,8 @@ desktop and mobile browser smoke/screenshot checks.
 
 - The complete 64-column bundle has been promoted atomically; do not selectively
   overwrite individual data files.
-- Pull Request #70 carries this branch; do not merge or deploy this follow-up
-  without separate explicit approval.
+- Pull Request #70 merged this follow-up on 24 August 2026. Production state is
+  recorded separately from this historical implementation handoff.
 
 ## Historical record: Official Results News first draft
 

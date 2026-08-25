@@ -83,6 +83,30 @@ context-aligned `MedalEntry` columns, their eight `MedalBefore`/
 post-result ranked-athlete counts are part of that required header and must not
 be added to one mode without the other.
 
+### Canonical workbook capability preflight
+
+Routine updates use this stable default workbook path:
+
+`C:\GitHub\_private_workbooks\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX WORKING COPY.xlsm`
+
+Before creating a data branch or staged run, the guided updater opens the
+selected workbook read-only and calls
+`AthleteComparisonExport.GetWebsiteExportContractForAutomation`. The returned
+value must match the contract ID and schema fingerprint in
+`scripts/workbook-export-contract.json`. The full exporter repeats this check as
+defense in depth. A missing function or mismatch means the workbook and
+repository are from different export-contract generations; it is not permission
+to weaken validation, copy an older News file forward, or select a dated feature
+draft without reconciling its data.
+
+The fingerprint is SHA-256 over the UTF-8 descriptor prefix followed by every
+public CSV path and exact header, each separated by one line feed. Paths include
+`data/`, use `/`, and are sorted ordinally; a leading CSV byte-order mark is
+ignored. Data rows, bundle IDs, timestamps, and row counts are deliberately not
+part of the fingerprint. The current contract covers 72 public CSVs, 71 manifest
+entries, and 64 columns in each Official Results News file. Staged validation
+remains authoritative for the generated bundle.
+
 ## Workbook guarantees
 
 The workbook exporter:
@@ -166,24 +190,26 @@ pnpm run data:update
 The guided updater:
 
 1. confirms that GitHub CLI is logged in and the repository is clean;
-2. fetches current `origin/main` and creates a timestamped `data/refresh-*`
-   branch from it;
-3. generates a fresh complete staged workbook export;
-4. validates and reconciles the bundle without changing tracked data;
-5. lists every meaningful CSV difference and requires the exact word
+2. fetches current `origin/main`, pins that commit, reads its workbook-contract
+   definition, and checks the selected workbook read-only;
+3. only after preflight succeeds, creates a timestamped `data/refresh-*` branch
+   from that same pinned commit;
+4. generates a fresh complete staged workbook export;
+5. validates and reconciles the bundle without changing tracked data;
+6. lists every meaningful CSV difference and requires the exact word
    `PROMOTE` before replacing tracked `data/`;
-6. runs the complete repository test and responsive screenshot suite;
-7. confirms that every tracked CSV was refreshed, no header changed, and the
+7. runs the complete repository test and responsive screenshot suite;
+8. confirms that every tracked CSV was refreshed, no header changed, and the
    tested data-diff fingerprint still matches;
-8. requires the exact word `PUBLISH` before committing, pushing, and opening a
+9. requires the exact word `PUBLISH` before committing, pushing, and opening a
    `[skip netlify]` Pull Request;
-9. waits for GitHub checks, then stops and prints the Pull Request, its exact
+10. waits for GitHub checks, then stops and prints the Pull Request, its exact
    diff command, and the run holding the responsive-screenshot artifact;
-10. requires the exact word `MERGE` as explicit production approval, then
+11. requires the exact word `MERGE` as explicit production approval, then
     re-verifies the PR title, base branch, data branch, exact tested head
     commit, and required check before merging through the protected Pull
     Request pathway; and
-10. fast-forwards local `main`, deletes the verified merged branch locally and
+12. fast-forwards local `main`, deletes the verified merged branch locally and
     remotely, and removes only the staged export, promotion backup, and state
     paths recorded for that update.
 
@@ -217,9 +243,28 @@ validation, changed post-test data, failed local or GitHub tests, mismatched PR
 identity, and non-fast-forward local `main`. Use the manual workflow below for
 schema, export-set, code, configuration, or broader documentation changes.
 
+If preflight fails, no data branch, staged run, or resumable state is created;
+fix the workbook and start normally rather than using `--resume`. If export,
+validation, or comparison fails after branch creation but before state is saved,
+the updater restores the original Git position only if its recorded branch ref
+is unchanged, then compare-and-swap deletes only the exact unchanged temporary
+branch. A completed staged export is retained and its diagnostic path is printed;
+tracked `data/` is still untouched.
+
 ## Safe refresh commands
 
 Run commands from the repository root on Windows.
+
+### 0. Check workbook compatibility without exporting
+
+```powershell
+pnpm run workbook:check:contract
+```
+
+This opens the default canonical workbook read-only, prints
+`WORKBOOK_EXPORT_CAPABILITY=<signature>`, and creates no staged run. An explicit
+workbook can be checked with `-WorkbookPath` through the underlying PowerShell
+script.
 
 ### 1. Generate a fresh staged export
 

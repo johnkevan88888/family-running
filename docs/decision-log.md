@@ -52,6 +52,34 @@ Unknown historical details are labelled rather than inferred.
   validators, tests, and both site folders. Partial, stale, mixed, missing, or
   unlisted export bundles must fail validation.
 
+## The canonical workbook is preflight-coupled to the repository export contract
+
+- **Status:** Accepted and implemented
+- **Date:** 25 August 2026
+- **Decision:** The stable private `CODEX WORKING COPY.xlsm` path is the single
+  workbook used for routine data updates. A feature draft cannot satisfy a newly
+  merged repository export contract until its verified exporter changes and the
+  canonical workbook's newer data are reconciled into one backed-up working
+  copy. The workbook exposes a side-effect-free automation function returning a
+  repository-owned contract ID and SHA-256 schema fingerprint; the guided updater
+  checks it read-only before creating a refresh branch and the full exporter
+  checks it again before writing a staged bundle.
+- **Rationale:** Official Results News was implemented in a separate draft while
+  the launcher continued selecting a valid pre-News 70-file working copy. After
+  the repository moved to 72 files, the split was discovered only by the later
+  staged-set validator. The canonical working copy also contained newer result
+  and participant rows, so selecting the dated draft would have lost data.
+- **Consequences:** `scripts/workbook-export-contract.json` records the readable
+  contract ID, 72-file/71-manifest-entry counts, 64-column News requirement, and
+  a deterministic fingerprint of every sorted public CSV path plus its exact
+  header. Missing or mismatched workbook capability fails before export and
+  names the selected workbook. An explicit `--workbook` override must satisfy
+  the same contract. The marker is an early compatibility check, not a new data
+  authority: workbook post-export checks and repository staged file, header,
+  bundle, and content validation remain authoritative. Any future public path or
+  header change updates the JSON definition, workbook marker, tests, and
+  documentation atomically.
+
 ## JavaScript is display-only
 
 - **Status:** Accepted
