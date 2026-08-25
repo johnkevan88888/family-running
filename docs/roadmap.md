@@ -10,6 +10,12 @@ candidate idea or a completed release.
 
 ## Approved first draft
 
+**Status correction, 25 August 2026.** The detailed sequence below is retained
+as historical delivery context. Official Results News and its 64-column
+medal-position, displaced-holder, and ranked-athlete-count extensions are now
+merged through Pull Requests #68 and #70; they are no longer candidate work.
+Newer 25 August workbook data have been validated separately but not promoted.
+
 **Official Results News.** Product semantics were approved on 23 August 2026
 and are fixed in
 [Official Result News Contract](official-news-contract.md). The first draft is

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "contractId": "family-running:web-export:v1:public-csv=72:official-news-columns=64",
+  "publicCsvCount": 72,
+  "manifestEntryCount": 71,
+  "officialResultNewsColumnCount": 64,
+  "schemaDescriptorPrefix": "family-running-workbook-export-contract-v1",
+  "schemaFingerprintAlgorithm": "paths-and-headers-v1",
+  "schemaFingerprintSha256": "E20FF5590C9F46DCDDAD08358B147C447D57F45D4E1FD36F3946D6243301FDB5"
+}

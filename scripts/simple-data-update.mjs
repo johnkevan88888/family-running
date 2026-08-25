@@ -121,6 +121,136 @@ export function formatComparisonSummary(comparison) {
     return lines.join('\n');
 }
 
+export function preparationRestoreArguments({ branch, commit }) {
+    if (branch) {
+        return ['switch', branch];
+    }
+    if (!/^[0-9a-f]{40}$/i.test(commit || '')) {
+        throw new Error('The original detached-HEAD commit is invalid.');
+    }
+
+    return ['switch', '--detach', commit];
+}
+
+export function mayDeleteFailedPreparationBranch({ temporaryHead, baseHead }) {
+    return (
+        /^[0-9a-f]{40}$/i.test(temporaryHead || '') &&
+        /^[0-9a-f]{40}$/i.test(baseHead || '') &&
+        temporaryHead === baseHead
+    );
+}
+
+export function formatPreparationFailure({ errorMessage, cleanupMessages, stagedRoot }) {
+    const lines = [
+        errorMessage,
+        '',
+        'No resumable data update was saved.'
+    ];
+
+    lines.push(...(cleanupMessages || []));
+    if (stagedRoot) {
+        lines.push(`Diagnostic staged export retained at: ${stagedRoot}`);
+    }
+    lines.push('Resolve the reported problem, then start a fresh data update without --resume.');
+
+    return lines.join('\n');
+}
+
+export function createPreparationFailureAfterCleanup({ error, cleanup, stagedRoot }) {
+    const primaryError = error instanceof Error ? error : new Error(String(error));
+    let cleanupMessages;
+
+    try {
+        cleanupMessages = cleanup();
+    } catch (cleanupError) {
+        const detail = cleanupError instanceof Error
+            ? cleanupError.message
+            : String(cleanupError);
+        cleanupMessages = [
+            `Automatic failed-preparation cleanup could not be completed: ${detail}`
+        ];
+    }
+
+    return new Error(formatPreparationFailure({
+        errorMessage: primaryError.message,
+        cleanupMessages,
+        stagedRoot
+    }), { cause: primaryError });
+}
+
+export function mayRestorePreparationStartingBranch({ recordedHead, currentHead }) {
+    return (
+        /^[0-9a-f]{40}$/i.test(recordedHead || '') &&
+        /^[0-9a-f]{40}$/i.test(currentHead || '') &&
+        recordedHead === currentHead
+    );
+}
+
+export function workbookContractSignature(contractDefinition) {
+    const contractId = String(contractDefinition?.contractId || '');
+    const fingerprint = String(contractDefinition?.schemaFingerprintSha256 || '');
+
+    if (
+        !contractId ||
+        contractId.trim() !== contractId ||
+        /[\r\n]/.test(contractId) ||
+        !/^[A-F0-9]{64}$/.test(fingerprint)
+    ) {
+        throw new Error('The repository workbook-export contract definition is invalid.');
+    }
+
+    return `${contractId}:schema-sha256=${fingerprint}`;
+}
+
+export function requireWorkbookExportCapability(stdout, expectedSignature) {
+    const marker = 'WORKBOOK_EXPORT_CAPABILITY=';
+    const matches = String(stdout || '')
+        .split(/\r?\n/)
+        .filter(line => line.startsWith(marker));
+
+    if (matches.length !== 1) {
+        throw new Error(
+            'Workbook contract preflight did not report exactly one capability marker.'
+        );
+    }
+
+    const actualSignature = matches[0].slice(marker.length);
+
+    if (!actualSignature || actualSignature !== expectedSignature) {
+        throw new Error(
+            `Workbook contract preflight mismatch. Expected ${expectedSignature}; reported ${actualSignature || '(blank)'}.`
+        );
+    }
+
+    return actualSignature;
+}
+
+export function createWorkbookExportArguments({
+    workbookPath,
+    preflightOnly = false,
+    expectedContractSignature = null
+}) {
+    const argumentsList = [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        path.join(repoRoot, 'scripts', 'run-workbook-staged-export.ps1')
+    ];
+
+    if (preflightOnly) {
+        argumentsList.push('-PreflightOnly');
+    }
+    if (expectedContractSignature) {
+        argumentsList.push('-ExpectedContractSignature', expectedContractSignature);
+    }
+    if (workbookPath) {
+        argumentsList.push('-WorkbookPath', path.resolve(workbookPath));
+    }
+
+    return argumentsList;
+}
+
 export function assessPublishableDataChange({ changedFiles, expectedDataFiles }) {
     const normalizedChanged = [...new Set(changedFiles.map(normalizePath))].sort();
     const normalizedExpected = [...new Set(expectedDataFiles.map(normalizePath))].sort();
@@ -334,68 +464,190 @@ async function main() {
 
 function prepareUpdate(options, tools) {
     requireCleanWorkingTree(tools.git);
+    const startingPoint = {
+        branch: captureGit(tools.git, ['branch', '--show-current']).trim(),
+        commit: captureGit(tools.git, ['rev-parse', 'HEAD']).trim()
+    };
+
     console.log('Refreshing the latest production branch...');
     runCommand(tools.git, ['fetch', 'origin', 'main', '--prune'], {
         label: 'GitHub refresh'
     });
 
+    const baseCommit = captureGit(tools.git, ['rev-parse', 'origin/main']).trim();
+
+    const contractDefinition = JSON.parse(captureGit(
+        tools.git,
+        ['show', `${baseCommit}:scripts/workbook-export-contract.json`]
+    ));
+    const expectedContractSignature = workbookContractSignature(contractDefinition);
+
+    console.log('Checking the private workbook export contract...');
+    const preflight = runCommand('powershell.exe', createWorkbookExportArguments({
+        workbookPath: options.workbookPath,
+        preflightOnly: true,
+        expectedContractSignature
+    }), {
+        label: 'Workbook contract preflight'
+    });
+    requireWorkbookExportCapability(preflight.stdout, expectedContractSignature);
+
     const now = new Date();
     const branch = createDataBranchName(now);
-    runCommand(tools.git, ['switch', '--create', branch, 'origin/main'], {
-        label: 'Data branch creation'
-    });
+    let branchCreated = false;
+    let stagedRoot = null;
 
-    console.log('Exporting the complete website-data bundle from the private workbook...');
-    const exportArguments = [
-        '-NoProfile',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-File',
-        path.join(repoRoot, 'scripts', 'run-workbook-staged-export.ps1')
-    ];
+    try {
+        runCommand(tools.git, ['switch', '--create', branch, baseCommit], {
+            label: 'Data branch creation'
+        });
+        branchCreated = true;
 
-    if (options.workbookPath) {
-        exportArguments.push('-WorkbookPath', path.resolve(options.workbookPath));
+        console.log('Exporting the complete website-data bundle from the private workbook...');
+        const exportArguments = createWorkbookExportArguments({
+            workbookPath: options.workbookPath,
+            expectedContractSignature
+        });
+
+        const exported = runCommand('powershell.exe', exportArguments, {
+            label: 'Workbook export'
+        });
+        const rootMatch = /(?:^|\r?\n)STAGED_EXPORT_ROOT=([^\r\n]+)/.exec(exported.stdout);
+
+        if (!rootMatch) {
+            throw new Error('The workbook export completed without reporting its staged path.');
+        }
+
+        stagedRoot = resolveStagedRoot(rootMatch[1].trim());
+        console.log('Validating the staged bundle...');
+        runNodeScript('scripts/export-bundle-validation.mjs', ['--staged', stagedRoot]);
+
+        console.log('Comparing the staged bundle with production data...');
+        runNodeScript('scripts/compare-export-bundle.mjs', ['--staged', stagedRoot], {
+            acceptedStatuses: [0, 2]
+        });
+
+        const reportPath = path.join(stagedRoot, 'reconciliation.json');
+        const comparison = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+        const phase = comparison.meaningfulDifferences.length > 0
+            ? 'prepared'
+            : 'no-changes';
+        const state = {
+            version: STATE_VERSION,
+            phase,
+            branch,
+            stagedRoot,
+            reportPath,
+            pullRequestTitle: createDataPullRequestTitle(now),
+            comparison,
+            createdAt: now.toISOString()
+        };
+
+        saveState(state);
+        console.log('');
+        console.log(formatComparisonSummary(comparison));
+        return state;
+    } catch (error) {
+        if (!branchCreated) {
+            throw error;
+        }
+
+        throw createPreparationFailureAfterCleanup({
+            error,
+            stagedRoot,
+            cleanup: () => cleanupFailedPreparation({
+                branch,
+                baseCommit,
+                startingPoint
+            }, tools.git)
+        });
+    }
+}
+
+function cleanupFailedPreparation({ branch, baseCommit, startingPoint }, git) {
+    const messages = [];
+    const currentBranch = captureGit(git, ['branch', '--show-current']).trim();
+    const currentHead = captureGit(git, ['rev-parse', 'HEAD']).trim();
+    const status = captureGit(git, ['status', '--porcelain']);
+
+    if (fs.existsSync(statePath)) {
+        messages.push(
+            `The temporary branch ${branch} was retained because updater state now exists.`
+        );
+        return messages;
+    }
+    if (
+        currentBranch !== branch ||
+        !mayDeleteFailedPreparationBranch({ temporaryHead: currentHead, baseHead: baseCommit })
+    ) {
+        messages.push(
+            `The temporary branch ${branch} was retained because its checked-out identity or commit changed.`
+        );
+        return messages;
+    }
+    if (status.trim()) {
+        messages.push(
+            `The temporary branch ${branch} was retained because preparation created local changes.`
+        );
+        return messages;
     }
 
-    const exported = runCommand('powershell.exe', exportArguments, {
-        label: 'Workbook export'
-    });
-    const rootMatch = /(?:^|\r?\n)STAGED_EXPORT_ROOT=([^\r\n]+)/.exec(exported.stdout);
+    if (startingPoint.branch) {
+        let startingBranchHead;
 
-    if (!rootMatch) {
-        throw new Error('The workbook export completed without reporting its staged path.');
+        try {
+            startingBranchHead = captureGit(git, [
+                'rev-parse',
+                '--verify',
+                `refs/heads/${startingPoint.branch}`
+            ]).trim();
+        } catch (error) {
+            messages.push(
+                `The temporary branch ${branch} was retained because the original branch ` +
+                `${startingPoint.branch} could not be verified: ${error.message}`
+            );
+            return messages;
+        }
+
+        if (!mayRestorePreparationStartingBranch({
+            recordedHead: startingPoint.commit,
+            currentHead: startingBranchHead
+        })) {
+            messages.push(
+                `The temporary branch ${branch} was retained because the original branch ` +
+                `${startingPoint.branch} no longer points to its recorded commit.`
+            );
+            return messages;
+        }
     }
 
-    const stagedRoot = resolveStagedRoot(rootMatch[1].trim());
-    console.log('Validating the staged bundle...');
-    runNodeScript('scripts/export-bundle-validation.mjs', ['--staged', stagedRoot]);
+    try {
+        runCommand(git, preparationRestoreArguments(startingPoint), {
+            label: 'Failed preparation branch restore'
+        });
+        messages.push(
+            `Restored ${startingPoint.branch || `detached HEAD at ${startingPoint.commit}`}.`
+        );
+    } catch (error) {
+        messages.push(`Could not restore the original Git position: ${error.message}`);
+        return messages;
+    }
 
-    console.log('Comparing the staged bundle with production data...');
-    runNodeScript('scripts/compare-export-bundle.mjs', ['--staged', stagedRoot], {
-        acceptedStatuses: [0, 2]
-    });
+    try {
+        runCommand(git, [
+            'update-ref',
+            '--delete',
+            `refs/heads/${branch}`,
+            baseCommit
+        ], {
+            label: 'Failed preparation branch cleanup'
+        });
+        messages.push(`Removed empty temporary branch ${branch}.`);
+    } catch (error) {
+        messages.push(`Could not remove temporary branch ${branch}: ${error.message}`);
+    }
 
-    const reportPath = path.join(stagedRoot, 'reconciliation.json');
-    const comparison = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-    const phase = comparison.meaningfulDifferences.length > 0
-        ? 'prepared'
-        : 'no-changes';
-    const state = {
-        version: STATE_VERSION,
-        phase,
-        branch,
-        stagedRoot,
-        reportPath,
-        pullRequestTitle: createDataPullRequestTitle(now),
-        comparison,
-        createdAt: now.toISOString()
-    };
-
-    saveState(state);
-    console.log('');
-    console.log(formatComparisonSummary(comparison));
-    return state;
+    return messages;
 }
 
 function promoteAndTest(state, git) {

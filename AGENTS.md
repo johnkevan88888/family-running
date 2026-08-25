@@ -30,11 +30,11 @@ Preserve the selected `site` parameter when navigating between championship page
 - `leaderboard.js` reads the selected site mode, loads `data/<site>/siteinfo.csv`, `data/<site>/halloffame.csv`, and `data/<site>/webtables.csv`, then renders enabled leaderboard CSVs referenced by `webtables.csv`. Each non-vacant table may have a photo podium made only from its first three exported ranked rows. The full exported table must remain directly below it, and Current must remain before All-Time. Podium media is decoration supplied by `gallery.js` only after suppression; missing media uses a fallback and must never change which athletes, ranks, or medals appear.
 - `athlete.html` is the athlete profile page.
 - `athlete.js` loads shared athlete result data from `data/athlete_results.csv` and site-specific supporting exports from `data/<site>/`.
-- Official Results News has an approved contract and first-draft workbook and
-  repository implementation. The approved 72-file export is tracked with
-  authoritative milestone counts of 43 for Family and 64 for Everyone;
-  reconciliation found only the two new News CSVs plus the manifest, and the
-  complete local validation suite passes. The feature is not yet released.
+- Official Results News has an approved contract and merged workbook and
+  repository implementation. The tracked 72-file baseline carries milestone
+  counts of 43 for Family and 64 for Everyone. The canonical private working
+  workbook now contains the same 64-column exporter plus newer data; its latest
+  validated but unpromoted staged export has 43 Family and 75 Everyone rows.
   [The contract](docs/official-news-contract.md) requires Excel/VBA to replay
   presently valid Official results independently for Family and Everyone. The
   browser may load and display only the selected mode's
@@ -131,6 +131,12 @@ Preserve the selected `site` parameter when navigating between championship page
 
 ## Export Bundle Contract
 
+- The stable private `CODEX WORKING COPY.xlsm` is the canonical workbook for
+  routine updates. Before a refresh branch or staged run is created, the guided
+  updater checks its side-effect-free automation contract against
+  `scripts/workbook-export-contract.json`; the full export repeats the check.
+  This capability marker is advisory and must never replace staged bundle and
+  CSV validation.
 - Excel/VBA generates one URL-safe `ExportBundleID` at the start of each full website-data export.
 - Every public CSV except `data/export_manifest.csv` carries that ID in an additive `ExportBundleID` column.
 - VBA writes `data/export_manifest.csv` only after all planned public CSVs have been created and post-export validation has passed.
