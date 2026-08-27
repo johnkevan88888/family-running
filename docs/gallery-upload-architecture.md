@@ -1,0 +1,586 @@
+# Owner-Authenticated Gallery Upload Architecture
+
+## Status
+
+- **Accepted for implementation:** 25 August 2026
+- **Approved pilot boundaries:** Cloudflare-managed `workers.dev` hostnames and
+  temporary processing of each private original on an ephemeral GitHub-hosted
+  runner
+- **Infrastructure state:** Phase B complete on isolated non-production
+  `workers.dev` resources: Zero Trust Free and MFA active, three empty private
+  R2 buckets, migrated empty D1, a $5 alert, an owner-only administration
+  Worker, and an approved-bucket-only media Worker
+- **Media state:** no private original or public derivative has been uploaded
+- **Implementation state:** provider-independent Phase A contracts and tests
+  and Phase B infrastructure/authentication complete; no site merge, DNS
+  change, real-media transfer, Pull Request, or publication is authorized by
+  this decision
+
+This document selects the storage, authentication, and access model needed to
+continue the owner-curated Gallery after Phase 1. It does not turn the Gallery
+into a visitor-upload service and does not replace the committed public
+manifests or their Pull Request review path.
+
+## Decision
+
+Use a small, separate Cloudflare administration service while keeping the
+public championship site on GitHub Pages:
+
+- **Owner authentication:** Cloudflare Access protects the entire admin Worker,
+  including its `workers.dev` and preview addresses. Access admits only the
+  owner's Cloudflare account identity, with account MFA enabled. The Worker
+  independently checks the verified identity against a secret owner allowlist.
+- **Private originals:** a private R2 bucket holds uploaded originals. It has no
+  public development URL or custom domain.
+- **Private records:** D1 holds draft state, consent attestations, moderation
+  state, hashes, processing status, publication references, and a private audit
+  trail. None of those fields is added to a public Gallery manifest.
+- **Derivative staging:** a second private R2 bucket holds sanitized candidate
+  files while the processor verifies the complete set. It has no public route.
+- **Approved derivatives:** a third R2 bucket holds only the verified files that
+  the owner has explicitly approved for public Pull Request preview. The bucket
+  itself stays private. A separate public Worker exposes only this bucket's
+  versioned derivative keys through `GET` and `HEAD`; it can never read the
+  originals bucket, staging bucket, or D1.
+- **Derivative processing:** a trusted GitHub Actions job, running only from the
+  default-branch workflow and behind a protected `gallery-processing`
+  environment, downloads one approved draft through a narrowly scoped Access
+  service endpoint. Pinned image/video tools create and verify the derivatives,
+  stage the complete set privately, and atomically promote it to the approved
+  bucket. The job must not upload the original or a consent record as an
+  artifact, print them to logs, or retain them after the job.
+- **Publication:** the processor writes the existing `1.0` item shape into a
+  branch and opens a normal Pull Request. Existing Gallery validation, the full
+  test suite, the Netlify preview, responsive review, and explicit merge
+  approval remain mandatory. The admin service never writes to `main` and never
+  changes a production manifest directly.
+- **Initial hostnames:** use Cloudflare-managed `workers.dev` hostnames. Do not
+  move `aceofrace.com` DNS as part of this work. A first-party
+  `media.aceofrace.com` hostname remains a later, separately approved DNS
+  change.
+
+Cloudflare Images and Stream are not required for the first implementation.
+Keeping derivative generation in a pinned processor gives the repository an
+explicit, testable metadata-removal step for both photographs and videos and
+avoids making the first release depend on a second paid media product or a
+currently changing transformation contract.
+
+## Architecture And Approval Boundaries
+
+```mermaid
+flowchart LR
+    Owner[Owner browser] --> Access[Cloudflare Access]
+    Access --> Admin[Private admin Worker]
+    Admin --> Records[(Private D1 records)]
+    Admin --> Originals[(Private R2 originals)]
+
+    Admin --> Dispatch[GitHub workflow dispatch]
+    Dispatch --> Approval{Owner approves<br/>gallery-processing environment}
+    Approval --> Processor[Trusted derivative processor]
+    Processor --> AdminAPI[Service-authenticated admin API]
+    AdminAPI --> Staging[(Private derivative staging R2)]
+    Staging --> Derivatives[(Approved derivative R2)]
+    Processor --> PR[Manifest Pull Request]
+    PR --> Preview[Tests and Netlify preview]
+    Preview --> Merge{Explicit merge approval}
+    Merge --> Pages[GitHub Pages]
+
+    Visitor[Public visitor] --> Pages
+    Pages --> Media[Public read-only media Worker]
+    Media --> Derivatives
+```
+
+There are two separate approvals:
+
+1. Approval of the protected `gallery-processing` environment authorizes the
+   selected sanitized derivatives to become reachable at unguessable public
+   URLs for Pull Request preview. Until that approval and successful
+   post-process verification, only the private original, private draft, and
+   private staging objects exist.
+2. Approval to merge the Pull Request authorizes the public site manifest to
+   reference those derivatives. It remains subject to all existing site release
+   gates.
+
+Closing or rejecting a Pull Request does not publish its manifest. Its
+unreferenced candidate derivatives are removed after the cleanup period unless
+the owner chooses to revise and resubmit them.
+
+## Existing Contracts That Do Not Change
+
+- The Gallery is owner-curated. There is no visitor registration or public
+  upload endpoint.
+- Excel/VBA remains unrelated to Gallery media and metadata.
+- The public site loads only `gallery-data/<site>.json` and the shared
+  `gallery-data/hidden-athlete-ids.json` file.
+- A public item continues to contain exactly the existing fields: `id`, `type`,
+  `title`, `caption`, `alt`, `raceDate`, `raceEvent`, `raceDistance`,
+  `sourceUrl`, `thumbnailUrl`, `featured`, and `athleteIds`.
+- A race is selected in the order site mode, exported date, exported
+  event-and-distance tuple. Race names and athlete names are not typed as free
+  text. Athlete associations use public IDs only.
+- Runners in the selected race are offered first, followed by the rest of that
+  mode's public result-bearing roster.
+- Manifest order remains the editorial display order. A repeated ID in Family
+  and Everyone must still have byte-for-byte identical item content and must
+  validate in both modes.
+- A photo still needs a display derivative and thumbnail. A video still needs a
+  playable derivative and separate poster image.
+- Private originals may retain useful source metadata only inside the private
+  store. Every public derivative removes location and device metadata, and no
+  public manifest gains a geotag field.
+- Consent for every depicted person is confirmed before public preview, with a
+  separate guardian confirmation for a child. Consent evidence and private
+  notes never enter Git, public logs, URLs, object headers, or manifests.
+- `hidden-athlete-ids.json` remains the global person-tag suppression control.
+  Suppression is applied before public media requests. Complete takedown still
+  means removing the host objects as well as correcting the manifests.
+- Public media remains downloadable by anyone who knows its URL. `noindex` and
+  unguessable keys reduce discovery; neither is access control.
+- Gallery publication remains a standard Pull Request. It is not eligible for
+  the CSV-only lightweight-data route.
+
+## Why This Model
+
+| Option | Decision | Reason |
+| --- | --- | --- |
+| GitHub Pages or a hidden `upload.html` | Rejected | Pages publishes static files and cannot protect a secret, verify an owner, or receive a trusted upload. Hiding a URL is not authentication. |
+| GitHub issue/Action as the upload store | Rejected | It would put the owner's primary upload experience in a repository workflow and risks media or consent details entering repository history, artifacts, or public logs. Actions remains useful only as the short-lived trusted processor and PR bridge. |
+| Supabase Auth and Storage | Viable fallback | Auth plus row-level storage policy is strong, but the Gallery would still need a separate deterministic video processor, public delivery boundary, and GitHub PR bridge. It adds no clear advantage for this single-owner workflow. |
+| Cloudinary | Viable fallback | It handles image and video transformation, but still needs a separate owner-authenticated administration surface and GitHub PR gate. The private-original/public-derivative and takedown contracts become more provider-specific. |
+| Cloudflare Access, Workers, R2, and D1 | Selected | It supplies a protected admin surface, binding-based credentials, private object storage, transactional private records, and a narrow public delivery service without changing the static public host or DNS. |
+
+The site's DNS currently remains outside Cloudflare. Worker-level Access can
+protect the service and its `workers.dev` addresses without a DNS migration, so
+moving the production zone is not a prerequisite for the first upload.
+
+The expected family-scale request volume fits within Cloudflare's published
+free allowances at the time of this decision, but retained original videos are
+the most likely first storage cost. Provisioning must enable billing alerts and
+recheck current prices rather than treating a free tier as permanent. The main
+non-financial tradeoff is that one private original temporarily passes through a
+GitHub-hosted runner. If that processing boundary is not acceptable, retain the
+same Access/R2/D1 and Pull Request design but replace the processor with an
+owner-local runner or private paid container before Phase D.
+
+## Trust And Access Model
+
+### Browser owner access
+
+- Protect all admin Worker traffic, not only the HTML route.
+- Admit one Cloudflare account member. Enable MFA and keep account recovery
+  codes outside the repository.
+- Use a 30-minute reusable owner-policy session for the first release. The
+  policy duration overrides the longer application-level duration exposed by
+  the Worker-level Access UI.
+- Read the verified Access identity in the Worker and compare its normalized
+  email or immutable account identity to a Worker secret allowlist. Missing,
+  unverified, or non-matching identity is `403`.
+- State-changing requests require same-origin `Origin` and `Sec-Fetch-Site`
+  checks plus a per-session CSRF token. CORS never permits a wildcard origin.
+- The public site contains no admin navigation link and no admin code.
+
+### Automation access
+
+- A dedicated Cloudflare Access service token reaches only the automation API
+  routes needed to read one approved draft and return its generated
+  derivatives. Store the token in the protected GitHub environment, never a
+  repository variable or workflow input.
+- Worker-level Access validates Service Auth and supplies `ctx.access`, its
+  audience, and an injected signed application assertion. In the current
+  runtime `ctx.access.getIdentity()` resolves to `undefined` for this
+  non-human identity, so the Worker accepts the service claim only when the
+  Access context exists, the assertion has the exact service-token shape, its
+  string or array audience matches `ctx.access.aud`, and its Client ID exactly
+  matches the encrypted automation allowlist. A browser identity never takes
+  this fallback path. The token used to prove this boundary in Phase B was
+  revoked and deleted; a new dedicated credential is created only with the
+  protected Phase D environment.
+- A GitHub App installed only on this repository triggers the one fixed
+  workflow and supplies a short-lived installation token for its candidate
+  branch and Pull Request. Give it only `Actions: write`, `Contents: write`,
+  `Pull requests: write`, and required metadata read permission. It has no
+  administration, environments, secrets, Pages, or merge permission. Using an
+  App token rather than the workflow's `GITHUB_TOKEN` also allows the resulting
+  Pull Request events to run the normal repository checks.
+- Workflow dispatch carries only an opaque random draft ID. Filenames, captions,
+  consent notes, identity claims, signed URLs, and tokens are forbidden as
+  workflow inputs.
+
+### Public media access
+
+- The delivery Worker binds only the approved-derivative bucket.
+- Permit `GET` and `HEAD` for an exact versioned key grammar. Reject directory
+  listing, query-based source selection, uploads, deletes, and every admin path.
+- Return an allowlisted content type, `Content-Disposition: inline`,
+  `X-Content-Type-Options: nosniff`, and `X-Robots-Tag: noindex, noimageindex`.
+- Support byte ranges for video without proxying an arbitrary URL.
+- Start with short browser caching and no separate Worker cache so a host-side
+  takedown stops new requests promptly. Previously downloaded copies cannot be
+  recalled, which is an inherent limit of public media.
+
+## Private Record And State Model
+
+D1 stores private administrative facts. The public manifest remains the only
+Gallery metadata source consumed by the championship site.
+
+Each draft records at least:
+
+- random draft ID and proposed public item ID;
+- exactly one inherited site area: `family` or `everyone`;
+- exact export bundle ID or source commit used to build its selectors;
+- exact race date, event, distance, athlete IDs, editorial order, title,
+  caption, alt text, featured flag, and media type;
+- original R2 key, detected media type, byte count, SHA-256, upload completion,
+  and processing diagnostics;
+- consent attestation, guardian attestation when applicable, private evidence
+  reference, verified owner identity, and timestamps;
+- staging and approved derivative keys, SHA-256 values, dimensions, duration,
+  and metadata-scan results;
+- state, state version, workflow run, branch, Pull Request, merge commit, and
+  takedown references.
+
+Use transactional, version-checked state transitions:
+
+`draft -> uploading -> private-review -> approved-for-processing -> processing
+-> candidate-public -> pr-open -> published`
+
+`rejected`, `withdrawn`, and `processing-failed` are explicit terminal or
+recoverable side states. Retrying an already completed operation must be
+idempotent and must not create another public key or duplicate manifest item.
+Append-only audit events record state changes, but never store the media body or
+secret values.
+
+## Owner Workflow
+
+1. Sign in to the separate admin application through Access.
+2. Open the uploader from the intended Family or Everyone area. Its exact
+   `?site=family` or `?site=everyone` context is displayed but cannot be
+   changed on the page. The signed session and server bind the draft to that
+   one area; there is no Family, Everyone, or Both destination control.
+3. Choose a date from exported public results, then the exact event and distance
+   available on that date.
+4. Tag people by public athlete ID. Show selected-race runners first, followed by
+   the remaining public roster. Re-read the global suppression list and block
+   approval if any selected athlete is currently hidden.
+5. Enter title, caption, alt text, featured choice, and the proposed URL-safe
+   item ID. The server validates these fields using the same accepted values as
+   the public Gallery contract.
+6. Confirm public-use consent for all depicted people, confirm guardian consent
+   when a child appears, and optionally add a private evidence reference. The
+   workflow does not attempt face recognition or infer consent.
+7. Upload the original in resumable chunks. The server chooses the private
+   object key; the browser cannot choose an R2 path or public URL.
+8. Review the original only through the Access-protected application. Editing
+   public metadata does not modify the original.
+9. Request processing. Revalidate the current race/roster data, suppression
+   list, consent, hash, and draft version. Then dispatch the protected workflow.
+10. Explicitly approve the `gallery-processing` environment. The job creates
+    and verifies sanitized derivatives, returns them to the derivative store,
+    writes the current manifest shape, runs validation, and opens a normal Pull
+    Request.
+11. Review the exact manifest diff, both site modes, the media itself, and the
+    responsive Netlify preview. Merge only after the existing explicit approval.
+
+The uploader can add an item only to the area from which it was opened. It does
+not silently add an item to the other site mode, accept a destination supplied
+in a request body, guess a race or person, or reorder an existing manifest
+unless the owner deliberately changes its editorial position.
+
+## Media Processing Contract
+
+Initial input limits are intentionally conservative and are administration
+policy rather than public manifest fields:
+
+- photo: JPEG, PNG, WebP, or HEIC/HEIF; maximum 25 MiB and 50 megapixels;
+- video: MP4, MOV, or WebM; maximum 500 MiB and 10 minutes;
+- reject SVG, HTML, archives, executable formats, mismatched extensions and
+  magic bytes, and media the pinned decoder cannot safely parse.
+
+Resumable upload parts remain well below the Worker request limit. The server
+checks the completed object size and SHA-256 before it can leave
+`private-review`.
+
+The first derivative profile is:
+
+- photo display: orientation applied, no upscale, maximum 1600-pixel long edge,
+  WebP, quality selected and pinned by tests;
+- photo thumbnail: no upscale, maximum 480-pixel long edge, WebP;
+- video: no upscale, maximum 1920 x 1080, H.264 video and AAC audio in an MP4
+  with fast-start metadata;
+- video poster: one deliberately selected frame, maximum 720-pixel long edge,
+  WebP.
+
+The processor must:
+
+- use content detection rather than trusting the browser filename or MIME type;
+- apply image orientation before discarding image metadata;
+- omit all input metadata and chapters during video transcode;
+- set generated filenames and object headers that disclose no original
+  filename, location, device, owner, or consent detail;
+- scan every output with pinned metadata inspection tools and fail closed on a
+  location, device, source filename, unexpected stream, unsupported codec, or
+  wrong dimensions/duration;
+- upload by immutable content-addressed versioned keys only after every output
+  passes;
+- return only the resulting public derivative URLs and technical hashes to the
+  publishing step.
+
+Synthetic fixtures containing EXIF GPS, device tags, rotated photos, QuickTime
+location data, source filenames, video chapters, hostile text, misleading
+extensions, and malformed media are required. Passing a transformation command
+is not sufficient; the produced bytes must be inspected.
+
+## Suppression, Takedown, And Retention
+
+- The authenticated administration surface supports both an individual-item
+  exclusion and an athlete-wide exclusion. Individual exclusion rejects or
+  withdraws one draft/item. Athlete-wide exclusion prepares the existing
+  ID-only `hidden-athlete-ids.json` change and finds every currently tagged
+  item that also needs host-side takedown.
+- Recheck `hidden-athlete-ids.json` immediately before derivative publication
+  and again while preparing the manifest. A newly suppressed tag fails the
+  candidate closed.
+- One matching athlete ID excludes the whole media item, not merely the visible
+  tag or athlete-profile association. This remains true for photographs and
+  videos on Gallery, Race moments, athlete profiles, and championship podiums.
+- An athlete-wide exclusion may be recorded before any current item uses the
+  ID, so later uploads remain protected. The public suppression file continues
+  to hold only public IDs; names, reasons, request text, consent evidence, and
+  administrative notes stay in the authenticated private record.
+- The owner remains responsible for complete, accurate tagging. Suppression
+  cannot protect a depicted person who was never tagged, and the system does
+  not use computer vision to identify people.
+- An urgent takedown deletes the derivative objects first, marks the private
+  record withdrawn, and then opens a standard corrective Pull Request to remove
+  the manifest entry and, when applicable, add an athlete ID to the shared
+  suppression list. The media Worker returns `404` after deletion.
+- Withdrawal completion records a verified host-absence check. Its
+  `hostDeletionConfirmed` value means no owned public derivative remains after
+  checking the media host; it is also true in the valid pre-public case where
+  no derivative ever existed. It never asserts that a nonexistent object was
+  deleted.
+- A consent withdrawal deletes both public derivatives and the private original
+  without a rollback grace period, then retains only the minimum audit record
+  needed to show that the withdrawal was completed.
+- Aborted multipart uploads expire after 24 hours. Rejected or abandoned drafts
+  expire after 30 days. Unreferenced candidate derivatives from a closed Pull
+  Request expire after 30 days.
+- A normal editorial removal keeps the private original and unreferenced
+  derivatives for a 30-day rollback period. Consent withdrawal overrides that
+  convenience and deletes immediately.
+
+Lifecycle cleanup must be observable, idempotent, and covered by a dry-run mode
+before deletion is enabled.
+
+## Repository Shape
+
+The implementation is expected to add:
+
+- `gallery-upload-contract.js` and `gallery-media-policy.js` for the unpublished,
+  provider-independent Phase A state, tagging, exclusion, file, derivative, and
+  scanner contracts;
+- `gallery-admin/` for the unpublished admin and delivery Worker sources,
+  D1 migrations, static admin assets, shared API types, and Worker tests;
+- `scripts/process-gallery-media.mjs` plus small supporting modules for trusted
+  derivative generation, byte inspection, manifest mutation, and dry-run
+  cleanup;
+- `.github/workflows/gallery-media-review.yml` for the protected processing and
+  Pull Request path;
+- focused contract, security, state-machine, processor, and delivery tests;
+- an example configuration containing names only, never account IDs, owner
+  email, token values, private URLs, or credentials.
+
+`gallery-admin/` and every processor file remain absent from
+`publishedSiteEntries`. Repository safety validation will gain regressions that
+prove no admin asset, migration, credential, private record, original, or
+processor output enters the GitHub Pages artifact.
+
+## Phased Implementation Plan
+
+### Phase A — architecture approval and offline contracts
+
+1. Approve this provider and access decision.
+2. Define the private record schema and state machine as code.
+3. Add provider-independent validation for consent, modes, race tuples, tags,
+   suppression, item IDs, file policy, and state transitions.
+4. Add hostile and metadata-bearing synthetic fixtures. No real family media is
+   used.
+
+**Exit gate:** focused tests pass locally; no external account, secret, media,
+or public endpoint is required.
+
+**Completion record — 25 August 2026:** The provider-independent contracts,
+hostile synthetic byte/scanner fixtures, full-suite integration, artifact
+isolation, two-mode suppression browser regression, and final security review
+pass locally. No external resource or public media was created.
+
+### Phase B — non-production infrastructure and authentication
+
+1. Create the Cloudflare account resources, with MFA and billing alerts.
+2. Create the private originals, private derivative-staging, and approved-
+   derivative R2 buckets with direct public bucket access disabled.
+3. Create D1 and apply the reviewed migration.
+4. Deploy the admin Worker behind Worker-level Access and deploy the separate
+   public delivery Worker.
+5. Prove anonymous access to every admin route fails, the exact owner succeeds,
+   automation credentials cannot use browser routes, and the delivery Worker
+   cannot read an original or list a bucket.
+
+**Exit gate:** synthetic text records only; no real media and no production
+manifest change.
+
+**Local implementation record — 26 August 2026:** The unpublished admin and
+derivative-delivery Workers, reviewed D1 migration, inert names-only deployment
+examples, exact single-owner `ctx.access` boundary, 30-minute signed browser
+session, CSRF/origin controls, fixed no-body synthetic D1 canary, immutable
+media routes, conditional range handling, least-privilege binding isolation,
+active-consent/derivative revision snapshots, pending whole-item athlete
+exclusion gates, and evidence-gated private retention are implemented and
+tested locally. The later state-changing service must atomically couple its
+caller expected-version check, transition, receipt, and audit event; the
+migration enforces one-step versions but does not overclaim caller-level
+compare-and-swap. On 27 August, minimally scoped Wrangler authorization was
+completed against the approved existing account, the empty non-production D1
+database was created in Cloudflare's automatic ENAM region, and the exact
+migration was applied and verified with zero draft or synthetic records.
+**External completion record — 27 August 2026:** Zero Trust Free, account MFA,
+and the $5 account-email alert are active. The three R2 Standard buckets are
+empty and private with direct development URLs and custom domains disabled.
+The reviewed D1 schema still has 11 tables, 43 triggers, zero drafts, and zero
+synthetic records. The D1-only admin Worker and approved-R2-only delivery Worker
+are deployed on isolated `workers.dev` hostnames; the admin Worker is protected
+for production and previews by the exact owner policy. Remote checks prove the
+owner shell succeeds, anonymous access fails, the temporary exact Service Auth
+credential reached only the service route, wrong credentials failed, and the
+delivery Worker rejects listing, queries, missing immutable objects, and writes.
+The temporary credential, reusable service policy, assignment, and Worker
+allowlist secret were removed after that proof. All redacted diagnostic routes
+were removed, the revoked credential remains denied, and `pnpm test` passes the
+complete repository, artifact, and desktop/mobile browser suites. No real media,
+public derivative, manifest change, DNS change, Pull Request, or publication
+exists. No R2 lifecycle rule is enabled; it remains a separately approved part
+of a future Phase C deployment.
+
+### Phase C — private upload and moderation
+
+1. Inherit one exact site area from the entry URL, then build its cascading
+   date/race/athlete selectors from current public exports and bind drafts to
+   that area and their source bundle or commit. Do not expose a destination
+   selector.
+2. Build consent/guardian capture, editorial fields, resumable upload, checksum,
+   protected preview, retry, and rejection.
+3. Add stale-data, suppression-race, CSRF, authorization, MIME, size, corrupted
+   upload, interrupted upload, and concurrent-edit coverage.
+
+**Exit gate:** synthetic files reach only the private bucket and cannot be
+requested anonymously.
+
+**Local implementation record — 27 August 2026:** The deterministic current-
+export selector snapshot, area-locked owner form, consent/guardian capture,
+private draft and moderation service, `0002` multipart schema, 5 MiB resumable
+upload, independent server whole-object SHA-256, protected original preview,
+and hourly 24-hour cleanup handler are implemented locally. The exact Family or
+Everyone query is signed into a distinct browser session, injected into the
+draft by the server, and enforced by D1; missing, forged, shared, and cross-area
+requests fail closed. The admin Worker has only D1 and private-original
+bindings; object keys, provider IDs, identity hashes, and private evidence
+references never enter browser responses. The synthetic integration suite
+drives the actual router with both migrations and proves stale/pending-
+exclusion blocks, area isolation, interruption/resume, concurrent and
+idempotent operations, MIME/signature/size/checksum failures, moderation,
+range reads, cleanup, and anonymous denial. The complete repository suite
+passes and both public manifests remain empty. This local record does not claim
+a Cloudflare deployment or real R2 write; the deployed admin is still the
+D1-only Phase B version and the external lifecycle fallback remains disabled
+pending explicit approval.
+
+### Phase D — derivatives and reviewed publication
+
+1. Add the protected GitHub environment, least-privilege service identity, and
+   GitHub App workflow dispatch.
+2. Implement pinned photo and video processing plus post-process metadata
+   inspection.
+3. Upload versioned derivatives through the service endpoint and verify public
+   delivery, byte ranges, headers, and deletion.
+4. Generate a candidate manifest edit, run Gallery validation and the complete
+   repository suite, and open a standard Pull Request without merge authority.
+5. Cover single-area publication, the existing duplicate-ID equality safeguard,
+   editorial insertion order, retry/idempotency, closed-PR cleanup, and rollback.
+
+**Exit gate:** one synthetic photo and one synthetic video pass the full PR and
+preview path. Close the rehearsal Pull Request; do not merge it.
+
+### Phase E — takedown rehearsal and first real-media pilot
+
+1. Exercise hidden-athlete suppression and urgent host deletion with synthetic
+   media, including cache and known-URL checks.
+2. Verify the cleanup dry run, actual cleanup, audit trail, and token rotation.
+3. Upload one genuinely approved photograph. Review its private consent record,
+   sanitized bytes, exact manifest diff, both modes, and responsive preview.
+4. Merge and publish only after a new explicit approval for that real-media Pull
+   Request. Repeat the pilot separately for video before enabling routine video
+   use.
+
+**Exit gate:** full local and remote checks, reviewed screenshots, recovery and
+takedown runbooks, cost alerts, and explicit approval.
+
+## Required Validation
+
+Before review of implementation changes:
+
+- existing repository safety, vendored library, CSV, Gallery, artifact-safety,
+  and full browser tests;
+- admin unit and integration tests with Access success/failure fixtures;
+- authorization matrix for owner, anonymous browser, wrong owner, valid service
+  token, wrong service token, and expired session/token;
+- CORS/CSRF, CSP, secret-leak, log-redaction, and bucket-boundary tests;
+- exact race/roster and cross-mode contract tests against both current exports;
+- participant-first and remaining-roster tagging order, no-free-text identity,
+  consent and guardian gates, current suppression recheck, whole-item
+  athlete-wide exclusion on every Gallery surface, unused suppression IDs,
+  individual-item withdrawal, and stale-bundle failure tests;
+- multipart completion, checksum, idempotent retry, abandoned-upload cleanup,
+  and concurrent state-transition tests;
+- image/video content detection, limits, corrupt media, derivative dimensions,
+  codec, range request, and metadata-stripping conformance;
+- Pull Request creation without merge, standard release-path enforcement,
+  preview rendering, both-mode desktop/mobile screenshots, and closed-PR cleanup;
+- urgent derivative deletion plus manifest/suppression corrective workflow.
+
+No real media is used until the synthetic end-to-end and takedown rehearsals
+pass.
+
+## External Setup Requiring Explicit Approval
+
+The following actions are intentionally not performed by this architecture
+change:
+
+- create or change a Cloudflare account, Zero Trust organization, Access policy,
+  Worker, R2 bucket, D1 database, service token, billing plan, or alert;
+- create or install a GitHub App, change Action permissions, create an
+  environment, or add a secret;
+- change GoDaddy or GitHub Pages DNS;
+- upload a real original, create a public derivative, open a media Pull Request,
+  merge, deploy, or publish.
+
+These need owner approval at the phase where they become necessary. Exact owner
+identity, account IDs, database IDs, bucket IDs, service tokens, and private
+URLs are configuration values outside Git.
+
+## Primary Product References
+
+- [GitHub Pages publishes static files and does not run server-side languages](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site)
+- [Protect a Worker and all of its domains with Cloudflare Access](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)
+- [Cloudflare Access policies](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/)
+- [Cloudflare Access service tokens](https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/)
+- [R2 Workers API and binding boundary](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/)
+- [R2 multipart uploads through a Worker](https://developers.cloudflare.com/r2/api/workers/workers-multipart-usage/)
+- [R2 data security](https://developers.cloudflare.com/r2/reference/data-security/)
+- [R2 pricing and included usage](https://developers.cloudflare.com/r2/pricing/)
+- [Cloudflare DNS partial setup requirements](https://developers.cloudflare.com/dns/zone-setups/partial-setup/)
+- [GitHub App installation tokens](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app)
+- [GitHub workflow dispatch permissions](https://docs.github.com/en/rest/actions/workflows)
+- [GitHub Actions secrets and least privilege](https://docs.github.com/en/actions/concepts/security/secrets)
+- [GitHub `GITHUB_TOKEN` permissions](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token)
+- [Supabase Storage access control, considered as a fallback](https://supabase.com/docs/guides/storage/security/access-control)
+- [Cloudinary private and authenticated asset behavior, considered as a fallback](https://cloudinary.com/documentation/upload_parameters)

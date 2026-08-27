@@ -152,6 +152,11 @@ console.log('PASS - the build refuses an out-of-tree output directory before del
 // is published at its path on the public web.
 
 const newsRuntimeEntries = ['news.html', 'news.js', 'news.css'];
+const unpublishedGalleryFoundationEntries = [
+    'gallery-upload-contract.js',
+    'gallery-media-policy.js'
+];
+const unpublishedGalleryFoundationPrefixes = ['gallery-admin/'];
 
 assert.deepEqual(
     newsRuntimeEntries.filter(entry => !publishedSiteEntries.includes(entry)),
@@ -160,6 +165,19 @@ assert.deepEqual(
 );
 
 console.log('PASS - the News page is complete in the published runtime contract');
+
+assert.deepEqual(
+    publishedSiteEntries.filter(entry =>
+        unpublishedGalleryFoundationEntries.includes(entry) ||
+        unpublishedGalleryFoundationPrefixes.some(prefix =>
+            entry === prefix.slice(0, -1) || entry.startsWith(prefix)
+        )
+    ),
+    [],
+    'Private Gallery upload validation or media policy was added to the public runtime contract.'
+);
+
+console.log('PASS - Gallery upload administration contracts remain outside the public runtime');
 
 const manifest = [
     ['ExportBundleID', 'ExportedAtUTC', 'SchemaVersion', 'Scope', 'RelativePath', 'DataRowCount'],
@@ -354,6 +372,14 @@ try {
             await pathExists(path.join(buildOutputDir, entry)),
             true,
             `The preview artifact is missing the News runtime file "${entry}".`
+        );
+    }
+
+    for (const entry of unpublishedGalleryFoundationEntries) {
+        assert.equal(
+            await pathExists(path.join(buildOutputDir, entry)),
+            false,
+            `The public preview artifact contains unpublished Gallery administration code "${entry}".`
         );
     }
 } finally {

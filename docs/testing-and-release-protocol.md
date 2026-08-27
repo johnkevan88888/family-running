@@ -44,6 +44,72 @@ Validate the two owner-curated gallery manifests:
 pnpm run validate:gallery
 ```
 
+Run the provider-independent owner-upload state, tagging, consent, and
+exclusion contract tests:
+
+```bash
+pnpm run test:gallery-upload-contract
+```
+
+Run the Gallery input-file and metadata-inspection policy tests against
+synthetic hostile fixtures:
+
+```bash
+pnpm run test:gallery-media-policy
+```
+
+Run the unpublished Gallery administration, D1 migration, authentication, and
+derivative-delivery boundary tests:
+
+```bash
+pnpm run test:gallery-admin-boundaries
+```
+
+Check that the owner selector snapshot still exactly matches the current public
+export, then run the synthetic private-upload and responsive owner-page suites:
+
+```bash
+pnpm run validate:gallery-admin-catalog
+pnpm run test:gallery-admin-catalog
+pnpm run test:gallery-admin-phase-c
+pnpm run test:gallery-admin-browser
+```
+
+The Phase C integration suite drives the actual administration router through
+signed-session and CSRF controls, applies both private migrations, and uses a
+deterministic in-memory multipart store with synthetic bytes only. It covers
+draft and consent revisions, exact inherited Family/Everyone context, separate
+area-bound sessions, server-injected single-area drafts, cross-area denial,
+current public tags, pending exclusions, stale catalogs, interrupted and
+concurrent parts, whole-object checksums, signature and size failures,
+idempotent retries, protected preview ranges, moderation, 24-hour cleanup,
+response redaction, empty public manifests, and artifact exclusion. The
+responsive owner-page suite covers both exact entry URLs and proves there is no
+destination control and no protected request when the context is missing or
+malformed. The separate contract suite carries the exact checked-in suppression
+case while that public list is empty.
+
+This suite uses synthetic identities, text, and bytes only. It exercises the
+production `ctx.access` path, exact single-owner configuration, browser/service
+separation, both the full service identity and Worker-level Access's
+`getIdentity() === undefined` plus validated application-assertion path, strict
+Client ID/issuer/claim checks, string and array audience matching, malformed and
+browser-claim rejection, signed 30-minute sessions, Origin, `Sec-Fetch-Site`, CSRF, cookie
+and expiry checks, and the one fixed, server-generated
+`synthetic:phase-b-auth-boundary-v1` D1 canary write with no accepted request
+body. It also applies both reviewed migrations to an in-memory SQLite database
+and verifies initial-state/replacement guards, active-consent and derivative
+revision binding, pending whole-item exclusion gates, unique private object
+ownership, withdrawal and retention evidence, cascaded private deletion, and
+surviving append-only opaque audit/tombstone records. Delivery coverage proves
+exact immutable `GET`/`HEAD` paths, conditional ranges tied to one R2 ETag and
+size, security headers, hostile R2 metadata rejection, and the absence of
+originals, staging, D1, listing, or write capability. Static checks keep both
+Wrangler examples inert, disable preview URLs, give the Phase C admin Worker
+only D1 plus private originals and one hourly cleanup schedule, and preserve the
+approved-only public Worker binding. The deployed Phase B admin remains D1-only
+until a separately approved Phase C deployment.
+
 Check that the committed `vendor/` browser libraries still match the pinned
 dependencies:
 
@@ -449,11 +515,35 @@ sizes.
 Repository gallery validation also joins each item back to the public exported
 results. Its race date, event, and distance must identify a result available in
 that site mode, and every tagged athlete must belong to that mode's public
-result-bearing roster. This is the same contract the future uploader's cascading
-date, race, and people selectors will use. The shared suppression document is
+result-bearing roster. This is the same contract the authenticated uploader's
+cascading date, race, and people selectors use. The shared suppression document is
 also contract-validated for exact schema, URL-safe athlete IDs, uniqueness, and
 unsupported fields; suppression IDs do not need a current gallery item so an
 owner can record a request before future media is added.
+
+The unpublished Gallery upload contract tests bind a draft to exact current
+export and suppression revisions, require exactly one inherited site area,
+reject a shared upload draft, keep race participants before the remaining
+public roster in the tag picker, apply consent and child-guardian gates even
+when no athlete is tagged, and use versioned/idempotent state changes. Fresh
+suppression is checked again before processing and publication. Rejected and
+withdrawn items cannot emit manifest entries; completion of a published-item
+withdrawal requires host-deletion evidence. A pre-public individual withdrawal
+uses the same verified-host-absence evidence, where success also covers the
+zero-object case.
+Athlete-wide exclusion tests remove whole items from
+both manifests, keep the public suppression proposal ID-only, deduplicate owned
+derivative references, and fail closed on stale revisions, inconsistent shared
+items, external URLs, or collateral URL reuse.
+
+The unpublished media-policy tests use synthetic photo/video byte buffers and
+hostile scanner records. They require extension, declared type, detected magic,
+size, pixel, duration, decoder, derivative profile, stream, codec, and fast-start
+agreement; bind successful non-truncated scanner output to the exact byte count
+and SHA-256; reject every surviving public metadata tag or chapter; and verify
+that private metadata and credential sentinels never appear in returned results
+or console output. These administration contracts and fixtures are excluded
+from the public Pages artifact.
 
 Every public page is also checked for a `noindex` robots meta tag. The site is
 kept out of search results by that tag rather than by a `robots.txt` Disallow,

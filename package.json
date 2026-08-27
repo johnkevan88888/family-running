@@ -13,10 +13,18 @@
     "validate:csv": "node scripts/validate-csv.mjs",
     "validate:vendor": "node scripts/sync-vendor.mjs --check",
     "validate:gallery": "node scripts/validate-gallery.mjs",
+    "validate:gallery-admin-catalog": "node scripts/build-gallery-admin-catalog.mjs --check",
     "vendor:sync": "node scripts/sync-vendor.mjs",
+    "gallery-admin:catalog": "node scripts/build-gallery-admin-catalog.mjs",
     "test:export-bundle": "node tests/export-bundle-validation.mjs",
     "test:age-grade-contract": "node tests/age-grade-contract.mjs",
     "test:gallery-contract": "node tests/gallery-contract.mjs",
+    "test:gallery-upload-contract": "node tests/gallery-upload-contract.mjs",
+    "test:gallery-media-policy": "node tests/gallery-media-policy.mjs",
+    "test:gallery-admin-boundaries": "node tests/gallery-admin-boundaries.mjs",
+    "test:gallery-admin-catalog": "node tests/gallery-admin-catalog.mjs",
+    "test:gallery-admin-phase-c": "node tests/gallery-admin-phase-c.mjs",
+    "test:gallery-admin-browser": "node tests/gallery-admin-browser.mjs",
     "test:staged-export": "node tests/staged-export-workflow.mjs",
     "test:artifact-safety": "node tests/preview-artifact-safety.mjs",
     "test:personal-best-reconciliation": "node tests/personal-best-reconciliation.mjs",
@@ -33,6 +41,7 @@
     "chart.js": "4.5.0",
     "chartjs-adapter-date-fns": "3.0.0",
     "date-fns": "4.1.0",
-    "playwright": "^1.61.0"
+    "playwright": "^1.61.0",
+    "wrangler": "4.126.0"
   }
 }

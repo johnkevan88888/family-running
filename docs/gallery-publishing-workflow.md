@@ -4,6 +4,23 @@ Phase 1 is an owner-curated public gallery. It deliberately does not accept
 visitor uploads and does not put photographs or videos into Git or the GitHub
 Pages artifact.
 
+The owner-only upload architecture, provider-independent contract, and
+non-production Phase B authentication boundary are complete. The Phase C owner
+form, private drafts, synthetic-only multipart upload, checksum, protected
+preview, moderation, and cleanup are implemented and verified locally but have
+not been deployed. The existing Cloudflare Access-protected admin service will
+keep originals, consent/moderation records, and candidate derivatives private;
+verified derivatives explicitly approved for Pull Request preview will be
+served from a derivative-only media boundary. The committed manifests and
+normal reviewed Pull Request remain the publication path. See
+[Owner-Authenticated Gallery Upload Architecture](gallery-upload-architecture.md).
+
+The current deployed admin remains the D1-only Phase B version and all buckets
+are empty. Deploying Phase C, enabling the incomplete-multipart lifecycle rule,
+or uploading even synthetic media requires a separate explicit approval. Real
+family media remains forbidden until the later synthetic derivative, metadata-
+stripping, deletion, and takedown rehearsals pass.
+
 ## Public And Private Boundaries
 
 - The private Excel workbook remains the source of championship calculations
@@ -30,31 +47,47 @@ Pages artifact.
 4. Upload web-ready versions to the approved media host:
    - photographs: a compact thumbnail and a larger display image;
    - videos: a web-compatible video and a separate poster image.
-5. Prefer a first-party media hostname when storage is selected. Do not put API
-   keys, upload credentials, signed management URLs, or private originals into
-   either manifest.
+5. Use the approved public media Worker hostname. The first pilot uses its
+   Cloudflare-managed `workers.dev` address without changing production DNS; a
+   first-party hostname remains preferred as a separately approved follow-up.
+   Do not put API keys, upload credentials, signed management URLs, or private
+   originals into either manifest.
 
 ## Manifest Entry
 
 Each manifest uses schema version `1.0` and an `items` array. Order in the array
-is display order. A shared item may be copied into both manifests, but an item
-with the same `id` must be byte-for-byte identical in both.
+is display order. The authenticated uploader writes only to the manifest for
+the area from which it was opened; it cannot create a shared Family-and-
+Everyone upload. The repository retains its defensive rule that, if a future
+manual edit places the same `id` in both manifests, the item must be byte-for-
+byte identical in both.
 
-The future uploader follows the same constrained sequence the manifest
+The authenticated uploader follows the same constrained sequence the manifest
 validator enforces:
 
-1. Select a race date from the dates present in public results for the active
-   site mode.
-2. Select a race from the distinct event-and-distance combinations exported for
+1. Open the uploader in the intended Family or Everyone area. The incoming
+   site context is fixed and visible; there is no destination control.
+2. Select a race date from the dates present in public results for that area.
+3. Select a race from the distinct event-and-distance combinations exported for
    that date. Distance is part of the race identity because one event can hold
    more than one distance on the same day.
-3. Tag people by public athlete ID. People with a result in the selected race
+4. Tag people by public athlete ID. People with a result in the selected race
    appear first; the rest of the public site roster remains available so a
    supporter or spectator can be tagged too.
 
 No free-text athlete names or race names are stored. This keeps gallery links
 stable and ensures removed or mode-ineligible athletes fail validation rather
 than appearing as stale tags.
+
+The uploader must re-read the shared suppression list before it approves a
+candidate. It blocks a new item carrying a hidden athlete ID. One hidden tag
+suppresses the whole item everywhere, for both photographs and videos; it does
+not merely remove the person's label. The owner remains responsible for tagging
+every identifiable public-roster person who needs this protection because the
+system does not use face recognition. An authenticated athlete-wide exclusion
+prepares the existing public ID-only suppression change and identifies all
+tagged host objects that need takedown; private names, reasons, and request
+notes never enter the public suppression file.
 
 ## Hide Every Moment Tagged With A Person
 
@@ -111,11 +144,11 @@ manifest entry.
 - `alt` describes the visible content for someone who cannot see it.
 - `raceDate`, `raceEvent`, and `raceDistance` must identify an existing public
   result for the selected site mode. These values are selected in sequence by
-  the future uploader rather than typed as free text.
+  the authenticated uploader rather than typed as free text.
 - `featured: true` makes the item eligible for Race moments panels on the
   Championships and Overview pages.
 - `athleteIds` connects the item to those athlete profiles. Use an empty array
-  when no profile association is wanted. The uploader will show people who ran
+  when no profile association is wanted. The uploader shows people who ran
   the selected race first, followed by other public athletes in that site mode,
   so spectators or supporters can also be tagged without inventing names.
 - `sourceUrl` is the large image or playable video. `thumbnailUrl` is the card

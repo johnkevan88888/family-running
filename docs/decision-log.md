@@ -556,6 +556,9 @@ Unknown historical details are labelled rather than inferred.
   Phase 1 until authenticated media storage is selected. Captions are public;
   geotags and embedded device metadata remain private repository metadata. A
   public derivative strips them, and neither public manifest has a geotag field.
+  The later 24–25 August 2026 decision below now selects that owner-only
+  storage and access model without changing the completed Phase 1 public
+  contract.
 - **Person-tag suppression:** The shared owner-maintained
   `gallery-data/hidden-athlete-ids.json` list suppresses every item tagged with
   a listed public athlete ID across both site modes, including Gallery cards,
@@ -582,6 +585,140 @@ Unknown historical details are labelled rather than inferred.
   delete it from the external media host, so a complete takedown removes it
   there as well. Consent review, metadata removal, a private-original boundary,
   and explicit release approval are part of the publishing workflow.
+
+## Owner Gallery uploads use a separate authenticated service and reviewed manifest Pull Requests
+
+- **Status:** Accepted; provider-independent Phase A and non-production Phase B
+  infrastructure/authentication are implemented and verified; synthetic-only
+  Phase C is implemented and verified locally but is not deployed
+- **Date:** 25–27 August 2026
+- **Decision:** Keep the public championship site static and add no public
+  upload page. A separate Cloudflare Worker administration application is
+  protected in full by Cloudflare Access for one MFA-enabled owner identity and
+  repeats the identity allowlist in application logic. Untouched originals live
+  in a private R2 bucket; private draft, consent, moderation, state, and audit
+  records live in D1; candidate derivatives stage in a second private R2 bucket;
+  and verified derivatives explicitly approved for Pull Request preview move to
+  a third bucket exposed only through a separate public read-only media Worker.
+- **Processing and publication:** A protected default-branch GitHub Actions job
+  uses pinned photo/video and metadata-inspection tools. It may obtain one
+  approved original through a narrowly scoped Access service route, but must
+  never retain it as an artifact or disclose its bytes, filename, metadata,
+  consent record, or credentials in public logs. It fails closed unless every
+  derivative is free of location and device metadata. A repository-scoped
+  GitHub App creates only a candidate branch and normal Pull Request. It has no
+  merge authority. Existing Gallery validation, standard Netlify preview,
+  responsive review, and explicit merge approval remain the only way a
+  manifest reaches GitHub Pages.
+- **Approval boundary:** Approval of the protected processing environment is
+  the explicit authorization to make the verified unguessable derivative URLs
+  reachable for Pull Request preview. Merge approval separately authorizes the
+  public manifest to reference them. Rejected Pull Requests leave no production
+  manifest change and their unreferenced derivatives are cleaned up. Real media
+  is forbidden until synthetic upload, metadata-stripping, failure, deletion,
+  and takedown rehearsals pass.
+- **DNS:** The first implementation uses Cloudflare-managed `workers.dev`
+  hostnames and does not move the existing production DNS. A first-party
+  `media.aceofrace.com` hostname remains preferred but requires its own later,
+  explicitly approved DNS migration and manifest transition.
+- **Approved pilot boundary:** On 25 August 2026, the owner approved the
+  `workers.dev` pilot and temporary processing of each private original on an
+  ephemeral GitHub-hosted runner. This approval does not authorize provisioning,
+  credentials, real-media transfer, public derivatives, Pull Requests, merge,
+  deployment, publication, or DNS changes.
+- **Phase B authorization and provider gate:** On 26 August 2026, the owner
+  separately approved non-production Cloudflare provisioning and `workers.dev`
+  deployment with synthetic text records only. That approval excludes DNS,
+  real media, GitHub Apps, Pull Requests, merge, and production publication.
+  On 27 August the owner accepted the projected usage-based cost and approved
+  reuse of an existing Cloudflare account with isolated resource names. The
+  OAuth grant was restricted to user/account read plus Workers, Worker-scripts,
+  and D1 write; it did not grant Pages, DNS, AI, email, queue, or unrelated
+  product access. The empty non-production D1 database and reviewed schema are
+  provisioned in Cloudflare's automatic ENAM region. Zero Trust Free and account
+  MFA are active, the $5 account-email budget alert is configured, and the
+  three empty R2 Standard buckets have no public development URL or custom
+  domain. The D1-only administration Worker and approved-R2-only media Worker
+  are deployed on isolated `workers.dev` hostnames. The exact owner policy
+  protects all administration production and preview traffic; its 30-minute
+  reusable-policy duration overrides the longer application-level duration.
+- **Phase B remote proof and cleanup:** Anonymous administration access fails
+  and the exact owner reaches the private shell. A temporary exact Service Auth
+  credential reached only the service health route; it was denied from browser
+  routes, and a wrong credential failed at Access. The temporary token, reusable
+  service policy, application assignment, and Worker automation allowlist secret
+  were deleted immediately after the proof, and the revoked credential remains
+  denied. The media Worker rejects its root, queries, nonexistent immutable
+  objects, and writes. D1 remains empty and all three R2 buckets remain private
+  and empty. No real media, public derivative, manifest change, DNS change,
+  GitHub App, Pull Request, merge, or production publication was created.
+- **Local Phase B boundary:** The admin Worker consumes Cloudflare's validated
+  `ctx.access` identity, repeats an exact single-owner check, uses a signed
+  30-minute browser session with same-origin and CSRF controls for mutations,
+  and writes only one exact server-generated synthetic D1 canary with no
+  request body. Its HTML is returned by the Worker because a Static Assets route
+  does not carry `ctx.access`. Preview URLs are disabled. The Phase B admin
+  Worker binds D1 only. The public media Worker has only the approved-derivative
+  binding and exact immutable `GET`/`HEAD` routes; ranged reads fail closed
+  unless the conditional response matches the prior ETag, object size, and
+  exact range. It has no D1, originals, staging, listing, or mutation
+  capability. D1 binds derivatives to the active consent plus item, export,
+  source, and suppression revisions; blocks pending public-athlete-ID
+  exclusions across whole-item tags, derivatives, and publicward states; and
+  permits private-record purge only after terminal cleanup evidence and a
+  surviving opaque tombstone. Tracked deployment examples contain names plus
+  invalid local-replacement markers, never a real account, database, identity,
+  URL, token, or secret.
+- **Local Phase C boundary:** The Access-protected owner interface now uses a
+  deterministic snapshot of current public exports for cascading date, race,
+  distance, and public-athlete-ID selectors. The exact `?site=family` or
+  `?site=everyone` entry context is a fixed label, not a destination selector.
+  It is signed into a separate area cookie, injected into every draft by the
+  server, and enforced on listing, reads, mutation, private-original access,
+  and D1 insert/update guards. Each upload therefore belongs only to the area
+  from which it was opened; missing, shared, forged-body, and cross-area
+  requests fail closed. D1 stores private consent, guardian, optional evidence-
+  reference, draft, multipart, receipt, and hashed audit facts. The admin Worker
+  binds only D1 and private originals, accepts only built-in synthetic fixtures
+  in this phase, uses sequential 5 MiB multipart uploads, verifies each chunk
+  and the complete R2 object with independent streaming SHA-256, and exposes
+  the original only to a current signed owner session through version-checked
+  `GET`, `HEAD`, and range reads. An hourly
+  internal cleanup job expires incomplete uploads after 24 hours only with
+  confirmed abort/object absence. Staging, approved derivatives, manifests,
+  GitHub, merge, and publication are unreachable from this Worker. The tracked
+  Phase C configuration is inert; the deployed admin remains the earlier D1-
+  only Phase B version until a separate deployment approval.
+- **Service identity compatibility:** Worker-level Service Auth supplies a
+  validated `ctx.access` context and an injected signed application assertion,
+  but the current runtime resolves `ctx.access.getIdentity()` to `undefined` for
+  that non-human caller. The Worker falls back only in that exact state, requires
+  a strict service-token application claim with an Access issuer, empty subject,
+  no email, Client ID form, positive issuance/expiry fields, and a string or
+  array audience equal to `ctx.access.aud`, then repeats the exact encrypted
+  Client ID allowlist check. Browser identities never use the assertion fallback.
+  Missing, malformed, wrong-audience, wrong-identity, and non-service claims fail
+  closed. Temporary redacted response-only probes established the production
+  shape and were removed before the final deployment.
+- **Rationale:** GitHub Pages cannot receive or authenticate uploads, and a
+  hidden static page is not an access boundary. Cloudflare provides an isolated
+  authenticated ingress and object-store boundary without changing the public
+  host. A deterministic processor is retained outside Cloudflare Images/Stream
+  because the first release needs one independently testable metadata-removal
+  contract for both photos and videos. Pull Requests preserve the existing
+  editorial ordering, mode isolation, the defensive duplicate-ID equality
+  check, tests, preview, rollback, and explicit release approval.
+- **Consequences:** The public `1.0` manifest and suppression schemas do not
+  change. Consent, originals, admin identity, object keys, hashes, and private
+  notes never become public manifest fields. The uploader revalidates the exact
+  inherited site/date/event/distance/athlete tuple and current suppression list
+  before processing and publication; it cannot direct one upload into the
+  other site's manifest. Complete takedown remains host-first deletion
+  followed by the manifest/suppression correction. Public derivative URLs are
+  still public and downloadable; `noindex`, opaque paths, and a private bucket
+  do not revoke a copy already downloaded by a visitor.
+- **Plan:** See
+  [Owner-Authenticated Gallery Upload Architecture](gallery-upload-architecture.md).
 
 ## Championship photography is a display layer over exported standings
 
