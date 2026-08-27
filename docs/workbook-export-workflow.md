@@ -208,10 +208,16 @@ The guided updater:
 11. requires the exact word `MERGE` as explicit production approval, then
     re-verifies the PR title, base branch, data branch, exact tested head
     commit, and required check before merging through the protected Pull
-    Request pathway; and
-12. fast-forwards local `main`, deletes the verified merged branch locally and
-    remotely, and removes only the staged export, promotion backup, and state
-    paths recorded for that update.
+    Request pathway;
+12. waits for the `Deploy to GitHub Pages` workflow run whose commit is exactly
+    that merge commit, and requires it to finish successfully;
+13. fetches the production manifest and all 71 files it lists with cache
+    revalidation, compares all 72 CSV files byte-for-byte with the reviewed
+    data commit, and opens both the Family and Everyone production URLs in a
+    real browser to prove that the correct mode and standings render; and
+14. only after that live proof, fast-forwards local `main`, deletes the verified
+    merged branch locally and remotely, and removes only the staged export,
+    promotion backup, and state paths recorded for that update.
 
 This automatic merge authority is limited to the existing fail-closed routine
 data pathway. Code, schema, configuration, export-set, and broader
@@ -231,6 +237,13 @@ without copying its path:
 pnpm run data:update -- --resume
 ```
 
+The same command also resumes a post-merge verification. A slow or failed Pages
+deployment, a stale production cache, a mismatched CSV, or a browser-rendering
+failure leaves the update in its saved `merged` phase and retains its branch and
+recovery artifacts. `--resume` then retries only the Pages and live-site proof;
+it cannot merge the Pull Request a second time. Cleanup is permitted only after
+the saved phase becomes `production-verified`.
+
 For a non-interactive preparation that stops before promotion:
 
 ```powershell
@@ -240,8 +253,10 @@ pnpm run data:update -- --prepare-only
 The updater refuses dirty worktrees, overlapping open data-update Pull
 Requests, incomplete bundles, changed CSV schemas, non-data changes, failed
 validation, changed post-test data, failed local or GitHub tests, mismatched PR
-identity, and non-fast-forward local `main`. Use the manual workflow below for
-schema, export-set, code, configuration, or broader documentation changes.
+identity, a failed exact-commit Pages deployment, a production bundle that is
+not byte-for-byte current in both modes, and non-fast-forward local `main`. Use
+the manual workflow below for schema, export-set, code, configuration, or
+broader documentation changes.
 
 If preflight fails, no data branch, staged run, or resumable state is created;
 fix the workbook and start normally rather than using `--resume`. If export,

@@ -94,7 +94,10 @@ eligibility, and requires `PUBLISH` before opening the correctly titled Pull
 Request and waiting for GitHub checks. It then stops for review and requires a
 separate `MERGE` confirmation, after which it re-verifies the PR branch, title,
 head commit, and required check, merges through the protected pathway, and
-performs scoped cleanup.
+waits for the Pages workflow run tied to the exact merge commit. It then
+compares every production CSV with the reviewed commit and opens both live site
+modes in Chromium. Scoped cleanup happens only after that proof succeeds; a
+failure is resumable and never repeats the merge.
 
 The `Pull Request Checks / Test static site` job fails closed if the marker is
 used outside the data-refresh or custom-domain allowlists. Remove

@@ -96,8 +96,14 @@ the update resumable with `--resume`.
 After `MERGE` the updater re-reads GitHub rather than trusting what was true
 before the pause: it re-verifies the Pull Request identity, that the head commit
 is still the exact validated commit, and that the required check still succeeds,
-then merges through the protected Pull Request pathway, deletes the merged
-branch, and performs update-scoped cleanup.
+then merges through the protected Pull Request pathway. It does not treat the
+merge itself as proof that the website changed. It waits for the Pages workflow
+run for the exact merge commit, compares the complete 72-file production CSV
+bundle byte-for-byte with the reviewed data commit, and uses a real browser to
+check that both `?site=family` and `?site=everyone` render their correct title,
+mode, and standings. Only then does it delete the merged branch and perform
+update-scoped cleanup. A failure retains the merged state and recovery files;
+`--resume` retries verification without attempting another merge.
 
 Run focused export-bundle failure regression tests:
 
@@ -755,14 +761,19 @@ approval for the merge; other pathways still require separate PR approval.
    The guided `pnpm run data:update` command performs these branch, validation,
    promotion, test, Pull Request, and required-check wait steps for a qualifying
    routine refresh after `PUBLISH`, then stops for review before its separate
-   `MERGE` confirmation, branch deletion, and scoped cleanup.
+   `MERGE` confirmation. After merging, it waits for the exact Pages run,
+   verifies the immutable data bundle and both rendered production modes, and
+   only then performs branch deletion and scoped cleanup.
 5. John reviews both site modes through the standard preview, or reviews the
    exact diff and uploaded responsive screenshots for a validated skip
    pathway, plus the manual steps, limitations, and rollback plan.
 6. Merge to `main` only after John explicitly approves production. For the
    guided routine-data workflow, `MERGE` supplies this approval, typed after
    reviewing the Pull Request diff and the uploaded screenshots.
-7. Verify production after GitHub Pages updates.
+7. Verify production after GitHub Pages updates. The guided routine-data path
+   performs its exact-commit, exact-bundle, both-mode verification
+   automatically; standard and custom-domain releases still use the manual
+   checks below.
 
 ## Pull Request Checks And Preview URLs
 
@@ -795,6 +806,14 @@ After an approved release reaches GitHub Pages, verify:
 
 - [Family production](https://www.aceofrace.com/?site=family)
 - [Everyone production](https://www.aceofrace.com/?site=everyone)
+
+For a guided routine data refresh, a final `LIVE VERIFICATION PASSED` message is
+the automated evidence for this gate. It names the expected `ExportBundleID`,
+the exact Pages workflow run, and both production URLs. The verifier sends
+cache-revalidation headers, requires every one of the 72 live CSV response
+bodies to match the reviewed data commit exactly, and then checks both modes in
+Chromium. A successful merge, a successful workflow with a different commit,
+or HTTP 200 responses alone do not pass.
 
 Check that both modes load, Hall of Fame renders, Calculator comparisons use the selected mode and separate official from unofficial source performances, leaderboards render, athlete links open, and back links preserve the correct mode. After the Official Results News first draft is released, also open News in both modes, confirm each mode requests only its own export, verify representative milestone and movement text, and check that a News athlete link preserves the selected mode.
 
