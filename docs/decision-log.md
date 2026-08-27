@@ -183,7 +183,8 @@ Unknown historical details are labelled rather than inferred.
 - **Date:** Release protocol established 25 June 2026; automated Netlify preview
   review links added 28-29 June 2026; hosted ruleset verified 30 June 2026;
   lightweight data-refresh pathway added 5 August 2026; custom-domain pathway
-  added 9 August 2026; guarded routine-data auto-merge added 9 August 2026.
+  added 9 August 2026; guarded routine-data auto-merge added 9 August 2026;
+  exact-bundle post-merge production gate added 27 August 2026.
 - **Decision:** Changes use a feature branch and Pull Request. Code,
   configuration, schema, export-set, and broader documentation changes require
   automated checks and a successful Netlify Deploy Preview for both site modes.
@@ -239,6 +240,20 @@ Unknown historical details are labelled rather than inferred.
   and the update resumable. The custom-domain route also now requires the exact
   approved hostname rather than any syntactically valid one, which was audit
   finding P2-02.
+- **Post-merge verification, 27 August 2026.** A completed merge and a green
+  deployment are necessary but do not prove that the custom domain is serving
+  the reviewed data. The guided routine-data updater therefore records
+  `merged` and `production-verified` as separate resumable phases. After
+  `MERGE`, it waits for the Pages workflow run whose head is the exact merge
+  commit, then compares the production manifest and all 71 listed CSV files
+  byte-for-byte with the immutable reviewed data commit. It finally opens the
+  Family and Everyone production URLs in a real browser and requires their
+  correct mode, title, rendered standings, selected-mode requests, and export
+  bundle identity. Cache-revalidation headers are used; HTTP 200 alone is not
+  evidence. The branch, staged export, promotion backup, and updater state are
+  retained on failure, and `--resume` retries only this proof. Cleanup is
+  structurally refused until `production-verified`, so a verifier interruption
+  cannot cause another merge or destroy its recovery evidence.
 
 ## Crown history is exported, not reconstructed in the browser
 

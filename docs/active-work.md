@@ -1,6 +1,72 @@
 # Active Work
 
-## Current task: canonical workbook and guided data-updater contract repair
+## Current task: exact-bundle post-MERGE verification and cleanup portability
+
+### Status — 27 August 2026
+
+The first routine update stopped safely during workbook pre-export coverage.
+The repository and workbook contract signatures matched, and the staging-path
+advice in the PowerShell error was only generic wrapper text. John identified
+the actual workbook-owned coverage issue: the new participant did not yet have
+the required `ProfileStatus` value of exactly `Active` or `Inactive`. John
+corrected that source value; Codex did not inspect or modify the private
+workbook.
+
+After the participant status was corrected, fresh staged export
+`test-artifacts/workbook-export-staging/run-20260826-222720-476` passed the
+72-file staged-bundle validator. John reviewed and approved promotion of its 11
+meaningful CSV differences. The resulting data Pull Request #74 merged as
+`f8529c981138be81ccfb223146ce38b84f2c62a3`; GitHub Pages run `33035787966`
+succeeded, and the production manifest plus both mode-specific `siteinfo.csv`
+files were manually confirmed at bundle
+`20260827T022723137Z-5564E17F`. Primary `main` is clean and current, and no
+saved routine-update state or `data/refresh-*` branch remains.
+
+The failed-preparation cleanup had also exposed a repository bug. The updater
+restored `main` correctly but tried to delete the unchanged temporary branch
+with `git update-ref --delete`; `update-ref` supports only `-d` for its direct
+delete form. The repair on `codex/data-update-cleanup-repair` now uses
+`git update-ref -d <ref> <expected-old-oid>`, preserving the existing atomic
+compare-and-swap guard. A behavioral regression proves that an unchanged ref is
+removed while a ref that moved to another commit is retained.
+
+That same code branch now adds the missing automatic proof requested after
+`MERGE`. The updater saves `merged` separately from `production-verified`, waits
+for the `Deploy to GitHub Pages` run tied to the exact merge SHA, and retains the
+run identity for safe resume. It then reads the expected files from the exact
+reviewed data commit, polls the custom domain with cache revalidation, and
+requires the manifest plus every one of its 71 listed CSVs to match byte-for-byte.
+A real Chromium session finally opens both Family and Everyone, checks the
+correct titles and mode labels, requires rendered leaderboard rows, and rejects
+cross-mode, failed, stale, or mixed-bundle CSV requests. Cleanup is refused
+until all of that passes. A failure keeps the branch, staged export, promotion
+backup, and state; `--resume` retries verification and cannot merge again.
+
+Final validation passed on 27 August 2026. The complete `pnpm test` suite passed
+repository safety, vendored-library checks, both-mode CSV and Gallery
+validation, age-grade and Gallery contracts, analytics and release-path
+regressions, the real-Git local and bare-remote compare-and-swap cleanup tests,
+exact Pages-run polling, the full 72-file production verifier, export-bundle and
+staged-workflow suites, reconciliation, preview-artifact safety, the 114-file
+preview build, and both-mode desktop/mobile browser smoke and screenshot
+checks. Representative Family and Everyone desktop/mobile championship,
+Overview, News, and Gallery screenshots were visually inspected with no layout
+or content regression found. A separate read-only production run also matched
+all 72 CSVs from exact commit `f8529c9`, rendered both live modes, and confirmed
+Pages run `33035787966`; syntax and `git diff --check` passed.
+
+### Handoff
+
+- The production data refresh is complete; do not export or promote it again.
+- The cleanup repair and post-merge verifier are code changes and must follow
+  the standard review path. They are uncommitted on
+  `codex/data-update-cleanup-repair`; nothing from this implementation has been
+  pushed, opened as a Pull Request, merged, or deployed.
+- The original failed run has no resumable state. Its empty local branch was
+  verified against the recorded `main` commit and removed with the fixed
+  compare-and-swap command.
+
+## Prior task: canonical workbook and guided data-updater contract repair
 
 ### Status — 25 August 2026
 
