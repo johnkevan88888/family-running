@@ -130,6 +130,17 @@ Run the guided routine data updater after saving and closing Excel:
 pnpm run data:update
 ```
 
+Check only that the default private workbook matches the repository export
+contract:
+
+```powershell
+pnpm run workbook:check:contract
+```
+
+This preflight opens the workbook read-only, creates no data branch or staged
+run, and prints its exact capability signature. The guided updater performs the
+same check before branch creation and the full export repeats it.
+
 Resume an update stopped at a review checkpoint:
 
 ```powershell
@@ -151,8 +162,14 @@ the update resumable with `--resume`.
 After `MERGE` the updater re-reads GitHub rather than trusting what was true
 before the pause: it re-verifies the Pull Request identity, that the head commit
 is still the exact validated commit, and that the required check still succeeds,
-then merges through the protected Pull Request pathway, deletes the merged
-branch, and performs update-scoped cleanup.
+then merges through the protected Pull Request pathway. It does not treat the
+merge itself as proof that the website changed. It waits for the Pages workflow
+run for the exact merge commit, compares the complete 72-file production CSV
+bundle byte-for-byte with the reviewed data commit, and uses a real browser to
+check that both `?site=family` and `?site=everyone` render their correct title,
+mode, and standings. Only then does it delete the merged branch and perform
+update-scoped cleanup. A failure retains the merged state and recovery files;
+`--resume` retries verification without attempting another merge.
 
 Run focused export-bundle failure regression tests:
 
@@ -222,6 +239,18 @@ Repository safety validation checks tracked files and fails if a private workboo
 Vendored library validation compares every file in `vendor/` against the build resolved by the pnpm lockfile, so the committed browser libraries can never drift from a reviewed, pinned dependency version. The public site loads Chart.js and its date adapter from `vendor/`, never from a third-party CDN, which also means the browser smoke tests exercise the athlete progression chart instead of its unavailable-library fallback.
 
 CSV validation checks `data/family/`, `data/everyone/`, and shared `data/athlete_results.csv`. Excel/VBA generates one `ExportBundleID` per full export and appends it to every public data CSV. VBA writes `data/export_manifest.csv` last, making it the export-completion and consistency contract. Its exact schema is `ExportBundleID,ExportedAtUTC,SchemaVersion,Scope,RelativePath,DataRowCount`, with schema version `1.0`, scopes limited to `family`, `everyone`, and `shared`, repository-relative paths, and row counts excluding headers. Validation rejects missing manifests, invalid schemas or paths, missing or mixed IDs, bundle mismatches, missing or unlisted files, duplicate manifest paths, inconsistent manifest metadata, and wrong row counts, so partial, stale, or mixed exports cannot pass release checks.
+
+The guided-updater regression suite also recomputes the tracked workbook schema
+fingerprint from all sorted `data/` paths and exact headers, checks the 72-file,
+71-manifest-entry, and 64-column News metadata, requires one exact preflight
+marker, and verifies that an explicit workbook override reaches both preflight
+and export. Source-order guards keep the read-only preflight before refresh-branch
+creation and keep the full export before any workbook save. Failure cleanup is
+guarded by saved-state absence, exact branch identity, a clean worktree, and an
+unchanged recorded `origin/main` commit before restoring the original Git
+position and deleting only the exact temporary ref. Staged-workflow coverage
+retains late rejection of the characteristic pre-News bundle missing both News
+files, so the capability marker never replaces authoritative bundle validation.
 
 The existing content checks remain in force: required files and headers, parseable CSV structure, matching row lengths, leaderboard files referenced by `webtables.csv`, athlete IDs used by links, official medal exports, parseable dates, numeric fields and times, non-empty Hall of Fame data, and non-empty enabled championship files. Validation also enforces the exact `crown_history.csv` contract, crown order and chronology, transition and previous-holder rules, and final-holder agreement with the All-Time Official Hall of Fame without deriving history in JavaScript. Athlete medals remain Excel-owned exports and are rendered directly from `official_medals.csv`; their rows must match the current exported official leaderboards. When present, `absolute_records.csv` must be a workbook-owned official raw-time export with Men and Women records, source-row audit fields, and no browser-derived record calculation. It is validated as a complete fixed matrix: exactly one row for each of Men and Women at Marathon, Half Marathon, 10 Mile, 10 km, and 5 km, in that order, with no missing, duplicated, extra, or reordered rows. `RecordGroup` must be `Men` or `Women` and must agree with the row's own `Sex`, `RecordTitle` must be unique, `ResultDistance` must be the same distance as `Distance`, and `SortOrder` must be numeric, unique, and strictly increasing so the exported order is reproducible rather than incidental. Vacant states such as "Championship Vacant" and "No eligible results" are accepted; a vacant record still occupies its place in the matrix but carries no performance to check.
 
@@ -822,14 +851,19 @@ approval for the merge; other pathways still require separate PR approval.
    The guided `pnpm run data:update` command performs these branch, validation,
    promotion, test, Pull Request, and required-check wait steps for a qualifying
    routine refresh after `PUBLISH`, then stops for review before its separate
-   `MERGE` confirmation, branch deletion, and scoped cleanup.
+   `MERGE` confirmation. After merging, it waits for the exact Pages run,
+   verifies the immutable data bundle and both rendered production modes, and
+   only then performs branch deletion and scoped cleanup.
 5. John reviews both site modes through the standard preview, or reviews the
    exact diff and uploaded responsive screenshots for a validated skip
    pathway, plus the manual steps, limitations, and rollback plan.
 6. Merge to `main` only after John explicitly approves production. For the
    guided routine-data workflow, `MERGE` supplies this approval, typed after
    reviewing the Pull Request diff and the uploaded screenshots.
-7. Verify production after GitHub Pages updates.
+7. Verify production after GitHub Pages updates. The guided routine-data path
+   performs its exact-commit, exact-bundle, both-mode verification
+   automatically; standard and custom-domain releases still use the manual
+   checks below.
 
 ## Pull Request Checks And Preview URLs
 
@@ -862,6 +896,14 @@ After an approved release reaches GitHub Pages, verify:
 
 - [Family production](https://www.aceofrace.com/?site=family)
 - [Everyone production](https://www.aceofrace.com/?site=everyone)
+
+For a guided routine data refresh, a final `LIVE VERIFICATION PASSED` message is
+the automated evidence for this gate. It names the expected `ExportBundleID`,
+the exact Pages workflow run, and both production URLs. The verifier sends
+cache-revalidation headers, requires every one of the 72 live CSV response
+bodies to match the reviewed data commit exactly, and then checks both modes in
+Chromium. A successful merge, a successful workflow with a different commit,
+or HTTP 200 responses alone do not pass.
 
 Check that both modes load, Hall of Fame renders, Calculator comparisons use the selected mode and separate official from unofficial source performances, leaderboards render, athlete links open, and back links preserve the correct mode. After the Official Results News first draft is released, also open News in both modes, confirm each mode requests only its own export, verify representative milestone and movement text, and check that a News athlete link preserves the selected mode.
 

@@ -17,7 +17,8 @@ least-privilege Workers are now provisioned. Zero Trust Free, account MFA, and
 the $5 account-email budget alert are active. The administration Worker is
 owner-only behind Worker-level Access; the media Worker remains public but can
 read only the empty approved-derivative bucket. No original, derivative,
-manifest item, Pull Request, DNS record, or public media URL has been created.
+manifest item, DNS record, or public media URL has been created. Pull Request
+#76 contains implementation code and documentation only.
 
 The selected first implementation keeps the championship site static and uses
 a separate Cloudflare Access-protected Worker for the one owner. Private R2
@@ -228,13 +229,31 @@ area-locked owner page in Family and Everyone at 1440 x 900 and 390 x 844, the
 tests. A Wrangler `4.126.0` dry run also
 compiles the Phase C admin Worker with exactly `DB` and `PRIVATE_ORIGINALS`—no
 staging or approved-public binding. Both public Gallery manifests remain empty.
-No private original, real media, derivative, public URL, manifest item, Pull
-Request, DNS change, merge, deployment, or publication was created in Phase C.
+No private original, real media, derivative, public URL, or manifest item was
+created in Phase C. Pull Request #76 contains code and documentation only; no
+DNS change, merge, deployment, or publication was performed.
 The four refreshed owner-page screenshots were reviewed: each shows only its
 fixed Family or Everyone area label and no destination control. Independent
 review also found and closed a lower-level rerouting gap: D1 now rejects changing
 an existing draft from either valid area to the other, and the integration suite
 proves every cross-area upload/part/completion request returns before R2 access.
+
+Pull Request #76's conflict resolution integrated `origin/main` at `ec04684`
+into the feature branch. The only textual conflict was this active-work history;
+the Gallery upload task remains current, while the completed 72-file export and
+exact-bundle verification work from `main` is preserved below as previous work.
+The owner catalog was regenerated against export bundle
+`20260827T022723137Z-5564E17F` (12 Family athletes and 24 Everyone athletes).
+Two independent read-only merge audits found no lost Gallery or workbook-
+verification contract. Focused Gallery, catalog, upload, deployment-verifier,
+production-data, updater, artifact, and browser checks passed, followed by the
+complete `pnpm test`: 203 tracked files passed repository safety and the exact
+114-file public artifact passed its isolation and browser tests. Refreshed
+Family and Everyone owner and public screenshots were visually reviewed at
+desktop and mobile sizes. Wrangler `4.126.0` also compiled the merged admin and
+media Workers in dry-run mode with the intended isolated bindings. This resolves
+the feature branch only; Pull Request #76 has not been merged to `main`, and
+nothing was deployed or published.
 
 ### Handoff
 
@@ -254,13 +273,149 @@ proves every cross-area upload/part/completion request returns before R2 access.
   DNS changes, public media derivatives, Pull Requests, merges, or production
   publication.
 
-## Previous task: workbook-owned News medal positions, displaced holders, and ranked-athlete counts
+## Previous task: exact-bundle post-MERGE verification and cleanup portability
+
+### Status — 27 August 2026
+
+The first routine update stopped safely during workbook pre-export coverage.
+The repository and workbook contract signatures matched, and the staging-path
+advice in the PowerShell error was only generic wrapper text. John identified
+the actual workbook-owned coverage issue: the new participant did not yet have
+the required `ProfileStatus` value of exactly `Active` or `Inactive`. John
+corrected that source value; Codex did not inspect or modify the private
+workbook.
+
+After the participant status was corrected, fresh staged export
+`test-artifacts/workbook-export-staging/run-20260826-222720-476` passed the
+72-file staged-bundle validator. John reviewed and approved promotion of its 11
+meaningful CSV differences. The resulting data Pull Request #74 merged as
+`f8529c981138be81ccfb223146ce38b84f2c62a3`; GitHub Pages run `33035787966`
+succeeded, and the production manifest plus both mode-specific `siteinfo.csv`
+files were manually confirmed at bundle
+`20260827T022723137Z-5564E17F`. Primary `main` is clean and current, and no
+saved routine-update state or `data/refresh-*` branch remains.
+
+The failed-preparation cleanup had also exposed a repository bug. The updater
+restored `main` correctly but tried to delete the unchanged temporary branch
+with `git update-ref --delete`; `update-ref` supports only `-d` for its direct
+delete form. The repair on `codex/data-update-cleanup-repair` now uses
+`git update-ref -d <ref> <expected-old-oid>`, preserving the existing atomic
+compare-and-swap guard. A behavioral regression proves that an unchanged ref is
+removed while a ref that moved to another commit is retained.
+
+That same code branch now adds the missing automatic proof requested after
+`MERGE`. The updater saves `merged` separately from `production-verified`, waits
+for the `Deploy to GitHub Pages` run tied to the exact merge SHA, and retains the
+run identity for safe resume. It then reads the expected files from the exact
+reviewed data commit, polls the custom domain with cache revalidation, and
+requires the manifest plus every one of its 71 listed CSVs to match byte-for-byte.
+A real Chromium session finally opens both Family and Everyone, checks the
+correct titles and mode labels, requires rendered leaderboard rows, and rejects
+cross-mode, failed, stale, or mixed-bundle CSV requests. Cleanup is refused
+until all of that passes. A failure keeps the branch, staged export, promotion
+backup, and state; `--resume` retries verification and cannot merge again.
+
+Final validation passed on 27 August 2026. The complete `pnpm test` suite passed
+repository safety, vendored-library checks, both-mode CSV and Gallery
+validation, age-grade and Gallery contracts, analytics and release-path
+regressions, the real-Git local and bare-remote compare-and-swap cleanup tests,
+exact Pages-run polling, the full 72-file production verifier, export-bundle and
+staged-workflow suites, reconciliation, preview-artifact safety, the 114-file
+preview build, and both-mode desktop/mobile browser smoke and screenshot
+checks. Representative Family and Everyone desktop/mobile championship,
+Overview, News, and Gallery screenshots were visually inspected with no layout
+or content regression found. A separate read-only production run also matched
+all 72 CSVs from exact commit `f8529c9`, rendered both live modes, and confirmed
+Pages run `33035787966`; syntax and `git diff --check` passed.
+
+### Handoff
+
+- The production data refresh is complete; do not export or promote it again.
+- The cleanup repair and post-merge verifier were merged into `main` through
+  Pull Request #75 as commit `ec04684` on 27 August 2026. Do not repeat the
+  completed production data refresh while reviewing later code changes.
+- The original failed run has no resumable state. Its empty local branch was
+  verified against the recorded `main` commit and removed with the fixed
+  compare-and-swap command.
+
+## Prior task: canonical workbook and guided data-updater contract repair
+
+### Status — 25 August 2026
+
+The routine updater failed safely after Pull Request #70 merged to `main` because
+the repository required the 72-file, 64-column Official Results News contract
+while its default `CODEX WORKING COPY.xlsm` still contained the valid pre-News
+70-file exporter. The News implementation had been developed in a separate
+feature draft and had never been reconciled back into the stable workbook path.
+The failed run promoted no data, saved no resumable updater state, made no commit
+or push, and left only an empty refresh branch plus its ignored staged output.
+The empty branch was verified at the same commit as `origin/main` and removed.
+
+John explicitly authorized private-workbook inspection and repair. Before any
+change, the working copy and News draft were copied and SHA-256 verified:
+
+- working-copy backup:
+  `C:\GitHub\_private_workbooks\backups\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX BACKUP BEFORE DATA UPDATE REPAIR WORKING COPY 20260825-084048.xlsm`,
+  SHA-256 `3FF022831704B01259B54F75969785F503337031C3C83F73E9A271AA2B8A3A90`;
+- News-draft backup:
+  `C:\GitHub\_private_workbooks\backups\Family Age Grading Table v2.0 CLEAN RESTORE 20260616 CODEX BACKUP BEFORE DATA UPDATE REPAIR NEWS DRAFT 20260825-084048.xlsm`,
+  SHA-256 `B123E27299879A937AA9BD9ED4F3F62A25886438BA3B5DEEEBEDDF75B7AF6ECC`.
+
+The current working copy had 183 race-result rows and 23 participants, versus
+171 and 22 in the feature draft. The verified 64-column `OfficialNewsExport`
+module and its 20-line automation integration were therefore ported into a copy
+of the newer working workbook; the older whole draft was not substituted and no
+result data was discarded. A full export from that candidate passed staged CSV
+and bundle validation for all 72 public CSVs. The repaired canonical working
+copy also exposes a side-effect-free export-contract query coupled to the
+repository's path-and-header fingerprint. Its current SHA-256 is
+`1D6AAB753E9BD7B0FAB7CC1DC2721EB9A4CD9B6BB8578460C3AFD570A852BCEE`;
+the repaired pre-marker copy remains backed up with SHA-256
+`220D71CFC5463E6410AE3566DF44F64D7C098D9943EEC916689B35B464E1F129`.
+
+Repository hardening is implemented locally on
+`codex/data-update-workbook-repair`. Before creating a data branch, the updater
+now opens the selected workbook read-only and requires the tracked contract ID
+plus schema fingerprint. A missing or stale marker fails with a targeted
+pre-News explanation and creates neither a staged run nor a refresh branch. The
+full export repeats the check, and any later pre-state preparation failure
+restores the original Git position only while its recorded ref is unchanged,
+then compare-and-swap deletes only the exact unchanged temporary branch. The
+exact staged file/header/content validators remain authoritative.
+
+Final candidate export
+`test-artifacts/workbook-export-staging/run-20260825-085938-959` passed the
+72-file validator with 43 Family and 75 Everyone News milestones. Reconciliation
+found 18 meaningful public CSV differences arising from the newer workbook data,
+including 12 additional shared result rows. Those data changes have not been
+promoted or published and still require the updater's normal review and explicit
+approvals after this code repair follows the standard Pull Request path.
+
+Final repository validation passed on 25 August 2026. The complete `pnpm test`
+suite passed repository safety, vendored-library checks, both-mode CSV and
+Gallery validation, age-grade and Gallery contracts, analytics and release-path
+regressions, the export-bundle and staged-workflow suites, reconciliation,
+preview-artifact safety, the 114-file preview build, and both-mode desktop/mobile
+browser smoke and screenshot checks. `git diff --check` also passed apart from
+Git's expected LF-to-CRLF working-copy notices.
+
+### Handoff
+
+- Do not replace the canonical workbook with the dated News draft; it lacks the
+  newer result and participant rows.
+- Do not use `--resume` for the failed 25 August run; no state was saved.
+- Do not promote the retained staged export as part of this code repair. Start a
+  fresh routine update after the updater repair is reviewed and merged.
+
+## Prior task: workbook-owned News medal positions, displaced holders, and ranked-athlete counts
 
 ### Status — 24 August 2026
 
-The ranked-athlete-count follow-up was merged into `main` through Pull Request
-#70 as commit `a384066`. The Gallery upload architecture branch starts from that
-commit. No News implementation is part of the current Gallery task.
+The ranked-athlete-count follow-up was implemented and promoted locally on
+`codex/news-medal-position-labels`, then merged to `main` through Pull Request
+#70 on 24 August 2026. This historical section records the pre-merge evidence.
+It followed the News baseline from Pull Request #68 and preserved the Gallery
+work already on `main`.
 
 The private News draft workbook was backed up before this authorized change.
 The untouched backup is
@@ -337,8 +492,8 @@ desktop and mobile browser smoke/screenshot checks.
 
 - The complete 64-column bundle has been promoted atomically; do not selectively
   overwrite individual data files.
-- Pull Request #70 carries this branch; do not merge or deploy this follow-up
-  without separate explicit approval.
+- Pull Request #70 merged this follow-up on 24 August 2026. Production state is
+  recorded separately from this historical implementation handoff.
 
 ## Historical record: Official Results News first draft
 

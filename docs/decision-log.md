@@ -52,6 +52,34 @@ Unknown historical details are labelled rather than inferred.
   validators, tests, and both site folders. Partial, stale, mixed, missing, or
   unlisted export bundles must fail validation.
 
+## The canonical workbook is preflight-coupled to the repository export contract
+
+- **Status:** Accepted and implemented
+- **Date:** 25 August 2026
+- **Decision:** The stable private `CODEX WORKING COPY.xlsm` path is the single
+  workbook used for routine data updates. A feature draft cannot satisfy a newly
+  merged repository export contract until its verified exporter changes and the
+  canonical workbook's newer data are reconciled into one backed-up working
+  copy. The workbook exposes a side-effect-free automation function returning a
+  repository-owned contract ID and SHA-256 schema fingerprint; the guided updater
+  checks it read-only before creating a refresh branch and the full exporter
+  checks it again before writing a staged bundle.
+- **Rationale:** Official Results News was implemented in a separate draft while
+  the launcher continued selecting a valid pre-News 70-file working copy. After
+  the repository moved to 72 files, the split was discovered only by the later
+  staged-set validator. The canonical working copy also contained newer result
+  and participant rows, so selecting the dated draft would have lost data.
+- **Consequences:** `scripts/workbook-export-contract.json` records the readable
+  contract ID, 72-file/71-manifest-entry counts, 64-column News requirement, and
+  a deterministic fingerprint of every sorted public CSV path plus its exact
+  header. Missing or mismatched workbook capability fails before export and
+  names the selected workbook. An explicit `--workbook` override must satisfy
+  the same contract. The marker is an early compatibility check, not a new data
+  authority: workbook post-export checks and repository staged file, header,
+  bundle, and content validation remain authoritative. Any future public path or
+  header change updates the JSON definition, workbook marker, tests, and
+  documentation atomically.
+
 ## JavaScript is display-only
 
 - **Status:** Accepted
@@ -155,7 +183,8 @@ Unknown historical details are labelled rather than inferred.
 - **Date:** Release protocol established 25 June 2026; automated Netlify preview
   review links added 28-29 June 2026; hosted ruleset verified 30 June 2026;
   lightweight data-refresh pathway added 5 August 2026; custom-domain pathway
-  added 9 August 2026; guarded routine-data auto-merge added 9 August 2026.
+  added 9 August 2026; guarded routine-data auto-merge added 9 August 2026;
+  exact-bundle post-merge production gate added 27 August 2026.
 - **Decision:** Changes use a feature branch and Pull Request. Code,
   configuration, schema, export-set, and broader documentation changes require
   automated checks and a successful Netlify Deploy Preview for both site modes.
@@ -211,6 +240,20 @@ Unknown historical details are labelled rather than inferred.
   and the update resumable. The custom-domain route also now requires the exact
   approved hostname rather than any syntactically valid one, which was audit
   finding P2-02.
+- **Post-merge verification, 27 August 2026.** A completed merge and a green
+  deployment are necessary but do not prove that the custom domain is serving
+  the reviewed data. The guided routine-data updater therefore records
+  `merged` and `production-verified` as separate resumable phases. After
+  `MERGE`, it waits for the Pages workflow run whose head is the exact merge
+  commit, then compares the production manifest and all 71 listed CSV files
+  byte-for-byte with the immutable reviewed data commit. It finally opens the
+  Family and Everyone production URLs in a real browser and requires their
+  correct mode, title, rendered standings, selected-mode requests, and export
+  bundle identity. Cache-revalidation headers are used; HTTP 200 alone is not
+  evidence. The branch, staged export, promotion backup, and updater state are
+  retained on failure, and `--resume` retries only this proof. Cleanup is
+  structurally refused until `production-verified`, so a verifier interruption
+  cannot cause another merge or destroy its recovery evidence.
 
 ## Crown history is exported, not reconstructed in the browser
 

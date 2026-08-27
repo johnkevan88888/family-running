@@ -163,6 +163,35 @@ try {
     );
     console.log('PASS - meaningful staged difference detection');
 
+    const legacyNewsFiles = [
+        path.join(dataRoot, 'family', 'official_result_news.csv'),
+        path.join(dataRoot, 'everyone', 'official_result_news.csv')
+    ];
+
+    for (const file of legacyNewsFiles) {
+        await fs.rm(file);
+    }
+
+    let legacyContractError = '';
+    try {
+        assertExactTrackedCsvSet(stagedRoot);
+    } catch (error) {
+        legacyContractError = error.message.replaceAll('\\', '/');
+    }
+    assert(
+        legacyContractError.includes('data/family/official_result_news.csv') &&
+        legacyContractError.includes('data/everyone/official_result_news.csv'),
+        'The characteristic 70-file pre-News bundle did not report both missing News exports.'
+    );
+
+    for (const scope of ['family', 'everyone']) {
+        await fs.copyFile(
+            path.join(repoRoot, 'data', scope, 'official_result_news.csv'),
+            path.join(dataRoot, scope, 'official_result_news.csv')
+        );
+    }
+    console.log('PASS - legacy 70-file workbook contract rejection');
+
     const removedFile = path.join(dataRoot, 'family', 'crown_history.csv');
     await fs.rm(removedFile);
     let missingFileRejected = false;

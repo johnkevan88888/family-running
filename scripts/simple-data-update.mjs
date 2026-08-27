@@ -7,14 +7,21 @@ import { createInterface } from 'node:readline/promises';
 import { pathToFileURL } from 'node:url';
 import {
     listPublicCsvFiles,
+    parseCsv,
     repoRoot,
     resolveStagedRoot
 } from './export-bundle-tools.mjs';
+import {
+    waitForPagesRunCompletion,
+    waitForPagesRunRegistration
+} from './pages-deployment-verification.mjs';
+import { verifyProductionData } from './verify-production-data.mjs';
 
 const STATE_VERSION = 1;
 const REPOSITORY = 'johnkevan88888/family-running';
 const BASE_BRANCH = 'main';
 const REQUIRED_CHECK = 'Test static site';
+const EXPECTED_PUBLIC_CSV_COUNT = 72;
 const stateDirectory = path.join(repoRoot, 'test-artifacts', 'simple-data-update');
 const statePath = path.join(stateDirectory, 'latest.json');
 const promotionDirectory = path.join(
@@ -34,8 +41,11 @@ const acceptedPhases = new Set([
     // and screenshots that were not yet produced. Audit finding P2-04.
     'checked',
     'merged',
+    'production-verified',
     'no-changes'
 ]);
+
+const exportBundleIdPattern = /^\d{8}T\d{9}Z-[A-F0-9]{8}$/;
 
 export function parseUpdateArguments(argv) {
     const options = {
@@ -121,6 +131,190 @@ export function formatComparisonSummary(comparison) {
     return lines.join('\n');
 }
 
+export function preparationRestoreArguments({ branch, commit }) {
+    if (branch) {
+        return ['switch', branch];
+    }
+    if (!/^[0-9a-f]{40}$/i.test(commit || '')) {
+        throw new Error('The original detached-HEAD commit is invalid.');
+    }
+
+    return ['switch', '--detach', commit];
+}
+
+export function preparationBranchDeletionArguments({ branch, baseCommit }) {
+    return [
+        'update-ref',
+        '-d',
+        `refs/heads/${branch}`,
+        baseCommit
+    ];
+}
+
+export function remoteBranchDeletionArguments({ branch, expectedCommit }) {
+    const ref = `refs/heads/${branch}`;
+
+    return [
+        'push',
+        `--force-with-lease=${ref}:${expectedCommit}`,
+        'origin',
+        `:${ref}`
+    ];
+}
+
+export function mayDeleteFailedPreparationBranch({ temporaryHead, baseHead }) {
+    return (
+        /^[0-9a-f]{40}$/i.test(temporaryHead || '') &&
+        /^[0-9a-f]{40}$/i.test(baseHead || '') &&
+        temporaryHead === baseHead
+    );
+}
+
+export function formatPreparationFailure({ errorMessage, cleanupMessages, stagedRoot }) {
+    const lines = [
+        errorMessage,
+        '',
+        'No resumable data update was saved.'
+    ];
+
+    lines.push(...(cleanupMessages || []));
+    if (stagedRoot) {
+        lines.push(`Diagnostic staged export retained at: ${stagedRoot}`);
+    }
+    lines.push('Resolve the reported problem, then start a fresh data update without --resume.');
+
+    return lines.join('\n');
+}
+
+export function createPreparationFailureAfterCleanup({ error, cleanup, stagedRoot }) {
+    const primaryError = error instanceof Error ? error : new Error(String(error));
+    let cleanupMessages;
+
+    try {
+        cleanupMessages = cleanup();
+    } catch (cleanupError) {
+        const detail = cleanupError instanceof Error
+            ? cleanupError.message
+            : String(cleanupError);
+        cleanupMessages = [
+            `Automatic failed-preparation cleanup could not be completed: ${detail}`
+        ];
+    }
+
+    return new Error(formatPreparationFailure({
+        errorMessage: primaryError.message,
+        cleanupMessages,
+        stagedRoot
+    }), { cause: primaryError });
+}
+
+export function mayRestorePreparationStartingBranch({ recordedHead, currentHead }) {
+    return (
+        /^[0-9a-f]{40}$/i.test(recordedHead || '') &&
+        /^[0-9a-f]{40}$/i.test(currentHead || '') &&
+        recordedHead === currentHead
+    );
+}
+
+export function checkedOutWorktreesForBranch(porcelainOutput, branch) {
+    const targetRef = `refs/heads/${branch}`;
+    const matches = [];
+    let record = null;
+
+    const finishRecord = () => {
+        if (record?.branch === targetRef && record.worktree) {
+            matches.push(record.worktree);
+        }
+        record = null;
+    };
+
+    for (const field of String(porcelainOutput || '').split('\0')) {
+        if (!field) {
+            finishRecord();
+            continue;
+        }
+
+        const separator = field.indexOf(' ');
+        const key = separator < 0 ? field : field.slice(0, separator);
+        const value = separator < 0 ? '' : field.slice(separator + 1);
+
+        if (key === 'worktree') {
+            finishRecord();
+            record = { worktree: value, branch: '' };
+        } else if (record && key === 'branch') {
+            record.branch = value;
+        }
+    }
+
+    finishRecord();
+    return matches;
+}
+
+export function workbookContractSignature(contractDefinition) {
+    const contractId = String(contractDefinition?.contractId || '');
+    const fingerprint = String(contractDefinition?.schemaFingerprintSha256 || '');
+
+    if (
+        !contractId ||
+        contractId.trim() !== contractId ||
+        /[\r\n]/.test(contractId) ||
+        !/^[A-F0-9]{64}$/.test(fingerprint)
+    ) {
+        throw new Error('The repository workbook-export contract definition is invalid.');
+    }
+
+    return `${contractId}:schema-sha256=${fingerprint}`;
+}
+
+export function requireWorkbookExportCapability(stdout, expectedSignature) {
+    const marker = 'WORKBOOK_EXPORT_CAPABILITY=';
+    const matches = String(stdout || '')
+        .split(/\r?\n/)
+        .filter(line => line.startsWith(marker));
+
+    if (matches.length !== 1) {
+        throw new Error(
+            'Workbook contract preflight did not report exactly one capability marker.'
+        );
+    }
+
+    const actualSignature = matches[0].slice(marker.length);
+
+    if (!actualSignature || actualSignature !== expectedSignature) {
+        throw new Error(
+            `Workbook contract preflight mismatch. Expected ${expectedSignature}; reported ${actualSignature || '(blank)'}.`
+        );
+    }
+
+    return actualSignature;
+}
+
+export function createWorkbookExportArguments({
+    workbookPath,
+    preflightOnly = false,
+    expectedContractSignature = null
+}) {
+    const argumentsList = [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        path.join(repoRoot, 'scripts', 'run-workbook-staged-export.ps1')
+    ];
+
+    if (preflightOnly) {
+        argumentsList.push('-PreflightOnly');
+    }
+    if (expectedContractSignature) {
+        argumentsList.push('-ExpectedContractSignature', expectedContractSignature);
+    }
+    if (workbookPath) {
+        argumentsList.push('-WorkbookPath', path.resolve(workbookPath));
+    }
+
+    return argumentsList;
+}
+
 export function assessPublishableDataChange({ changedFiles, expectedDataFiles }) {
     const normalizedChanged = [...new Set(changedFiles.map(normalizePath))].sort();
     const normalizedExpected = [...new Set(expectedDataFiles.map(normalizePath))].sort();
@@ -159,8 +353,77 @@ export function validateUpdateState(state) {
     if (state.promotionRoot && !path.isAbsolute(state.promotionRoot)) {
         throw new Error('The saved promotion-artifact path is invalid.');
     }
+    if (
+        state.expectedExportBundleId &&
+        !exportBundleIdPattern.test(state.expectedExportBundleId)
+    ) {
+        throw new Error('The saved expected export bundle ID is invalid.');
+    }
+
+    const commitPhases = new Set([
+        'committed',
+        'published',
+        'checked',
+        'merged',
+        'production-verified'
+    ]);
+
+    if (
+        commitPhases.has(state.phase) &&
+        !/^[0-9a-f]{40}$/i.test(state.commitSha || '')
+    ) {
+        throw new Error('The saved tested data commit is invalid.');
+    }
+    if (
+        ['merged', 'production-verified'].includes(state.phase) &&
+        !/^[0-9a-f]{40}$/i.test(state.mergeCommitSha || '')
+    ) {
+        throw new Error('The saved merge commit is invalid.');
+    }
+
+    const hasPagesRunId = state.pagesDeploymentRunId !== undefined;
+    const hasPagesRunUrl = state.pagesDeploymentRunUrl !== undefined;
+
+    if (hasPagesRunId !== hasPagesRunUrl) {
+        throw new Error('The saved Pages deployment identity is incomplete.');
+    }
+    if (hasPagesRunId) {
+        if (
+            !Number.isSafeInteger(state.pagesDeploymentRunId) ||
+            state.pagesDeploymentRunId <= 0
+        ) {
+            throw new Error('The saved Pages deployment run ID is invalid.');
+        }
+
+        const expectedUrl =
+            `https://github.com/${REPOSITORY}/actions/runs/${state.pagesDeploymentRunId}`;
+
+        if (state.pagesDeploymentRunUrl !== expectedUrl) {
+            throw new Error('The saved Pages deployment run URL is invalid.');
+        }
+    }
+
+    if (state.phase === 'production-verified') {
+        if (!state.expectedExportBundleId) {
+            throw new Error('Production verification is missing its expected export bundle ID.');
+        }
+        if (!hasPagesRunId) {
+            throw new Error('Production verification is missing its Pages deployment run.');
+        }
+        if (!isValidIsoTimestamp(state.productionVerifiedAt)) {
+            throw new Error('The saved production-verification time is invalid.');
+        }
+    }
 
     return state;
+}
+
+function isValidIsoTimestamp(value) {
+    return (
+        typeof value === 'string' &&
+        !Number.isNaN(Date.parse(value)) &&
+        new Date(value).toISOString() === value
+    );
 }
 
 export function assessDataPullRequestIdentity(pullRequest, state) {
@@ -209,6 +472,43 @@ export function assessRequiredDataChecks(pullRequest) {
     return [];
 }
 
+export function readExportBundleId(manifestText) {
+    const rows = parseCsv(String(manifestText || '').replace(/^\uFEFF/, ''));
+    const header = rows[0] || [];
+    const bundleColumns = header
+        .map((value, index) => value === 'ExportBundleID' ? index : -1)
+        .filter(index => index >= 0);
+
+    if (bundleColumns.length !== 1) {
+        throw new Error(
+            'The export manifest must contain exactly one ExportBundleID column.'
+        );
+    }
+    if (rows.length < 2) {
+        throw new Error('The export manifest contains no public-data entries.');
+    }
+
+    const bundleIndex = bundleColumns[0];
+    const bundleIds = new Set();
+
+    for (const [index, row] of rows.slice(1).entries()) {
+        const bundleId = String(row[bundleIndex] || '').trim();
+
+        if (!exportBundleIdPattern.test(bundleId)) {
+            throw new Error(
+                `The export manifest row ${index + 2} has an invalid ExportBundleID.`
+            );
+        }
+        bundleIds.add(bundleId);
+    }
+
+    if (bundleIds.size !== 1) {
+        throw new Error('The export manifest contains mixed ExportBundleID values.');
+    }
+
+    return [...bundleIds][0];
+}
+
 async function main() {
     const options = parseUpdateArguments(process.argv.slice(2));
 
@@ -230,7 +530,13 @@ async function main() {
 
     if (options.resume) {
         state = loadState();
-        if (!['published', 'checked', 'merged', 'no-changes'].includes(state.phase)) {
+        if (![
+            'published',
+            'checked',
+            'merged',
+            'production-verified',
+            'no-changes'
+        ].includes(state.phase)) {
             ensureCurrentBranch(tools.git, state.branch);
             console.log(`Resuming data update on ${state.branch}.`);
         } else {
@@ -246,8 +552,8 @@ async function main() {
         cleanupCompletedUpdate(state, tools.git, { merged: false });
         return;
     }
-    if (state.phase === 'merged') {
-        cleanupCompletedUpdate(state, tools.git, { merged: true });
+    if (['merged', 'production-verified'].includes(state.phase)) {
+        await finishMergedUpdate(state, tools);
         return;
     }
     if (options.prepareOnly && state.phase === 'prepared') {
@@ -327,75 +633,197 @@ async function main() {
         }
     }
 
-    if (state.phase === 'merged') {
-        cleanupCompletedUpdate(state, tools.git, { merged: true });
+    if (['merged', 'production-verified'].includes(state.phase)) {
+        await finishMergedUpdate(state, tools);
     }
 }
 
 function prepareUpdate(options, tools) {
     requireCleanWorkingTree(tools.git);
+    const startingPoint = {
+        branch: captureGit(tools.git, ['branch', '--show-current']).trim(),
+        commit: captureGit(tools.git, ['rev-parse', 'HEAD']).trim()
+    };
+
     console.log('Refreshing the latest production branch...');
     runCommand(tools.git, ['fetch', 'origin', 'main', '--prune'], {
         label: 'GitHub refresh'
     });
 
+    const baseCommit = captureGit(tools.git, ['rev-parse', 'origin/main']).trim();
+
+    const contractDefinition = JSON.parse(captureGit(
+        tools.git,
+        ['show', `${baseCommit}:scripts/workbook-export-contract.json`]
+    ));
+    const expectedContractSignature = workbookContractSignature(contractDefinition);
+
+    console.log('Checking the private workbook export contract...');
+    const preflight = runCommand('powershell.exe', createWorkbookExportArguments({
+        workbookPath: options.workbookPath,
+        preflightOnly: true,
+        expectedContractSignature
+    }), {
+        label: 'Workbook contract preflight'
+    });
+    requireWorkbookExportCapability(preflight.stdout, expectedContractSignature);
+
     const now = new Date();
     const branch = createDataBranchName(now);
-    runCommand(tools.git, ['switch', '--create', branch, 'origin/main'], {
-        label: 'Data branch creation'
-    });
+    let branchCreated = false;
+    let stagedRoot = null;
 
-    console.log('Exporting the complete website-data bundle from the private workbook...');
-    const exportArguments = [
-        '-NoProfile',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-File',
-        path.join(repoRoot, 'scripts', 'run-workbook-staged-export.ps1')
-    ];
+    try {
+        runCommand(tools.git, ['switch', '--create', branch, baseCommit], {
+            label: 'Data branch creation'
+        });
+        branchCreated = true;
 
-    if (options.workbookPath) {
-        exportArguments.push('-WorkbookPath', path.resolve(options.workbookPath));
+        console.log('Exporting the complete website-data bundle from the private workbook...');
+        const exportArguments = createWorkbookExportArguments({
+            workbookPath: options.workbookPath,
+            expectedContractSignature
+        });
+
+        const exported = runCommand('powershell.exe', exportArguments, {
+            label: 'Workbook export'
+        });
+        const rootMatch = /(?:^|\r?\n)STAGED_EXPORT_ROOT=([^\r\n]+)/.exec(exported.stdout);
+
+        if (!rootMatch) {
+            throw new Error('The workbook export completed without reporting its staged path.');
+        }
+
+        stagedRoot = resolveStagedRoot(rootMatch[1].trim());
+        console.log('Validating the staged bundle...');
+        runNodeScript('scripts/export-bundle-validation.mjs', ['--staged', stagedRoot]);
+
+        console.log('Comparing the staged bundle with production data...');
+        runNodeScript('scripts/compare-export-bundle.mjs', ['--staged', stagedRoot], {
+            acceptedStatuses: [0, 2]
+        });
+
+        const reportPath = path.join(stagedRoot, 'reconciliation.json');
+        const comparison = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+        const phase = comparison.meaningfulDifferences.length > 0
+            ? 'prepared'
+            : 'no-changes';
+        const state = {
+            version: STATE_VERSION,
+            phase,
+            branch,
+            stagedRoot,
+            reportPath,
+            expectedExportBundleId: readExportBundleId(fs.readFileSync(
+                path.join(stagedRoot, 'data', 'export_manifest.csv'),
+                'utf8'
+            )),
+            pullRequestTitle: createDataPullRequestTitle(now),
+            comparison,
+            createdAt: now.toISOString()
+        };
+
+        saveState(state);
+        console.log('');
+        console.log(formatComparisonSummary(comparison));
+        return state;
+    } catch (error) {
+        if (!branchCreated) {
+            throw error;
+        }
+
+        throw createPreparationFailureAfterCleanup({
+            error,
+            stagedRoot,
+            cleanup: () => cleanupFailedPreparation({
+                branch,
+                baseCommit,
+                startingPoint
+            }, tools.git)
+        });
+    }
+}
+
+function cleanupFailedPreparation({ branch, baseCommit, startingPoint }, git) {
+    const messages = [];
+    const currentBranch = captureGit(git, ['branch', '--show-current']).trim();
+    const currentHead = captureGit(git, ['rev-parse', 'HEAD']).trim();
+    const status = captureGit(git, ['status', '--porcelain']);
+
+    if (fs.existsSync(statePath)) {
+        messages.push(
+            `The temporary branch ${branch} was retained because updater state now exists.`
+        );
+        return messages;
+    }
+    if (
+        currentBranch !== branch ||
+        !mayDeleteFailedPreparationBranch({ temporaryHead: currentHead, baseHead: baseCommit })
+    ) {
+        messages.push(
+            `The temporary branch ${branch} was retained because its checked-out identity or commit changed.`
+        );
+        return messages;
+    }
+    if (status.trim()) {
+        messages.push(
+            `The temporary branch ${branch} was retained because preparation created local changes.`
+        );
+        return messages;
     }
 
-    const exported = runCommand('powershell.exe', exportArguments, {
-        label: 'Workbook export'
-    });
-    const rootMatch = /(?:^|\r?\n)STAGED_EXPORT_ROOT=([^\r\n]+)/.exec(exported.stdout);
+    if (startingPoint.branch) {
+        let startingBranchHead;
 
-    if (!rootMatch) {
-        throw new Error('The workbook export completed without reporting its staged path.');
+        try {
+            startingBranchHead = captureGit(git, [
+                'rev-parse',
+                '--verify',
+                `refs/heads/${startingPoint.branch}`
+            ]).trim();
+        } catch (error) {
+            messages.push(
+                `The temporary branch ${branch} was retained because the original branch ` +
+                `${startingPoint.branch} could not be verified: ${error.message}`
+            );
+            return messages;
+        }
+
+        if (!mayRestorePreparationStartingBranch({
+            recordedHead: startingPoint.commit,
+            currentHead: startingBranchHead
+        })) {
+            messages.push(
+                `The temporary branch ${branch} was retained because the original branch ` +
+                `${startingPoint.branch} no longer points to its recorded commit.`
+            );
+            return messages;
+        }
     }
 
-    const stagedRoot = resolveStagedRoot(rootMatch[1].trim());
-    console.log('Validating the staged bundle...');
-    runNodeScript('scripts/export-bundle-validation.mjs', ['--staged', stagedRoot]);
+    try {
+        runCommand(git, preparationRestoreArguments(startingPoint), {
+            label: 'Failed preparation branch restore'
+        });
+        messages.push(
+            `Restored ${startingPoint.branch || `detached HEAD at ${startingPoint.commit}`}.`
+        );
+    } catch (error) {
+        messages.push(`Could not restore the original Git position: ${error.message}`);
+        return messages;
+    }
 
-    console.log('Comparing the staged bundle with production data...');
-    runNodeScript('scripts/compare-export-bundle.mjs', ['--staged', stagedRoot], {
-        acceptedStatuses: [0, 2]
-    });
+    try {
+        refuseCheckedOutBranch(git, branch);
+        runCommand(git, preparationBranchDeletionArguments({ branch, baseCommit }), {
+            label: 'Failed preparation branch cleanup'
+        });
+        messages.push(`Removed empty temporary branch ${branch}.`);
+    } catch (error) {
+        messages.push(`Could not remove temporary branch ${branch}: ${error.message}`);
+    }
 
-    const reportPath = path.join(stagedRoot, 'reconciliation.json');
-    const comparison = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-    const phase = comparison.meaningfulDifferences.length > 0
-        ? 'prepared'
-        : 'no-changes';
-    const state = {
-        version: STATE_VERSION,
-        phase,
-        branch,
-        stagedRoot,
-        reportPath,
-        pullRequestTitle: createDataPullRequestTitle(now),
-        comparison,
-        createdAt: now.toISOString()
-    };
-
-    saveState(state);
-    console.log('');
-    console.log(formatComparisonSummary(comparison));
-    return state;
+    return messages;
 }
 
 function promoteAndTest(state, git) {
@@ -438,6 +866,24 @@ function runFullTests(state, git) {
 
 function commitUpdate(state, git) {
     ensureCurrentBranch(git, state.branch);
+
+    const workingBundleId = readExportBundleId(fs.readFileSync(
+        path.join(repoRoot, 'data', 'export_manifest.csv'),
+        'utf8'
+    ));
+
+    if (
+        state.expectedExportBundleId &&
+        state.expectedExportBundleId !== workingBundleId
+    ) {
+        throw new Error(
+            'The promoted export bundle changed after staged validation. Start a fresh routine data update.'
+        );
+    }
+    if (!state.expectedExportBundleId) {
+        state.expectedExportBundleId = workingBundleId;
+        saveState(state);
+    }
 
     if (
         !state.testedDataFingerprint ||
@@ -606,6 +1052,25 @@ async function waitForRequiredChecks(state, tools) {
 }
 
 async function confirmReviewedMerge(state, tools, options) {
+    let pullRequest = loadPullRequest(state, tools.gh);
+
+    requireDataPullRequestIdentity(pullRequest, state);
+
+    if (pullRequest.state === 'MERGED') {
+        return recordMergedPullRequest(state, pullRequest);
+    }
+    if (pullRequest.state !== 'OPEN') {
+        throw new Error(
+            `The data Pull Request is ${pullRequest.state || 'in an unknown state'} and cannot be merged automatically.`
+        );
+    }
+
+    const beforeReviewCheckErrors = assessRequiredDataChecks(pullRequest);
+
+    if (beforeReviewCheckErrors.length > 0) {
+        throw new Error(`Automatic merge refused:\n- ${beforeReviewCheckErrors.join('\n- ')}`);
+    }
+
     printReviewCheckpoint(state);
 
     const approved = options.approveMerge || await confirmExactWord(
@@ -620,7 +1085,7 @@ async function confirmReviewedMerge(state, tools, options) {
     // Re-read GitHub after the human pause rather than trusting what was true
     // before it. Identity pins the head commit to the validated one, so a push
     // during review is refused rather than merged.
-    const pullRequest = loadPullRequest(state, tools.gh);
+    pullRequest = loadPullRequest(state, tools.gh);
 
     requireDataPullRequestIdentity(pullRequest, state);
 
@@ -654,8 +1119,7 @@ function mergeReviewedPullRequest(state, tools) {
             REPOSITORY,
             '--merge',
             '--match-head-commit',
-            state.commitSha,
-            '--delete-branch'
+            state.commitSha
         ],
         { label: 'Merge data Pull Request' }
     );
@@ -773,7 +1237,144 @@ function recordMergedPullRequest(state, pullRequest) {
     return state;
 }
 
+async function finishMergedUpdate(state, tools) {
+    if (state.phase === 'merged') {
+        try {
+            state = await verifyMergedUpdateInProduction(state, tools);
+        } catch (error) {
+            const detail = error instanceof Error ? error.message : String(error);
+
+            throw new Error(
+                `${detail}\n\n` +
+                'The merge is complete, but production has not been verified. ' +
+                'The staged export, promotion backup, branch, and saved update state were retained.\n' +
+                'Run update-website-data.cmd --resume to retry verification without merging again.',
+                { cause: error }
+            );
+        }
+    }
+
+    if (state.phase !== 'production-verified') {
+        throw new Error(
+            `Completed-update cleanup cannot continue from phase ${state.phase}.`
+        );
+    }
+
+    cleanupCompletedUpdate(state, tools.git, { merged: true });
+}
+
+export async function waitForRecordedPagesDeployment(state, {
+    runGh,
+    waitForRegistration = waitForPagesRunRegistration,
+    waitForCompletion = waitForPagesRunCompletion,
+    persistState = saveState,
+    logger = message => console.log(message)
+}) {
+    let pagesRun;
+
+    if (state.pagesDeploymentRunId) {
+        logger(
+            `Resuming GitHub Pages deployment ${state.pagesDeploymentRunId} for the exact merge commit...`
+        );
+        pagesRun = await waitForCompletion({
+            mergeCommitSha: state.mergeCommitSha,
+            runId: state.pagesDeploymentRunId,
+            runGh
+        });
+    } else {
+        logger('Waiting for GitHub Pages to register the exact merge commit...');
+        pagesRun = await waitForRegistration({
+            mergeCommitSha: state.mergeCommitSha,
+            runGh
+        });
+        state.pagesDeploymentRunId = pagesRun.databaseId;
+        state.pagesDeploymentRunUrl = pagesRun.url;
+        persistState(state);
+
+        logger(`Waiting for GitHub Pages deployment ${pagesRun.databaseId} to finish...`);
+        pagesRun = await waitForCompletion({
+            mergeCommitSha: state.mergeCommitSha,
+            runId: pagesRun.databaseId,
+            runGh
+        });
+    }
+
+    if (
+        pagesRun.databaseId !== state.pagesDeploymentRunId ||
+        pagesRun.url !== state.pagesDeploymentRunUrl
+    ) {
+        throw new Error('The completed Pages deployment changed identity during verification.');
+    }
+
+    return pagesRun;
+}
+
+async function verifyMergedUpdateInProduction(state, tools) {
+    const committedManifest = captureGit(tools.git, [
+        'show',
+        `${state.commitSha}:data/export_manifest.csv`
+    ]);
+    const committedBundleId = readExportBundleId(committedManifest);
+
+    if (
+        state.expectedExportBundleId &&
+        state.expectedExportBundleId !== committedBundleId
+    ) {
+        throw new Error(
+            `The validated data commit contains bundle ${committedBundleId}, but the saved update expects ${state.expectedExportBundleId}.`
+        );
+    }
+    if (!state.expectedExportBundleId) {
+        state.expectedExportBundleId = committedBundleId;
+        saveState(state);
+    }
+
+    const runGh = (argumentsList, request) => runCommand(
+        tools.gh,
+        argumentsList,
+        {
+            label: request.label,
+            quiet: true,
+            timeoutMs: request.timeoutMs
+        }
+    );
+    const pagesRun = await waitForRecordedPagesDeployment(state, { runGh });
+
+    console.log(`GitHub Pages deployed the exact merge commit: ${pagesRun.url}`);
+    console.log('Checking every public CSV and opening both production site modes...');
+
+    const production = await verifyProductionData({
+        readExpectedFile: relativePath => captureGit(tools.git, [
+            'show',
+            `${state.commitSha}:${relativePath}`
+        ])
+    });
+
+    if (
+        production.bundleId !== state.expectedExportBundleId ||
+        production.verifiedFileCount !== EXPECTED_PUBLIC_CSV_COUNT
+    ) {
+        throw new Error(
+            `Production proof returned bundle ${production.bundleId} with ` +
+            `${production.verifiedFileCount} CSV files; expected bundle ` +
+            `${state.expectedExportBundleId} with ${EXPECTED_PUBLIC_CSV_COUNT} files.`
+        );
+    }
+
+    state.phase = 'production-verified';
+    state.productionVerifiedAt = new Date().toISOString();
+    validateUpdateState(state);
+    saveState(state);
+    return state;
+}
+
 function cleanupCompletedUpdate(state, git, { merged }) {
+    if (merged && state.phase !== 'production-verified') {
+        throw new Error(
+            'Merged update cleanup requires completed production verification.'
+        );
+    }
+
     const currentBranch = captureGit(git, ['branch', '--show-current']).trim();
 
     if (![state.branch, BASE_BRANCH].includes(currentBranch)) {
@@ -802,17 +1403,19 @@ function cleanupCompletedUpdate(state, git, { merged }) {
     ).trim();
 
     if (localDataBranch) {
-        const branchHead = captureGit(git, ['rev-parse', state.branch]).trim();
-
-        if (merged && branchHead !== state.commitSha) {
-            throw new Error('The local data branch no longer matches the merged Pull Request head.');
+        if (merged) {
+            refuseCheckedOutBranch(git, state.branch);
+            runCommand(git, preparationBranchDeletionArguments({
+                branch: state.branch,
+                baseCommit: state.commitSha
+            }), {
+                label: 'Delete exact merged local data branch'
+            });
+        } else {
+            runCommand(git, ['branch', '--delete', state.branch], {
+                label: 'Delete unused local data branch'
+            });
         }
-
-        runCommand(git, ['branch', '--delete', state.branch], {
-            label: merged
-                ? 'Delete merged local data branch'
-                : 'Delete unused local data branch'
-        });
     }
 
     if (merged) {
@@ -821,11 +1424,31 @@ function cleanupCompletedUpdate(state, git, { merged }) {
 
     cleanupUpdateArtifacts(state);
     console.log('');
-    console.log(
-        merged
-            ? `Data update merged at ${state.mergeCommitSha}. Local main is current and update artifacts were removed.`
-            : 'No-change update cleaned up. Local main is current and no update branch remains.'
+    if (merged) {
+        console.log('LIVE VERIFICATION PASSED');
+        console.log(`Bundle:           ${state.expectedExportBundleId}`);
+        console.log(`Pages deployment: ${state.pagesDeploymentRunUrl}`);
+        console.log('Family:           https://www.aceofrace.com/?site=family');
+        console.log('Everyone:         https://www.aceofrace.com/?site=everyone');
+        console.log('Both live modes rendered from the exact expected public-data bundle.');
+        console.log('Local main is current and update artifacts were removed.');
+    } else {
+        console.log('No-change update cleaned up. Local main is current and no update branch remains.');
+    }
+}
+
+function refuseCheckedOutBranch(git, branch) {
+    const checkedOutWorktrees = checkedOutWorktreesForBranch(
+        captureGit(git, ['worktree', 'list', '--porcelain', '-z']),
+        branch
     );
+
+    if (checkedOutWorktrees.length > 0) {
+        throw new Error(
+            `Refusing to remove ${branch} because it is checked out in: ` +
+            checkedOutWorktrees.join(', ')
+        );
+    }
 }
 
 function deleteRemoteBranchIfPresent(state, git) {
@@ -840,8 +1463,24 @@ function deleteRemoteBranchIfPresent(state, git) {
     );
 
     if (remoteBranch.status === 0) {
-        runCommand(git, ['push', 'origin', '--delete', state.branch], {
-            label: 'Delete merged remote data branch'
+        const fields = remoteBranch.stdout.trim().split(/\s+/);
+        const expectedRef = `refs/heads/${state.branch}`;
+
+        if (
+            fields.length !== 2 ||
+            fields[0].toLowerCase() !== state.commitSha.toLowerCase() ||
+            fields[1] !== expectedRef
+        ) {
+            throw new Error(
+                'The remote data branch no longer matches the merged Pull Request head.'
+            );
+        }
+
+        runCommand(git, remoteBranchDeletionArguments({
+            branch: state.branch,
+            expectedCommit: state.commitSha
+        }), {
+            label: 'Delete exact merged remote data branch'
         });
     }
 }
@@ -1103,6 +1742,8 @@ function runCommand(command, argumentsList, options = {}) {
         env: options.env || process.env,
         encoding: 'utf8',
         stdio: ['inherit', 'pipe', 'pipe'],
+        timeout: options.timeoutMs,
+        windowsHide: true,
         maxBuffer: 100 * 1024 * 1024
     });
 
@@ -1111,6 +1752,11 @@ function runCommand(command, argumentsList, options = {}) {
         process.stderr.write(result.stderr || '');
     }
     if (result.error) {
+        if (result.error.code === 'ETIMEDOUT') {
+            throw new Error(
+                `${options.label || command} timed out after ${options.timeoutMs} milliseconds.`
+            );
+        }
         throw new Error(`${options.label || command} could not start: ${result.error.message}`);
     }
     if (!acceptedStatuses.includes(result.status)) {
@@ -1123,7 +1769,7 @@ function runCommand(command, argumentsList, options = {}) {
     return result;
 }
 
-function findGit() {
+export function findGit() {
     const runtimeGit = process.env.USERPROFILE
         ? path.join(
             process.env.USERPROFILE,
@@ -1209,8 +1855,12 @@ It then stops. Merging to production needs a separate MERGE confirmation after
 you have reviewed the exact Pull Request diff and the uploaded Family and
 Everyone screenshots, which do not exist until PUBLISH has finished. Resume the
 paused update with --resume; the merge re-verifies the Pull Request identity,
-head commit, and required check before publishing, then deletes the data branch
-and removes only the saved artifacts for that update.`);
+head commit, and required check before publishing. After MERGE, the updater
+waits for the GitHub Pages run for that exact merge commit, verifies the exact
+public-data bundle and rendered Family and Everyone live pages, and only then
+deletes the data branch and saved artifacts. If Pages or the live site is not
+ready, the merged state is retained; --resume retries verification without
+merging again.`);
 }
 
 function captureDataFingerprint(git) {

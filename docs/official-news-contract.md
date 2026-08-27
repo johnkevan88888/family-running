@@ -4,32 +4,16 @@
 
 - **Product semantics:** Approved on 23 August 2026 for the
   `codex/news-official-results` branch.
-- **Implementation status:** First-draft workbook replay, site page, and
-  repository validation implemented. The approved 72-file export contains 43
-  Family rows and 64 Everyone rows and is promoted into tracked `data/`. The
-  hardened CSV contract, complete local suite, artifact build, and both-mode
-  desktop/mobile checks pass as of 23 August 2026. Publication remains a
-  separate explicit approval. Athlete, year, and distance filters plus a
-  latest-first `Show older` refinement were approved later on 23 August 2026;
-  that presentation-only refinement is implemented and the complete local
-  suite and real-data responsive review pass. A further compact card-flow
-  refinement was approved and implemented on 23 August 2026. The full local
-  suite, both-mode desktop/intermediate/mobile browser coverage, responsive
-  screenshot review, and overflow checks pass. The Pull Request preview update
-  passed before the next schema change; nothing is merged or released. A
-  workbook-owned medal-position-entry extension was requested on 23 August
-  2026. Its 36-column repository contract, focused fixtures, and browser
-  presentation are implemented locally. The refreshed staged 72-file workbook
-  bundle passed validation and reconciliation, only the two News CSVs changed
-  meaningfully, and atomic tracked-data promotion plus focused regression
-  validation passed. After the merged Gallery baseline was integrated, the
-  complete `pnpm test` suite and combined 114-file artifact build pass. Both
-  modes pass browser coverage at 1440px, 720px, and 390px; refreshed
-  responsive screenshots were manually reviewed with readable, contained
-  medal callouts and badges and no overflow. Merge commit `65190fe` is pushed to
-  Pull Request #68; GitHub reports it clean and mergeable, and the required
-  static-site check plus combined Deploy Preview passed. Nothing is merged or
-  released.
+- **Implementation status:** The workbook-owned replay, 64-column News export,
+  page, filters, compact presentation, medal entry/snapshot/displacement fields,
+  ranked-athlete counts, repository validation, and browser coverage are merged
+  through Pull Requests #68 and #70. The tracked 72-file baseline contains 43
+  Family rows and 64 Everyone rows. Its staged validation, reconciliation,
+  complete suite, artifact build, both-mode browser checks, and responsive review
+  passed before merge. On 25 August 2026 the News exporter was reconciled into
+  the newer canonical private working workbook; its latest validated but
+  unpromoted full export contains 43 Family and 75 Everyone rows. Those newer
+  data remain subject to the normal routine-update review and approval gates.
 - **Medal-position and displaced-holder extensions:** A real-data review on
   24 August 2026 found that the 36-column entry-only contract correctly left a
   `MedalEntry` blank for an existing-medal upgrade such as Rank 2 to Rank 1,
