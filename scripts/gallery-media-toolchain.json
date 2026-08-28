@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0",
+  "scope": "synthetic-local-phase-d",
+  "photo": {
+    "enabled": true,
+    "sharpPackageVersion": "0.35.2",
+    "sharpRuntimeVersion": "0.35.2",
+    "libvipsRuntimeVersion": "8.18.3",
+    "webpRuntimeVersion": "1.6.0",
+    "pngRuntimeVersion": "1.6.58",
+    "mozjpegRuntimeVersion": "0826579",
+    "exifRuntimeVersion": "0.6.26",
+    "exiftoolVendoredPackageVersion": "31.2.0",
+    "exiftoolPlatformPackageVersion": "13.40.0",
+    "exiftoolRuntimeVersion": "13.40"
+  },
+  "video": {
+    "enabled": false,
+    "requiredFfmpegRuntimeVersion": "8.0.1",
+    "requiredFfprobeRuntimeVersion": "8.0.1",
+    "runnerDigest": null
+  }
+}

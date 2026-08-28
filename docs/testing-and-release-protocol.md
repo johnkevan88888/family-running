@@ -613,6 +613,61 @@ that private metadata and credential sentinels never appear in returned results
 or console output. These administration contracts and fixtures are excluded
 from the public Pages artifact.
 
+The local Phase D photo-processor test additionally runs the pinned Sharp and
+ExifTool binaries against generated synthetic JPEG and opaque PNG files. It proves
+orientation handling, no-upscale display and thumbnail dimensions (including
+odd aspect ratios), deterministic finalized bytes and hashes, exact file-to-byte
+binding before and after metadata inspection, disabled user ExifTool
+configuration, metadata rejection, immutable returned payloads, all-or-nothing
+failure, redacted errors, and private temporary-file cleanup. The complete test
+runner must invoke this test. Processor code, fixtures, temporary files, and
+generated derivatives must remain outside the GitHub Pages artifact. This test
+also proves that oversized inputs, malformed storage-binding IDs, and transparent
+PNG inputs fail before unnecessary native-tool work. It does not authorize real
+media or claim video processing coverage.
+
+The local private-processing bridge test then drives the real administration
+router, all five D1 migrations, a deterministic in-memory R2 implementation,
+the real pinned photo processor, and the service-only processing router from
+end to end with synthetic bytes. It proves that the site area, race, tags,
+consent, revisions, suppression state, original key, run ID, and staging keys
+come from current server evidence rather than request choices. It also covers
+exact Access identity and origin checks, version-pinned original download,
+D1-before-R2 output reservation, persisted one-part multipart admission,
+independent R2 readback, retry recovery when part, completion, or following D1
+responses are lost, conflicting retries, revocation during the original R2
+read, exclusion in the final R2-to-D1 write gap, mid-run revision blocks,
+direct terminal-row bypasses, role-specific byte limits, fixed safe failure
+codes, canonical result replay, and the exact verified display/thumbnail pair
+required to stage a run. Deterministic race hooks must also prove that only one
+simultaneous staged-versus-failed or conflicting-failure result can win and
+that the losing request cannot append a false receipt or audit event.
+
+Cleanup coverage must prove that a D1 closure committed before multipart-handle
+admission prevents any media part from being sent, while a handle committed
+first is included in the immutable cleanup snapshot. The in-memory R2 substitute
+must model both abort-wins and complete-wins orderings, exact `NoSuchUpload`, a
+lost abort response, a lost completion response, a lost delete response, and a
+D1 failure after provider success. Direct `put()` must fail the test so it
+cannot silently return to the processing path. Cleanup must reject a mismatched
+expected object, an unknown object under the canonical run prefix, any caller-
+supplied target, and any new output, result, or derivative after closure. It
+must verify exact bytes and metadata before deletion, final `head()` absence,
+and a fully paginated empty prefix before removing D1 operational evidence.
+No-output, partial-output, failed, fully staged, withdrawal, and pending tagged-
+athlete exclusion cases must converge under exact retries; resolving an
+exclusion must not reopen an old run. Every processing run must have completed
+cleanup evidence before draft purge.
+
+Withdrawal coverage must separately prove the exact private-original upload row
+is `deleted`, with retained version/ETag/SHA and a deletion timestamp, before a
+cleaned run can reach `withdrawn`. Staging cleanup alone must never invent
+private-original deletion, public-host deletion, consent withdrawal, or
+publication evidence. The test byte-compares both public manifests and the
+suppression file before and after the flow and proves the Worker has no
+approved-media binding. It does not exercise Cloudflare, use real media,
+promote an object, write a manifest, or open a Pull Request.
+
 Every public page is also checked for a `noindex` robots meta tag. The site is
 kept out of search results by that tag rather than by a `robots.txt` Disallow,
 so a new page shipping without it would be indexed while every other page is

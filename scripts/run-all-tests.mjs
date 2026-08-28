@@ -13,6 +13,8 @@ const checks = [
     ['Gallery contract tests', ['tests/gallery-contract.mjs']],
     ['Gallery upload contract tests', ['tests/gallery-upload-contract.mjs']],
     ['Gallery media policy tests', ['tests/gallery-media-policy.mjs']],
+    ['Gallery media synthetic photo processor tests', ['tests/gallery-media-processor.mjs']],
+    ['Gallery private processing bridge tests', ['tests/gallery-processing-bridge.mjs']],
     ['Gallery storage-key contract tests', ['tests/gallery-storage-keys.mjs']],
     ['Gallery admin catalog snapshot check', ['scripts/build-gallery-admin-catalog.mjs', '--check']],
     ['Gallery admin catalog generation tests', ['tests/gallery-admin-catalog.mjs']],

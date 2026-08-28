@@ -10,6 +10,7 @@ import {
     findAssetProblems,
     findDataBundleProblems,
     findGalleryDataProblems,
+    findUnpublishablePublicationEntryProblems,
     findVendorProblems,
     managedArtifactRoot,
     resolvePreviewOutputDir
@@ -179,6 +180,62 @@ assert.deepEqual(
 
 console.log('PASS - Gallery upload administration contracts remain outside the public runtime');
 
+assert.deepEqual(findUnpublishablePublicationEntryProblems(publishedSiteEntries), []);
+
+const unpublishedProcessorEntries = [
+    'scripts/process-gallery-media.mjs',
+    'scripts/gallery-media/processor.mjs',
+    'tests/gallery-media-processor.mjs',
+    'tests/gallery-processing-bridge.mjs',
+    'tests/fixtures/gallery-media/synthetic-photo.jpg',
+    'tests/fixtures/gallery-media/synthetic-video.mp4',
+    'gallery-admin/src/admin-worker.js',
+    'gallery-admin/src/processing-worker.js',
+    'gallery-admin/src/processing-service.js',
+    'gallery-admin/migrations/0004_private_processing_staging.sql',
+    'gallery-admin/migrations/0005_private_processing_cleanup.sql',
+    'gallery-admin/wrangler.processing.example.jsonc',
+    '.github/workflows/gallery-media-review.yml',
+    'test-artifacts/gallery-media-processing/run-test/display.webp',
+    'test-artifacts/gallery-private-staging/run-test/thumbnail.webp',
+    'test-artifacts/gallery-media-processing/run-test/video.mp4'
+];
+
+for (const entry of unpublishedProcessorEntries) {
+    const problems = findUnpublishablePublicationEntryProblems([entry]);
+    assert.equal(problems.length, 1, `The publication guard accepted "${entry}".`);
+    assert.match(problems[0], /unpublished repository entry/);
+}
+
+for (const alias of [
+    'Scripts/process-gallery-media.mjs',
+    'TEST-ARTIFACTS',
+    'gallery-ADMIN/src/admin-worker.js',
+    'Gallery-Admin/src/Processing-Worker.js',
+    'PACKAGE.JSON'
+]) {
+    assert.equal(
+        findUnpublishablePublicationEntryProblems([alias]).length,
+        1,
+        `The case-insensitive publication guard accepted "${alias}".`
+    );
+}
+
+for (const nonCanonical of [
+    'test-artifacts.',
+    'test-artifacts /run/display.webp',
+    'foo/./bar',
+    'foo/../scripts/process-gallery-media.mjs',
+    'tests\\gallery-media-processor.mjs'
+]) {
+    assert.deepEqual(
+        findUnpublishablePublicationEntryProblems([nonCanonical]),
+        ['Published site entries contain a non-canonical path.']
+    );
+}
+
+console.log('PASS - processor code, fixtures, and generated media cannot enter the publication allowlist');
+
 const manifest = [
     ['ExportBundleID', 'ExportedAtUTC', 'SchemaVersion', 'Scope', 'RelativePath', 'DataRowCount'],
     ['B1', '2099-01-01T00:00:00.000Z', '1.0', 'shared', 'data/athlete_results.csv', '3'],
@@ -324,8 +381,15 @@ const strayDataFile = path.join(trackedDataRoot, '__artifact-contract-probe__.cs
 const strayVendorFile = path.join(repoRoot, 'vendor', '__artifact-contract-probe__.js');
 const strayAssetFile = path.join(repoRoot, 'assets', 'brand', '__artifact-contract-probe__.js');
 const strayGalleryFile = path.join(repoRoot, 'gallery-data', '__artifact-contract-probe__.jpg');
+const processorOutputProbeRoot = path.join(
+    managedArtifactRoot,
+    `gallery-media-processing-safety-${process.pid}`
+);
+const processorOutputProbe = path.join(processorOutputProbeRoot, 'run-test', 'display.webp');
 
 try {
+    await fs.mkdir(path.dirname(processorOutputProbe), { recursive: true });
+    await fs.writeFile(processorOutputProbe, 'synthetic processor output probe\n', 'utf8');
     await fs.writeFile(strayDataFile, 'Header,ExportBundleID\r\nValue,PROBE\r\n', 'utf8');
 
     const strayData = await runBuild({ PREVIEW_OUTPUT_DIR: buildOutputDir });
@@ -382,11 +446,26 @@ try {
             `The public preview artifact contains unpublished Gallery administration code "${entry}".`
         );
     }
+
+    for (const unpublishedRoot of ['scripts', 'tests', 'gallery-admin', 'test-artifacts']) {
+        assert.equal(
+            await pathExists(path.join(buildOutputDir, unpublishedRoot)),
+            false,
+            `The public preview artifact contains repository-only root "${unpublishedRoot}".`
+        );
+    }
+
+    assert.equal(
+        await pathExists(path.join(buildOutputDir, 'test-artifacts', path.basename(processorOutputProbeRoot))),
+        false,
+        'A generated Gallery processor output entered the public preview artifact.'
+    );
 } finally {
     await fs.rm(strayDataFile, { force: true });
     await fs.rm(strayVendorFile, { force: true });
     await fs.rm(strayAssetFile, { force: true });
     await fs.rm(strayGalleryFile, { force: true });
+    await fs.rm(processorOutputProbeRoot, { recursive: true, force: true });
     await fs.rm(buildOutputDir, { recursive: true, force: true });
 }
 

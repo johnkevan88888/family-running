@@ -6,6 +6,7 @@ import {
     findAssetProblems,
     findDataBundleProblems,
     findGalleryDataProblems,
+    findUnpublishablePublicationEntryProblems,
     findVendorProblems,
     resolvePreviewOutputDir
 } from './preview-artifact-contract.mjs';
@@ -34,6 +35,15 @@ try {
 // The list lives in published-site-entries.mjs because the release-path
 // validator needs the same definition of "reaches visitors".
 const runtimeEntries = publishedSiteEntries;
+
+const publicationEntryProblems = findUnpublishablePublicationEntryProblems(runtimeEntries);
+if (publicationEntryProblems.length) {
+    console.error('Refusing to build a publication allowlist that includes repository-only files:');
+    for (const problem of publicationEntryProblems) {
+        console.error(`- ${problem}`);
+    }
+    process.exit(1);
+}
 
 await fs.rm(outputDir, { recursive: true, force: true });
 await fs.mkdir(outputDir, { recursive: true });
@@ -66,33 +76,11 @@ if (safetyProblems.length) {
 
 // This artifact is the public web root, so repository documentation, tooling,
 // and configuration must never appear in it. The copy above is whitelist-based,
-// but this check fails loudly if something non-runtime is ever added to
-// runtimeEntries.
-const unpublishablePrefixes = [
-    'docs/',
-    'scripts/',
-    'tests/',
-    'gallery-admin/',
-    '.github/',
-    'gallery-upload-contract.js',
-    'gallery-media-policy.js',
-    'AGENTS.md',
-    'README.md',
-    'package.json',
-    'pnpm-lock.yaml',
-    'pnpm-workspace.yaml',
-    'netlify.toml',
-    'preview-local.cmd',
-    'update-website-data.cmd'
-];
+// but this repeats the same shared guard against the files actually copied.
 const publishedPaths = copiedFiles.map(file =>
     path.relative(outputDir, file).replace(/\\/g, '/')
 );
-const leakedFiles = publishedPaths.filter(relativePath =>
-    unpublishablePrefixes.some(prefix =>
-        prefix.endsWith('/') ? relativePath.startsWith(prefix) : relativePath === prefix
-    )
-);
+const leakedFiles = findUnpublishablePublicationEntryProblems(publishedPaths);
 
 if (leakedFiles.length) {
     console.error('Published artifact contains repository files that must not be public:');

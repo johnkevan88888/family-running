@@ -4,6 +4,9 @@ import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 
 import adminWorker, { handleAdminRequest } from '../gallery-admin/src/admin-worker.js';
+import {
+    findUnpublishablePublicationEntryProblems
+} from '../scripts/preview-artifact-contract.mjs';
 import { publishedSiteEntries } from '../scripts/published-site-entries.mjs';
 
 const adminOrigin = 'https://synthetic-phase-c-admin.example';
@@ -963,11 +966,11 @@ assert.doesNotMatch(
 assert.ok(publishedSiteEntries.every(entry =>
     entry !== 'gallery-admin' && !entry.startsWith('gallery-admin/')
 ));
-const artifactBuilder = await readFile(
-    new URL('../scripts/build-preview-artifact.mjs', import.meta.url),
-    'utf8'
+assert.ok(
+    findUnpublishablePublicationEntryProblems(['gallery-admin/']).length > 0,
+    'The shared publication guard must reject the Gallery administration tree.'
 );
-assert.match(artifactBuilder, /unpublishablePrefixes[\s\S]*'gallery-admin\/'/);
+assert.deepEqual(findUnpublishablePublicationEntryProblems(publishedSiteEntries), []);
 const manifestFinals = await Promise.all(manifestUrls.map(url => readFile(url, 'utf8')));
 assert.deepEqual(manifestFinals, manifestBaselines);
 for (const finalText of manifestFinals) {

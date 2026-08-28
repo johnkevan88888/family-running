@@ -25,6 +25,25 @@ import { vendoredLibraryFiles } from './vendored-library-files.mjs';
 export const managedArtifactRoot = path.join(repoRoot, 'test-artifacts');
 export const defaultPreviewOutputDir = path.join(managedArtifactRoot, 'preview-site');
 
+export const unpublishableArtifactEntries = Object.freeze([
+    'docs/',
+    'scripts/',
+    'tests/',
+    'gallery-admin/',
+    '.github/',
+    'test-artifacts/',
+    'gallery-upload-contract.js',
+    'gallery-media-policy.js',
+    'AGENTS.md',
+    'README.md',
+    'package.json',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    'netlify.toml',
+    'preview-local.cmd',
+    'update-website-data.cmd'
+]);
+
 const manifestRelativePath = 'data/export_manifest.csv';
 
 // The build deletes this directory recursively, so an unchecked
@@ -61,6 +80,53 @@ export function resolvePreviewOutputDir(rawValue) {
     }
 
     return outputDir;
+}
+
+// Guard the publication allowlist itself before any copy begins. The later
+// artifact scan remains useful defence in depth, but it is too late for
+// `test-artifacts/`: copying that root can recursively include the artifact
+// destination that is being built.
+export function findUnpublishablePublicationEntryProblems(entries) {
+    if (!Array.isArray(entries)) {
+        return ['Published site entries must be an array.'];
+    }
+
+    const problems = [];
+    for (const entry of entries) {
+        const normalized = normalizeArtifactPath(entry);
+        const segments = normalized.split('/');
+        if (
+            typeof entry !== 'string' ||
+            normalized !== entry ||
+            normalized === '' ||
+            path.posix.normalize(normalized) !== normalized ||
+            segments.some(segment =>
+                segment === '' ||
+                segment === '.' ||
+                segment === '..' ||
+                segment.endsWith('.') ||
+                segment.endsWith(' ')
+            )
+        ) {
+            problems.push('Published site entries contain a non-canonical path.');
+            continue;
+        }
+
+        const lowercaseEntry = normalized.toLowerCase();
+        const blockedEntry = unpublishableArtifactEntries.find(candidate =>
+            candidate.endsWith('/')
+                ? lowercaseEntry === candidate.slice(0, -1).toLowerCase() ||
+                    lowercaseEntry.startsWith(candidate.toLowerCase())
+                : lowercaseEntry === candidate.toLowerCase()
+        );
+        if (blockedEntry) {
+            problems.push(
+                `Published site entry "${normalized}" matches unpublished repository entry "${blockedEntry}".`
+            );
+        }
+    }
+
+    return problems.sort();
 }
 
 // `data/export_manifest.csv` is the export-completion contract, so it also
