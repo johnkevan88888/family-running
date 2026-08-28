@@ -500,10 +500,14 @@ rehearsal confirms the provider behavior. `candidate-public` remains blocked
 absolutely. The public manifests and suppression list remain unchanged and
 empty.
 
-The Phase D photo work is committed on
-`codex/gallery-phase-d-processing` and open for code review in Pull Request
-#79. It has not been merged or deployed, and no media or public manifest was
-published.
+The Phase D photo work was merged through Pull Request #79 as commit
+`313049ec8c1c8bb0b8225812de12ecfd13de40d3`. Exact GitHub Pages run
+`33221319314` succeeded. Its immutable 114-file artifact matched production
+byte-for-byte, all 72 public CSVs matched the merge commit, Family and Everyone
+rendered from bundle `20260827T022723137Z-5564E17F`, and representative Phase D
+private paths returned 404. This merged the reviewed code only: migrations
+`0004` and `0005` and the processing Worker remain un-applied and undeployed,
+and no media or public manifest was published.
 
 ### Handoff
 
@@ -511,10 +515,12 @@ published.
   and Everyone video reached private R2, exact remote bytes match D1, and
   anonymous access is denied. Leave both synthetic originals in private review
   so later cleanup, retention, and takedown rehearsals use the normal workflow.
-- Pull Request #79 contains the reviewed synthetic photo processor,
-  private-staging bridge, cleanup companion, tests, and documentation only. Do
-  not merge or deploy it without separate owner approval. It does not alter the
-  deployed Phase C Workers or stored synthetic originals.
+- Pull Request #79 is merged and production verification proves its static
+  Pages artifact contains no administration, processor, migration, or private
+  media material. The Phase D processing Worker and migrations remain a
+  separate, undeployed Cloudflare gate; do not apply them without separate
+  owner approval. The merge did not alter the deployed Phase C Workers or
+  stored synthetic originals.
 - Do not use real family media until synthetic photo, video, metadata-stripping,
   failure, cleanup, and takedown rehearsals pass.
 - Before real-media upload is enabled, review and apply migration `0003`, extend
