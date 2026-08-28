@@ -17,9 +17,15 @@ importers:
       date-fns:
         specifier: 4.1.0
         version: 4.1.0
+      exiftool-vendored:
+        specifier: 31.2.0
+        version: 31.2.0
       playwright:
         specifier: ^1.61.0
         version: 1.61.1
+      sharp:
+        specifier: 0.35.2
+        version: 0.35.2
       wrangler:
         specifier: 4.126.0
         version: 4.126.0
@@ -407,6 +413,9 @@ packages:
   '@kurkle/color@0.3.4':
     resolution: {integrity: sha512-M5UknZPHRu3DEDWoipU6sE8PdkZ6Z/S+v4dD+Ke8IaNlpdSQah50lz1KtcFBa2vsdOnwbbnxJwVM4wty6udA5w==}
 
+  '@photostructure/tz-lookup@11.6.1':
+    resolution: {integrity: sha512-azPdhOkwEyNFed8hSR7/U5Xe9eMO3YfbGYUnW3R9wlseimxSw6IkFaYAInDTb1KlbuwTOMzpa5oPcpAOXUM29A==}
+
   '@poppinss/colors@4.1.6':
     resolution: {integrity: sha512-H9xkIdFswbS8n1d6vmRd8+c10t2Qe+rZITbbDHHkQixH5+2x1FDGmi/0K+WgWiqQFKPSlIYB7jlH6Kpfn6Fleg==}
 
@@ -422,6 +431,13 @@ packages:
 
   '@speed-highlight/core@1.2.24':
     resolution: {integrity: sha512-qeW2e1l78afw8VhRPfPQ1Gjj+KU5XFQ/OFV5ti6eTa9bruO7mJyZtA4vw0ofqmA3tKCkROE9xLk3VZoeRc98nw==}
+
+  '@types/luxon@3.7.5':
+    resolution: {integrity: sha512-jJ41Q4z6ZVO260MNDdHfW7+7a5iMiX8Mr6ZJHcmgrvhZha6dz5704o/lF2kKl6URjH6ivEL97w9xS/MgpJEphg==}
+
+  batch-cluster@15.0.1:
+    resolution: {integrity: sha512-eUmh0ld1AUPKTEmdzwGF9QTSexXAyt9rA1F5zDfW1wUi3okA3Tal4NLdCeFI6aiKpBenQhR6NmK9bW9tBHTGPQ==}
+    engines: {node: '>=20'}
 
   blake3-wasm@2.1.5:
     resolution: {integrity: sha512-F1+K8EbfOZE49dtoPtmxUQrpXaBIl3ICvasLh+nJta0xkz+9kF/7uet9fLnwKqhDrmj6g+6K3Tw9yQPUg2ka5g==}
@@ -455,6 +471,19 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
+  exiftool-vendored.exe@13.40.0:
+    resolution: {integrity: sha512-OUdoQ2RczAYS+6wdg2hUFjhKoBDXot3PNsmievN1ZspdQVllJF847WUHGpaXJv4QZcDvK9eGKop0vfa62dNwuA==}
+    os: [win32]
+
+  exiftool-vendored.pl@13.40.0:
+    resolution: {integrity: sha512-AsCGDXhboDVk8Gkisw+x8JMou1vWeLFH30NX6o2sGgSUKVz0KV5F6AK/d9iO9DHtOYVx6Wt+RbYmAAiCzIxHuQ==}
+    os: ['!win32']
+    hasBin: true
+
+  exiftool-vendored@31.2.0:
+    resolution: {integrity: sha512-QASA/BEOCXuRlnlqnSdbluRIAW4/BVRFLrxDDAUooi7BP17UDi5F4LHnxENHU/pNNoUx3f3mCehB43aVbkR9xw==}
+    engines: {node: '>=20.0.0'}
+
   fsevents@2.3.2:
     resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
@@ -465,9 +494,17 @@ packages:
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
 
+  he@1.2.0:
+    resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
+    hasBin: true
+
   kleur@4.1.5:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
     engines: {node: '>=6'}
+
+  luxon@3.7.2:
+    resolution: {integrity: sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew==}
+    engines: {node: '>=12'}
 
   miniflare@5.20260825.0-alpha:
     resolution: {integrity: sha512-ZwlF6LuX43ilx9EwMRDKHenoGXiNdcKSyGx5aPaJhuozujVZasb2lRR7t3ojJZSnVzwDPsBBYCu8lLnc+/KIgQ==}
@@ -774,6 +811,8 @@ snapshots:
 
   '@kurkle/color@0.3.4': {}
 
+  '@photostructure/tz-lookup@11.6.1': {}
+
   '@poppinss/colors@4.1.6':
     dependencies:
       kleur: 4.1.5
@@ -789,6 +828,10 @@ snapshots:
   '@sindresorhus/is@7.2.0': {}
 
   '@speed-highlight/core@1.2.24': {}
+
+  '@types/luxon@3.7.5': {}
+
+  batch-cluster@15.0.1: {}
 
   blake3-wasm@2.1.5: {}
 
@@ -838,13 +881,34 @@ snapshots:
       '@esbuild/win32-ia32': 0.28.1
       '@esbuild/win32-x64': 0.28.1
 
+  exiftool-vendored.exe@13.40.0:
+    optional: true
+
+  exiftool-vendored.pl@13.40.0:
+    optional: true
+
+  exiftool-vendored@31.2.0:
+    dependencies:
+      '@photostructure/tz-lookup': 11.6.1
+      '@types/luxon': 3.7.5
+      batch-cluster: 15.0.1
+      he: 1.2.0
+      luxon: 3.7.2
+    optionalDependencies:
+      exiftool-vendored.exe: 13.40.0
+      exiftool-vendored.pl: 13.40.0
+
   fsevents@2.3.2:
     optional: true
 
   fsevents@2.3.3:
     optional: true
 
+  he@1.2.0: {}
+
   kleur@4.1.5: {}
+
+  luxon@3.7.2: {}
 
   miniflare@5.20260825.0-alpha:
     dependencies:

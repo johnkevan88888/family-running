@@ -412,23 +412,108 @@ integration and responsive owner tests, artifact isolation, and both-mode
 desktop/mobile public browser smoke tests. Final repository safety and
 whitespace checks were repeated after review corrections and passed.
 
-The two required source repairs are recorded locally on
-`codex/gallery-phase-c-expiry-guard` as `3815392` and `eb5b291`. They have not
-been pushed and no follow-up Pull Request has been opened. The non-production
-Worker is therefore intentionally ahead of the repository until the owner
-separately authorizes that Git action. The v1 key module, upload-service change,
-`0003` migration, tests, and current documentation are additional uncommitted
-local changes.
+The repository is now based on the merged Gallery Phase C and storage-key
+baseline. A new local Phase D branch adds the first synthetic-only photo
+processor and its private-staging bridge without changing Cloudflare or the
+public site. The standalone processor accepts generated JPEG and opaque PNG
+inputs only with canonical site, draft, and processing-run identifiers. Pinned
+Sharp/libvips creates deterministic WebP display and thumbnail derivatives with
+orientation correction and no upscaling. Pinned ExifTool scans the exact
+finalized bytes with user configuration disabled; any unexpected metadata,
+warning, truncation, byte substitution, mid-scan change, or cleanup failure
+stops the run.
+
+A separate service-only processing Worker now derives those identifiers and all
+editorial/access evidence from D1 rather than trusting processor input. Its
+bindings are limited to D1, private originals, and private derivative staging.
+It cannot access approved media, a public manifest, GitHub, or merge/deploy
+controls. The caller cannot select the Family/Everyone destination, race,
+athlete tags, consent, exclusion state, object keys, or processing-run ID. Start,
+original download, two exact photo-role uploads, terminal result, and exact-run
+cleanup are the only route families. D1 reserves each output before R2 creates
+an empty one-part multipart upload. The exact provider upload ID must be durable
+while the one-way write gate remains open before any media part is sent. The
+Worker reads the completed object back independently and safely reconciles lost
+part, completion, and following D1 responses. Consent, draft/catalog/
+suppression revisions, and unresolved athlete exclusions are rechecked before,
+during, and after the storage work.
+
+The local race-safe cleanup companion is now implemented. A cleanup request
+supplies only the opaque run ID, expected state version, and idempotency key;
+D1 derives a pending tagged-athlete exclusion, withdrawal, or terminal
+processing-failure reason and every target. Creating the cleanup row closes new
+output, part, completion, result, derivative, and replacement-run admission.
+Cleanup aborts every persisted multipart handle. If completion already won, it
+verifies the exact private bytes and provider evidence before deletion. Every
+expected key must return absent and the paginated server-built run prefix must
+list empty before one D1 transaction removes operational rows, records the
+audit event, and preserves an append-only hash-only tombstone. Even a zero-
+output run must complete this evidence path before draft purge.
+
+Focused processor, metadata-policy, storage-key, private-processing bridge,
+publication-artifact, and repository-safety tests pass. The bridge end-to-end
+test uses the real owner administration router, all five migrations, synthetic
+JPEG bytes, the real pinned processor, a deterministic private-R2 substitute,
+and the real processing router. It proves exact service authentication,
+fixed-area tagging and exclusion gates, version-pinned original download,
+multipart-only staging, crash-window replay, mid-run suppression blocking,
+canonical result replay, simultaneous staged-versus-failed and conflicting
+failure requests, delete-first consent withdrawal when no output exists,
+abort-wins and complete-wins cleanup, lost create/part/complete/abort/delete
+responses, cleanup before multipart admission or part evidence, malformed and
+repeated prefix pagination, final D1 rollback and committed-but-lost responses,
+partial/staged/no-output recovery, late-write closure, exact-object and prefix
+refusal, hash-only retention, and unchanged public manifests. Direct
+staging `put()` deliberately fails the fake. Independent
+adversarial processor, bridge-code, and migration-schema reviews passed after
+repairs for odd-ratio resize rounding, hostile ExifTool configuration, exact
+path/byte binding, immutable returned bytes, cross-platform technical tags,
+oversized pre-decoder rejection, cleanup-failure precedence, terminal-result
+concurrency, post-read consent/exclusion rechecks, and the exact withdrawal
+ordering. Final database hardening also requires every earlier run to have its
+exact completed cleanup and three-hash tombstone before replacement; protects
+all cleanup, evidence, tombstone, and active/staged-run uniqueness constraints
+against `INSERT OR REPLACE` and `UPDATE OR REPLACE`; and still permits a new run
+after a genuinely failed run has been cleaned and tombstoned. The final complete
+`pnpm test` run passed against the combined code:
+206 tracked files passed repository safety, every data/Gallery/admin/processor/
+bridge/workflow contract passed, the 114-file public artifact passed isolation,
+and both-mode desktop/mobile browser smoke checks and screenshots passed. A
+final independent combined audit found no remaining local blocker. Wrangler
+`4.126.0` also packaged the separate processing Worker in dry-run mode with
+exactly D1, private originals, and private derivative staging. No external
+resource was changed.
+
+This is not a complete Phase D flow. Video remains deliberately unavailable
+until a pinned immutable FFmpeg/ffprobe runner is selected. There is no service
+deployment, approved-media promotion, candidate-manifest generator, GitHub App,
+Pull Request, public derivative, or real-media path in this slice. Successfully
+staged photo evidence deliberately leaves the draft in `processing`; cleanup is
+a private recovery/takedown operation and does not promote it. Because HTTP
+Workers have no hard wall-clock duration, the cleanup design uses provider-side
+multipart terminal state rather than a fixed delay. Cloudflare documents the
+parallel abort/completion and strongly consistent object-absence pieces, but
+does not state the exact terminal race as a formal linearizability guarantee.
+Migrations `0004` and `0005` and the processing Worker therefore remain a hard
+no-deploy boundary until a separately approved non-production synthetic race
+rehearsal confirms the provider behavior. `candidate-public` remains blocked
+absolutely. The public manifests and suppression list remain unchanged and
+empty.
+
+The Phase D photo work is currently uncommitted on
+`codex/gallery-phase-d-processing`. It has not been pushed and no Pull Request
+has been opened.
 
 ### Handoff
 
-- Phase C's non-production exit gate is complete: the owner-only Family photo
+- Phase C's non-production exit gate remains complete: the owner-only Family photo
   and Everyone video reached private R2, exact remote bytes match D1, and
   anonymous access is denied. Leave both synthetic originals in private review
   so later cleanup, retention, and takedown rehearsals use the normal workflow.
-- The next repository step requires explicit approval to push
-  `codex/gallery-phase-c-expiry-guard` and open a follow-up Pull Request for the
-  request-time expiry guard, live-R2 fixed-length part repair, and this handoff.
+- Treat the reviewed local synthetic photo processor and private-staging bridge
+  as uncommitted work until the owner separately approves a commit, push, or
+  Pull Request. They do not alter the deployed Phase C Workers or stored
+  synthetic originals.
 - Do not use real family media until synthetic photo, video, metadata-stripping,
   failure, cleanup, and takedown rehearsals pass.
 - Before real-media upload is enabled, review and apply migration `0003`, extend
@@ -436,10 +521,17 @@ local changes.
   deploy the updated Worker, and repeat the remote synthetic photo/video proof.
   Preserve the existing `private-originals/phase-c/` objects rather than
   renaming them.
-- Phase D processing, sanitized derivatives, GitHub Apps/environments, and a
-  manifest Pull Request have not begun. The existing approval does not permit
-  real media, DNS changes, public media derivatives, Pull Requests, merges, or
-  production publication.
+- The local race-safe private-staging cleanup and recovery boundary is now
+  implemented, independently reviewed, and passing the complete repository
+  suite. The next gate requires separate approval for non-production
+  application of migrations `0003`–`0005`, a dedicated processing Access
+  identity, the third Worker's exact three bindings, and a complete synthetic
+  photo upload/cleanup race rehearsal. Video
+  processing, approved-media promotion, candidate manifest generation, GitHub
+  Apps/environments, and the full synthetic Pull Request rehearsal remain
+  unimplemented. The existing approval does not permit real media, external
+  storage writes, DNS changes, public media derivatives, Pull Requests, merges,
+  or production publication.
 
 ## Previous task: exact-bundle post-MERGE verification and cleanup portability
 

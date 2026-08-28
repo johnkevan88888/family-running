@@ -664,7 +664,9 @@ Unknown historical details are labelled rather than inferred.
 
 - **Status:** Accepted; provider-independent Phase A and non-production Phase B
   infrastructure/authentication are implemented and verified; synthetic-only
-  Phase C is deployed and remotely verified in non-production
+  Phase C is deployed and remotely verified in non-production; the first local
+  Phase D photo-processing and private-staging bridge slices are implemented
+  but not committed, pushed, deployed, or published
 - **Date:** 25–28 August 2026
 - **Decision:** Keep the public championship site static and add no public
   upload page. A separate Cloudflare Worker administration application is
@@ -806,6 +808,96 @@ Unknown historical details are labelled rather than inferred.
   suppression list remain empty. No real media, derivative, public URL, DNS
   change, GitHub App, Pull Request, merge, or production publication was
   authorized or created.
+- **Local Phase D photo-processing boundary:** The first derivative slice is a
+  local synthetic-only module, not a Worker route or public upload feature. It
+  accepts only JPEG and opaque PNG inputs with canonical site, draft, and
+  processing-run identifiers. The standalone module validates their storage-key
+  grammar but does not authenticate or look up a D1 draft; its future trusted
+  integration must derive and verify them. It then uses exact pinned Sharp 0.35.2/libvips
+  8.18.3 and ExifTool 13.40 tooling to produce fixed-profile WebP display and
+  thumbnail derivatives. It decodes and auto-orients before a no-upscale resize,
+  hashes finalized bytes, binds ExifTool inspection to those exact bytes before
+  and after the scan, disables user configuration, rejects unexpected metadata
+  or warnings, and returns immutable payloads with server-generated key plans.
+  Temporary names and paths carry no editorial or identity data, while their
+  private contents remain isolated until terminal cleanup; cleanup failure is
+  terminal. The policy-to-storage mapping remains explicit: `video-playback`
+  maps to storage role `video`. Video processing remains disabled until an
+  immutable FFmpeg/ffprobe runner is selected; this slice has no storage,
+  service identity, GitHub, manifest, Pull Request, merge, or publication
+  capability. Both public manifests remain empty.
+- **Local Phase D private-staging bridge boundary:** A separate processing
+  Worker now joins the pinned photo processor to private evidence locally. It
+  accepts one exact Access service identity and has exactly three bindings: D1,
+  private originals, and derivative staging. It has no browser route,
+  approved-media binding, public manifest, GitHub credential, promotion,
+  deletion, merge, or publication capability. D1—not the caller—derives the
+  signed site area, original, upload checksum/version, race/item, consent,
+  athlete tags, catalog revisions, suppression revision, and opaque run and
+  object keys. A run atomically claims one `approved-for-processing` draft.
+  Each photo role is reserved in D1 before a conditional create in private R2,
+  then independently read back and verified before it can become stored or
+  verified. Exact retries can reconcile the narrow R2-success/D1-failure crash
+  window; changed bytes, roles, metadata, or evidence cannot overwrite or take
+  over an object. Current consent, draft revisions, the suppression snapshot,
+  and unresolved athlete-wide exclusions are rechecked throughout the flow.
+  Exact terminal transition keys make simultaneous staged/failure results
+  single-winner operations, so a loser cannot create a contradictory draft,
+  receipt, or audit state. A no-output consent withdrawal finishes only after
+  the exact original upload row is terminally `deleted` with retained object
+  evidence; any processing output instead fails closed pending cleanup.
+  Migration `0004_private_processing_staging.sql` adds the append-only run and
+  output evidence needed for this state machine. It blocks `candidate-public`
+  absolutely and makes processing-derived derivative rows immutable. Successful
+  completion leaves the draft in `processing` and both objects in private
+  staging. Partial output is deliberately retained as private, evidenced state;
+  any processing output blocks purge. Because an HTTP Worker has no hard
+  wall-clock duration, a fixed delay cannot prove an in-flight R2 write has
+  ended. Migration `0004` and the processing Worker must not be deployed until
+  a companion cleanup design closes new writes, handles in-flight requests,
+  verifies exact object absence, and preserves a hash-only audit commitment
+  without weakening immediate consent/exclusion takedown. This local slice uses
+  synthetic media only and changes no Cloudflare, GitHub, public-media,
+  manifest, or site state.
+  Supported multi-row start and failure changes use transactional `D1.batch()`;
+  unsupported direct SQL may strand a non-public intermediate state, but the
+  schema does not allow that partial state to stage, publish, mutate verified
+  derivatives, or create a valid failure receipt. Recovery remains part of the
+  required cleanup companion.
+- **Local Phase D race-safe cleanup uses persisted one-part multipart handles:**
+  The direct conditional R2 `put()` design is superseded before deployment.
+  Each content-addressed derivative output is still reserved in D1 first, but
+  the Worker then creates an empty multipart upload and persists its exact
+  provider ID while the run's one-way write gate is open. Only a persisted
+  handle may receive the single final part and complete. A cleanup request
+  atomically closes that gate and snapshots all outputs and handles; D1 derives
+  the only accepted reasons from a pending tagged-athlete exclusion,
+  withdrawal, or terminal processing failure. Callers cannot select an area,
+  race, athlete, role, key, upload ID, or deletion target.
+  Cleanup aborts every persisted handle. If abort wins, an already admitted
+  invocation cannot later complete. If completion wins, cleanup finds and
+  fully verifies the exact private object before deleting it. Exact expected
+  keys must return absent and the paginated server-built run prefix must list
+  empty before a transactional D1 finalization removes operational derivative,
+  handle, and output rows and appends a hash-only tombstone. No-output runs use
+  the same closure and evidence path before purge. Retryable provider or D1
+  failures preserve the closed intermediate evidence; exact retries converge
+  on the same cleanup.
+  This keeps the third Worker at exactly D1, private originals, and private
+  derivative staging. It does not add approved-media, public-manifest,
+  suppression-edit, GitHub, merge, deployment, or publication authority.
+  Cleanup does not fabricate private-original or public-host deletion evidence,
+  and resolving an athlete exclusion never reopens a closed run. The absolute
+  `candidate-public` guard remains.
+  The design relies on R2's provider-side multipart terminal state instead of a
+  duration lease because HTTP Workers have no hard wall-clock limit. Cloudflare
+  documents parallel abort/completion, immediate visibility after completion,
+  and strong object deletion/list consistency, but does not phrase the exact
+  abort-versus-complete race as a formal linearizability guarantee. Migration
+  `0005_private_processing_cleanup.sql` and the combined Worker therefore remain
+  local and synthetic-only. A separately approved non-production remote race
+  rehearsal is still required before migrations `0004`–`0005` or the Worker can
+  be deployed.
 - **Service identity compatibility:** Worker-level Service Auth supplies a
   validated `ctx.access` context and an injected signed application assertion,
   but the current runtime resolves `ctx.access.getIdentity()` to `undefined` for

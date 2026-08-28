@@ -556,14 +556,125 @@ pending explicit approval.
 
 ### Phase D — derivatives and reviewed publication
 
-1. Add the protected GitHub environment, least-privilege service identity, and
-   GitHub App workflow dispatch.
-2. Implement pinned photo and video processing plus post-process metadata
-   inspection.
-3. Upload versioned derivatives through the service endpoint and verify public
-   delivery, byte ranges, headers, and deletion.
+**Local photo-processing slice — 28 August 2026:** The first Phase D building
+block is implemented locally for synthetic media only. A pinned processor
+accepts JPEG or opaque PNG bytes only with canonical site, draft, and processing-run
+identifiers supplied by its future trusted integration; this standalone module
+does not authenticate or look up D1 drafts. The future service boundary must
+derive and verify those identifiers rather than accepting a browser-selected
+Family/Everyone destination. The processor auto-orients and decodes the source, creates an at-most
+1600-pixel WebP display image and an at-most 480-pixel WebP thumbnail without
+upscaling, hashes the finalized bytes, scans the exact bytes again, and returns
+immutable payloads plus server-generated staging and approved-key plans. The
+metadata scan disables user ExifTool configuration, requires the pinned runtime
+and exact technical baseline, and rejects unexpected metadata, warnings,
+truncation, byte substitution, or file changes during inspection. Temporary
+file names and paths contain no editorial or identity data. Their contents still
+hold private source or derivative bytes inside the isolated operating-system
+directory until cleanup, and cleanup failure is terminal.
+
+This slice has no real-media entry point, storage binding, service route,
+GitHub credential, manifest writer, Pull Request authority, or public runtime
+file. Video remains unavailable until an immutable FFmpeg/ffprobe runner is
+selected and pinned. Both public manifests remain empty, so this record does
+not satisfy the Phase D exit gate or authorize any external change.
+
+**Local private-processing bridge slice — 28 August 2026:** A separate third
+Worker now supplies the processor's least-privilege service boundary locally.
+It is not an owner page and accepts only one exact Cloudflare Access service
+identity. Its only bindings are D1, private originals, and private derivative
+staging; it has no approved-media, public-manifest, GitHub, or merge capability.
+The Worker derives the fixed site area, original object, upload evidence,
+catalog revisions, consent, athlete tags, and suppression state from current
+D1 evidence. A caller cannot select Family/Everyone, a race, an athlete, an
+object key, or a processing-run ID.
+
+The bridge has five narrow operations: atomically claim one approved draft,
+download its version-pinned original, reserve and upload the exact display or
+thumbnail WebP, record a staged or safely coded failed result, and clean one
+exact run for a reason derived from D1. D1 reserves each output before R2
+creates an empty one-part multipart upload. The exact provider upload ID must be
+persisted while the write gate remains open before any media part is sent. An
+exact retry reconciles a lost part, completion, or D1 response, while different
+bytes or a different role cannot overwrite or take over that object. The Worker
+independently verifies the original and every staged object by byte count,
+SHA-256, provider version,
+ETag, media type, dimensions, allowed WebP chunks, and fixed private metadata.
+It rechecks consent, revisions, and current/pending athlete exclusion evidence
+before and after storage work and again before the run can become staged.
+Concurrent terminal results have one exact database winner: a staged result
+cannot be paired with a `processing-failed` draft, and a losing failure cannot
+append a false receipt or audit event. For a run with no processing output,
+consent withdrawal can finish only after the exact completed original upload
+has become `deleted` with its version, ETag, SHA, and deletion timestamp
+retained. Host/private deletion confirmation and withdrawn consent must then be
+present before the draft reaches `withdrawn`.
+
+Staged means only that the two private photo derivatives and their immutable
+evidence exist. The draft deliberately remains `processing`; nothing is copied
+to approved media and neither public manifest is changed. Processing-backed
+derivative rows remain immutable outside the exact cleanup transition,
+`candidate-public` is blocked absolutely, and every run must have completed
+staging-cleanup evidence before draft purge.
+
+**Local race-safe private-staging cleanup companion — 28 August 2026:** A
+cleanup request atomically creates a permanent D1 closure gate and snapshots
+every admitted output and multipart handle. The caller supplies only the opaque
+run ID, expected draft state version, and an idempotency key; D1 derives whether
+the valid reason is a pending tagged-athlete exclusion, withdrawal, or terminal
+processing failure. The caller cannot choose a site, race, athlete, role,
+storage key, provider upload ID, or deletion target.
+
+Cleanup aborts each persisted multipart handle before deleting anything. If
+abort wins, a late upload or completion cannot create an object. If completion
+wins, cleanup verifies the exact byte count, SHA-256, WebP dimensions, content
+type, private metadata, version, and ETag before deleting that one server-owned
+key. It then requires `head()` to return absent for every expected key and a
+paginated listing of the complete server-built run prefix to be empty. Only
+then can one D1 transaction remove the operational derivative, multipart, and
+output rows, finish the cleanup, append its audit event, and retain a hash-only
+tombstone. An empty run takes the same closure path, so “no outputs” is not an
+unproved purge shortcut.
+
+The terminal multipart handle replaces a fixed wait. A fixed waiting period is
+not proof because
+[HTTP-triggered Workers have no hard wall-clock duration](https://developers.cloudflare.com/workers/platform/limits/#duration).
+Cloudflare documents that multipart uploads may be completed or aborted by
+parallel Worker invocations and later operations must handle an upload that no
+longer exists. R2 then provides strongly consistent object reads, deletes, and
+listings. The local deterministic store exercises both terminal race orderings,
+but Cloudflare does not present the abort-versus-complete rule as a formal
+linearizability guarantee. Migrations `0004_private_processing_staging.sql` and
+`0005_private_processing_cleanup.sql`, together with the example processing
+configuration, therefore remain unpromoted and must not be deployed until a
+separately approved non-production synthetic rehearsal confirms the observed
+provider behavior.
+
+Cleanup is not consent withdrawal or publication. It neither deletes the
+private original nor invents host-deletion evidence. The existing host-first,
+exact-private-original, and consent-withdrawal sequence still runs after staged
+objects are absent. Resolving an athlete exclusion does not reopen the closed
+run. Cleanup exposes no approved-media, manifest, suppression-edit, GitHub,
+merge, deploy, or public-media capability.
+
+The supported multi-row claim, failure, closure, and final cleanup transitions
+use transactional `D1.batch()` calls. The cleanup operation can recover the
+supported partial private-output states. Unsupported direct SQL remains outside
+the service contract and still fails closed without a route to stage or publish.
+
+1. Independently review the combined local processing and race-safe cleanup
+   schema and run the complete deterministic race suite. Only after a separate
+   deployment approval may migrations `0003`–`0005`, the processing Worker
+   identity, and its exact three bindings be provisioned for a complete
+   non-production synthetic photo and cleanup rehearsal.
+2. Select and pin immutable FFmpeg/ffprobe tooling, then implement the same
+   fail-closed processing and bridge contract for synthetic video.
+3. Add the separately approved staging-to-approved promotion step and its
+   approved-side cleanup, then verify public delivery, byte ranges, headers,
+   and deletion.
 4. Generate a candidate manifest edit, run Gallery validation and the complete
-   repository suite, and open a standard Pull Request without merge authority.
+   repository suite, and only with explicit approval open a standard Pull
+   Request without merge authority.
 5. Cover single-area publication, the existing duplicate-ID equality safeguard,
    editorial insertion order, retry/idempotency, closed-PR cleanup, and rollback.
 
@@ -635,6 +746,8 @@ URLs are configuration values outside Git.
 - [Cloudflare Access service tokens](https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/)
 - [R2 Workers API and binding boundary](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/)
 - [R2 multipart uploads through a Worker](https://developers.cloudflare.com/r2/api/workers/workers-multipart-usage/)
+- [R2 strong consistency](https://developers.cloudflare.com/r2/reference/consistency/)
+- [D1 transactional batches](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch)
 - [R2 data security](https://developers.cloudflare.com/r2/reference/data-security/)
 - [R2 pricing and included usage](https://developers.cloudflare.com/r2/pricing/)
 - [Cloudflare DNS partial setup requirements](https://developers.cloudflare.com/dns/zone-setups/partial-setup/)

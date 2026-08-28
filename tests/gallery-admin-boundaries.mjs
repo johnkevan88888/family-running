@@ -1,19 +1,25 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 
 const adminModule = await import('../gallery-admin/src/admin-worker.js');
 const mediaModule = await import('../gallery-admin/src/media-worker.js');
+const processingModule = await import('../gallery-admin/src/processing-worker.js');
 
 const { handleAdminRequest } = adminModule;
 const { handleMediaRequest } = mediaModule;
+const { handleProcessingRequest } = processingModule;
 
 assert.equal(typeof handleAdminRequest, 'function');
 assert.equal(typeof handleMediaRequest, 'function');
+assert.equal(typeof handleProcessingRequest, 'function');
 assert.equal(typeof adminModule.default?.fetch, 'function');
 assert.equal(typeof mediaModule.default?.fetch, 'function');
+assert.equal(typeof processingModule.default?.fetch, 'function');
 
 const adminOrigin = 'https://synthetic-gallery-admin.example';
+const processingOrigin = 'https://synthetic-gallery-processing.example';
 const familySiteQuery = '?site=family';
 const everyoneSiteQuery = '?site=everyone';
 const fixedNow = Date.UTC(2026, 7, 26, 12, 0, 0);
@@ -607,6 +613,132 @@ const unknownAdminRoute = await adminRequest('/api/browser/not-a-route', {
 assert.equal(unknownAdminRoute.status, 404);
 await assertResponseOmits(unknownAdminRoute.clone(), privateValues);
 
+// The Phase D bridge is a third, service-only Worker. It has no browser
+// session, owner route, query-based destination, or public-media capability.
+const processingBoundaryCalls = [];
+const processingBoundaryEnv = {
+    PROCESSING_ORIGIN: processingOrigin,
+    PROCESSOR_IDENTITIES: `subject:${serviceClientId}`,
+    DB: {
+        prepare() {
+            processingBoundaryCalls.push('DB');
+            throw new Error('Processing route unexpectedly reached D1.');
+        },
+        async batch() {
+            processingBoundaryCalls.push('DB-batch');
+            throw new Error('Processing route unexpectedly reached D1.');
+        }
+    },
+    PRIVATE_ORIGINALS: {
+        async head() { processingBoundaryCalls.push('original-head'); },
+        async get() { processingBoundaryCalls.push('original-get'); }
+    },
+    DERIVATIVE_STAGING: {
+        async head() { processingBoundaryCalls.push('staging-head'); },
+        async get() { processingBoundaryCalls.push('staging-get'); },
+        async put() { processingBoundaryCalls.push('staging-put'); },
+        async delete() { processingBoundaryCalls.push('staging-delete'); },
+        async list() { processingBoundaryCalls.push('staging-list'); },
+        async createMultipartUpload() {
+            processingBoundaryCalls.push('staging-create-multipart');
+        },
+        resumeMultipartUpload() {
+            processingBoundaryCalls.push('staging-resume-multipart');
+        }
+    }
+};
+const processingSampleDraftId = 'draft_00000000-0000-4000-8000-000000000001';
+const processingSampleRunId = 'run_00000000000040008000000000000001';
+for (const identity of [
+    null,
+    { type: 'browser', subject: 'synthetic-owner' },
+    { type: 'service', subject: 'ffffffffffffffffffffffffffffffff.access' }
+]) {
+    const response = await processingRequest(
+        `/api/service/drafts/${processingSampleDraftId}/processing-runs`,
+        { method: 'GET', identity, env: processingBoundaryEnv }
+    );
+    assert.equal(response.status, 403);
+}
+assert.equal((await processingRequest(
+    `/api/service/drafts/${processingSampleDraftId}/processing-runs`,
+    {
+        method: 'GET',
+        identity: { type: 'service', subject: serviceClientId },
+        headers: { Cookie: 'forbidden-browser-cookie=1' },
+        env: processingBoundaryEnv
+    }
+)).status, 403);
+const processingWrongMethod = await processingRequest(
+    `/api/service/drafts/${processingSampleDraftId}/processing-runs`,
+    {
+        method: 'GET',
+        identity: { type: 'service', subject: serviceClientId },
+        env: processingBoundaryEnv
+    }
+);
+assert.equal(processingWrongMethod.status, 405);
+assert.equal(processingWrongMethod.headers.get('Allow'), 'POST');
+assert.equal((await processingRequest(
+    `/api/service/drafts/${processingSampleDraftId}/processing-runs?site=everyone`,
+    {
+        method: 'GET',
+        identity: { type: 'service', subject: serviceClientId },
+        env: processingBoundaryEnv
+    }
+)).status, 404);
+assert.equal((await processingRequest(
+    `/api/service/processing-runs/${processingSampleRunId}/derivatives/video`,
+    {
+        method: 'PUT',
+        identity: { type: 'service', subject: serviceClientId },
+        env: processingBoundaryEnv
+    }
+)).status, 404);
+assert.deepEqual(processingBoundaryCalls, []);
+
+const processingAccessContext = {
+    access: {
+        async getIdentity() {
+            return {
+                service_token_status: true,
+                service_token_id: serviceClientId
+            };
+        }
+    }
+};
+const processingAccessResponse = await processingModule.default.fetch(
+    new Request(
+        `${processingOrigin}/api/service/drafts/${processingSampleDraftId}/processing-runs`,
+        { method: 'GET' }
+    ),
+    processingBoundaryEnv,
+    processingAccessContext
+);
+assert.equal(processingAccessResponse.status, 405);
+assert.deepEqual(processingBoundaryCalls, []);
+
+const processingAssertionResponse = await processingModule.default.fetch(
+    new Request(
+        `${processingOrigin}/api/service/drafts/${processingSampleDraftId}/processing-runs`,
+        {
+            method: 'GET',
+            headers: {
+                'Cf-Access-Jwt-Assertion': createAccessAssertion(serviceAssertionPayload)
+            }
+        }
+    ),
+    processingBoundaryEnv,
+    {
+        access: {
+            aud: serviceAudience,
+            async getIdentity() { return undefined; }
+        }
+    }
+);
+assert.equal(processingAssertionResponse.status, 405);
+assert.deepEqual(processingBoundaryCalls, []);
+
 // Issue a real signed session through the owner route. The cookie must be
 // host-only, secure, HTTP-only, strict same-site, and contain no raw identity or
 // secret value.
@@ -1045,8 +1177,13 @@ const mediaConfigSource = await readFile(
     new URL('../gallery-admin/wrangler.media.example.jsonc', import.meta.url),
     'utf8'
 );
+const processingConfigSource = await readFile(
+    new URL('../gallery-admin/wrangler.processing.example.jsonc', import.meta.url),
+    'utf8'
+);
 const adminConfig = JSON.parse(stripJsonComments(adminConfigSource));
 const mediaConfig = JSON.parse(stripJsonComments(mediaConfigSource));
+const processingConfig = JSON.parse(stripJsonComments(processingConfigSource));
 const invalidLocalConfigId = 'REPLACE_ONLY_IN_IGNORED_LOCAL_CONFIG';
 
 assert.equal(adminConfig.name, 'family-running-gallery-admin-dev');
@@ -1096,9 +1233,42 @@ assert.deepEqual(mediaConfig.r2_buckets, [{
     bucket_name: 'family-running-gallery-approved-dev'
 }]);
 
+assert.equal(processingConfig.name, 'family-running-gallery-processing-dev');
+assert.equal(processingConfig.main, 'src/processing-worker.js');
+assert.equal(processingConfig.workers_dev, true);
+assert.equal(processingConfig.preview_urls, false);
+assert.equal(Object.hasOwn(processingConfig, 'assets'), false);
+assert.equal(Object.hasOwn(processingConfig, 'triggers'), false);
+assert.equal(processingConfig.account_id, invalidLocalConfigId);
+assert.deepEqual(processingConfig.d1_databases, [{
+    binding: 'DB',
+    database_name: 'family-running-gallery-dev',
+    database_id: invalidLocalConfigId
+}]);
+assert.deepEqual(processingConfig.r2_buckets, [
+    {
+        binding: 'PRIVATE_ORIGINALS',
+        bucket_name: 'family-running-gallery-originals-dev'
+    },
+    {
+        binding: 'DERIVATIVE_STAGING',
+        bucket_name: 'family-running-gallery-staging-dev'
+    }
+]);
+assert.deepEqual(
+    [
+        ...processingConfig.d1_databases.map(binding => binding.binding),
+        ...processingConfig.r2_buckets.map(binding => binding.binding)
+    ].sort(),
+    ['DB', 'DERIVATIVE_STAGING', 'PRIVATE_ORIGINALS'],
+    'The processing Worker must receive exactly D1, private originals, and private staging.'
+);
+assert.equal(processingConfigSource.includes('APPROVED_MEDIA'), false);
+
 for (const [label, source, config] of [
     ['admin', adminConfigSource, adminConfig],
-    ['media', mediaConfigSource, mediaConfig]
+    ['media', mediaConfigSource, mediaConfig],
+    ['processing', processingConfigSource, processingConfig]
 ]) {
     assert.equal(config.account_id, invalidLocalConfigId, `${label} inert account ID`);
     assert.equal(/^[0-9a-f]{32}$/.test(config.account_id), false, `${label} real account ID`);
@@ -1129,6 +1299,11 @@ assert.equal(
     1,
     'The media example must carry one inert account identifier.'
 );
+assert.equal(
+    (processingConfigSource.match(/REPLACE_ONLY_IN_IGNORED_LOCAL_CONFIG/g) || []).length,
+    2,
+    'The processing example must carry inert account and D1 identifiers.'
+);
 
 assert.equal(
     mediaConfigSource.includes('PRIVATE_ORIGINALS') ||
@@ -1150,6 +1325,14 @@ const phaseCMigrationSource = await readFile(
 );
 const storageKeyMigrationSource = await readFile(
     new URL('../gallery-admin/migrations/0003_private_original_v1_keys.sql', import.meta.url),
+    'utf8'
+);
+const processingMigrationSource = await readFile(
+    new URL('../gallery-admin/migrations/0004_private_processing_staging.sql', import.meta.url),
+    'utf8'
+);
+const processingCleanupMigrationSource = await readFile(
+    new URL('../gallery-admin/migrations/0005_private_processing_cleanup.sql', import.meta.url),
     'utf8'
 );
 const database = new DatabaseSync(':memory:');
@@ -2495,6 +2678,784 @@ assert.throws(
     ).run(`${phaseCObjectKey}-changed-after-migration`, phaseCSessionId),
     /private upload session identity is immutable/i
 );
+
+// Phase D is another forward-only private addition. It preserves every Phase C
+// row while adding the immutable run/output ledger and public-state guard.
+const phaseCStateBeforeProcessingMigration = migrationPhaseCStateSnapshot(database);
+database.exec(processingMigrationSource);
+assert.equal(
+    migrationPhaseCStateSnapshot(database),
+    phaseCStateBeforeProcessingMigration
+);
+assert.deepEqual(
+    database.prepare(
+        "SELECT name FROM sqlite_schema " +
+        "WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+    ).all().map(row => row.name),
+    [
+        'draft_consent_attestations',
+        'draft_derivatives',
+        'draft_mutation_receipts',
+        'draft_processing_outputs',
+        'draft_processing_runs',
+        'draft_publication_references',
+        'draft_transition_receipts',
+        'draft_upload_parts',
+        'draft_upload_sessions',
+        'gallery_audit_events',
+        'gallery_drafts',
+        'gallery_retention_tombstones',
+        'pending_athlete_exclusions',
+        'phase_b_synthetic_records'
+    ]
+);
+assert.equal(database.prepare(
+    "SELECT COUNT(*) AS count FROM sqlite_schema WHERE type = 'trigger'"
+).get().count, 91);
+assert.equal(database.prepare(
+    "SELECT COUNT(*) AS count FROM sqlite_schema " +
+    "WHERE type = 'index' AND name NOT LIKE 'sqlite_%'"
+).get().count, 8);
+for (const triggerName of [
+    'draft_processing_runs_insert_guard',
+    'draft_processing_outputs_insert_guard',
+    'draft_derivatives_processing_output_guard',
+    'draft_derivatives_processing_immutable_update_guard',
+    'draft_derivatives_processing_delete_guard',
+    'gallery_drafts_processing_failure_active_run_guard',
+    'draft_transition_receipts_processing_failure_guard',
+    'gallery_drafts_candidate_processing_guard',
+    'gallery_drafts_phase_d_purge_object_guard'
+]) {
+    assert.equal(database.prepare(
+        "SELECT COUNT(*) AS count FROM sqlite_schema WHERE type = 'trigger' AND name = ?"
+    ).get(triggerName).count, 1, triggerName);
+}
+assert.deepEqual(database.prepare('PRAGMA foreign_key_check').all(), []);
+assert.equal(database.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
+
+// Phase D cleanup is another forward-only private migration. It adds the
+// admitted multipart-handle ledger, a write-closure record, exact per-object
+// absence evidence, and a hash-only purge survivor without changing older
+// private evidence.
+const phaseDStateBeforeCleanupMigration = migrationPhaseDStateSnapshot(database);
+database.exec(processingCleanupMigrationSource);
+assert.equal(
+    migrationPhaseDStateSnapshot(database),
+    phaseDStateBeforeCleanupMigration
+);
+assert.deepEqual(
+    database.prepare(
+        "SELECT name FROM sqlite_schema " +
+        "WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+    ).all().map(row => row.name),
+    [
+        'draft_consent_attestations',
+        'draft_derivatives',
+        'draft_mutation_receipts',
+        'draft_processing_cleanup_objects',
+        'draft_processing_cleanups',
+        'draft_processing_multipart_uploads',
+        'draft_processing_outputs',
+        'draft_processing_runs',
+        'draft_publication_references',
+        'draft_transition_receipts',
+        'draft_upload_parts',
+        'draft_upload_sessions',
+        'gallery_audit_events',
+        'gallery_drafts',
+        'gallery_processing_cleanup_tombstones',
+        'gallery_retention_tombstones',
+        'pending_athlete_exclusions',
+        'phase_b_synthetic_records'
+    ]
+);
+assert.equal(database.prepare(
+    "SELECT COUNT(*) AS count FROM sqlite_schema WHERE type = 'trigger'"
+).get().count, 120);
+assert.equal(database.prepare(
+    "SELECT COUNT(*) AS count FROM sqlite_schema " +
+    "WHERE type = 'index' AND name NOT LIKE 'sqlite_%'"
+).get().count, 9);
+for (const triggerName of [
+    'draft_processing_multipart_uploads_insert_guard',
+    'draft_processing_multipart_uploads_status_guard',
+    'draft_processing_outputs_multipart_transition_guard',
+    'draft_processing_cleanups_insert_guard',
+    'draft_processing_cleanups_evidence_collision_guard',
+    'draft_processing_cleanups_status_guard',
+    'draft_processing_cleanup_objects_insert_guard',
+    'draft_processing_cleanup_objects_status_guard',
+    'draft_processing_outputs_cleanup_insert_guard',
+    'draft_processing_outputs_cleanup_update_guard',
+    'draft_processing_runs_cleanup_result_guard',
+    'draft_processing_runs_cleanup_insert_guard',
+    'draft_derivatives_cleanup_insert_guard',
+    'gallery_processing_cleanup_tombstones_insert_guard',
+    'gallery_drafts_candidate_processing_guard',
+    'gallery_drafts_phase_d_purge_object_guard'
+]) {
+    assert.equal(database.prepare(
+        "SELECT COUNT(*) AS count FROM sqlite_schema WHERE type = 'trigger' AND name = ?"
+    ).get(triggerName).count, 1, triggerName);
+}
+for (const table of [
+    'draft_processing_multipart_uploads',
+    'draft_processing_cleanups',
+    'draft_processing_cleanup_objects',
+    'gallery_processing_cleanup_tombstones'
+]) {
+    const columns = database.prepare(`PRAGMA table_info(${table})`).all()
+        .map(column => column.name);
+    for (const forbiddenColumn of [
+        'approved_object_key',
+        'public_url',
+        'manifest_path',
+        'github_reference',
+        'promotion_status'
+    ]) {
+        assert.equal(columns.includes(forbiddenColumn), false, `${table}.${forbiddenColumn}`);
+    }
+}
+
+// The winning provider multipart ID must be persisted before a part can be
+// admitted. Completion is possible only from the persisted part-uploaded
+// state; cleanup can terminally abort an open or part-uploaded handle.
+const exactCleanupFixture = insertMigrationProcessingFixture(database, 10);
+const exactOutput = insertMigrationProcessingOutput(
+    database,
+    exactCleanupFixture,
+    'photo-display'
+);
+assert.throws(
+    () => storeMigrationProcessingOutput(database, exactCleanupFixture, exactOutput),
+    /lacks its exact completed multipart evidence/i
+);
+const exactMultipart = insertMigrationProcessingMultipart(
+    database,
+    exactCleanupFixture,
+    exactOutput
+);
+assert.throws(
+    () => database.prepare(
+        'UPDATE draft_processing_multipart_uploads SET status = ?, ' +
+        'provider_part_etag = ?, terminal_kind = ?, updated_at = ?, ' +
+        'part_uploaded_at = ?, terminal_at = ? WHERE processing_run_id = ? AND role = ?'
+    ).run(
+        'terminal',
+        'unpersisted-part-etag',
+        'completed',
+        '2026-08-26T13:01:00.000Z',
+        '2026-08-26T13:00:00.000Z',
+        '2026-08-26T13:01:00.000Z',
+        exactCleanupFixture.runId,
+        exactOutput.role
+    ),
+    /invalid processing multipart transition/i
+);
+assert.throws(
+    () => storeMigrationProcessingOutput(database, exactCleanupFixture, exactOutput),
+    /lacks its exact completed multipart evidence/i
+);
+database.prepare(
+    'UPDATE draft_processing_multipart_uploads SET status = ?, provider_part_etag = ?, ' +
+    'updated_at = ?, part_uploaded_at = ? WHERE processing_run_id = ? AND role = ?'
+).run(
+    'part-uploaded',
+    exactMultipart.partEtag,
+    '2026-08-26T13:01:00.000Z',
+    '2026-08-26T13:01:00.000Z',
+    exactCleanupFixture.runId,
+    exactOutput.role
+);
+storeMigrationProcessingOutput(database, exactCleanupFixture, exactOutput);
+assert.throws(
+    () => verifyMigrationProcessingOutput(database, exactCleanupFixture, exactOutput),
+    /lacks its exact completed multipart evidence/i
+);
+assert.throws(
+    () => database.prepare(
+        'UPDATE draft_processing_multipart_uploads SET status = ?, provider_part_etag = ?, ' +
+        'terminal_kind = ?, updated_at = ?, terminal_at = ? ' +
+        'WHERE processing_run_id = ? AND role = ?'
+    ).run(
+        'terminal',
+        'changed-part-etag',
+        'completed',
+        '2026-08-26T13:03:00.000Z',
+        '2026-08-26T13:03:00.000Z',
+        exactCleanupFixture.runId,
+        exactOutput.role
+    ),
+    /invalid processing multipart transition/i
+);
+database.prepare(
+    'UPDATE draft_processing_multipart_uploads SET status = ?, terminal_kind = ?, ' +
+    'updated_at = ?, terminal_at = ? WHERE processing_run_id = ? AND role = ?'
+).run(
+    'terminal',
+    'completed',
+    '2026-08-26T13:03:00.000Z',
+    '2026-08-26T13:03:00.000Z',
+    exactCleanupFixture.runId,
+    exactOutput.role
+);
+verifyMigrationProcessingOutput(database, exactCleanupFixture, exactOutput);
+insertMigrationProcessingDerivative(database, exactCleanupFixture, exactOutput);
+assert.throws(
+    () => database.prepare(
+        'UPDATE gallery_drafts SET state = ?, state_version = ?, updated_at = ? ' +
+        'WHERE draft_id = ?'
+    ).run(
+        'candidate-public',
+        5,
+        '2026-08-26T13:04:00.000Z',
+        exactCleanupFixture.draftId
+    ),
+    /candidate publication is unavailable/i
+);
+transitionMigrationDraftToWithdrawal(database, exactCleanupFixture);
+const exactCleanup = insertMigrationProcessingCleanup(
+    database,
+    exactCleanupFixture,
+    10,
+    'withdrawal'
+);
+assert.throws(
+    () => database.prepare(
+        'UPDATE draft_processing_cleanups SET status = ?, updated_at = ? WHERE cleanup_id = ?'
+    ).run('deleting', '2026-08-26T13:06:00.000Z', exactCleanup.cleanupId),
+    /invalid processing cleanup transition/i
+);
+assert.throws(
+    () => insertMigrationCleanupObject(database, exactCleanup, exactOutput, {
+        expectedByteCount: exactOutput.byteCount + 1
+    }),
+    /processing cleanup object lacks exact output evidence/i
+);
+insertMigrationCleanupObject(database, exactCleanup, exactOutput);
+assert.throws(
+    () => database.prepare(
+        'UPDATE draft_processing_cleanup_objects SET expected_sha256 = ? ' +
+        'WHERE cleanup_id = ? AND role = ?'
+    ).run('f'.repeat(64), exactCleanup.cleanupId, exactOutput.role),
+    /processing cleanup object identity is immutable/i
+);
+database.prepare(
+    'UPDATE draft_processing_cleanups SET status = ?, updated_at = ? WHERE cleanup_id = ?'
+).run('deleting', '2026-08-26T13:06:00.000Z', exactCleanup.cleanupId);
+assert.throws(
+    () => database.prepare(
+        'DELETE FROM draft_derivatives WHERE draft_id = ? AND role = ?'
+    ).run(exactCleanupFixture.draftId, exactOutput.role),
+    /lacks verified staging absence/i
+);
+assert.throws(
+    () => database.prepare(
+        'DELETE FROM draft_processing_multipart_uploads ' +
+        'WHERE processing_run_id = ? AND role = ?'
+    ).run(exactCleanupFixture.runId, exactOutput.role),
+    /lacks completed cleanup evidence/i
+);
+assert.throws(
+    () => markMigrationCleanupObjectAbsent(
+        database,
+        exactCleanup,
+        exactOutput,
+        { providerTerminalKind: 'aborted' }
+    ),
+    /processing cleanup absence evidence is incomplete/i
+);
+assert.throws(
+    () => markMigrationCleanupObjectAbsent(
+        database,
+        exactCleanup,
+        exactOutput,
+        { observedEtagHash: null }
+    ),
+    /CHECK constraint failed/i
+);
+markMigrationCleanupObjectAbsent(database, exactCleanup, exactOutput);
+assert.throws(
+    () => database.prepare(
+        'UPDATE draft_processing_cleanup_objects SET absence_verified_at = ? ' +
+        'WHERE cleanup_id = ? AND role = ?'
+    ).run('2026-08-26T13:08:00.000Z', exactCleanup.cleanupId, exactOutput.role),
+    /verified processing cleanup absence is immutable/i
+);
+assert.throws(
+    () => database.prepare(
+        'DELETE FROM draft_processing_outputs WHERE processing_run_id = ? AND role = ?'
+    ).run(exactCleanupFixture.runId, exactOutput.role),
+    /lacks completed cleanup evidence/i
+);
+database.prepare(
+    'DELETE FROM draft_derivatives WHERE draft_id = ? AND role = ?'
+).run(exactCleanupFixture.draftId, exactOutput.role);
+database.prepare(
+    'DELETE FROM draft_processing_multipart_uploads ' +
+    'WHERE processing_run_id = ? AND role = ?'
+).run(exactCleanupFixture.runId, exactOutput.role);
+database.prepare(
+    'DELETE FROM draft_processing_outputs WHERE processing_run_id = ? AND role = ?'
+).run(exactCleanupFixture.runId, exactOutput.role);
+completeMigrationProcessingCleanup(database, exactCleanup);
+assert.throws(
+    () => insertMigrationProcessingCleanup(
+        database,
+        exactCleanupFixture,
+        10,
+        'withdrawal',
+        { insertOrReplace: true }
+    ),
+    /processing cleanup replacement is forbidden/i
+);
+assert.throws(
+    () => database.prepare(
+        'INSERT INTO gallery_processing_cleanup_tombstones (' +
+        'cleanup_id_hash, draft_id_hash, processing_run_id_hash, cleanup_reason, ' +
+        'evidence_hash, completed_at) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(
+        sha256Text(exactCleanup.cleanupId),
+        sha256Text(exactCleanupFixture.draftId),
+        sha256Text(exactCleanupFixture.runId),
+        exactCleanup.reason,
+        '0'.repeat(64),
+        exactCleanup.completedAt
+    ),
+    /lacks completed evidence/i
+);
+assert.throws(
+    () => database.prepare(
+        'INSERT INTO gallery_processing_cleanup_tombstones (' +
+        'cleanup_id_hash, draft_id_hash, processing_run_id_hash, cleanup_reason, ' +
+        'evidence_hash, completed_at) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(
+        'a'.repeat(64),
+        'b'.repeat(64),
+        'c'.repeat(64),
+        exactCleanup.reason,
+        exactCleanup.evidenceHash,
+        exactCleanup.completedAt
+    ),
+    /lacks completed evidence/i
+);
+insertMigrationProcessingCleanupTombstone(database, exactCleanup);
+assert.throws(
+    () => database.prepare(
+        'INSERT OR REPLACE INTO gallery_processing_cleanup_tombstones (' +
+        'cleanup_id_hash, draft_id_hash, processing_run_id_hash, cleanup_reason, ' +
+        'evidence_hash, completed_at) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(
+        'd'.repeat(64),
+        'e'.repeat(64),
+        'f'.repeat(64),
+        exactCleanup.reason,
+        exactCleanup.evidenceHash,
+        exactCleanup.completedAt
+    ),
+    /processing cleanup tombstone replacement is forbidden|lacks completed evidence/i
+);
+assert.equal(database.prepare(
+    'SELECT COUNT(*) AS count FROM gallery_processing_cleanup_tombstones ' +
+    'WHERE cleanup_id_hash = ? AND evidence_hash = ?'
+).get(exactCleanup.cleanupIdHash, exactCleanup.evidenceHash).count, 1);
+assert.throws(
+    () => database.prepare(
+        'UPDATE gallery_processing_cleanup_tombstones SET completed_at = ? ' +
+        'WHERE cleanup_id_hash = ?'
+    ).run('2026-08-26T13:10:00.000Z', sha256Text(exactCleanup.cleanupId)),
+    /append-only/i
+);
+
+// If cleanup closes while an admitted multipart handle is still open, no old
+// request can record a part afterward. The exact handle must become terminal,
+// absence must be recorded without invented object facts, and only then can
+// the output reservation be removed.
+const abortFixture = insertMigrationProcessingFixture(database, 15);
+const abortOutput = insertMigrationProcessingOutput(
+    database,
+    abortFixture,
+    'photo-thumbnail'
+);
+const abortMultipart = insertMigrationProcessingMultipart(
+    database,
+    abortFixture,
+    abortOutput
+);
+transitionMigrationDraftToWithdrawal(database, abortFixture);
+const abortCleanup = insertMigrationProcessingCleanup(
+    database,
+    abortFixture,
+    15,
+    'withdrawal'
+);
+insertMigrationCleanupObject(database, abortCleanup, abortOutput, {
+    expectedObjectVersionHash: null,
+    expectedEtagHash: null
+});
+assert.throws(
+    () => database.prepare(
+        'UPDATE draft_processing_multipart_uploads SET status = ?, provider_part_etag = ?, ' +
+        'updated_at = ?, part_uploaded_at = ? WHERE processing_run_id = ? AND role = ?'
+    ).run(
+        'part-uploaded',
+        abortMultipart.partEtag,
+        '2026-08-26T13:06:00.000Z',
+        '2026-08-26T13:06:00.000Z',
+        abortFixture.runId,
+        abortOutput.role
+    ),
+    /invalid processing multipart transition/i
+);
+assert.throws(
+    () => storeMigrationProcessingOutput(database, abortFixture, abortOutput),
+    /processing cleanup has closed output mutation/i
+);
+assert.throws(
+    () => database.prepare(
+        'UPDATE draft_processing_runs SET status = ? WHERE processing_run_id = ?'
+    ).run('failed', abortFixture.runId),
+    /processing cleanup has closed result admission/i
+);
+assert.throws(
+    () => insertMigrationProcessingDerivative(database, abortFixture, abortOutput),
+    /processing cleanup has closed derivative creation/i
+);
+assert.throws(
+    () => database.prepare(
+        'UPDATE draft_processing_cleanups SET status = ?, updated_at = ? WHERE cleanup_id = ?'
+    ).run('deleting', '2026-08-26T13:06:00.000Z', abortCleanup.cleanupId),
+    /invalid processing cleanup transition/i
+);
+database.prepare(
+    'UPDATE draft_processing_multipart_uploads SET status = ?, terminal_kind = ?, ' +
+    'updated_at = ?, terminal_at = ? WHERE processing_run_id = ? AND role = ?'
+).run(
+    'terminal',
+    'aborted',
+    '2026-08-26T13:06:00.000Z',
+    '2026-08-26T13:06:00.000Z',
+    abortFixture.runId,
+    abortOutput.role
+);
+assert.throws(
+    () => database.prepare(
+        'UPDATE draft_processing_multipart_uploads SET terminal_at = ? ' +
+        'WHERE processing_run_id = ? AND role = ?'
+    ).run(
+        '2026-08-26T13:07:00.000Z',
+        abortFixture.runId,
+        abortOutput.role
+    ),
+    /terminal processing multipart evidence is immutable/i
+);
+database.prepare(
+    'UPDATE draft_processing_cleanups SET status = ?, updated_at = ? WHERE cleanup_id = ?'
+).run('deleting', '2026-08-26T13:07:00.000Z', abortCleanup.cleanupId);
+database.prepare(
+    'UPDATE draft_processing_cleanup_objects SET staging_object_key = NULL, ' +
+    'provider_terminal_kind = ?, status = ?, absence_verified_at = ? ' +
+    'WHERE cleanup_id = ? AND role = ?'
+).run(
+    'aborted',
+    'absent',
+    '2026-08-26T13:08:00.000Z',
+    abortCleanup.cleanupId,
+    abortOutput.role
+);
+database.prepare(
+    'DELETE FROM draft_processing_multipart_uploads ' +
+    'WHERE processing_run_id = ? AND role = ?'
+).run(abortFixture.runId, abortOutput.role);
+database.prepare(
+    'DELETE FROM draft_processing_outputs WHERE processing_run_id = ? AND role = ?'
+).run(abortFixture.runId, abortOutput.role);
+assert.throws(
+    () => database.prepare(
+        'UPDATE OR REPLACE draft_processing_cleanups SET status = ?, ' +
+        'cleanup_evidence_hash = ?, updated_at = ?, completed_at = ? WHERE cleanup_id = ?'
+    ).run(
+        'cleaned',
+        exactCleanup.evidenceHash,
+        abortCleanup.completedAt,
+        abortCleanup.completedAt,
+        abortCleanup.cleanupId
+    ),
+    /processing cleanup evidence replacement is forbidden/i
+);
+assert.equal(database.prepare(
+    'SELECT COUNT(*) AS count FROM draft_processing_cleanups WHERE cleanup_id = ?'
+).get(exactCleanup.cleanupId).count, 1);
+completeMigrationProcessingCleanup(database, abortCleanup);
+insertMigrationProcessingCleanupTombstone(database, abortCleanup);
+
+// The opposite race is also terminal: the admitted provider completion may
+// win just before D1 records the output. Cleanup may classify that exact
+// part-uploaded handle as completed without inventing stored-output facts,
+// then delete the exact object and prove it absent.
+const completeWinsFixture = insertMigrationProcessingFixture(database, 17);
+const completeWinsOutput = insertMigrationProcessingOutput(
+    database,
+    completeWinsFixture,
+    'photo-display'
+);
+const completeWinsMultipart = insertMigrationProcessingMultipart(
+    database,
+    completeWinsFixture,
+    completeWinsOutput
+);
+database.prepare(
+    'UPDATE draft_processing_multipart_uploads SET status = ?, provider_part_etag = ?, ' +
+    'updated_at = ?, part_uploaded_at = ? WHERE processing_run_id = ? AND role = ?'
+).run(
+    'part-uploaded',
+    completeWinsMultipart.partEtag,
+    '2026-08-26T13:01:00.000Z',
+    '2026-08-26T13:01:00.000Z',
+    completeWinsFixture.runId,
+    completeWinsOutput.role
+);
+transitionMigrationDraftToWithdrawal(database, completeWinsFixture);
+const completeWinsCleanup = insertMigrationProcessingCleanup(
+    database,
+    completeWinsFixture,
+    17,
+    'withdrawal'
+);
+insertMigrationCleanupObject(database, completeWinsCleanup, completeWinsOutput, {
+    expectedObjectVersionHash: null,
+    expectedEtagHash: null
+});
+assert.throws(
+    () => database.prepare(
+        'UPDATE draft_processing_multipart_uploads SET status = ?, provider_part_etag = ?, ' +
+        'terminal_kind = ?, updated_at = ?, terminal_at = ? ' +
+        'WHERE processing_run_id = ? AND role = ?'
+    ).run(
+        'terminal',
+        'forged-complete-wins-part-etag',
+        'completed',
+        '2026-08-26T13:06:00.000Z',
+        '2026-08-26T13:06:00.000Z',
+        completeWinsFixture.runId,
+        completeWinsOutput.role
+    ),
+    /invalid processing multipart transition/i
+);
+database.prepare(
+    'UPDATE draft_processing_multipart_uploads SET status = ?, terminal_kind = ?, ' +
+    'updated_at = ?, terminal_at = ? WHERE processing_run_id = ? AND role = ?'
+).run(
+    'terminal',
+    'completed',
+    '2026-08-26T13:06:00.000Z',
+    '2026-08-26T13:06:00.000Z',
+    completeWinsFixture.runId,
+    completeWinsOutput.role
+);
+assert.equal(database.prepare(
+    'SELECT status FROM draft_processing_outputs WHERE processing_run_id = ? AND role = ?'
+).get(completeWinsFixture.runId, completeWinsOutput.role).status, 'reserved');
+database.prepare(
+    'UPDATE draft_processing_cleanups SET status = ?, updated_at = ? WHERE cleanup_id = ?'
+).run('deleting', '2026-08-26T13:07:00.000Z', completeWinsCleanup.cleanupId);
+markMigrationCleanupObjectAbsent(
+    database,
+    completeWinsCleanup,
+    completeWinsOutput
+);
+database.prepare(
+    'DELETE FROM draft_processing_multipart_uploads ' +
+    'WHERE processing_run_id = ? AND role = ?'
+).run(completeWinsFixture.runId, completeWinsOutput.role);
+database.prepare(
+    'DELETE FROM draft_processing_outputs WHERE processing_run_id = ? AND role = ?'
+).run(completeWinsFixture.runId, completeWinsOutput.role);
+completeMigrationProcessingCleanup(database, completeWinsCleanup);
+insertMigrationProcessingCleanupTombstone(database, completeWinsCleanup);
+
+// A zero-output run still needs a cleanup and tombstone before parent purge.
+// This also proves that the child delete guards permit the one approved parent
+// cascade instead of making private records impossible to retire.
+const purgeFixture = insertMigrationProcessingFixture(database, 20);
+failMigrationProcessingRun(database, purgeFixture);
+assert.throws(
+    () => database.prepare('DELETE FROM gallery_drafts WHERE draft_id = ?')
+        .run(purgeFixture.draftId),
+    /every processing run requires completed private staging cleanup/i
+);
+assert.throws(
+    () => insertMigrationProcessingCleanup(database, purgeFixture, 20, 'processing-failed', {
+        outputCount: 1
+    }),
+    /processing cleanup lacks a current private-only reason/i
+);
+const purgeCleanup = insertMigrationProcessingCleanup(
+    database,
+    purgeFixture,
+    20,
+    'processing-failed'
+);
+database.prepare(
+    'UPDATE draft_processing_cleanups SET status = ?, updated_at = ? WHERE cleanup_id = ?'
+).run('deleting', '2026-08-26T14:06:00.000Z', purgeCleanup.cleanupId);
+completeMigrationProcessingCleanup(database, purgeCleanup);
+assert.throws(
+    () => database.prepare('DELETE FROM gallery_drafts WHERE draft_id = ?')
+        .run(purgeFixture.draftId),
+    /every processing run requires completed private staging cleanup/i
+);
+insertMigrationProcessingCleanupTombstone(database, purgeCleanup);
+prepareMigrationDraftForRetentionPurge(database, purgeFixture);
+database.prepare('DELETE FROM gallery_drafts WHERE draft_id = ?').run(purgeFixture.draftId);
+for (const [table, column, value] of [
+    ['gallery_drafts', 'draft_id', purgeFixture.draftId],
+    ['draft_processing_runs', 'processing_run_id', purgeFixture.runId],
+    ['draft_processing_cleanups', 'cleanup_id', purgeCleanup.cleanupId],
+    ['draft_upload_sessions', 'upload_session_id', purgeFixture.uploadSessionId]
+]) {
+    assert.equal(
+        database.prepare(`SELECT COUNT(*) AS count FROM ${table} WHERE ${column} = ?`)
+            .get(value).count,
+        0,
+        `${table} approved parent cascade`
+    );
+}
+assert.equal(database.prepare(
+    'SELECT COUNT(*) AS count FROM gallery_processing_cleanup_tombstones ' +
+    'WHERE processing_run_id_hash = ?'
+).get(sha256Text(purgeFixture.runId)).count, 1);
+
+// A replacement cannot bypass cleanup merely because cleanup has never been
+// started. The rule covers failed runs both with and without staged-output
+// reservations.
+const neverCleanedEmptyFixture = insertMigrationProcessingFixture(database, 21);
+failMigrationProcessingRun(database, neverCleanedEmptyFixture);
+moveFailedMigrationDraftBackToProcessing(database, neverCleanedEmptyFixture);
+assert.throws(
+    () => insertMigrationReplacementProcessingRun(
+        database,
+        neverCleanedEmptyFixture,
+        121
+    ),
+    /every prior processing run requires completed cleanup and a hash-only tombstone/i
+);
+
+const neverCleanedOutputFixture = insertMigrationProcessingFixture(database, 22);
+insertMigrationProcessingOutput(
+    database,
+    neverCleanedOutputFixture,
+    'photo-display'
+);
+failMigrationProcessingRun(database, neverCleanedOutputFixture);
+moveFailedMigrationDraftBackToProcessing(database, neverCleanedOutputFixture);
+assert.throws(
+    () => insertMigrationReplacementProcessingRun(
+        database,
+        neverCleanedOutputFixture,
+        122
+    ),
+    /every prior processing run requires completed cleanup and a hash-only tombstone/i
+);
+
+// A failed run cannot be replaced while its cleanup is still in progress.
+// Once cleanup and its tombstone are complete, the draft may use a fresh run;
+// an old cleaned closure must not permanently poison the whole draft.
+const retryFixture = insertMigrationProcessingFixture(database, 25);
+failMigrationProcessingRun(database, retryFixture);
+const retryCleanup = insertMigrationProcessingCleanup(
+    database,
+    retryFixture,
+    25,
+    'processing-failed'
+);
+moveFailedMigrationDraftBackToProcessing(database, retryFixture);
+assert.throws(
+    () => insertMigrationReplacementProcessingRun(database, retryFixture, 26),
+    /every prior processing run requires completed cleanup and a hash-only tombstone/i
+);
+database.prepare(
+    'UPDATE draft_processing_cleanups SET status = ?, updated_at = ? WHERE cleanup_id = ?'
+).run('deleting', '2026-08-26T14:08:00.000Z', retryCleanup.cleanupId);
+completeMigrationProcessingCleanup(database, retryCleanup);
+assert.throws(
+    () => insertMigrationReplacementProcessingRun(database, retryFixture, 26),
+    /every prior processing run requires completed cleanup and a hash-only tombstone/i
+);
+insertMigrationProcessingCleanupTombstone(database, retryCleanup);
+const replacementRunId = insertMigrationReplacementProcessingRun(
+    database,
+    retryFixture,
+    26
+);
+assert.equal(database.prepare(
+    'SELECT COUNT(*) AS count FROM draft_processing_runs WHERE draft_id = ?'
+).get(retryFixture.draftId).count, 2);
+assert.equal(database.prepare(
+    'SELECT status FROM draft_processing_runs WHERE processing_run_id = ?'
+).get(replacementRunId).status, 'active');
+
+// An unresolved athlete-wide exclusion is a valid cleanup reason and closes
+// all output admission for the tagged run.
+const exclusionFixture = insertMigrationProcessingFixture(database, 30, {
+    athleteIdsJson: '["athlete-synthetic-excluded"]'
+});
+insertPendingExclusion(database, 'athlete-synthetic-excluded');
+assert.throws(
+    () => insertMigrationProcessingCleanup(database, exclusionFixture, 30, 'withdrawal'),
+    /processing cleanup lacks a current private-only reason/i
+);
+const exclusionCleanup = insertMigrationProcessingCleanup(
+    database,
+    exclusionFixture,
+    30,
+    'athlete-exclusion'
+);
+assert.throws(
+    () => insertMigrationProcessingOutput(
+        database,
+        exclusionFixture,
+        'photo-thumbnail'
+    ),
+    /processing cleanup has closed output admission/i
+);
+database.prepare(
+    'UPDATE draft_processing_cleanups SET status = ?, updated_at = ? WHERE cleanup_id = ?'
+).run('deleting', '2026-08-26T15:06:00.000Z', exclusionCleanup.cleanupId);
+completeMigrationProcessingCleanup(database, exclusionCleanup);
+insertMigrationProcessingCleanupTombstone(database, exclusionCleanup);
+const exclusionCurrentRunBeforeReplace = migrationRowsSnapshot(
+    database,
+    'SELECT * FROM draft_processing_runs WHERE draft_id = ? ORDER BY processing_run_id',
+    exclusionFixture.draftId
+);
+assert.throws(
+    () => insertMigrationReplacementProcessingRun(
+        database,
+        exclusionFixture,
+        31,
+        { insertOrReplace: true }
+    ),
+    /processing run replacement is forbidden/i
+);
+assert.equal(
+    migrationRowsSnapshot(
+        database,
+        'SELECT * FROM draft_processing_runs WHERE draft_id = ? ORDER BY processing_run_id',
+        exclusionFixture.draftId
+    ),
+    exclusionCurrentRunBeforeReplace
+);
+assert.equal(database.prepare(
+    'SELECT COUNT(*) AS count FROM draft_processing_runs WHERE processing_run_id = ?'
+).get(`run_${migrationUuidHex(31 + 0x5000)}`).count, 0);
+assert.equal(database.prepare(
+    'SELECT COUNT(*) AS count FROM draft_processing_cleanups WHERE cleanup_id = ?'
+).get(exclusionCleanup.cleanupId).count, 1);
+
+assert.deepEqual(database.prepare('PRAGMA foreign_key_check').all(), []);
+assert.equal(database.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
 database.close();
 
 console.log('Gallery admin and derivative-delivery boundary tests passed.');
@@ -2528,6 +3489,34 @@ async function adminRequest(path, {
         {
             verifyAccessIdentity,
             now: () => now
+        }
+    );
+}
+
+async function processingRequest(path, {
+    method = 'GET',
+    identity = null,
+    headers = {},
+    body,
+    env = processingBoundaryEnv
+} = {}) {
+    const requestHeaders = new Headers(headers);
+    let requestBody;
+    if (body !== undefined) {
+        requestBody = JSON.stringify(body);
+        requestHeaders.set('Content-Type', 'application/json');
+        requestHeaders.set('Content-Length', String(Buffer.byteLength(requestBody)));
+    }
+    return handleProcessingRequest(
+        new Request(`${processingOrigin}${path}`, {
+            method,
+            headers: requestHeaders,
+            body: requestBody
+        }),
+        env,
+        {
+            verifyAccessIdentity: async () => identity,
+            now: () => fixedNow
         }
     );
 }
@@ -2863,6 +3852,619 @@ function migrationPrivateEvidenceSnapshot(database) {
         database,
         `SELECT * FROM ${table} ORDER BY rowid`
     )).join('\n');
+}
+
+function migrationPhaseDStateSnapshot(database) {
+    return [
+        'draft_consent_attestations',
+        'draft_derivatives',
+        'draft_mutation_receipts',
+        'draft_processing_outputs',
+        'draft_processing_runs',
+        'draft_publication_references',
+        'draft_transition_receipts',
+        'draft_upload_parts',
+        'draft_upload_sessions',
+        'gallery_audit_events',
+        'gallery_drafts',
+        'gallery_retention_tombstones',
+        'pending_athlete_exclusions',
+        'phase_b_synthetic_records'
+    ].map(table => migrationRowsSnapshot(
+        database,
+        `SELECT * FROM ${table} ORDER BY rowid`
+    )).join('\n');
+}
+
+function insertMigrationProcessingFixture(database, ordinal, overrides = {}) {
+    const draftHex = migrationUuidHex(ordinal + 0x1000);
+    const uploadHex = migrationUuidHex(ordinal + 0x2000);
+    const runHex = migrationUuidHex(ordinal + 0x3000);
+    const dashedDraftUuid = migrationDashedUuid(draftHex);
+    const draftId = `draft_${dashedDraftUuid}`;
+    const uploadSessionId = `upload_${uploadHex}`;
+    const runId = `run_${runHex}`;
+    const originalObjectKey =
+        `private-originals/v1/family/2026/08/${draftId}/${uploadSessionId}/original.jpg`;
+    const originalSha256 = sha256Text(`synthetic-original-${ordinal}`);
+    const originalObjectVersion = `synthetic-original-version-${ordinal}`;
+    const originalEtag = `synthetic-original-etag-${ordinal}`;
+    const consentRevision = `consent-processing-${ordinal}`;
+
+    insertMigrationDraft(database, draftId, {
+        siteModesJson: '["family"]',
+        athleteIdsJson: overrides.athleteIdsJson ?? '[]'
+    });
+    insertMigrationConsent(database, draftId, consentRevision);
+    activateMigrationConsent(database, draftId, consentRevision);
+    database.prepare(
+        'UPDATE gallery_drafts SET state = ?, state_version = ?, original_object_key = ?, ' +
+        'updated_at = ? WHERE draft_id = ?'
+    ).run(
+        'uploading',
+        1,
+        originalObjectKey,
+        '2026-08-26T12:02:00.000Z',
+        draftId
+    );
+    const draft = database.prepare(
+        'SELECT item_revision, export_bundle_id, source_revision, suppression_revision ' +
+        'FROM gallery_drafts WHERE draft_id = ?'
+    ).get(draftId);
+    database.prepare(
+        'INSERT INTO draft_upload_sessions (' +
+        'upload_session_id, draft_id, item_revision, consent_revision, export_bundle_id, ' +
+        'source_revision, suppression_revision, provider_upload_id, object_key, file_extension, ' +
+        'declared_content_type, declared_byte_count, part_size, part_count, next_part_number, ' +
+        'uploaded_byte_count, status, synthetic_only_confirmed, verified_owner_identity_hash, ' +
+        'initiation_idempotency_key, initiation_payload_fingerprint, created_at, updated_at, ' +
+        'expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+        uploadSessionId,
+        draftId,
+        draft.item_revision,
+        consentRevision,
+        draft.export_bundle_id,
+        draft.source_revision,
+        draft.suppression_revision,
+        `synthetic-provider-original-${ordinal}`,
+        originalObjectKey,
+        'jpg',
+        'image/jpeg',
+        5242880,
+        5242880,
+        1,
+        1,
+        0,
+        'active',
+        1,
+        identityHash,
+        `phase-d-init-key-${ordinal}`,
+        sha256Text(`phase-d-init-${ordinal}`),
+        '2026-08-26T12:03:00.000Z',
+        '2026-08-26T12:03:00.000Z',
+        '2026-08-27T12:03:00.000Z'
+    );
+    database.prepare(
+        'INSERT INTO draft_upload_parts (' +
+        'upload_session_id, part_number, provider_etag, byte_count, sha256, uploaded_at' +
+        ') VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(
+        uploadSessionId,
+        1,
+        `synthetic-original-part-etag-${ordinal}`,
+        5242880,
+        originalSha256,
+        '2026-08-26T12:04:00.000Z'
+    );
+    database.prepare(
+        'UPDATE draft_upload_sessions SET next_part_number = ?, uploaded_byte_count = ?, ' +
+        'detected_format = ?, updated_at = ? WHERE upload_session_id = ?'
+    ).run(2, 5242880, 'jpeg', '2026-08-26T12:05:00.000Z', uploadSessionId);
+    database.prepare(
+        'UPDATE draft_upload_sessions SET status = ?, completion_idempotency_key = ?, ' +
+        'completion_payload_fingerprint = ?, completion_started_at = ?, updated_at = ? ' +
+        'WHERE upload_session_id = ?'
+    ).run(
+        'completing',
+        `phase-d-complete-key-${ordinal}`,
+        sha256Text(`phase-d-complete-${ordinal}`),
+        '2026-08-26T12:06:00.000Z',
+        '2026-08-26T12:06:00.000Z',
+        uploadSessionId
+    );
+    database.prepare(
+        'UPDATE draft_upload_sessions SET status = ?, completed_object_version = ?, ' +
+        'completed_etag = ?, completed_sha256 = ?, completed_at = ?, updated_at = ? ' +
+        'WHERE upload_session_id = ?'
+    ).run(
+        'complete',
+        originalObjectVersion,
+        originalEtag,
+        originalSha256,
+        '2026-08-26T12:07:00.000Z',
+        '2026-08-26T12:07:00.000Z',
+        uploadSessionId
+    );
+    database.prepare(
+        'UPDATE gallery_drafts SET state = ?, state_version = ?, upload_complete = ?, ' +
+        'original_detected_type = ?, original_byte_count = ?, original_sha256 = ?, ' +
+        'updated_at = ? WHERE draft_id = ?'
+    ).run(
+        'private-review',
+        2,
+        1,
+        'jpeg',
+        5242880,
+        originalSha256,
+        '2026-08-26T12:08:00.000Z',
+        draftId
+    );
+    database.prepare(
+        'UPDATE gallery_drafts SET state = ?, state_version = ?, updated_at = ? ' +
+        'WHERE draft_id = ?'
+    ).run('approved-for-processing', 3, '2026-08-26T12:09:00.000Z', draftId);
+    database.prepare(
+        'UPDATE gallery_drafts SET state = ?, state_version = ?, updated_at = ? ' +
+        'WHERE draft_id = ?'
+    ).run('processing', 4, '2026-08-26T12:10:00.000Z', draftId);
+    database.prepare(
+        'INSERT INTO draft_processing_runs (' +
+        'processing_run_id, draft_id, site_mode, media_type, item_revision, consent_revision, ' +
+        'export_bundle_id, source_revision, suppression_revision, upload_session_id, ' +
+        'original_object_key, original_detected_type, original_declared_content_type, ' +
+        'original_byte_count, original_sha256, original_object_version, original_etag, ' +
+        'start_expected_state_version, processing_state_version, start_idempotency_key, ' +
+        'start_payload_fingerprint, service_actor_identity_hash, status, created_at, updated_at' +
+        ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+        runId,
+        draftId,
+        'family',
+        'photo',
+        draft.item_revision,
+        consentRevision,
+        draft.export_bundle_id,
+        draft.source_revision,
+        draft.suppression_revision,
+        uploadSessionId,
+        originalObjectKey,
+        'jpeg',
+        'image/jpeg',
+        5242880,
+        originalSha256,
+        originalObjectVersion,
+        originalEtag,
+        3,
+        4,
+        `phase-d-start-key-${ordinal}`,
+        sha256Text(`phase-d-start-${ordinal}`),
+        identityHash,
+        'active',
+        '2026-08-26T12:10:00.000Z',
+        '2026-08-26T12:10:00.000Z'
+    );
+
+    return {
+        ordinal,
+        draftId,
+        uploadSessionId,
+        runId,
+        consentRevision,
+        originalObjectKey,
+        originalSha256,
+        originalObjectVersion,
+        originalEtag,
+        itemRevision: draft.item_revision,
+        exportBundleId: draft.export_bundle_id,
+        sourceRevision: draft.source_revision,
+        suppressionRevision: draft.suppression_revision,
+        stateVersion: 4
+    };
+}
+
+function insertMigrationProcessingOutput(database, fixture, role) {
+    const roleNumber = role === 'photo-display' ? 1 : 2;
+    const sha256 = sha256Text(`${fixture.runId}:${role}`);
+    const byteCount = role === 'photo-display' ? 1000 : 500;
+    const width = role === 'photo-display' ? 1200 : 400;
+    const height = role === 'photo-display' ? 800 : 300;
+    const stagingObjectKey =
+        `derivative-staging/v1/family/${fixture.draftId}/${fixture.runId}/` +
+        `${sha256}/${role === 'photo-display' ? 'display.webp' : 'thumbnail.webp'}`;
+    const output = {
+        role,
+        sha256,
+        byteCount,
+        width,
+        height,
+        stagingObjectKey,
+        uploadPayloadFingerprint: sha256Text(`payload:${fixture.runId}:${role}`),
+        objectVersion: `synthetic-staging-version-${fixture.ordinal}-${roleNumber}`,
+        etag: `synthetic-staging-etag-${fixture.ordinal}-${roleNumber}`,
+        storedAt: '2026-08-26T13:02:00.000Z',
+        verifiedAt: '2026-08-26T13:04:00.000Z'
+    };
+    database.prepare(
+        'INSERT INTO draft_processing_outputs (' +
+        'processing_run_id, role, upload_idempotency_key, upload_payload_fingerprint, ' +
+        'staging_object_key, sha256, byte_count, content_type, width, height, status, created_at' +
+        ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+        fixture.runId,
+        role,
+        `phase-d-output-${fixture.ordinal}-${roleNumber}`,
+        output.uploadPayloadFingerprint,
+        stagingObjectKey,
+        sha256,
+        byteCount,
+        'image/webp',
+        width,
+        height,
+        'reserved',
+        '2026-08-26T13:00:00.000Z'
+    );
+    return output;
+}
+
+function insertMigrationProcessingMultipart(database, fixture, output) {
+    const providerUploadId = `synthetic-processing-upload-${fixture.ordinal}-${output.role}`;
+    const multipart = {
+        providerUploadId,
+        partEtag: `synthetic-processing-part-etag-${fixture.ordinal}-${output.role}`
+    };
+    database.prepare(
+        'INSERT INTO draft_processing_multipart_uploads (' +
+        'processing_run_id, role, staging_object_key, upload_payload_fingerprint, ' +
+        'provider_upload_id, provider_upload_id_hash, status, created_at, updated_at' +
+        ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+        fixture.runId,
+        output.role,
+        output.stagingObjectKey,
+        output.uploadPayloadFingerprint,
+        providerUploadId,
+        sha256Text(providerUploadId),
+        'open',
+        '2026-08-26T13:00:00.000Z',
+        '2026-08-26T13:00:00.000Z'
+    );
+    return multipart;
+}
+
+function storeMigrationProcessingOutput(database, fixture, output) {
+    database.prepare(
+        'UPDATE draft_processing_outputs SET status = ?, staging_object_version = ?, ' +
+        'staging_etag = ?, stored_at = ? WHERE processing_run_id = ? AND role = ?'
+    ).run(
+        'stored',
+        output.objectVersion,
+        output.etag,
+        output.storedAt,
+        fixture.runId,
+        output.role
+    );
+}
+
+function verifyMigrationProcessingOutput(database, fixture, output) {
+    database.prepare(
+        'UPDATE draft_processing_outputs SET status = ?, metadata_scan_json = ?, ' +
+        'scanner_version = ?, verified_at = ? WHERE processing_run_id = ? AND role = ?'
+    ).run(
+        'verified',
+        '{"schemaVersion":"1.0","scannerName":"exiftool","scannerVersion":"13.40",' +
+            '"metadataEntryCount":0,"findingCategories":[]}',
+        '13.40',
+        output.verifiedAt,
+        fixture.runId,
+        output.role
+    );
+}
+
+function insertMigrationProcessingDerivative(database, fixture, output) {
+    database.prepare(
+        'INSERT INTO draft_derivatives (' +
+        'draft_id, item_revision, consent_revision, export_bundle_id, source_revision, ' +
+        'suppression_revision, role, staging_object_key, approved_object_key, byte_count, ' +
+        'sha256, content_type, width, height, duration_milliseconds, metadata_scan_json, ' +
+        'scanner_version, verified_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+        fixture.draftId,
+        fixture.itemRevision,
+        fixture.consentRevision,
+        fixture.exportBundleId,
+        fixture.sourceRevision,
+        fixture.suppressionRevision,
+        output.role,
+        output.stagingObjectKey,
+        null,
+        output.byteCount,
+        output.sha256,
+        'image/webp',
+        output.width,
+        output.height,
+        null,
+        '{"schemaVersion":"1.0","scannerName":"exiftool","scannerVersion":"13.40",' +
+            '"metadataEntryCount":0,"findingCategories":[]}',
+        '13.40',
+        output.verifiedAt
+    );
+}
+
+function transitionMigrationDraftToWithdrawal(database, fixture) {
+    database.prepare(
+        'UPDATE gallery_drafts SET state = ?, state_version = ?, updated_at = ? ' +
+        'WHERE draft_id = ?'
+    ).run(
+        'withdrawal-pending',
+        fixture.stateVersion + 1,
+        '2026-08-26T13:05:00.000Z',
+        fixture.draftId
+    );
+    fixture.stateVersion += 1;
+}
+
+function failMigrationProcessingRun(database, fixture) {
+    const failureKey = `failure_${sha256Text(`failure:${fixture.runId}`)}`;
+    database.prepare(
+        'UPDATE gallery_drafts SET state = ?, state_version = ?, updated_at = ? ' +
+        'WHERE draft_id = ?'
+    ).run(
+        'processing-failed',
+        fixture.stateVersion + 1,
+        '2026-08-26T14:04:00.000Z',
+        fixture.draftId
+    );
+    fixture.stateVersion += 1;
+    database.prepare(
+        'UPDATE draft_processing_runs SET status = ?, result_idempotency_key = ?, ' +
+        'result_payload_fingerprint = ?, result_transition_key = ?, failure_code = ?, ' +
+        'updated_at = ?, completed_at = ? WHERE processing_run_id = ?'
+    ).run(
+        'failed',
+        `phase-d-result-${fixture.ordinal}`,
+        sha256Text(`failure-payload:${fixture.runId}`),
+        failureKey,
+        'processing-failed',
+        '2026-08-26T14:05:00.000Z',
+        '2026-08-26T14:05:00.000Z',
+        fixture.runId
+    );
+}
+
+function moveFailedMigrationDraftBackToProcessing(database, fixture) {
+    database.prepare(
+        'UPDATE gallery_drafts SET state = ?, state_version = ?, updated_at = ? ' +
+        'WHERE draft_id = ?'
+    ).run(
+        'approved-for-processing',
+        fixture.stateVersion + 1,
+        '2026-08-26T14:06:00.000Z',
+        fixture.draftId
+    );
+    fixture.stateVersion += 1;
+    database.prepare(
+        'UPDATE gallery_drafts SET state = ?, state_version = ?, updated_at = ? ' +
+        'WHERE draft_id = ?'
+    ).run(
+        'processing',
+        fixture.stateVersion + 1,
+        '2026-08-26T14:07:00.000Z',
+        fixture.draftId
+    );
+    fixture.stateVersion += 1;
+}
+
+function insertMigrationReplacementProcessingRun(database, fixture, ordinal, overrides = {}) {
+    const runId = `run_${migrationUuidHex(ordinal + 0x5000)}`;
+    database.prepare(
+        `${overrides.insertOrReplace ? 'INSERT OR REPLACE' : 'INSERT'} ` +
+        'INTO draft_processing_runs (' +
+        'processing_run_id, draft_id, site_mode, media_type, item_revision, consent_revision, ' +
+        'export_bundle_id, source_revision, suppression_revision, upload_session_id, ' +
+        'original_object_key, original_detected_type, original_declared_content_type, ' +
+        'original_byte_count, original_sha256, original_object_version, original_etag, ' +
+        'start_expected_state_version, processing_state_version, start_idempotency_key, ' +
+        'start_payload_fingerprint, service_actor_identity_hash, status, created_at, updated_at' +
+        ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+        runId,
+        fixture.draftId,
+        'family',
+        'photo',
+        fixture.itemRevision,
+        fixture.consentRevision,
+        fixture.exportBundleId,
+        fixture.sourceRevision,
+        fixture.suppressionRevision,
+        fixture.uploadSessionId,
+        fixture.originalObjectKey,
+        'jpeg',
+        'image/jpeg',
+        5242880,
+        fixture.originalSha256,
+        fixture.originalObjectVersion,
+        fixture.originalEtag,
+        fixture.stateVersion - 1,
+        fixture.stateVersion,
+        `phase-d-retry-key-${ordinal}`,
+        sha256Text(`phase-d-retry:${fixture.runId}:${ordinal}`),
+        identityHash,
+        'active',
+        '2026-08-26T14:07:00.000Z',
+        '2026-08-26T14:07:00.000Z'
+    );
+    return runId;
+}
+
+function insertMigrationProcessingCleanup(
+    database,
+    fixture,
+    cleanupOrdinal,
+    reason,
+    overrides = {}
+) {
+    const cleanupId = `cleanup_${migrationUuidHex(cleanupOrdinal + 0x4000)}`;
+    const outputCount = overrides.outputCount ?? database.prepare(
+        'SELECT COUNT(*) AS count FROM draft_processing_outputs WHERE processing_run_id = ?'
+    ).get(fixture.runId).count;
+    const cleanup = {
+        cleanupId,
+        cleanupIdHash: sha256Text(cleanupId),
+        draftIdHash: sha256Text(fixture.draftId),
+        processingRunIdHash: sha256Text(fixture.runId),
+        fixture,
+        reason,
+        outputCount,
+        evidenceHash: null,
+        completedAt: '2026-08-26T16:00:00.000Z'
+    };
+    database.prepare(
+        `${overrides.insertOrReplace ? 'INSERT OR REPLACE' : 'INSERT'} ` +
+        'INTO draft_processing_cleanups (' +
+        'cleanup_id, cleanup_id_hash, processing_run_id, processing_run_id_hash, draft_id, ' +
+        'draft_id_hash, cleanup_reason, expected_state_version, output_count, idempotency_key, ' +
+        'payload_fingerprint, service_actor_identity_hash, status, created_at, updated_at' +
+        ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+        cleanupId,
+        cleanup.cleanupIdHash,
+        fixture.runId,
+        cleanup.processingRunIdHash,
+        fixture.draftId,
+        cleanup.draftIdHash,
+        reason,
+        fixture.stateVersion,
+        outputCount,
+        `phase-d-cleanup-key-${cleanupOrdinal}`,
+        sha256Text(`cleanup-payload:${fixture.runId}:${reason}`),
+        identityHash,
+        'closing',
+        '2026-08-26T13:05:00.000Z',
+        '2026-08-26T13:05:00.000Z'
+    );
+    return cleanup;
+}
+
+function insertMigrationCleanupObject(database, cleanup, output, overrides = {}) {
+    const expectedObjectVersionHash = Object.hasOwn(overrides, 'expectedObjectVersionHash')
+        ? overrides.expectedObjectVersionHash
+        : sha256Text(output.objectVersion);
+    const expectedEtagHash = Object.hasOwn(overrides, 'expectedEtagHash')
+        ? overrides.expectedEtagHash
+        : sha256Text(output.etag);
+    database.prepare(
+        'INSERT INTO draft_processing_cleanup_objects (' +
+        'cleanup_id, role, staging_object_key, staging_object_key_hash, expected_sha256, ' +
+        'expected_byte_count, expected_object_version_hash, expected_etag_hash, status' +
+        ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+        cleanup.cleanupId,
+        output.role,
+        output.stagingObjectKey,
+        sha256Text(output.stagingObjectKey),
+        overrides.expectedSha256 ?? output.sha256,
+        overrides.expectedByteCount ?? output.byteCount,
+        expectedObjectVersionHash,
+        expectedEtagHash,
+        'pending'
+    );
+}
+
+function markMigrationCleanupObjectAbsent(database, cleanup, output, overrides = {}) {
+    const observedVersionHash = Object.hasOwn(overrides, 'observedObjectVersionHash')
+        ? overrides.observedObjectVersionHash
+        : sha256Text(output.objectVersion);
+    const observedEtagHash = Object.hasOwn(overrides, 'observedEtagHash')
+        ? overrides.observedEtagHash
+        : sha256Text(output.etag);
+    database.prepare(
+        'UPDATE draft_processing_cleanup_objects SET staging_object_key = NULL, ' +
+        'provider_terminal_kind = ?, observed_object_version_hash = ?, observed_etag_hash = ?, ' +
+        'status = ?, deleted_at = ?, absence_verified_at = ? WHERE cleanup_id = ? AND role = ?'
+    ).run(
+        overrides.providerTerminalKind ?? 'completed',
+        observedVersionHash,
+        observedEtagHash,
+        'absent',
+        '2026-08-26T13:07:00.000Z',
+        '2026-08-26T13:07:00.000Z',
+        cleanup.cleanupId,
+        output.role
+    );
+}
+
+function completeMigrationProcessingCleanup(database, cleanup) {
+    cleanup.evidenceHash = sha256Text(`cleanup-evidence:${cleanup.cleanupId}`);
+    database.prepare(
+        'UPDATE draft_processing_cleanups SET status = ?, cleanup_evidence_hash = ?, ' +
+        'updated_at = ?, completed_at = ? WHERE cleanup_id = ?'
+    ).run(
+        'cleaned',
+        cleanup.evidenceHash,
+        cleanup.completedAt,
+        cleanup.completedAt,
+        cleanup.cleanupId
+    );
+}
+
+function insertMigrationProcessingCleanupTombstone(database, cleanup) {
+    database.prepare(
+        'INSERT INTO gallery_processing_cleanup_tombstones (' +
+        'cleanup_id_hash, draft_id_hash, processing_run_id_hash, cleanup_reason, ' +
+        'evidence_hash, completed_at) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(
+        cleanup.cleanupIdHash,
+        cleanup.draftIdHash,
+        cleanup.processingRunIdHash,
+        cleanup.reason,
+        cleanup.evidenceHash,
+        cleanup.completedAt
+    );
+}
+
+function prepareMigrationDraftForRetentionPurge(database, fixture) {
+    database.prepare(
+        'UPDATE draft_upload_sessions SET status = ?, object_deleted_at = ?, updated_at = ? ' +
+        'WHERE upload_session_id = ?'
+    ).run(
+        'deleted',
+        '2026-08-26T16:01:00.000Z',
+        '2026-08-26T16:01:00.000Z',
+        fixture.uploadSessionId
+    );
+    insertMigrationPublication(database, fixture.draftId, {
+        hostDeletionConfirmed: 1,
+        privateOriginalDeletionConfirmed: 1
+    });
+    database.prepare(
+        'INSERT INTO gallery_retention_tombstones (' +
+        'draft_id, purge_kind, eligible_at, approved_at, approved_by_identity_hash, evidence_hash' +
+        ') VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(
+        fixture.draftId,
+        'retention-expiry',
+        '2026-08-26T16:01:00.000Z',
+        '2026-08-26T16:02:00.000Z',
+        identityHash,
+        sha256Text(`retention:${fixture.draftId}`)
+    );
+}
+
+function migrationUuidHex(ordinal) {
+    const characters = ordinal.toString(16).padStart(32, '0').slice(-32).split('');
+    characters[12] = '4';
+    characters[16] = '8';
+    return characters.join('');
+}
+
+function migrationDashedUuid(hex) {
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-` +
+        `${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function sha256Text(value) {
+    return createHash('sha256').update(value).digest('hex');
 }
 
 function migrationPhaseCStateSnapshot(database) {

@@ -5,6 +5,9 @@ verified, synthetic-only Phase C owner workflow. It is not part of the GitHub
 Pages runtime and does not provide a public-site upload control. The deployed
 administration Worker remains owner-only and can reach only D1 and private
 originals; the separate media Worker can reach only approved derivatives.
+The local Phase D processing Worker is a third, service-only component that can
+read private originals and write private staging, but cannot reach approved
+media or either public manifest.
 
 ## Historical Phase B boundary
 
@@ -80,9 +83,89 @@ full object size, raw ETag, and returned range exactly match the preceding
 `head`. A changed object or missing proof returns `503` rather than mixing
 bytes from different versions.
 
+## Local Phase D private-processing bridge
+
+`src/processing-worker.js` is a separate service-only Worker entry point. It has
+no HTML, owner session, browser route, list/search route, caller-selected
+deletion route, or public-media route. It accepts only these exact operations:
+
+- claim one server-selected draft for processing;
+- download that run's version-pinned private original;
+- upload one `photo-display` or `photo-thumbnail` WebP to a server-built private
+  staging key; and
+- record a canonical staged result or one fixed safe failure code; and
+- close and clean one exact processing run after D1 proves an athlete exclusion,
+  withdrawal, or processing-failure reason.
+
+The caller supplies only opaque route IDs, idempotency evidence, finalized
+bytes and hashes, and the pinned processor result. D1 supplies and repeatedly
+revalidates the fixed site area, race/item evidence, consent, athlete tags,
+catalog revisions, suppression state, original object evidence, and every
+storage key. Pending exclusion of any tagged public athlete blocks the whole
+item. A successful result records two verified private derivatives and leaves
+the draft in `processing`; it does not create an approved URL or change a
+manifest. Exact transition evidence makes simultaneous staged-versus-failed or
+conflicting failure requests single-winner operations; the loser cannot append
+a contradictory receipt or audit event. A no-output consent withdrawal can
+finish only after the exact private-original upload row is terminally `deleted`
+with its version, ETag, SHA, and deletion timestamp retained.
+
+The R2/D1 write order is deliberate. D1 first reserves an output. R2 then
+creates an empty one-part multipart upload, and D1 records its exact provider
+upload ID while the run's one-way write gate is still open. Only that persisted
+handle may receive derivative bytes or complete. The Worker reads the completed
+object back before D1 can record it as stored. Exact retries reconcile lost
+part, completion, or D1 responses; different bytes, metadata, dimensions, or
+roles fail instead of replacing the object. Direct `put()` is not part of this
+path.
+
+Cleanup accepts only the opaque run ID, expected draft state version, and an
+idempotency key. D1 derives the reason and every object and multipart target.
+Creating the cleanup row atomically closes output, part, completion, result, and
+derivative admission. The Worker then aborts every persisted multipart handle.
+If completion won that race, it independently verifies the exact private object
+before deleting it; if abort won, later part or completion work cannot recreate
+the object. Every expected key must return absent and the complete server-built
+run prefix must list empty before operational output rows can be removed. The
+surviving cleanup record is a hash-only tombstone with no raw draft, run,
+storage, provider, race, athlete, consent, or editorial data. Exact retries
+resume the same evidence instead of inventing a second cleanup.
+
+Cleanup does not delete a private original, change consent, approve media, or
+write a manifest. Consent withdrawal still completes the existing separate
+host-first and exact-private-original deletion workflow after staging cleanup.
+Pending athlete exclusion makes the complete tagged item unavailable
+immediately and cannot be undone by resolving the exclusion; a later processing
+attempt requires a new run. Processing-backed derivatives remain private,
+`candidate-public` is still unreachable, and draft purge requires completed
+staging cleanup evidence for every processing run, including a run with no
+outputs.
+
+Supported multi-row claim and failure changes use transactional `D1.batch()`.
+Unsupported direct SQL can strand an incomplete processing state, but that
+partial state cannot stage, publish, mutate a verified derivative, or create a
+valid failure receipt. The cleanup route recovers the supported private-output
+states; unsupported direct SQL remains outside the service contract and fails
+closed.
+
+`wrangler.processing.example.jsonc` is intentionally non-deployable. A future
+ignored local copy must have exactly `DB`, `PRIVATE_ORIGINALS`, and
+`DERIVATIVE_STAGING`, plus these two secrets:
+
+- `PROCESSOR_IDENTITIES`: exactly one
+  `subject:<Cloudflare-Access-service-Client-ID>` entry; and
+- `PROCESSING_ORIGIN`: the exact HTTPS processing Worker origin.
+
+This component is currently local and synthetic-only. Do not apply migrations
+`0004` or `0005`, create a new Access service token, or deploy it until the
+combined processing/cleanup implementation has passed review and a separately
+approved non-production Cloudflare rehearsal has confirmed the provider race
+behavior. Any later external action and all real media still require separate
+approval.
+
 ## Configuration boundary
 
-The two example Wrangler files contain resource names and unmistakable invalid
+The three example Wrangler files contain resource names and unmistakable invalid
 replacement markers only. They are not deployable as committed. This is
 deliberate: current Wrangler can automatically provision a D1 database when an
 identifier is omitted. Make ignored local configuration only after the exact
@@ -99,8 +182,8 @@ provisioned bucket names are:
 - `family-running-gallery-approved-dev`
 
 The public media Worker binds only the last bucket. Phase C binds only the first.
-The later processor must receive its own narrower purpose-specific capability;
-neither administration nor delivery can reach all three buckets.
+The local processing example binds D1 plus only the first two buckets. Neither
+administration, processing, nor delivery can reach all three buckets.
 
 Set these admin values outside Git:
 
@@ -187,6 +270,28 @@ the multipart fallback for the v1 prefix, apply `0003` while the old Worker can
 still use its compatibility branch, deploy the v1-only Worker, then repeat the
 synthetic remote proof. Do not deploy the v1-only Worker against schema `0002`;
 that older schema correctly rejects v1 keys.
+
+`migrations/0004_private_processing_staging.sql` is the unpromoted local Phase D
+run/output ledger. It records the exact original and current consent/catalog/
+suppression evidence claimed by each processing run, reserves one immutable
+private staging object per role, and permits only the one-way
+`reserved -> stored -> verified` path. Database triggers reject replacement,
+stale draft or consent evidence, unresolved tagged-athlete exclusions, extra or
+missing photo roles, and a staged result without the exact verified private
+derivative pair. It blocks `candidate-public`, processing-derivative mutation,
+and draft purge absolutely because this slice has no race-safe cleanup
+operation. The migration adds no promotion or public-manifest writer and is not
+applied remotely.
+
+`migrations/0005_private_processing_cleanup.sql` is that local companion. It
+records every admitted one-part multipart handle, closes a run permanently when
+cleanup starts, snapshots the exact private targets, permits deletion only
+after terminal provider and R2-absence evidence, and retains only an append-only
+hash commitment after normal private rows are purged. Its narrow exceptions
+replace `0004`'s absolute deletion guards; the absolute `candidate-public`
+guard remains. The migration adds no binding, scheduled job, approved-media
+access, promotion path, public URL, manifest writer, or GitHub authority, and it
+has not been applied remotely.
 
 Private consent, derivative, publication, and transition rows cascade when an
 eligible draft is explicitly purged. Original, staging, and approved object

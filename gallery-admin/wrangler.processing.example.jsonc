@@ -1,0 +1,29 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "account_id": "REPLACE_ONLY_IN_IGNORED_LOCAL_CONFIG",
+  "name": "family-running-gallery-processing-dev",
+  "main": "src/processing-worker.js",
+  "compatibility_date": "2026-08-28",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": {
+    "enabled": false
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "family-running-gallery-dev",
+      "database_id": "REPLACE_ONLY_IN_IGNORED_LOCAL_CONFIG"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "PRIVATE_ORIGINALS",
+      "bucket_name": "family-running-gallery-originals-dev"
+    },
+    {
+      "binding": "DERIVATIVE_STAGING",
+      "bucket_name": "family-running-gallery-staging-dev"
+    }
+  ]
+}

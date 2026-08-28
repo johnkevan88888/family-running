@@ -33,6 +33,10 @@ for (const file of trackedFiles) {
     if (isWorkbookBackupLikeFile(lowerName, lowerPath)) {
         problems.push(`${file}: tracked private workbook backup-like file is not allowed`);
     }
+
+    if (lowerPath === 'test-artifacts' || lowerPath.startsWith('test-artifacts/')) {
+        problems.push(`${file}: tracked generated test artifact is not allowed`);
+    }
 }
 
 if (problems.length) {
