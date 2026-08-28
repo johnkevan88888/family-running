@@ -1,4 +1,7 @@
 node_modules/
+.pnpm-store/
+.wrangler/
+.cloudflare-config/
 test-artifacts/
 test-results/
 playwright-report/
@@ -22,3 +25,5 @@ output/
 .env
 .env.*
 !.env.example
+.dev.vars
+.dev.vars.*

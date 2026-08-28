@@ -1,0 +1,18 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "account_id": "REPLACE_ONLY_IN_IGNORED_LOCAL_CONFIG",
+  "name": "family-running-gallery-media-dev",
+  "main": "src/media-worker.js",
+  "compatibility_date": "2026-08-25",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": {
+    "enabled": false
+  },
+  "r2_buckets": [
+    {
+      "binding": "APPROVED_MEDIA",
+      "bucket_name": "family-running-gallery-approved-dev"
+    }
+  ]
+}

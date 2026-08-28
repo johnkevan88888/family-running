@@ -3940,72 +3940,76 @@ async function runGalleryEdgeCaseTests(browserInstance) {
         await mobileContext.close();
     }
 
-    const suppressionContext = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
-    const suppressionPage = await suppressionContext.newPage();
-    const suppressionMediaRequests = [];
+    for (const mode of ['family', 'everyone']) {
+        const suppressionContext = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
+        const suppressionPage = await suppressionContext.newPage();
+        const suppressionMediaRequests = [];
 
-    await suppressionPage.route('**/gallery-data/family.json', route => route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(manifest)
-    }));
-    await suppressionPage.route('**/gallery-data/hidden-athlete-ids.json', route => route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ schemaVersion: '1.0', hiddenAthleteIds: ['carolyn-kevan'] })
-    }));
-    await suppressionPage.route('https://media.example.com/**', route => {
-        suppressionMediaRequests.push(route.request().url());
-        return route.fulfill({
+        for (const manifestMode of ['family', 'everyone']) {
+            await suppressionPage.route(`**/gallery-data/${manifestMode}.json`, route => route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify(manifest)
+            }));
+        }
+        await suppressionPage.route('**/gallery-data/hidden-athlete-ids.json', route => route.fulfill({
             status: 200,
-            contentType: 'image/png',
-            body: image
+            contentType: 'application/json',
+            body: JSON.stringify({ schemaVersion: '1.0', hiddenAthleteIds: ['carolyn-kevan'] })
+        }));
+        await suppressionPage.route('https://media.example.com/**', route => {
+            suppressionMediaRequests.push(route.request().url());
+            return route.fulfill({
+                status: 200,
+                contentType: 'image/png',
+                body: image
+            });
         });
-    });
 
-    try {
-        await suppressionPage.goto(`${preview.baseUrl}/gallery.html?site=family`, { waitUntil: 'domcontentloaded' });
-        await suppressionPage.locator('#moment-finishing-kick-video').waitFor({ state: 'visible' });
-        await waitForNetworkToSettle(suppressionPage);
+        try {
+            await suppressionPage.goto(`${preview.baseUrl}/gallery.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+            await suppressionPage.locator('#moment-finishing-kick-video').waitFor({ state: 'visible' });
+            await waitForNetworkToSettle(suppressionPage);
 
-        if (await suppressionPage.locator('#gallery-grid .gallery-card').count() !== 1) {
-            failures.push('gallery tag suppression: did not leave exactly the untagged video visible.');
-        }
-        if (await suppressionPage.locator('#moment-finish-line-smile').count() !== 0) {
-            failures.push('gallery tag suppression: rendered a gallery card tagged with a hidden athlete ID.');
-        }
-        if (suppressionMediaRequests.some(url => url.includes('finish-line-smile'))) {
-            failures.push('gallery tag suppression: requested media for a hidden gallery item.');
-        }
+            if (await suppressionPage.locator('#gallery-grid .gallery-card').count() !== 1) {
+                failures.push(`gallery tag suppression (${mode}): did not leave exactly the untagged video visible.`);
+            }
+            if (await suppressionPage.locator('#moment-finish-line-smile').count() !== 0) {
+                failures.push(`gallery tag suppression (${mode}): rendered a card tagged with a hidden athlete ID.`);
+            }
 
-        await suppressionPage.goto(`${preview.baseUrl}/index.html?site=family`, { waitUntil: 'domcontentloaded' });
-        await waitForRenderedChampionship(suppressionPage, 'family');
-        await waitForNetworkToSettle(suppressionPage);
-        if (!await suppressionPage.locator('.race-moments').isHidden()) {
-            failures.push('gallery tag suppression: showed a hidden athlete\'s featured moment on Championships.');
-        }
-        if (await suppressionPage.locator(
-            '[data-gallery-athlete-photo="carolyn-kevan"].has-gallery-media img'
-        ).count() !== 0) {
-            failures.push('gallery tag suppression: decorated a podium with hidden athlete media.');
-        }
+            await suppressionPage.goto(`${preview.baseUrl}/index.html?site=${mode}`, { waitUntil: 'domcontentloaded' });
+            await waitForRenderedChampionship(suppressionPage, mode);
+            await waitForNetworkToSettle(suppressionPage);
+            if (!await suppressionPage.locator('.race-moments').isHidden()) {
+                failures.push(`gallery tag suppression (${mode}): showed a hidden featured moment.`);
+            }
+            if (await suppressionPage.locator(
+                '[data-gallery-athlete-photo="carolyn-kevan"].has-gallery-media img'
+            ).count() !== 0) {
+                failures.push(`gallery tag suppression (${mode}): decorated a podium with hidden media.`);
+            }
 
-        await suppressionPage.goto(
-            `${preview.baseUrl}/athlete.html?id=carolyn-kevan&site=family`,
-            { waitUntil: 'domcontentloaded' }
-        );
-        await suppressionPage.waitForFunction(() => {
-            const name = document.querySelector('#athlete-name')?.textContent?.trim() || '';
-            return name && name !== 'Loading...';
-        });
-        await waitForNetworkToSettle(suppressionPage);
-        if (!await suppressionPage.locator('.race-moments').isHidden()) {
-            failures.push('gallery tag suppression: showed a hidden athlete\'s moment on their profile.');
+            await suppressionPage.goto(
+                `${preview.baseUrl}/athlete.html?id=carolyn-kevan&site=${mode}`,
+                { waitUntil: 'domcontentloaded' }
+            );
+            await suppressionPage.waitForFunction(() => {
+                const name = document.querySelector('#athlete-name')?.textContent?.trim() || '';
+                return name && name !== 'Loading...';
+            });
+            await waitForNetworkToSettle(suppressionPage);
+            if (!await suppressionPage.locator('.race-moments').isHidden()) {
+                failures.push(`gallery tag suppression (${mode}): showed hidden media on the athlete profile.`);
+            }
+            if (suppressionMediaRequests.some(url => url.includes('finish-line-smile'))) {
+                failures.push(`gallery tag suppression (${mode}): requested hidden shared-item media.`);
+            }
+        } catch (error) {
+            failures.push(`gallery tag suppression (${mode}): ${error.message}`);
+        } finally {
+            await suppressionContext.close();
         }
-    } catch (error) {
-        failures.push(`gallery tag suppression: ${error.message}`);
-    } finally {
-        await suppressionContext.close();
     }
 
     const invalidContext = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });

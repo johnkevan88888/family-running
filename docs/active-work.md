@@ -1,6 +1,292 @@
 # Active Work
 
-## Current task: exact-bundle post-MERGE verification and cleanup portability
+## Current task: owner-authenticated Gallery media upload foundation
+
+### Status — 27 August 2026
+
+The storage, authentication, access, processing, and publication decision is
+accepted and documented on `codex/gallery-upload-architecture`. The owner
+approved the Cloudflare-managed `workers.dev` pilot and, on 26 August, approved
+Phase B non-production provisioning and deployment with synthetic text records
+only. That approval does not include DNS changes, real media, GitHub Apps,
+Pull Requests, merges, or production publication. On 27 August the owner
+accepted the projected family-scale cost, approved the existing Cloudflare
+account for this isolated resource set, and completed sign-in. One empty
+non-production D1 database, three empty private R2 buckets, and the two
+least-privilege Workers are now provisioned. Zero Trust Free, account MFA, and
+the $5 account-email budget alert are active. The administration Worker is
+owner-only behind Worker-level Access; the media Worker remains public but can
+read only the empty approved-derivative bucket. No original, derivative,
+manifest item, DNS record, or public media URL has been created. Pull Request
+#76 contains implementation code and documentation only.
+
+The selected first implementation keeps the championship site static and uses
+a separate Cloudflare Access-protected Worker for the one owner. Private R2
+buckets separate untouched originals, candidate derivatives, and approved
+public-preview derivatives; D1 holds private consent, moderation, state, and
+audit records; and a separate public Worker can read only approved derivatives.
+A protected default-branch GitHub Actions job applies deterministic photo/video
+processing and independently verifies metadata removal before a repository-
+scoped GitHub App opens a normal manifest Pull Request. The App has no merge
+authority.
+
+The protected processing-environment approval is the explicit authorization to
+make sanitized, unguessable media URLs reachable for the standard Netlify Pull
+Request preview. Explicit merge approval remains a separate release gate for
+the public manifest. The public Gallery `1.0` schema, site/date/event/distance
+selection, public athlete-ID tagging, cross-mode equality, consent boundary,
+metadata stripping, global suppression, and host-first takedown contracts do
+not change.
+
+The pilot uses Cloudflare-managed `workers.dev` hostnames and deliberately does
+not move `aceofrace.com` from its existing DNS. A first-party media hostname is
+still preferred, but its DNS migration is a separate future decision. The
+complete architecture, threat boundaries, retention rules, validation matrix,
+and phased implementation plan are in
+[Owner-Authenticated Gallery Upload Architecture](gallery-upload-architecture.md).
+
+Provider-independent Phase A is implemented locally. The unpublished upload
+contract binds opaque drafts to exact export, source, item, consent, and
+suppression revisions; permits only the accepted state transitions with
+compare-and-swap and idempotency evidence; sends only an opaque draft ID to the
+future processor; and accepts only processor-bound immutable derivative URLs.
+Consent and guardian gates still apply with no athlete tags. Current and pending
+hidden IDs block the whole item before processing and publication.
+
+The tagging helper accepts only public athlete IDs and orders selected-race
+runners before the remaining public roster. Athlete-wide exclusion is
+revision-bound, checks both complete manifests and every shared ID, appends only
+the public ID to suppression, removes whole matching items, deduplicates owned
+derivative references, and fails closed on external/reused URLs. Individual
+rejection and withdrawal cannot emit a public item; consent withdrawal also
+requires verified private-original deletion.
+
+The media policy covers supported formats and limits, extension/MIME/signature
+agreement, corrupt inputs, derivative dimensions/codecs/streams, exact
+SHA-256/length/pinned-scanner evidence, truncation/tool failure, and zero
+surviving public metadata or chapters. Synthetic JPEG-like and QuickTime-like
+byte fixtures carry hostile GPS, device, source-name, chapter, and secret
+sentinels without using family media.
+
+The final `pnpm test` passes: repository safety, vendored libraries, both-mode
+CSV and Gallery validation, both new focused suites, all workflow regressions,
+the 114-file public artifact, and desktop/mobile browser smoke tests in Family
+and Everyone modes. The suppression browser rehearsal now covers the same
+shared hidden item in both modes and proves no hidden media request occurs.
+Responsive screenshots remain only under ignored `test-artifacts/`. The public
+manifests remain empty; no site runtime, public data, or published artifact entry
+changed. An independent final security review found no remaining Phase A
+blocker.
+
+The Phase B service baseline is also implemented under the unpublished
+`gallery-admin/` boundary. The administration Worker reads the platform-
+validated identity through `ctx.access`, admits exactly one configured owner,
+originally served a minimal no-script shell directly, separates browser and future
+automation routes, and requires a signed 30-minute session plus same-origin and
+CSRF evidence for its one synthetic D1 write. It exposes no upload, original-
+preview, processing, manifest, suppression-edit, GitHub, merge, or publication
+route.
+
+The separate delivery Worker binds only the approved-derivative bucket and
+accepts `GET` or `HEAD` for the four exact immutable Gallery derivative paths.
+It cannot list a bucket or reach D1, originals, or staging. The reviewed D1
+migration binds every derivative to the active item, consent, export, source,
+and suppression revisions; preserves version, withdrawal, idempotency, and
+append-only audit evidence; and records pending whole-item athlete exclusions
+by public athlete ID only. Private child data can be purged only after terminal
+cleanup evidence and an append-only opaque tombstone survive. The Phase B API
+can write only the server-generated exact canary
+`synthetic:phase-b-auth-boundary-v1`. Tracked Wrangler examples disable preview
+URLs and are deliberately inert until copied to ignored local configuration
+with confirmed resource identifiers. The original deployed Phase B admin
+remains D1-only. The tracked Phase C admin example now grants D1 plus only the
+private-original bucket and an hourly cleanup schedule; the media example still
+grants only the approved-derivative bucket.
+
+At the Phase B checkpoint, Wrangler `4.126.0` compiled both Workers with the
+then-intended binding split. The
+focused administration suite passes the authentication matrix, single-owner
+configuration, browser/service separation, CSRF/session/origin controls,
+synthetic-only D1 write, secret-leak checks, delivery methods and byte ranges,
+hostile object metadata, object-version consistency, binding isolation, inert
+configuration, and in-memory migration guards. Those migration checks cover
+initial-state and replacement bypasses, active-consent and derivative revision
+binding, pending-exclusion state/tag/derivative blocks, unique private object
+ownership, and evidence-gated retention cascades. Caller expected-version
+compare-and-swap, its transition receipt, and its audit event must still be
+coupled atomically by the later state-changing service; the migration alone
+does not claim that caller-level guarantee. The public manifests remain empty
+and the Phase A tagging, consent, metadata-stripping, whole-item suppression,
+and host-first takedown contracts are unchanged.
+
+Final validation after the conflict-path hardening passed `pnpm test`, including
+repository safety, vendored libraries, both-mode CSV and Gallery validation,
+all upload/media/admin contract suites, artifact isolation, and Family and
+Everyone browser checks at desktop and mobile sizes. Both Workers also compile
+with Wrangler `4.126.0` in dry-run mode with the exact D1-only and approved-R2-
+only binding inventories. An independent read-only security replay confirmed
+that draft, derivative, publication, audit, and retention `INSERT OR REPLACE`
+and `UPDATE OR REPLACE` attempts fail without deleting or changing the existing
+evidence, and found no remaining local Phase B blocker.
+
+External Phase B provisioning is complete within the approved boundary.
+Wrangler is
+authenticated through an ignored local credential with only user/account read,
+Workers write, Worker-scripts write, and D1 write scopes; unrelated Pages, DNS,
+AI, email, queue, and other product permissions were not granted. The
+`family-running-gallery-dev` D1 database was created in Cloudflare's automatic
+ENAM region, the reviewed migration applied successfully, and remote checks
+found the expected 11 schema tables, 43 triggers, zero Gallery drafts, and zero
+synthetic records.
+
+Zero Trust Free and account MFA are active. R2 Standard is enabled with separate
+empty originals, staging, and approved-derivative buckets; direct R2 development
+URLs and custom domains are disabled. A $5 account-email budget alert is active.
+The D1-only administration Worker and approved-R2-only media Worker are deployed
+only on isolated `workers.dev` hostnames. The administration Worker is protected
+for all production and preview traffic by the exact owner policy; the reusable
+owner policy carries the approved 30-minute session duration even though the
+application UI retains its one-hour-or-longer duration control.
+
+Remote authentication checks prove that anonymous access is denied, the owner
+can reach the private administration shell, and a temporary exact Service Auth
+credential could reach only `/api/service/health`, not a browser route. A wrong
+credential was denied. The temporary credential, reusable service policy,
+application assignment, and Worker automation allowlist secret were then
+deleted; the revoked credential remains denied and the owner route still works.
+The media Worker returned `404` for its root, queries, and nonexistent immutable
+objects, and returned `405` for writes. All buckets remain empty and private.
+
+The service-token rehearsal exposed one current Worker-level Access detail:
+`ctx.access.getIdentity()` resolves to `undefined` for Service Auth while Access
+still supplies its validated audience and injected signed application assertion.
+The Worker therefore uses `ctx.access` as the validation boundary, accepts only
+the strict documented service-token claim shape, requires its audience to equal
+the Access context audience, and repeats the exact Client ID allowlist check.
+Malformed, browser, wrong-audience, wrong-identity, and non-service shapes fail
+closed. The response-only redacted probes used to establish that contract were
+removed before the final deployment.
+
+Final validation after remote cleanup passes the complete `pnpm test` suite:
+repository safety, vendored libraries, both-mode CSV and Gallery validation,
+upload/media/admin contracts, workflow regressions, the 114-file public artifact,
+and desktop/mobile browser smoke tests. The public manifests remain empty.
+
+Phase C is now implemented and verified locally, but has not been deployed.
+The owner page is served as separate same-origin HTML, CSS, and JavaScript under
+the existing Access boundary. It has no file picker and accepts only its
+built-in synthetic photo or video fixtures. It has no destination selector.
+The exact `?site=family` or `?site=everyone` area from which it is opened is
+shown as a fixed label and supplies the only catalog the page may request. Race
+runners are shown first, every tag remains a public athlete ID, and each draft
+binds exactly that one area plus the export bundle, source revision, suppression
+revision, item revision, and consent revision used to validate it. The signed
+browser session, server routes, draft queries, and D1 guards all enforce the
+same area, so a body field or draft identifier cannot redirect an upload into
+the other manifest.
+
+The owner workflow now captures editorial fields, public-use consent, the
+minor/guardian decision, and an optional private evidence reference. The
+evidence reference remains in access-controlled D1 and is never returned to the
+browser or audit log. Draft creation, editing, upload initiation, completion,
+and moderation use compare-and-swap versions, immutable idempotency receipts,
+and append-only hashed audit evidence. Approval rechecks the current catalog,
+consent, checked-in suppression document, and unresolved athlete-wide exclusion
+records. The checked-in suppression list is empty today, so exact static-list
+suppression remains exercised by the provider-independent contract suite while
+the end-to-end Worker suite exercises pending exclusion and non-current athlete
+fail-closed paths.
+
+Migration `0002_private_uploads.sql` adds the private multipart session, part,
+and mutation-receipt ledgers without exposing provider identifiers. The browser
+uploads sequential 5 MiB parts with a client chunk digest. The Worker checks the
+part bytes, signature, extension and MIME agreement, then streams the completed
+private R2 object through a server-side whole-file SHA-256 before allowing
+`private-review`. The multipart ETag is never treated as that checksum.
+Protected previews require the signed owner session and use version-bound
+`GET`, `HEAD`, and single-range reads. An internal hourly scheduled handler
+expires incomplete sessions after 24 hours only after abort and object-absence
+evidence; the external R2 lifecycle fallback is deliberately not configured
+without a separate deployment approval.
+
+The Phase C synthetic integration suite uses the actual administration router,
+both real migrations in in-memory SQLite, and a deterministic fake private R2
+multipart store. It proves consent and guardian gates, current tag validation,
+stale and pending-exclusion blocks, inherited-area isolation, rejection of a
+forged destination or cross-area draft ID, two-part interruption/resume,
+out-of-order and concurrent writes, checksum/size/signature failures, exact
+idempotent retries, protected ranges, moderation transitions, 25-hour cleanup,
+private-identifier redaction, empty public manifests, and public-artifact
+exclusion.
+That rehearsal found and fixed two integration defects: generated site catalogs
+were initially read at the wrong object level, and exact upload-initiation
+retries were initially checked after the draft version had advanced.
+
+The final `pnpm test` passes, including the fresh catalog check, combined
+70-trigger schema boundary suite, Phase C integration suite, responsive
+area-locked owner page in Family and Everyone at 1440 x 900 and 390 x 844, the
+114-file public artifact, and Family and Everyone desktop/mobile browser smoke
+tests. A Wrangler `4.126.0` dry run also
+compiles the Phase C admin Worker with exactly `DB` and `PRIVATE_ORIGINALS`—no
+staging or approved-public binding. Both public Gallery manifests remain empty.
+No private original, real media, derivative, public URL, or manifest item was
+created in Phase C. Pull Request #76 contains code and documentation only; no
+DNS change, merge, deployment, or publication was performed.
+The four refreshed owner-page screenshots were reviewed: each shows only its
+fixed Family or Everyone area label and no destination control. Independent
+review also found and closed a lower-level rerouting gap: D1 now rejects changing
+an existing draft from either valid area to the other, and the integration suite
+proves every cross-area upload/part/completion request returns before R2 access.
+
+Pull Request #76's conflict resolution integrated `origin/main` at `ec04684`
+into the feature branch. The only textual conflict was this active-work history;
+the Gallery upload task remains current, while the completed 72-file export and
+exact-bundle verification work from `main` is preserved below as previous work.
+The owner catalog was regenerated against export bundle
+`20260827T022723137Z-5564E17F` (12 Family athletes and 24 Everyone athletes).
+Two independent read-only merge audits found no lost Gallery or workbook-
+verification contract. Focused Gallery, catalog, upload, deployment-verifier,
+production-data, updater, artifact, and browser checks passed, followed by the
+complete `pnpm test`: 203 tracked files passed repository safety and the exact
+114-file public artifact passed its isolation and browser tests. Refreshed
+Family and Everyone owner and public screenshots were visually reviewed at
+desktop and mobile sizes. Wrangler `4.126.0` also compiled the merged admin and
+media Workers in dry-run mode with the intended isolated bindings. This resolves
+the feature branch only; Pull Request #76 has not been merged to `main`, and
+nothing was deployed or published.
+
+The first post-push GitHub Actions replay then exposed a Windows/Linux catalog
+determinism defect: Git's LF-normalized CSV and JSON sources were checked out as
+CRLF on Windows, and their working-copy line endings had been included in the
+catalog revision hashes. The generator now canonicalizes public text newlines
+before parsing and hashing, the generated snapshot is explicitly pinned to LF
+in `.gitattributes`, and a fixture proves that LF and CRLF inputs produce the
+same complete catalog and revision. The canonical snapshot revisions are now
+`sha256:76a58d9443532209758f39dba33686fd3090be050a689e8a6b7a85d9a194825f`
+for its public sources and
+`sha256:d9f63d28d14853b9452c95c4f15b912e4a0385134e699b9be1bf229eab687cda`
+for suppression. A final full `pnpm test` passed after that fix, including the
+responsive browser screenshots.
+
+### Handoff
+
+- Phase C is complete locally and synthetic-only. The next step requires a new
+  explicit approval: apply migration `0002` to non-production D1, add only the
+  originals binding and hourly schedule to the ignored admin configuration,
+  configure the 24-hour incomplete-multipart lifecycle fallback, deploy the
+  reviewed admin Worker, and rehearse one synthetic photo and one synthetic
+  video remotely through Access.
+- The currently deployed administration Worker remains the verified Phase B
+  D1-only version. All three R2 buckets and public manifests remain empty.
+- Do not use real family media until synthetic photo, video, metadata-stripping,
+  failure, cleanup, and takedown rehearsals pass.
+- Phase D processing, sanitized derivatives, GitHub Apps/environments, and a
+  manifest Pull Request have not begun. The existing approval does not permit
+  real media,
+  DNS changes, public media derivatives, Pull Requests, merges, or production
+  publication.
+
+## Previous task: exact-bundle post-MERGE verification and cleanup portability
 
 ### Status — 27 August 2026
 
@@ -58,10 +344,9 @@ Pages run `33035787966`; syntax and `git diff --check` passed.
 ### Handoff
 
 - The production data refresh is complete; do not export or promote it again.
-- The cleanup repair and post-merge verifier are code changes and must follow
-  the standard review path. They are uncommitted on
-  `codex/data-update-cleanup-repair`; nothing from this implementation has been
-  pushed, opened as a Pull Request, merged, or deployed.
+- The cleanup repair and post-merge verifier were merged into `main` through
+  Pull Request #75 as commit `ec04684` on 27 August 2026. Do not repeat the
+  completed production data refresh while reviewing later code changes.
 - The original failed run has no resumable state. Its empty local branch was
   verified against the recorded `main` commit and removed with the fixed
   compare-and-swap command.
