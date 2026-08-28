@@ -388,6 +388,9 @@ export async function storePrivateUploadPart(
     if (!upload || upload.status !== 'active') {
         return failure(409, 'invalid-state');
     }
+    if (incompleteUploadExpired(upload, nowMilliseconds)) {
+        return failure(409, 'invalid-state');
+    }
     const expectedByteCount = expectedPartByteCount(upload, partNumber);
     if (expectedByteCount === null) {
         return failure(409, 'invalid-part');
@@ -625,6 +628,12 @@ export async function completePrivateUpload(
 
     let upload = await readCurrentUpload(env.DB, draftId, ownerHash);
     if (!upload || !['active', 'completing', 'complete'].includes(upload.status)) {
+        return failure(409, 'invalid-state');
+    }
+    if (
+        upload.status !== 'complete' &&
+        incompleteUploadExpired(upload, nowMilliseconds)
+    ) {
         return failure(409, 'invalid-state');
     }
     if (
@@ -1713,6 +1722,13 @@ function safeIntegerText(value) {
 
 function safeNow(value) {
     return Number.isFinite(value) ? value : Date.now();
+}
+
+function incompleteUploadExpired(upload, nowMilliseconds) {
+    const expiresAt = typeof upload?.expiresAt === 'string'
+        ? Date.parse(upload.expiresAt)
+        : Number.NaN;
+    return !Number.isFinite(expiresAt) || expiresAt <= safeNow(nowMilliseconds);
 }
 
 function isoTime(value) {

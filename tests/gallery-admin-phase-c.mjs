@@ -755,9 +755,96 @@ failureStatus = await areaRequest(`/api/browser/drafts/${corruptDraft.draftId}/u
 });
 assert.equal((await responseJson(failureStatus)).upload.status, 'failed');
 
-// The hourly scheduled cleanup is the second half of resumability: an owner can
-// resume for 24 hours, after which an abandoned multipart upload is aborted and
-// its private database pointer is cleared without touching any completed object.
+// The request boundary closes exactly at expiresAt. An expired active session
+// cannot upload another byte, and remains active until the cleanup job confirms
+// the provider multipart upload has been aborted.
+const expiredActiveDraft = await createValidDraft(
+    'synthetic-expired-active-request',
+    currentAthleteIds[0]
+);
+const expiredActiveBegin = await beginUpload(
+    expiredActiveDraft.draftId,
+    expiredActiveDraft.stateVersion,
+    128,
+    'begin-expired-active-0001'
+);
+assert.equal(expiredActiveBegin.status, 201);
+const expiredActiveDeadline = Date.parse(
+    (await responseJson(expiredActiveBegin)).upload.expiresAt
+);
+assert.ok(Number.isFinite(expiredActiveDeadline));
+currentNow = expiredActiveDeadline - 1;
+await refreshBrowserSession();
+const callsBeforeExpiredActivePart = originals.calls.length;
+const expiredActivePart = await uploadPart(
+    expiredActiveDraft.draftId,
+    1,
+    syntheticJpeg(128)
+);
+assert.equal(expiredActivePart.status, 409);
+assert.equal((await responseJson(expiredActivePart)).error, 'invalid-state');
+assert.equal(originals.calls.length, callsBeforeExpiredActivePart);
+assert.equal(sqlite.prepare(
+    'SELECT status FROM draft_upload_sessions WHERE draft_id = ?'
+).get(expiredActiveDraft.draftId).status, 'active');
+assert.equal(sqlite.prepare(
+    'SELECT COUNT(*) AS count FROM draft_upload_parts AS part ' +
+    'JOIN draft_upload_sessions AS session ' +
+    'ON session.upload_session_id = part.upload_session_id ' +
+    'WHERE session.draft_id = ?'
+).get(expiredActiveDraft.draftId).count, 0);
+
+// The same boundary applies after completion has been claimed. A transient
+// provider interruption leaves the session in completing; once its deadline
+// passes, a retry cannot HEAD, resume, complete, read, or delete in R2.
+const expiredCompletingDraft = await createValidDraft(
+    'synthetic-expired-completing-request',
+    currentAthleteIds[0]
+);
+const expiredCompletingBytes = syntheticJpeg(128);
+const expiredCompletingBegin = await beginUpload(
+    expiredCompletingDraft.draftId,
+    expiredCompletingDraft.stateVersion,
+    expiredCompletingBytes.byteLength,
+    'begin-expired-complete-0001'
+);
+assert.equal(expiredCompletingBegin.status, 201);
+const expiredCompletingDeadline = Date.parse(
+    (await responseJson(expiredCompletingBegin)).upload.expiresAt
+);
+assert.ok(Number.isFinite(expiredCompletingDeadline));
+assert.equal((await uploadPart(
+    expiredCompletingDraft.draftId,
+    1,
+    expiredCompletingBytes
+)).status, 201);
+originals.failNextHead = true;
+assert.equal((await completeUpload(
+    expiredCompletingDraft.draftId,
+    expiredCompletingDraft.stateVersion + 1,
+    'complete-expired-retry-0001'
+)).status, 503);
+assert.equal(sqlite.prepare(
+    'SELECT status FROM draft_upload_sessions WHERE draft_id = ?'
+).get(expiredCompletingDraft.draftId).status, 'completing');
+currentNow = expiredCompletingDeadline - 1;
+await refreshBrowserSession();
+const callsBeforeExpiredCompletion = originals.calls.length;
+const expiredCompletion = await completeUpload(
+    expiredCompletingDraft.draftId,
+    expiredCompletingDraft.stateVersion + 1,
+    'complete-expired-retry-0001'
+);
+assert.equal(expiredCompletion.status, 409);
+assert.equal((await responseJson(expiredCompletion)).error, 'invalid-state');
+assert.equal(originals.calls.length, callsBeforeExpiredCompletion);
+assert.equal(sqlite.prepare(
+    'SELECT status FROM draft_upload_sessions WHERE draft_id = ?'
+).get(expiredCompletingDraft.draftId).status, 'completing');
+
+// The hourly scheduled cleanup is the second half of resumability: after the
+// request boundary closes, it aborts incomplete multipart uploads and clears
+// their private database pointers without touching any completed object.
 const cleanupDraft = await createValidDraft('synthetic-expired-upload', currentAthleteIds[0]);
 assert.equal((await beginUpload(
     cleanupDraft.draftId,
@@ -783,7 +870,13 @@ const expiredStatus = await areaRequest(`/api/browser/drafts/${cleanupDraft.draf
     session: true
 });
 assert.equal((await responseJson(expiredStatus)).upload.status, 'expired');
-assert.equal(originals.abortedUploadCount, abortedBeforeCleanup + 1);
+assert.equal(originals.abortedUploadCount, abortedBeforeCleanup + 3);
+assert.equal(sqlite.prepare(
+    'SELECT status FROM draft_upload_sessions WHERE draft_id = ?'
+).get(expiredActiveDraft.draftId).status, 'expired');
+assert.equal(sqlite.prepare(
+    'SELECT status FROM draft_upload_sessions WHERE draft_id = ?'
+).get(expiredCompletingDraft.draftId).status, 'expired');
 assert.equal(sqlite.prepare(
     'SELECT original_object_key AS objectKey FROM gallery_drafts WHERE draft_id = ?'
 ).get(cleanupDraft.draftId).objectKey, null);
@@ -892,6 +985,21 @@ async function completeUpload(draftId, expectedStateVersion, idempotencyKey) {
         identity: 'owner',
         session: true,
         json: { expectedStateVersion, idempotencyKey }
+    });
+}
+
+async function refreshBrowserSession(siteMode = familySiteMode) {
+    const response = await areaRequest('/api/browser/session', {
+        identity: 'owner',
+        siteMode
+    });
+    assert.equal(response.status, 200);
+    const body = await responseJson(response);
+    const setCookie = response.headers.get('Set-Cookie');
+    assert.ok(setCookie);
+    browserSessions.set(siteMode, {
+        cookie: setCookie.split(';', 1)[0],
+        csrfToken: body.csrfToken
     });
 }
 
@@ -1113,6 +1221,7 @@ function createPrivateOriginalsBucket(providerPrefix) {
         calls: [],
         abortedUploadCount: 0,
         failNextPartNumber: null,
+        failNextHead: false,
         truncateNextComplete: false,
         corruptNextComplete: false,
 
@@ -1141,6 +1250,10 @@ function createPrivateOriginalsBucket(providerPrefix) {
         },
 
         async head(key) {
+            if (bucket.failNextHead) {
+                bucket.failNextHead = false;
+                throw new Error('Synthetic interrupted object lookup.');
+            }
             bucket.calls.push({ operation: 'head', key });
             const object = objects.get(key);
             return object ? objectMetadata(object) : null;
