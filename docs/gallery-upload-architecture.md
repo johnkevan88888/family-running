@@ -6,15 +6,18 @@
 - **Approved pilot boundaries:** Cloudflare-managed `workers.dev` hostnames and
   temporary processing of each private original on an ephemeral GitHub-hosted
   runner
-- **Infrastructure state:** Phase B complete on isolated non-production
-  `workers.dev` resources: Zero Trust Free and MFA active, three empty private
-  R2 buckets, migrated empty D1, a $5 alert, an owner-only administration
-  Worker, and an approved-bucket-only media Worker
-- **Media state:** no private original or public derivative has been uploaded
-- **Implementation state:** provider-independent Phase A contracts and tests
-  and Phase B infrastructure/authentication complete; no site merge, DNS
-  change, real-media transfer, Pull Request, or publication is authorized by
-  this decision
+- **Infrastructure state:** Synthetic-only Phase C is complete on isolated
+  non-production `workers.dev` resources: Zero Trust Free and MFA active, a $5
+  alert, migrated D1, an owner-only administration Worker bound only to D1 and
+  private originals, and a media Worker bound only to approved derivatives.
+  Derivative staging and approved storage remain empty.
+- **Media state:** exactly one built-in synthetic Family photo and one built-in
+  synthetic Everyone video exist only as protected private originals and D1
+  `private-review` records; no real original or public derivative exists
+- **Implementation state:** provider-independent Phase A, infrastructure and
+  authentication Phase B, and synthetic private-upload Phase C are complete;
+  no DNS change, real-media transfer, derivative, manifest Pull Request, merge,
+  or publication is authorized by this decision
 
 This document selects the storage, authentication, and access model needed to
 continue the owner-curated Gallery after Phase 1. It does not turn the Gallery
@@ -249,6 +252,63 @@ recoverable side states. Retrying an already completed operation must be
 idempotent and must not create another public key or duplicate manifest item.
 Append-only audit events record state changes, but never store the media body or
 secret values.
+
+## Storage Object Key Contract
+
+R2 object keys are permanent machine identifiers, not editorial filenames or a
+substitute for the private media catalogue. The server constructs the complete
+key; the browser cannot supply a path or any segment other than the declared
+file format from which the server selects a normalized allowlisted extension.
+Human-readable organisation, filtering, and labels come from the protected D1
+record.
+
+The first real-media key grammar is:
+
+| Bucket role | Exact v1 shape |
+| --- | --- |
+| Private original | `private-originals/v1/{site}/{upload-year}/{upload-month}/{draft-id}/{upload-id}/original.{extension}` |
+| Private derivative staging | `derivative-staging/v1/{site}/{draft-id}/{processing-run-id}/{sha256}/{canonical-filename}` |
+| Approved public derivative | `media/v1/{sha256}/{canonical-filename}` |
+
+The server-derived `site` is exactly `family` or `everyone`. `upload-year` and
+`upload-month` are the server's UTC upload date, not the race date. Draft,
+upload, and processing-run IDs are opaque random identifiers. The server never
+copies the rest of the original browser filename. The normalized original
+extension is lowercase and allowlisted, and the upload cannot leave private
+review unless it agrees with the declared MIME type and detected bytes. Each
+derivative SHA-256 is the lowercase digest of that exact sanitized derivative.
+For both staging and approved keys, the D1 role-to-filename mapping is exact:
+`photo-display` to `display.webp`, `photo-thumbnail` to `thumbnail.webp`,
+`video` to `video.mp4`, and `video-poster` to `poster.webp`. No other canonical
+filename is accepted.
+
+Object keys never contain an uploader name or email, original browser filename,
+race date, race/event/distance, public item ID, athlete name or ID, title,
+caption, consent or guardian detail, exclusion reason, location, device, or
+mutable workflow state. Those associations stay in D1 and, where already
+public by contract, the selected area's Gallery manifest. A private owner
+download may synthesize a friendly filename from the current protected record
+for that one response; it does not rename the stored object or become a public
+derivative header.
+
+The approved key deliberately omits `site`: the one area-bound manifest entry
+controls where the media appears, while the public media Worker retains its
+existing exact content-addressed URL grammar. Private and staging keys carry the
+site only to make area isolation auditable. Private and staging keys remain
+private evidence and are never returned by administration APIs.
+
+The two deployed synthetic Phase C originals retain their existing
+`private-originals/phase-c/` keys. They are not copied or renamed. Migration
+`0003_private_original_v1_keys.sql` now implements the forward-only local D1
+change: it rebuilds the upload parent and part tables together, preserves every
+existing Phase C row, and temporarily accepts both the exact old UUID grammar
+and the exact site-bound v1 grammar so the database and Worker can be updated
+without an unsafe gap. The updated Worker itself generates only v1 keys and
+revalidates the D1 identity before every private R2 operation. This migration
+has not been applied remotely, and the current one-day multipart-lifecycle rule
+still covers only `private-originals/phase-c/`. Applying `0003`, extending and
+reviewing that lifecycle boundary for v1, deploying the Worker, and repeating
+the synthetic remote proof remain separate approval-gated work.
 
 ## Owner Workflow
 
@@ -485,7 +545,7 @@ draft by the server, and enforced by D1; missing, forged, shared, and cross-area
 requests fail closed. The admin Worker has only D1 and private-original
 bindings; object keys, provider IDs, identity hashes, and private evidence
 references never enter browser responses. The synthetic integration suite
-drives the actual router with both migrations and proves stale/pending-
+drives the actual router with all private migrations and proves stale/pending-
 exclusion blocks, area isolation, interruption/resume, concurrent and
 idempotent operations, MIME/signature/size/checksum failures, moderation,
 range reads, cleanup, and anonymous denial. The complete repository suite

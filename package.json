@@ -21,6 +21,7 @@
     "test:gallery-contract": "node tests/gallery-contract.mjs",
     "test:gallery-upload-contract": "node tests/gallery-upload-contract.mjs",
     "test:gallery-media-policy": "node tests/gallery-media-policy.mjs",
+    "test:gallery-storage-keys": "node tests/gallery-storage-keys.mjs",
     "test:gallery-admin-boundaries": "node tests/gallery-admin-boundaries.mjs",
     "test:gallery-admin-catalog": "node tests/gallery-admin-catalog.mjs",
     "test:gallery-admin-phase-c": "node tests/gallery-admin-phase-c.mjs",

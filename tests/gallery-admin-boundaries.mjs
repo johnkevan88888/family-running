@@ -1148,6 +1148,10 @@ const phaseCMigrationSource = await readFile(
     new URL('../gallery-admin/migrations/0002_private_uploads.sql', import.meta.url),
     'utf8'
 );
+const storageKeyMigrationSource = await readFile(
+    new URL('../gallery-admin/migrations/0003_private_original_v1_keys.sql', import.meta.url),
+    'utf8'
+);
 const database = new DatabaseSync(':memory:');
 database.exec(migrationSource);
 
@@ -2427,6 +2431,70 @@ assert.throws(
     ).run('b'.repeat(64), phaseCDraftId, 'phase-c-edit-key-0001'),
     /append-only/i
 );
+
+// The forward v1 storage-key migration rebuilds the upload parent/child tables
+// together. It must preserve every existing Phase C row exactly, leave no
+// shadow table behind, and recreate the complete protected schema.
+const phaseCStateBeforeStorageKeyMigration = migrationPhaseCStateSnapshot(database);
+database.exec(storageKeyMigrationSource);
+assert.equal(
+    migrationPhaseCStateSnapshot(database),
+    phaseCStateBeforeStorageKeyMigration
+);
+assert.deepEqual(
+    database.prepare(
+        "SELECT name FROM sqlite_schema " +
+        "WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+    ).all().map(row => row.name),
+    [
+        'draft_consent_attestations',
+        'draft_derivatives',
+        'draft_mutation_receipts',
+        'draft_publication_references',
+        'draft_transition_receipts',
+        'draft_upload_parts',
+        'draft_upload_sessions',
+        'gallery_audit_events',
+        'gallery_drafts',
+        'gallery_retention_tombstones',
+        'pending_athlete_exclusions',
+        'phase_b_synthetic_records'
+    ]
+);
+assert.equal(database.prepare(
+    "SELECT COUNT(*) AS count FROM sqlite_schema WHERE type = 'trigger'"
+).get().count, 70);
+assert.equal(database.prepare(
+    "SELECT COUNT(*) AS count FROM sqlite_schema " +
+    "WHERE type = 'index' AND name NOT LIKE 'sqlite_%'"
+).get().count, 6);
+assert.equal(database.prepare(
+    "SELECT COUNT(*) AS count FROM sqlite_schema WHERE name LIKE '%_v1'"
+).get().count, 0);
+assert.deepEqual(database.prepare('PRAGMA foreign_key_check').all(), []);
+assert.equal(database.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
+assert.equal(database.prepare('PRAGMA defer_foreign_keys').get().defer_foreign_keys, 0);
+
+// A preserved legacy upload remains operational after the table rebuild, but
+// its storage identity is still immutable.
+database.prepare(
+    'UPDATE draft_upload_sessions SET next_part_number = ?, uploaded_byte_count = ?, ' +
+    'detected_format = ?, updated_at = ? WHERE upload_session_id = ?'
+).run(2, 5242880, 'jpeg', '2026-08-26T12:11:00.000Z', phaseCSessionId);
+assert.deepEqual(
+    { ...database.prepare(
+        'SELECT next_part_number AS nextPartNumber, uploaded_byte_count AS uploadedByteCount, ' +
+        'detected_format AS detectedFormat FROM draft_upload_sessions ' +
+        'WHERE upload_session_id = ?'
+    ).get(phaseCSessionId) },
+    { nextPartNumber: 2, uploadedByteCount: 5242880, detectedFormat: 'jpeg' }
+);
+assert.throws(
+    () => database.prepare(
+        'UPDATE draft_upload_sessions SET object_key = ? WHERE upload_session_id = ?'
+    ).run(`${phaseCObjectKey}-changed-after-migration`, phaseCSessionId),
+    /private upload session identity is immutable/i
+);
 database.close();
 
 console.log('Gallery admin and derivative-delivery boundary tests passed.');
@@ -2791,6 +2859,26 @@ function migrationPrivateEvidenceSnapshot(database) {
         'draft_derivatives',
         'draft_publication_references',
         'draft_transition_receipts'
+    ].map(table => migrationRowsSnapshot(
+        database,
+        `SELECT * FROM ${table} ORDER BY rowid`
+    )).join('\n');
+}
+
+function migrationPhaseCStateSnapshot(database) {
+    return [
+        'draft_consent_attestations',
+        'draft_derivatives',
+        'draft_mutation_receipts',
+        'draft_publication_references',
+        'draft_transition_receipts',
+        'draft_upload_parts',
+        'draft_upload_sessions',
+        'gallery_audit_events',
+        'gallery_drafts',
+        'gallery_retention_tombstones',
+        'pending_athlete_exclusions',
+        'phase_b_synthetic_records'
     ].map(table => migrationRowsSnapshot(
         database,
         `SELECT * FROM ${table} ORDER BY rowid`

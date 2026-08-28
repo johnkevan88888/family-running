@@ -1,34 +1,36 @@
 # Gallery Administration Workers
 
-This directory contains the deployed Phase B authentication baseline and the
-locally completed, synthetic-only Phase C owner workflow. It is not part of the
-GitHub Pages runtime and does not provide a public-site upload control. The
-Phase C code and second migration have not been deployed.
+This directory contains the deployed authentication baseline and the remotely
+verified, synthetic-only Phase C owner workflow. It is not part of the GitHub
+Pages runtime and does not provide a public-site upload control. The deployed
+administration Worker remains owner-only and can reach only D1 and private
+originals; the separate media Worker can reach only approved derivatives.
 
-## Phase B boundary
+## Historical Phase B boundary
 
-The administration Worker has only four behaviors:
+The Phase B baseline administration Worker had only four behaviors:
 
-- authenticate every request through Worker-level Cloudflare Access context;
-- issue a short, identity-bound browser session and CSRF token;
-- write one server-generated fixed synthetic canary to D1; and
-- answer a service-identity health check on a separate route namespace.
+- authenticated every request through Worker-level Cloudflare Access context;
+- issued a short, identity-bound browser session and CSRF token;
+- wrote one server-generated fixed synthetic canary to D1; and
+- answered a service-identity health check on a separate route namespace.
 
-It has no original-upload, media-preview, processing, suppression-edit,
+It had no original-upload, media-preview, processing, suppression-edit,
 manifest-edit, GitHub, Pull Request, merge, or publication endpoint. The
-migration prepares private tables for the accepted later workflow, but Phase B
-code cannot write those tables.
+migration prepared private tables for the accepted later workflow, but Phase B
+code could not write those tables.
 
-The canary mutation accepts no request body, content type, transfer encoding,
-or caller-supplied text. After the owner, origin, session, and CSRF gates pass,
-the Worker inserts only `synthetic:phase-b-auth-boundary-v1`. The Phase B proof
-therefore cannot accept a family, consent, or editorial record.
+The canary mutation accepted no request body, content type, transfer encoding,
+or caller-supplied text. After the owner, origin, session, and CSRF gates passed,
+the Worker inserted only `synthetic:phase-b-auth-boundary-v1`. The Phase B proof
+therefore could not accept a family, consent, or editorial record.
 
-## Local Phase C boundary
+## Phase C boundary
 
-The same Worker now has local, separately tested routes for the owner selector
-catalog, private drafts, consent and guardian attestations, resumable synthetic
-uploads, protected original preview, and moderation. The interface uses only
+The same Worker now has implemented, tested, and non-production-deployed routes
+for the owner selector catalog, private drafts, consent and guardian
+attestations, resumable synthetic uploads, protected original preview, and
+moderation. The interface uses only
 same-origin HTML, CSS, and JavaScript returned by the authenticated Worker. It
 has no file picker: Phase C creates a built-in synthetic photo or video, and the
 server also requires a `synthetic-*` filename plus an explicit synthetic-only
@@ -167,6 +169,25 @@ upload-to-review transition without complete server verification. Provider IDs
 and object keys stay private. The second migration also strengthens purge so
 original-upload evidence cannot cascade away before terminal cleanup.
 
+`migrations/0003_private_original_v1_keys.sql` is the unpromoted forward
+migration for the accepted storage-key contract. It preserves existing
+`private-originals/phase-c/` session and part evidence while new Worker-created
+uploads use
+`private-originals/v1/<site>/<UTC-year>/<UTC-month>/<draft-id>/<upload-id>/original.<extension>`.
+Its rolling-deployment guard temporarily accepts the exact legacy UUID form as
+well as exact v1, because applying the database migration and replacing the
+Worker cannot be one atomic Cloudflare operation. The Worker generates v1 only
+and validates the site, timestamp, opaque IDs, and extension against D1 before
+any R2 read, write, abort, completion, preview, or cleanup action. This third
+migration is local only; do not apply it until the v1 multipart-lifecycle rule
+and remote rehearsal are separately approved.
+
+When that later deployment is approved, the safe order is: review and extend
+the multipart fallback for the v1 prefix, apply `0003` while the old Worker can
+still use its compatibility branch, deploy the v1-only Worker, then repeat the
+synthetic remote proof. Do not deploy the v1-only Worker against schema `0002`;
+that older schema correctly rejects v1 keys.
+
 Private consent, derivative, publication, and transition rows cascade when an
 eligible draft is explicitly purged. Original, staging, and approved object
 keys are unique while present, so cleanup cannot delete another draft's
@@ -181,10 +202,11 @@ absence, private-original deletion, hash-only audit/tombstone approval, then an
 explicit `DELETE`; never `INSERT OR REPLACE`. Phase C cleanup is an internal
 scheduled event, not a browser or service endpoint.
 
-Applying migration `0002`, adding the private-original binding and schedule,
-enabling the 24-hour external multipart lifecycle fallback, and deploying the
-Phase C Worker all require separate explicit approval. Until then, the remote
-admin remains the D1-only Phase B service. Use synthetic records and media only.
-Real family media and real consent or editorial records remain prohibited until
-the later synthetic derivative, metadata-stripping, deletion, and takedown
-gates have passed.
+The owner separately approved and completed the non-production application of
+migration `0002`, the private-original binding, hourly cleanup schedule,
+prefix-scoped one-day multipart fallback, and synthetic Phase C deployment.
+Remote D1 and private R2 contain exactly one built-in Family photo and one
+built-in Everyone video in private review. Staging and approved storage remain
+empty. Use synthetic records and media only. Real family media and real consent
+or editorial records remain prohibited until the later synthetic derivative,
+metadata-stripping, deletion, and takedown gates have passed.

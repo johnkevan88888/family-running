@@ -11,7 +11,11 @@ const fixedNow = Date.UTC(2026, 7, 27, 16, 0, 0);
 const sessionSecret = 'synthetic-phase-c-session-secret-0123456789abcdef';
 const privateEvidenceSentinel = 'private-evidence:synthetic-guardian-attestation';
 const providerSentinel = 'provider-upload-private-sentinel';
-const objectKeySentinel = 'private-originals/phase-c/';
+const privateKeySentinels = [
+    'private-originals/phase-c/',
+    'private-originals/v1/',
+    'derivative-staging/v1/'
+];
 const familySiteMode = 'family';
 const everyoneSiteMode = 'everyone';
 const jsonResponses = [];
@@ -33,6 +37,10 @@ const migrationSources = await Promise.all([
     ),
     readFile(
         new URL('../gallery-admin/migrations/0002_private_uploads.sql', import.meta.url),
+        'utf8'
+    ),
+    readFile(
+        new URL('../gallery-admin/migrations/0003_private_original_v1_keys.sql', import.meta.url),
         'utf8'
     )
 ]);
@@ -494,6 +502,21 @@ assert.equal(beginBody.upload.partCount, 2);
 assert.equal(beginBody.upload.partSize, partSize);
 assert.equal(beginBody.upload.nextPartNumber, 1);
 assertSafeUploadShape(beginBody.upload);
+const mainUploadRecord = sqlite.prepare(
+    'SELECT upload_session_id AS uploadSessionId, object_key AS objectKey, ' +
+    'file_extension AS fileExtension, created_at AS createdAt ' +
+    'FROM draft_upload_sessions WHERE draft_id = ?'
+).get(mainDraftId);
+assert.match(mainUploadRecord.uploadSessionId, /^upload_[a-f0-9]{32}$/);
+assert.equal(mainUploadRecord.fileExtension, 'jpg');
+const expectedMainObjectKey =
+    `private-originals/v1/family/${mainUploadRecord.createdAt.slice(0, 4)}/` +
+    `${mainUploadRecord.createdAt.slice(5, 7)}/${mainDraftId}/` +
+    `${mainUploadRecord.uploadSessionId}/original.jpg`;
+assert.equal(mainUploadRecord.objectKey, expectedMainObjectKey);
+assert.ok(originals.calls.some(call =>
+    call.operation === 'createMultipartUpload' && call.key === expectedMainObjectKey
+));
 const beginReplay = await beginUpload(
     mainDraftId,
     mainDraft.stateVersion,
@@ -522,6 +545,28 @@ const partOne = mainBytes.subarray(0, partSize);
 const partTwo = mainBytes.subarray(partSize);
 assert.equal((await uploadPart(mainDraftId, 2, partTwo)).status, 409);
 assert.equal((await uploadPart(mainDraftId, 1, partOne.subarray(0, 10))).status, 400);
+
+// Without Content-Length, the Worker must still enforce the exact part size
+// before making any R2 call. Both malformed requests leave the active upload
+// resumable at part 1.
+const callsBeforeMalformedBodies = originals.calls.length;
+assert.equal((await uploadPart(
+    mainDraftId,
+    1,
+    partOne.subarray(0, partOne.byteLength - 1),
+    undefined,
+    { includeContentLength: false }
+)).status, 422);
+assert.equal(originals.calls.length, callsBeforeMalformedBodies);
+const oversizedPartOne = syntheticJpeg(partOne.byteLength + 1);
+assert.equal((await uploadPart(
+    mainDraftId,
+    1,
+    oversizedPartOne,
+    undefined,
+    { includeContentLength: false }
+)).status, 422);
+assert.equal(originals.calls.length, callsBeforeMalformedBodies);
 
 // Two simultaneous copies of the same chunk can produce one new write and one
 // replay/conflict, but never two ledger rows or skipped progress.
@@ -567,9 +612,18 @@ assert.equal((await uploadPart(
     partTwo,
     '0'.repeat(64)
 )).status, 422);
-const partTwoResponse = await uploadPart(mainDraftId, 2, partTwo);
+const partTwoResponse = await uploadPart(
+    mainDraftId,
+    2,
+    partTwo,
+    undefined,
+    { includeContentLength: false }
+);
 assert.equal(partTwoResponse.status, 201);
 assert.equal((await responseJson(partTwoResponse)).upload.nextPartNumber, 3);
+assert.ok(originals.calls.some(call =>
+    call.operation === 'uploadPart' && call.receivedUint8Array === true
+));
 const partTwoReplay = await uploadPart(mainDraftId, 2, partTwo);
 assert.equal(partTwoReplay.status, 200);
 assert.equal((await responseJson(partTwoReplay)).replayed, true);
@@ -755,9 +809,96 @@ failureStatus = await areaRequest(`/api/browser/drafts/${corruptDraft.draftId}/u
 });
 assert.equal((await responseJson(failureStatus)).upload.status, 'failed');
 
-// The hourly scheduled cleanup is the second half of resumability: an owner can
-// resume for 24 hours, after which an abandoned multipart upload is aborted and
-// its private database pointer is cleared without touching any completed object.
+// The request boundary closes exactly at expiresAt. An expired active session
+// cannot upload another byte, and remains active until the cleanup job confirms
+// the provider multipart upload has been aborted.
+const expiredActiveDraft = await createValidDraft(
+    'synthetic-expired-active-request',
+    currentAthleteIds[0]
+);
+const expiredActiveBegin = await beginUpload(
+    expiredActiveDraft.draftId,
+    expiredActiveDraft.stateVersion,
+    128,
+    'begin-expired-active-0001'
+);
+assert.equal(expiredActiveBegin.status, 201);
+const expiredActiveDeadline = Date.parse(
+    (await responseJson(expiredActiveBegin)).upload.expiresAt
+);
+assert.ok(Number.isFinite(expiredActiveDeadline));
+currentNow = expiredActiveDeadline - 1;
+await refreshBrowserSession();
+const callsBeforeExpiredActivePart = originals.calls.length;
+const expiredActivePart = await uploadPart(
+    expiredActiveDraft.draftId,
+    1,
+    syntheticJpeg(128)
+);
+assert.equal(expiredActivePart.status, 409);
+assert.equal((await responseJson(expiredActivePart)).error, 'invalid-state');
+assert.equal(originals.calls.length, callsBeforeExpiredActivePart);
+assert.equal(sqlite.prepare(
+    'SELECT status FROM draft_upload_sessions WHERE draft_id = ?'
+).get(expiredActiveDraft.draftId).status, 'active');
+assert.equal(sqlite.prepare(
+    'SELECT COUNT(*) AS count FROM draft_upload_parts AS part ' +
+    'JOIN draft_upload_sessions AS session ' +
+    'ON session.upload_session_id = part.upload_session_id ' +
+    'WHERE session.draft_id = ?'
+).get(expiredActiveDraft.draftId).count, 0);
+
+// The same boundary applies after completion has been claimed. A transient
+// provider interruption leaves the session in completing; once its deadline
+// passes, a retry cannot HEAD, resume, complete, read, or delete in R2.
+const expiredCompletingDraft = await createValidDraft(
+    'synthetic-expired-completing-request',
+    currentAthleteIds[0]
+);
+const expiredCompletingBytes = syntheticJpeg(128);
+const expiredCompletingBegin = await beginUpload(
+    expiredCompletingDraft.draftId,
+    expiredCompletingDraft.stateVersion,
+    expiredCompletingBytes.byteLength,
+    'begin-expired-complete-0001'
+);
+assert.equal(expiredCompletingBegin.status, 201);
+const expiredCompletingDeadline = Date.parse(
+    (await responseJson(expiredCompletingBegin)).upload.expiresAt
+);
+assert.ok(Number.isFinite(expiredCompletingDeadline));
+assert.equal((await uploadPart(
+    expiredCompletingDraft.draftId,
+    1,
+    expiredCompletingBytes
+)).status, 201);
+originals.failNextHead = true;
+assert.equal((await completeUpload(
+    expiredCompletingDraft.draftId,
+    expiredCompletingDraft.stateVersion + 1,
+    'complete-expired-retry-0001'
+)).status, 503);
+assert.equal(sqlite.prepare(
+    'SELECT status FROM draft_upload_sessions WHERE draft_id = ?'
+).get(expiredCompletingDraft.draftId).status, 'completing');
+currentNow = expiredCompletingDeadline - 1;
+await refreshBrowserSession();
+const callsBeforeExpiredCompletion = originals.calls.length;
+const expiredCompletion = await completeUpload(
+    expiredCompletingDraft.draftId,
+    expiredCompletingDraft.stateVersion + 1,
+    'complete-expired-retry-0001'
+);
+assert.equal(expiredCompletion.status, 409);
+assert.equal((await responseJson(expiredCompletion)).error, 'invalid-state');
+assert.equal(originals.calls.length, callsBeforeExpiredCompletion);
+assert.equal(sqlite.prepare(
+    'SELECT status FROM draft_upload_sessions WHERE draft_id = ?'
+).get(expiredCompletingDraft.draftId).status, 'completing');
+
+// The hourly scheduled cleanup is the second half of resumability: after the
+// request boundary closes, it aborts incomplete multipart uploads and clears
+// their private database pointers without touching any completed object.
 const cleanupDraft = await createValidDraft('synthetic-expired-upload', currentAthleteIds[0]);
 assert.equal((await beginUpload(
     cleanupDraft.draftId,
@@ -783,7 +924,13 @@ const expiredStatus = await areaRequest(`/api/browser/drafts/${cleanupDraft.draf
     session: true
 });
 assert.equal((await responseJson(expiredStatus)).upload.status, 'expired');
-assert.equal(originals.abortedUploadCount, abortedBeforeCleanup + 1);
+assert.equal(originals.abortedUploadCount, abortedBeforeCleanup + 3);
+assert.equal(sqlite.prepare(
+    'SELECT status FROM draft_upload_sessions WHERE draft_id = ?'
+).get(expiredActiveDraft.draftId).status, 'expired');
+assert.equal(sqlite.prepare(
+    'SELECT status FROM draft_upload_sessions WHERE draft_id = ?'
+).get(expiredCompletingDraft.draftId).status, 'expired');
 assert.equal(sqlite.prepare(
     'SELECT original_object_key AS objectKey FROM gallery_drafts WHERE draft_id = ?'
 ).get(cleanupDraft.draftId).objectKey, null);
@@ -792,12 +939,24 @@ assert.equal(sqlite.prepare(
 // consent evidence, or the session secret.
 const serializedResponses = jsonResponses.join('\n');
 assert.doesNotMatch(serializedResponses, new RegExp(providerSentinel, 'i'));
-assert.doesNotMatch(serializedResponses, new RegExp(objectKeySentinel, 'i'));
+for (const sentinel of privateKeySentinels) {
+    assert.doesNotMatch(serializedResponses, new RegExp(escapeRegex(sentinel), 'i'));
+}
+assert.doesNotMatch(serializedResponses, new RegExp(escapeRegex(expectedMainObjectKey), 'i'));
 assert.doesNotMatch(serializedResponses, /providerUploadId|uploadSessionId|objectKey/i);
 assert.doesNotMatch(serializedResponses, new RegExp(escapeRegex(privateEvidenceSentinel), 'i'));
 assert.doesNotMatch(serializedResponses, new RegExp(escapeRegex(sessionSecret), 'i'));
 assert.doesNotMatch(responseHeaders.join('\n'), new RegExp(providerSentinel, 'i'));
-assert.doesNotMatch(responseHeaders.join('\n'), new RegExp(objectKeySentinel, 'i'));
+for (const sentinel of privateKeySentinels) {
+    assert.doesNotMatch(
+        responseHeaders.join('\n'),
+        new RegExp(escapeRegex(sentinel), 'i')
+    );
+}
+assert.doesNotMatch(
+    responseHeaders.join('\n'),
+    new RegExp(escapeRegex(expectedMainObjectKey), 'i')
+);
 
 // Phase C remains completely outside the GitHub Pages artifact and never edits
 // either public manifest.
@@ -872,17 +1031,26 @@ async function beginUpload(draftId, expectedStateVersion, byteLength, idempotenc
     });
 }
 
-async function uploadPart(draftId, partNumber, bytes, hash = sha256(bytes)) {
+async function uploadPart(
+    draftId,
+    partNumber,
+    bytes,
+    hash = sha256(bytes),
+    { includeContentLength = true } = {}
+) {
+    const headers = {
+        'Content-Type': 'application/octet-stream',
+        'X-Chunk-SHA256': hash
+    };
+    if (includeContentLength) {
+        headers['Content-Length'] = String(bytes.byteLength);
+    }
     return areaRequest(`/api/browser/drafts/${draftId}/upload-parts/${partNumber}`, {
         method: 'PUT',
         identity: 'owner',
         session: true,
         rawBody: bytes,
-        headers: {
-            'Content-Type': 'application/octet-stream',
-            'Content-Length': String(bytes.byteLength),
-            'X-Chunk-SHA256': hash
-        }
+        headers
     });
 }
 
@@ -892,6 +1060,21 @@ async function completeUpload(draftId, expectedStateVersion, idempotencyKey) {
         identity: 'owner',
         session: true,
         json: { expectedStateVersion, idempotencyKey }
+    });
+}
+
+async function refreshBrowserSession(siteMode = familySiteMode) {
+    const response = await areaRequest('/api/browser/session', {
+        identity: 'owner',
+        siteMode
+    });
+    assert.equal(response.status, 200);
+    const body = await responseJson(response);
+    const setCookie = response.headers.get('Set-Cookie');
+    assert.ok(setCookie);
+    browserSessions.set(siteMode, {
+        cookie: setCookie.split(';', 1)[0],
+        csrfToken: body.csrfToken
     });
 }
 
@@ -1113,6 +1296,7 @@ function createPrivateOriginalsBucket(providerPrefix) {
         calls: [],
         abortedUploadCount: 0,
         failNextPartNumber: null,
+        failNextHead: false,
         truncateNextComplete: false,
         corruptNextComplete: false,
 
@@ -1141,6 +1325,10 @@ function createPrivateOriginalsBucket(providerPrefix) {
         },
 
         async head(key) {
+            if (bucket.failNextHead) {
+                bucket.failNextHead = false;
+                throw new Error('Synthetic interrupted object lookup.');
+            }
             bucket.calls.push({ operation: 'head', key });
             const object = objects.get(key);
             return object ? objectMetadata(object) : null;
@@ -1184,14 +1372,19 @@ function createPrivateOriginalsBucket(providerPrefix) {
                     bucket.failNextPartNumber = null;
                     throw new Error('Synthetic interrupted multipart transfer.');
                 }
-                const bytes = await readStream(body);
+                assert.ok(
+                    body instanceof Uint8Array,
+                    'R2 multipart uploadPart must receive a fixed-length Uint8Array.'
+                );
+                const bytes = body.slice();
                 const etag = `part-${partNumber}-${sha256(bytes).slice(0, 24)}`;
                 record.parts.set(partNumber, { bytes, etag });
                 bucket.calls.push({
                     operation: 'uploadPart',
                     uploadId: record.uploadId,
                     partNumber,
-                    byteLength: bytes.byteLength
+                    byteLength: bytes.byteLength,
+                    receivedUint8Array: true
                 });
                 return { partNumber, etag };
             },
