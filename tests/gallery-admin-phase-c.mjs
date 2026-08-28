@@ -11,7 +11,11 @@ const fixedNow = Date.UTC(2026, 7, 27, 16, 0, 0);
 const sessionSecret = 'synthetic-phase-c-session-secret-0123456789abcdef';
 const privateEvidenceSentinel = 'private-evidence:synthetic-guardian-attestation';
 const providerSentinel = 'provider-upload-private-sentinel';
-const objectKeySentinel = 'private-originals/phase-c/';
+const privateKeySentinels = [
+    'private-originals/phase-c/',
+    'private-originals/v1/',
+    'derivative-staging/v1/'
+];
 const familySiteMode = 'family';
 const everyoneSiteMode = 'everyone';
 const jsonResponses = [];
@@ -33,6 +37,10 @@ const migrationSources = await Promise.all([
     ),
     readFile(
         new URL('../gallery-admin/migrations/0002_private_uploads.sql', import.meta.url),
+        'utf8'
+    ),
+    readFile(
+        new URL('../gallery-admin/migrations/0003_private_original_v1_keys.sql', import.meta.url),
         'utf8'
     )
 ]);
@@ -494,6 +502,21 @@ assert.equal(beginBody.upload.partCount, 2);
 assert.equal(beginBody.upload.partSize, partSize);
 assert.equal(beginBody.upload.nextPartNumber, 1);
 assertSafeUploadShape(beginBody.upload);
+const mainUploadRecord = sqlite.prepare(
+    'SELECT upload_session_id AS uploadSessionId, object_key AS objectKey, ' +
+    'file_extension AS fileExtension, created_at AS createdAt ' +
+    'FROM draft_upload_sessions WHERE draft_id = ?'
+).get(mainDraftId);
+assert.match(mainUploadRecord.uploadSessionId, /^upload_[a-f0-9]{32}$/);
+assert.equal(mainUploadRecord.fileExtension, 'jpg');
+const expectedMainObjectKey =
+    `private-originals/v1/family/${mainUploadRecord.createdAt.slice(0, 4)}/` +
+    `${mainUploadRecord.createdAt.slice(5, 7)}/${mainDraftId}/` +
+    `${mainUploadRecord.uploadSessionId}/original.jpg`;
+assert.equal(mainUploadRecord.objectKey, expectedMainObjectKey);
+assert.ok(originals.calls.some(call =>
+    call.operation === 'createMultipartUpload' && call.key === expectedMainObjectKey
+));
 const beginReplay = await beginUpload(
     mainDraftId,
     mainDraft.stateVersion,
@@ -916,12 +939,24 @@ assert.equal(sqlite.prepare(
 // consent evidence, or the session secret.
 const serializedResponses = jsonResponses.join('\n');
 assert.doesNotMatch(serializedResponses, new RegExp(providerSentinel, 'i'));
-assert.doesNotMatch(serializedResponses, new RegExp(objectKeySentinel, 'i'));
+for (const sentinel of privateKeySentinels) {
+    assert.doesNotMatch(serializedResponses, new RegExp(escapeRegex(sentinel), 'i'));
+}
+assert.doesNotMatch(serializedResponses, new RegExp(escapeRegex(expectedMainObjectKey), 'i'));
 assert.doesNotMatch(serializedResponses, /providerUploadId|uploadSessionId|objectKey/i);
 assert.doesNotMatch(serializedResponses, new RegExp(escapeRegex(privateEvidenceSentinel), 'i'));
 assert.doesNotMatch(serializedResponses, new RegExp(escapeRegex(sessionSecret), 'i'));
 assert.doesNotMatch(responseHeaders.join('\n'), new RegExp(providerSentinel, 'i'));
-assert.doesNotMatch(responseHeaders.join('\n'), new RegExp(objectKeySentinel, 'i'));
+for (const sentinel of privateKeySentinels) {
+    assert.doesNotMatch(
+        responseHeaders.join('\n'),
+        new RegExp(escapeRegex(sentinel), 'i')
+    );
+}
+assert.doesNotMatch(
+    responseHeaders.join('\n'),
+    new RegExp(escapeRegex(expectedMainObjectKey), 'i')
+);
 
 // Phase C remains completely outside the GitHub Pages artifact and never edits
 // either public manifest.

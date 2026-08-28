@@ -2,6 +2,11 @@ import galleryContractModule from '../../gallery-contract.js';
 import mediaPolicyModule from '../../gallery-media-policy.js';
 import uploadContractModule from '../../gallery-upload-contract.js';
 import { hashIdentity } from './session.js';
+import {
+    buildV1PrivateOriginalKey,
+    normalizeOriginalExtension,
+    privateOriginalKeyMatchesRecord
+} from './storage-keys.js';
 
 // Loading the public contract first is deliberate: the provider-independent
 // upload contract delegates the exact public item shape to it.
@@ -91,8 +96,9 @@ export async function beginPrivateUpload(
         return failure(404, 'not-found');
     }
 
+    const fileExtension = normalizeOriginalExtension(input.fileName);
     const format = formatForUploadInput(input, draftRow.mediaType);
-    if (!format) {
+    if (!format || !fileExtension) {
         return failure(415, 'unsupported-media-type');
     }
     const limit = mediaPolicy.inputLimits?.[draftRow.mediaType]?.maximumBytes;
@@ -104,7 +110,7 @@ export async function beginPrivateUpload(
         draftId,
         siteMode,
         expectedStateVersion: input.expectedStateVersion,
-        fileExtension: extensionOf(input.fileName),
+        fileExtension,
         declaredMimeType: input.declaredMimeType,
         byteLength: input.byteLength,
         syntheticOnlyConfirmed: input.syntheticOnlyConfirmed
@@ -154,7 +160,19 @@ export async function beginPrivateUpload(
     }
 
     const uploadSessionId = randomIdentifier('upload');
-    const objectKey = privateObjectKey(draftId, extensionOf(input.fileName));
+    const createdAt = now;
+    let objectKey;
+    try {
+        objectKey = buildV1PrivateOriginalKey({
+            site: siteMode,
+            uploadedAt: createdAt,
+            draftId,
+            uploadId: uploadSessionId,
+            extension: fileExtension
+        });
+    } catch {
+        return failure(503, 'service-unavailable');
+    }
     let providerUpload;
     try {
         providerUpload = await env.PRIVATE_ORIGINALS.createMultipartUpload(
@@ -182,7 +200,6 @@ export async function beginPrivateUpload(
         return failure(503, 'service-unavailable');
     }
 
-    const createdAt = now;
     const expiresAt = new Date(
         safeNow(nowMilliseconds) + UPLOAD_LIFETIME_MILLISECONDS
     ).toISOString();
@@ -234,7 +251,7 @@ export async function beginPrivateUpload(
             draftRow.suppressionRevision,
             providerUpload.uploadId,
             objectKey,
-            extensionOf(input.fileName),
+            fileExtension,
             input.declaredMimeType,
             input.byteLength,
             PART_SIZE,
@@ -387,6 +404,9 @@ export async function storePrivateUploadPart(
     const upload = await readCurrentUpload(env.DB, draftId, ownerHash);
     if (!upload || upload.status !== 'active') {
         return failure(409, 'invalid-state');
+    }
+    if (!validPrivateStorageRecord(upload)) {
+        return failure(503, 'service-unavailable');
     }
     if (incompleteUploadExpired(upload, nowMilliseconds)) {
         return failure(409, 'invalid-state');
@@ -630,6 +650,9 @@ export async function completePrivateUpload(
     let upload = await readCurrentUpload(env.DB, draftId, ownerHash);
     if (!upload || !['active', 'completing', 'complete'].includes(upload.status)) {
         return failure(409, 'invalid-state');
+    }
+    if (!validPrivateStorageRecord(upload)) {
+        return failure(503, 'service-unavailable');
     }
     if (
         upload.status !== 'complete' &&
@@ -897,6 +920,9 @@ export async function privateOriginalResponse(
     if (!row || !PREVIEWABLE_STATES.has(row.state)) {
         return null;
     }
+    if (!validPrivateStorageRecord(row)) {
+        return null;
+    }
     const contentType = PREVIEW_CONTENT_TYPES[row.detectedFormat];
     if (!contentType) {
         return null;
@@ -975,7 +1001,10 @@ export async function cleanupExpiredPrivateUploads(
     try {
         rows = await queryAll(env.DB,
             'SELECT upload_session_id AS uploadSessionId, draft_id AS draftId, ' +
-            'provider_upload_id AS providerUploadId, object_key AS objectKey, status ' +
+            'provider_upload_id AS providerUploadId, object_key AS objectKey, ' +
+            'file_extension AS fileExtension, created_at AS createdAt, status, ' +
+            '(SELECT draft.site_modes_json FROM gallery_drafts AS draft ' +
+            'WHERE draft.draft_id = draft_upload_sessions.draft_id) AS siteModesJson ' +
             'FROM draft_upload_sessions WHERE status IN (\'active\', \'completing\') ' +
             'AND expires_at <= ?1 ORDER BY expires_at, upload_session_id',
             now
@@ -983,10 +1012,22 @@ export async function cleanupExpiredPrivateUploads(
     } catch {
         return failure(503, 'service-unavailable');
     }
+    const validRows = [];
+    let blockedRecordCount = 0;
+    for (const row of rows) {
+        if (validPrivateStorageRecord(row)) {
+            validRows.push(row);
+        } else {
+            blockedRecordCount += 1;
+        }
+    }
     if (!execute) {
+        if (blockedRecordCount > 0) {
+            return failure(503, 'service-unavailable');
+        }
         return success(200, {
             mode: 'dry-run',
-            expiredDraftIds: rows.map(row => row.draftId)
+            expiredDraftIds: validRows.map(row => row.draftId)
         });
     }
 
@@ -994,7 +1035,7 @@ export async function cleanupExpiredPrivateUploads(
     const cleanupActorHash = await sha256Text(
         'system:phase-c-private-upload-cleanup'
     );
-    for (const row of rows) {
+    for (const row of validRows) {
         try {
             const existingObject = await env.PRIVATE_ORIGINALS.head(row.objectKey);
             if (existingObject) {
@@ -1064,6 +1105,9 @@ export async function cleanupExpiredPrivateUploads(
         } catch {
             // Leave the row observable for the next cleanup run.
         }
+    }
+    if (blockedRecordCount > 0) {
+        return failure(503, 'service-unavailable');
     }
     return success(200, { mode: 'execute', expiredDraftIds: completed });
 }
@@ -1139,7 +1183,7 @@ function exactObjectProblems(value, expectedKeys) {
 }
 
 function formatForUploadInput(input, mediaType) {
-    const extension = extensionOf(input.fileName);
+    const extension = normalizeOriginalExtension(input.fileName) || '';
     const formatName = expectedFormat(extension);
     const format = mediaPolicy.inputFormats?.[formatName];
     return format &&
@@ -1304,7 +1348,9 @@ function uploadSelectSql(whereClause) {
         'session.completion_idempotency_key AS completionIdempotencyKey, ' +
         'session.completion_payload_fingerprint AS completionPayloadFingerprint, ' +
         'session.created_at AS createdAt, session.updated_at AS updatedAt, ' +
-        'session.expires_at AS expiresAt, session.completed_at AS completedAt ' +
+        'session.expires_at AS expiresAt, session.completed_at AS completedAt, ' +
+        '(SELECT draft.site_modes_json FROM gallery_drafts AS draft ' +
+        'WHERE draft.draft_id = session.draft_id) AS siteModesJson ' +
         'FROM draft_upload_sessions AS session WHERE ' + whereClause;
 }
 
@@ -1338,7 +1384,10 @@ async function readTransitionReceipt(database, draftId, key) {
 
 async function readPreviewRecord(database, draftId, ownerHash, siteMode) {
     return queryFirst(database,
-        'SELECT draft.state, session.object_key AS objectKey, ' +
+        'SELECT draft.draft_id AS draftId, draft.state, session.object_key AS objectKey, ' +
+        'session.upload_session_id AS uploadSessionId, ' +
+        'session.file_extension AS fileExtension, session.created_at AS createdAt, ' +
+        'draft.site_modes_json AS siteModesJson, ' +
         'session.detected_format AS detectedFormat, ' +
         'session.declared_byte_count AS byteCount, ' +
         'session.completed_object_version AS completedObjectVersion, ' +
@@ -1399,6 +1448,12 @@ async function failUpload(
     nowMilliseconds,
     options = {}
 ) {
+    if (
+        (options.abortMultipart || options.deleteObject) &&
+        !validPrivateStorageRecord(upload)
+    ) {
+        return false;
+    }
     if (options.abortMultipart) {
         try {
             const multipart = env.PRIVATE_ORIGINALS.resumeMultipartUpload(
@@ -1730,10 +1785,6 @@ function hasOriginalsBucket(env) {
         typeof env.PRIVATE_ORIGINALS.delete === 'function';
 }
 
-function privateObjectKey(draftId, extension) {
-    return `private-originals/phase-c/${draftId}/${crypto.randomUUID()}.${extension}`;
-}
-
 function randomIdentifier(prefix) {
     return `${prefix}_${crypto.randomUUID().replace(/-/g, '')}`;
 }
@@ -1742,11 +1793,28 @@ function expectedFormat(extension) {
     return FORMAT_BY_EXTENSION[extension] || null;
 }
 
-function extensionOf(fileName) {
-    const match = typeof fileName === 'string'
-        ? /\.([A-Za-z0-9]+)$/.exec(fileName)
-        : null;
-    return match ? match[1].toLowerCase() : '';
+function validPrivateStorageRecord(record) {
+    let site;
+    try {
+        const siteModes = JSON.parse(record?.siteModesJson);
+        if (
+            !Array.isArray(siteModes) ||
+            siteModes.length !== 1 ||
+            !validSiteMode(siteModes[0])
+        ) {
+            return false;
+        }
+        [site] = siteModes;
+    } catch {
+        return false;
+    }
+    return privateOriginalKeyMatchesRecord(record.objectKey, {
+        site,
+        uploadedAt: record.createdAt,
+        draftId: record.draftId,
+        uploadId: record.uploadSessionId,
+        extension: record.fileExtension
+    });
 }
 
 function safeProviderValue(value, maximumLength) {

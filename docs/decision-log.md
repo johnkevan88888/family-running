@@ -643,6 +643,28 @@ Unknown historical details are labelled rather than inferred.
   records live in D1; candidate derivatives stage in a second private R2 bucket;
   and verified derivatives explicitly approved for Pull Request preview move to
   a third bucket exposed only through a separate public read-only media Worker.
+- **Storage-key organisation:** On 28 August 2026 the owner accepted permanent,
+  server-generated v1 object keys rather than human or editorial filenames.
+  Private originals use
+  `private-originals/v1/{site}/{upload-year}/{upload-month}/{draft-id}/{upload-id}/original.{extension}`;
+  private staging uses
+  `derivative-staging/v1/{site}/{draft-id}/{processing-run-id}/{sha256}/{canonical-filename}`;
+  and approved derivatives retain the existing exact
+  `media/v1/{sha256}/{canonical-filename}` contract. The date segments are the
+  server's UTC upload date, not the race date. Keys never contain an uploader
+  name or email, original filename, race metadata, athlete identity, caption,
+  consent, exclusion, location, device, or mutable state. D1 supplies private
+  organisation and any friendly owner download name; the selected area's
+  manifest alone determines where approved media appears. Existing synthetic
+  `private-originals/phase-c/` objects remain unchanged. Real v1 uploads require
+  a forward-only migration and reviewed lifecycle/test changes before use.
+  Migration `0003_private_original_v1_keys.sql` and the server-only key builder
+  are now implemented locally but not remotely applied. The migration preserves
+  old rows and uses one narrow rolling-deployment compatibility branch for the
+  exact Phase C UUID grammar while the updated Worker creates v1 only. This is
+  required because a D1 migration and Worker replacement are separate platform
+  operations; a later migration may remove legacy insertion only after every
+  deployed Worker is confirmed v1-only.
 - **Processing and publication:** A protected default-branch GitHub Actions job
   uses pinned photo/video and metadata-inspection tools. It may obtain one
   approved original through a narrowly scoped Access service route, but must

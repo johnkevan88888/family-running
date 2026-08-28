@@ -58,6 +58,12 @@ synthetic hostile fixtures:
 pnpm run test:gallery-media-policy
 ```
 
+Run the server-only storage-key grammar and forward-migration tests:
+
+```bash
+pnpm run test:gallery-storage-keys
+```
+
 Run the unpublished Gallery administration, D1 migration, authentication, and
 derivative-delivery boundary tests:
 
@@ -76,7 +82,7 @@ pnpm run test:gallery-admin-browser
 ```
 
 The Phase C integration suite drives the actual administration router through
-signed-session and CSRF controls, applies both private migrations, and uses a
+signed-session and CSRF controls, applies all private migrations, and uses a
 deterministic in-memory multipart store with synthetic bytes only. It covers
 draft and consent revisions, exact inherited Family/Everyone context, separate
 area-bound sessions, server-injected single-area drafts, cross-area denial,
@@ -97,7 +103,7 @@ Client ID/issuer/claim checks, string and array audience matching, malformed and
 browser-claim rejection, signed 30-minute sessions, Origin, `Sec-Fetch-Site`, CSRF, cookie
 and expiry checks, and the one fixed, server-generated
 `synthetic:phase-b-auth-boundary-v1` D1 canary write with no accepted request
-body. It also applies both reviewed migrations to an in-memory SQLite database
+body. It also applies all reviewed migrations to an in-memory SQLite database
 and verifies initial-state/replacement guards, active-consent and derivative
 revision binding, pending whole-item exclusion gates, unique private object
 ownership, withdrawal and retention evidence, cascaded private deletion, and
@@ -564,6 +570,19 @@ Athlete-wide exclusion tests remove whole items from
 both manifests, keep the public suppression proposal ID-only, deduplicate owned
 derivative references, and fail closed on stale revisions, inconsistent shared
 items, external URLs, or collateral URL reuse.
+
+Storage-key tests must prove that only the server constructs keys; a draft's
+signed single site area cannot be replaced by a request value; private and
+staging keys match their exact versioned grammar; and approved keys remain one
+of the four content-addressed public derivative forms. Fixtures must reject
+original filenames, uploader identity, race metadata, athlete identity,
+consent/exclusion detail, traversal, duplicate separators, unsupported roles,
+uppercase or malformed hashes, a mismatch between D1 derivative role and its
+exact canonical filename, and any private or staging key returned to a browser.
+Original-key tests must prove the server keeps only the normalized allowlisted
+extension from the upload declaration and later fails closed if MIME or detected
+bytes disagree. Migration coverage must preserve the deployed Phase C prefix
+while admitting v1 only through a reviewed forward migration.
 
 The unpublished media-policy tests use synthetic photo/video byte buffers and
 hostile scanner records. They require extension, declared type, detected magic,

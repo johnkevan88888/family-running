@@ -316,11 +316,62 @@ DNS change, Pull Request, merge, or publication was created. The complete
 repository safety, both Gallery modes, Phase C integration, 70-trigger schema,
 artifact isolation, and desktop/mobile browser smoke tests.
 
+The owner has now accepted the v1 storage-key organisation contract before
+Phase D. Permanent R2 keys stay server-generated and machine-oriented: private
+originals are grouped by immutable site, server UTC upload month, opaque draft,
+and opaque upload ID; private processing candidates are grouped by site, draft,
+and opaque run; approved derivatives retain their existing content-addressed
+`media/v1/{sha256}/{canonical-filename}` paths. Uploader identity, original
+filename, race metadata, athlete tags, consent, exclusions, captions, location,
+device, and mutable state never enter a key. D1 supplies the owner-facing label
+and search fields, and the single area-bound manifest remains the only control
+over where approved media appears.
+
+That contract is now implemented locally without enabling real uploads. The new
+server-only key module builds and parses exact private, staging, and approved v1
+forms; the upload service creates private v1 keys from the signed area, one
+server timestamp, the opaque draft/upload IDs, and the normalized allowlisted
+extension. Every later private R2 operation rechecks that stored identity and
+fails closed before touching an unexpected key. Corrupt cleanup evidence now
+marks the scheduled run failed without disclosing or acting on the key.
+
+Forward migration `0003_private_original_v1_keys.sql` rebuilds the upload
+session/part pair together and preserves existing Phase C rows and foreign-key
+evidence exactly. Its insert guard temporarily accepts the exact old Phase C
+UUID form as well as exact site-bound v1 so a running old Worker cannot be
+stranded between the D1 migration and Worker deployment; the updated Worker
+itself writes v1 only. Focused storage-key tests cover both site areas, all four
+derivative roles, privacy exclusions, malformed/traversal inputs, public Worker
+agreement, corrupt cleanup evidence, database grammar, and rolling
+compatibility. The Phase C integration test applies all three migrations and
+proves the exact generated R2 key remains absent from browser bodies and
+headers. The populated-schema boundary test proves row-for-row migration
+preservation, 12 tables, 70 triggers, six named indexes, clean foreign keys,
+and no shadow table.
+
+Nothing in Cloudflare changed: migration `0003` is not applied, the deployed
+Worker and two `private-originals/phase-c/` objects are unchanged, and the
+one-day lifecycle fallback still covers only the Phase C prefix. Both public
+manifests remain empty. Applying the migration, extending the v1 lifecycle
+boundary, deploying, uploading real media, opening a Pull Request, merging, or
+publishing all remain outside this local step.
+
+The storage-key implementation also corrected stale Phase B-only status wording
+and made the staging/approved role-to-filename mapping plus normalized original
+extension boundary explicit. The complete `pnpm test` suite passed after the
+code, migration, test, and documentation changes, including repository safety,
+the new storage-key suite, all Gallery upload/admin/media contracts, the Phase C
+integration and responsive owner tests, artifact isolation, and both-mode
+desktop/mobile public browser smoke tests. Final repository safety and
+whitespace checks were repeated after review corrections and passed.
+
 The two required source repairs are recorded locally on
 `codex/gallery-phase-c-expiry-guard` as `3815392` and `eb5b291`. They have not
 been pushed and no follow-up Pull Request has been opened. The non-production
 Worker is therefore intentionally ahead of the repository until the owner
-separately authorizes that Git action.
+separately authorizes that Git action. The v1 key module, upload-service change,
+`0003` migration, tests, and current documentation are additional uncommitted
+local changes.
 
 ### Handoff
 
@@ -333,6 +384,11 @@ separately authorizes that Git action.
   request-time expiry guard, live-R2 fixed-length part repair, and this handoff.
 - Do not use real family media until synthetic photo, video, metadata-stripping,
   failure, cleanup, and takedown rehearsals pass.
+- Before real-media upload is enabled, review and apply migration `0003`, extend
+  the prefix-scoped multipart fallback to the v1 private-original grammar,
+  deploy the updated Worker, and repeat the remote synthetic photo/video proof.
+  Preserve the existing `private-originals/phase-c/` objects rather than
+  renaming them.
 - Phase D processing, sanitized derivatives, GitHub Apps/environments, and a
   manifest Pull Request have not begun. The existing approval does not permit
   real media, DNS changes, public media derivatives, Pull Requests, merges, or
