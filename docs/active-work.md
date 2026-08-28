@@ -476,7 +476,7 @@ all cleanup, evidence, tombstone, and active/staged-run uniqueness constraints
 against `INSERT OR REPLACE` and `UPDATE OR REPLACE`; and still permits a new run
 after a genuinely failed run has been cleaned and tombstoned. The final complete
 `pnpm test` run passed against the combined code:
-206 tracked files passed repository safety, every data/Gallery/admin/processor/
+221 tracked files passed repository safety, every data/Gallery/admin/processor/
 bridge/workflow contract passed, the 114-file public artifact passed isolation,
 and both-mode desktop/mobile browser smoke checks and screenshots passed. A
 final independent combined audit found no remaining local blocker. Wrangler
@@ -500,9 +500,10 @@ rehearsal confirms the provider behavior. `candidate-public` remains blocked
 absolutely. The public manifests and suppression list remain unchanged and
 empty.
 
-The Phase D photo work is currently uncommitted on
-`codex/gallery-phase-d-processing`. It has not been pushed and no Pull Request
-has been opened.
+The Phase D photo work is committed on
+`codex/gallery-phase-d-processing` and open for code review in Pull Request
+#79. It has not been merged or deployed, and no media or public manifest was
+published.
 
 ### Handoff
 
@@ -510,10 +511,10 @@ has been opened.
   and Everyone video reached private R2, exact remote bytes match D1, and
   anonymous access is denied. Leave both synthetic originals in private review
   so later cleanup, retention, and takedown rehearsals use the normal workflow.
-- Treat the reviewed local synthetic photo processor and private-staging bridge
-  as uncommitted work until the owner separately approves a commit, push, or
-  Pull Request. They do not alter the deployed Phase C Workers or stored
-  synthetic originals.
+- Pull Request #79 contains the reviewed synthetic photo processor,
+  private-staging bridge, cleanup companion, tests, and documentation only. Do
+  not merge or deploy it without separate owner approval. It does not alter the
+  deployed Phase C Workers or stored synthetic originals.
 - Do not use real family media until synthetic photo, video, metadata-stripping,
   failure, cleanup, and takedown rehearsals pass.
 - Before real-media upload is enabled, review and apply migration `0003`, extend
