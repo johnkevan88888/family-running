@@ -1,6 +1,53 @@
 # Active Work
 
-## Current task: owner-authenticated Gallery media upload foundation
+## Current task: Netlify skip for changes a static preview cannot show
+
+### Status — 28 August 2026
+
+The no-visual `[skip netlify]` route is ready for review on
+`codex/netlify-nonvisual-skip`, based on the latest `origin/main` after Pull
+Request #76. The route itself had existed since 10 August, but the Pull Request
+template, preview-comment workflow, decision record, and release guide still
+described only data-refresh and custom-domain skips. That mismatch caused Pull
+Request #75's release-tooling-only change to request an unnecessary Netlify
+preview.
+
+The eligibility gate now positively recognizes known non-public areas such as
+documentation, tests, local/workbook release tooling, and the separate private
+`gallery-admin/` implementation. It rejects every published path, every known
+dependency/build/deployment control, local GitHub actions, package-manager
+hooks, the release-path guard itself, unknown root configuration, and future
+scripts that have not been deliberately classified. Published paths and
+publication controls remain tied to the artifact builder's shared
+`scripts/published-site-entries.mjs` source of truth. The exact twelve-file Pull
+Request #75 diff is a regression case and now classifies as `no-visual-change`.
+
+The bot comment now says only that a skip was requested from the Pull Request
+title. It cannot claim eligibility; the required `Pull Request Checks / Test
+static site` check must pass and report the accepted pathway. Full tests,
+responsive screenshots, exact-diff review, and any private-service evidence
+still apply. The narrow custom-domain exception remains explicit for
+production-only DNS, HTTPS, and analytics behavior that a Netlify hostname
+cannot prove; the unmodified gate excludes the guard and preview-comment
+workflow from that exception.
+
+This rule change itself changes workflows and the guard, so it must use the
+standard Netlify-preview pathway and separate John review. The Pull Request gate
+is a regression and process control rather than an independent adversarial trust
+boundary, and it grants no automatic merge authority beyond the existing guided
+data-refresh route. No GitHub ruleset setting has been changed in this local
+implementation.
+
+Focused release-path tests and `git diff --check` pass. The final `pnpm test`
+also passes on the latest Gallery-media baseline: repository safety, vendored
+libraries, both-mode CSV and Gallery validation, Gallery administration suites,
+all release/data/export regressions, the 114-file artifact build, and desktop
+and mobile browser smoke tests for Family and Everyone. Screenshots remain only
+under ignored `test-artifacts/`. No public runtime file, CSV, Gallery manifest,
+media asset, Cloudflare resource, or live deployment changed. Nothing has been
+committed, pushed, opened as a Pull Request, or merged for this task.
+
+## Concurrent task: owner-authenticated Gallery media upload foundation
 
 ### Status — 28 August 2026
 

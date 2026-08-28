@@ -184,33 +184,55 @@ Unknown historical details are labelled rather than inferred.
   review links added 28-29 June 2026; hosted ruleset verified 30 June 2026;
   lightweight data-refresh pathway added 5 August 2026; custom-domain pathway
   added 9 August 2026; guarded routine-data auto-merge added 9 August 2026;
-  exact-bundle post-merge production gate added 27 August 2026.
-- **Decision:** Changes use a feature branch and Pull Request. Code,
-  configuration, schema, export-set, and broader documentation changes require
-  automated checks and a successful Netlify Deploy Preview for both site modes.
-  A routine existing-schema public CSV refresh, such as adding new race times,
-  may put `[skip netlify]` in the Pull Request title and use full automated
-  checks, exact CSV diff review, and responsive screenshots without generating
-  a Netlify preview. A narrowly scoped custom-domain configuration may use the
-  same marker because its hostname, DNS, redirect, and certificate behavior can
-  only be verified on GitHub Pages after merge. `main` remains the protected
-  production branch.
+  no-visual classifier added 10 August 2026; exact-bundle post-merge production
+  gate added 27 August 2026; no-visual policy surfaces reconciled 28 August
+  2026.
+- **Decision:** Changes use a feature branch and Pull Request. A diff that can
+  alter the published artifact or any file controlling dependency installation,
+  artifact construction, or deployment requires automated checks and a
+  successful Netlify Deploy Preview for both site modes. A diff with no
+  published or publishing-control path, and whose remaining paths are all
+  recognized as non-public, may put `[skip netlify]` in its title because the
+  static preview cannot display the change; full tests, responsive screenshots,
+  exact-diff review, and any service-specific evidence remain required. A
+  routine existing-schema public CSV refresh, such as adding new
+  race times, may use the marker with exact CSV diff review. A narrowly scoped
+  custom-domain configuration may use it because hostname, DNS, redirect, and
+  certificate behavior can only be verified on GitHub Pages after merge.
+  `main` remains the protected production branch.
 - **Rationale:** Reviewable previews and checks reduce the chance that an
   incorrect export or display change reaches GitHub Pages.
 - **Consequences:** Do not commit or merge directly to `main`. No merge or
   production release occurs without explicit John approval. The active ruleset
-  requires a Pull Request, resolved review threads, and the strict
-  `Test static site` check, and blocks deletion and non-fast-forward updates.
+  requires a Pull Request, resolved review threads, and the strict `Test static
+  site` check, and blocks deletion and non-fast-forward updates.
+  The no-visual route fails closed unless at least one file changed, every path
+  is absent from both the published-artifact list and the publishing-control
+  set, and every remaining path is positively recognized as non-public. The
+  artifact and control definitions are shared with the artifact build; root
+  dependency/workspace configuration, checkout attributes, build and
+  publication contracts, the release-path guard, and workflows cannot qualify.
+  Under the unmodified gate, the validator, its artifact-list source, and every
+  workflow are controls and cannot qualify. A Pull Request changing one must use
+  the standard preview pathway and separate John review. Because this gate runs
+  as Pull Request workflow code, it is a regression and process control rather
+  than an independent adversarial trust boundary, and it grants no automatic
+  merge authority outside the narrow guided data-refresh route.
+  Private administration code may qualify, but still requires its own
+  authenticated/environment-specific review when applicable.
   The lightweight route fails closed unless every tracked public CSV is
   refreshed, every changed runtime file is an existing CSV under `data/` with
   an unchanged header, and only
   `docs/active-work.md` notes may accompany those exports. Every automated test
-  and screenshot still runs. The custom-domain route requires a syntactically
-  valid root `CNAME` and accepts only its explicit domain, analytics, test,
-  workflow, and documentation allowlist. The active ruleset should not list Netlify's
+  and screenshot still runs. The custom-domain route requires the exact approved
+  root `CNAME` and accepts only its explicit CNAME, production-only analytics,
+  Pull Request template, test, and documentation allowlist. That narrow route
+  deliberately covers production DNS/HTTPS and host-only analytics behavior
+  that a Netlify hostname cannot prove; the guard and preview-comment workflow
+  cannot accompany it. The active ruleset should not list Netlify's
   Deploy Preview status as an unconditional required check because eligible
-  lightweight Pull Requests intentionally do not create it; the full-preview
-  requirement for other changes remains a documented process gate.
+  skip pathways intentionally do not create it; the full-preview requirement
+  for other changes remains a documented process gate.
   Routine data refreshes use a guided local wrapper that automates branch
   creation, full-bundle staging, validation, reconciliation, tests, and Pull
   Request creation while retaining separate typed confirmations for data
@@ -222,6 +244,15 @@ Unknown historical details are labelled rather than inferred.
   The tested data diff is fingerprinted before approval. Code, schema,
   configuration, export-set, and broader documentation changes cannot use this
   automatic authority.
+- **No-visual policy correction, 28 August 2026.** The path-aware
+  `no-visual-change` classifier and its tests had existed since 10 August, but
+  the Pull Request template, bot comment, decision text, and release overview
+  still named only the data-refresh and custom-domain skip cases. Pull Request
+  #75 consequently ran a Netlify preview even though its release tooling,
+  tests, and documentation could not enter or alter that artifact. The policy
+  surfaces now expose the existing pathway consistently. The unmodified guard
+  rejects workspace/checkout configuration and changes to the guard itself,
+  requiring the standard pathway plus separate John review.
 - **Correction, 12 August 2026.** The paragraph above described `PUBLISH` as
   approval to merge. That was accurate but unsound, and audit finding P2-04
   identified why: `PUBLISH` is typed before the Pull Request is created, so it
