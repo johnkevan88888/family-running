@@ -523,6 +523,28 @@ const partTwo = mainBytes.subarray(partSize);
 assert.equal((await uploadPart(mainDraftId, 2, partTwo)).status, 409);
 assert.equal((await uploadPart(mainDraftId, 1, partOne.subarray(0, 10))).status, 400);
 
+// Without Content-Length, the Worker must still enforce the exact part size
+// before making any R2 call. Both malformed requests leave the active upload
+// resumable at part 1.
+const callsBeforeMalformedBodies = originals.calls.length;
+assert.equal((await uploadPart(
+    mainDraftId,
+    1,
+    partOne.subarray(0, partOne.byteLength - 1),
+    undefined,
+    { includeContentLength: false }
+)).status, 422);
+assert.equal(originals.calls.length, callsBeforeMalformedBodies);
+const oversizedPartOne = syntheticJpeg(partOne.byteLength + 1);
+assert.equal((await uploadPart(
+    mainDraftId,
+    1,
+    oversizedPartOne,
+    undefined,
+    { includeContentLength: false }
+)).status, 422);
+assert.equal(originals.calls.length, callsBeforeMalformedBodies);
+
 // Two simultaneous copies of the same chunk can produce one new write and one
 // replay/conflict, but never two ledger rows or skipped progress.
 const concurrentPartResponses = await Promise.all([
@@ -567,9 +589,18 @@ assert.equal((await uploadPart(
     partTwo,
     '0'.repeat(64)
 )).status, 422);
-const partTwoResponse = await uploadPart(mainDraftId, 2, partTwo);
+const partTwoResponse = await uploadPart(
+    mainDraftId,
+    2,
+    partTwo,
+    undefined,
+    { includeContentLength: false }
+);
 assert.equal(partTwoResponse.status, 201);
 assert.equal((await responseJson(partTwoResponse)).upload.nextPartNumber, 3);
+assert.ok(originals.calls.some(call =>
+    call.operation === 'uploadPart' && call.receivedUint8Array === true
+));
 const partTwoReplay = await uploadPart(mainDraftId, 2, partTwo);
 assert.equal(partTwoReplay.status, 200);
 assert.equal((await responseJson(partTwoReplay)).replayed, true);
@@ -965,17 +996,26 @@ async function beginUpload(draftId, expectedStateVersion, byteLength, idempotenc
     });
 }
 
-async function uploadPart(draftId, partNumber, bytes, hash = sha256(bytes)) {
+async function uploadPart(
+    draftId,
+    partNumber,
+    bytes,
+    hash = sha256(bytes),
+    { includeContentLength = true } = {}
+) {
+    const headers = {
+        'Content-Type': 'application/octet-stream',
+        'X-Chunk-SHA256': hash
+    };
+    if (includeContentLength) {
+        headers['Content-Length'] = String(bytes.byteLength);
+    }
     return areaRequest(`/api/browser/drafts/${draftId}/upload-parts/${partNumber}`, {
         method: 'PUT',
         identity: 'owner',
         session: true,
         rawBody: bytes,
-        headers: {
-            'Content-Type': 'application/octet-stream',
-            'Content-Length': String(bytes.byteLength),
-            'X-Chunk-SHA256': hash
-        }
+        headers
     });
 }
 
@@ -1297,14 +1337,19 @@ function createPrivateOriginalsBucket(providerPrefix) {
                     bucket.failNextPartNumber = null;
                     throw new Error('Synthetic interrupted multipart transfer.');
                 }
-                const bytes = await readStream(body);
+                assert.ok(
+                    body instanceof Uint8Array,
+                    'R2 multipart uploadPart must receive a fixed-length Uint8Array.'
+                );
+                const bytes = body.slice();
                 const etag = `part-${partNumber}-${sha256(bytes).slice(0, 24)}`;
                 record.parts.set(partNumber, { bytes, etag });
                 bucket.calls.push({
                     operation: 'uploadPart',
                     uploadId: record.uploadId,
                     partNumber,
-                    byteLength: bytes.byteLength
+                    byteLength: bytes.byteLength,
+                    receivedUint8Array: true
                 });
                 return { partNumber, etag };
             },

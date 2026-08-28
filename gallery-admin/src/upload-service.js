@@ -424,39 +424,60 @@ export async function storePrivateUploadPart(
         return failure(409, 'out-of-sequence');
     }
 
-    let multipart;
+    let partBytes;
+    let calculatedHash;
     try {
-        multipart = env.PRIVATE_ORIGINALS.resumeMultipartUpload(
-            upload.objectKey,
-            upload.providerUploadId
+        partBytes = await readExactPartBytes(
+            request.body,
+            expectedByteCount
+        );
+        if (partBytes === null) {
+            return failure(422, 'invalid-media');
+        }
+        calculatedHash = await digestReadable(
+            bytesToReadable(partBytes),
+            dependencies
         );
     } catch {
         return failure(503, 'service-unavailable');
     }
 
-    const capture = { byteCount: 0, prefix: [] };
+    if (calculatedHash !== suppliedHash) {
+        return failure(422, 'invalid-media');
+    }
+
+    let detectedFormat = upload.detectedFormat;
+    if (partNumber === 1) {
+        detectedFormat = mediaPolicy.detectAllowedFileType(
+            partBytes.subarray(0, 64)
+        );
+        if (!detectedFormat || detectedFormat !== expectedFormat(upload.fileExtension)) {
+            const recorded = await failUpload(
+                env,
+                upload,
+                ownerHash,
+                'signature-mismatch',
+                nowMilliseconds,
+                { abortMultipart: true }
+            );
+            return recorded
+                ? failure(422, 'invalid-media')
+                : failure(503, 'service-unavailable');
+        }
+    }
+
+    let multipart;
     let uploadedPart;
-    let calculatedHash;
     try {
-        const checkedBody = request.body.pipeThrough(countingCaptureStream(
-            capture,
-            expectedByteCount
-        ));
-        const [providerBody, digestBody] = checkedBody.tee();
-        [uploadedPart, calculatedHash] = await Promise.all([
-            multipart.uploadPart(partNumber, providerBody),
-            digestReadable(digestBody, dependencies)
-        ]);
+        multipart = env.PRIVATE_ORIGINALS.resumeMultipartUpload(
+            upload.objectKey,
+            upload.providerUploadId
+        );
+        uploadedPart = await multipart.uploadPart(partNumber, partBytes);
     } catch {
         return failure(503, 'service-unavailable');
     }
 
-    if (
-        capture.byteCount !== expectedByteCount ||
-        calculatedHash !== suppliedHash
-    ) {
-        return failure(422, 'invalid-media');
-    }
     if (
         uploadedPart?.partNumber !== partNumber ||
         !safeProviderValue(
@@ -473,26 +494,6 @@ export async function storePrivateUploadPart(
             { abortMultipart: true }
         );
         return failure(503, 'service-unavailable');
-    }
-
-    let detectedFormat = upload.detectedFormat;
-    if (partNumber === 1) {
-        detectedFormat = mediaPolicy.detectAllowedFileType(
-            Uint8Array.from(capture.prefix)
-        );
-        if (!detectedFormat || detectedFormat !== expectedFormat(upload.fileExtension)) {
-            const recorded = await failUpload(
-                env,
-                upload,
-                ownerHash,
-                'signature-mismatch',
-                nowMilliseconds,
-                { abortMultipart: true }
-            );
-            return recorded
-                ? failure(422, 'invalid-media')
-                : failure(503, 'service-unavailable');
-        }
     }
 
     const uploadedAt = isoTime(nowMilliseconds);
@@ -1481,6 +1482,53 @@ function countingCaptureStream(capture, maximumBytes) {
                 capture.prefix.push(...view.subarray(0, remaining));
             }
             controller.enqueue(view);
+        }
+    });
+}
+
+async function readExactPartBytes(stream, expectedByteCount) {
+    if (
+        !Number.isSafeInteger(expectedByteCount) ||
+        expectedByteCount < 1 ||
+        expectedByteCount > PART_SIZE
+    ) {
+        throw new Error('Upload part size is outside the bounded read contract.');
+    }
+
+    const bytes = new Uint8Array(expectedByteCount);
+    const reader = stream.getReader();
+    let offset = 0;
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+                return offset === expectedByteCount ? bytes : null;
+            }
+            const chunk = value instanceof Uint8Array
+                ? value
+                : new Uint8Array(value);
+            if (offset + chunk.byteLength > expectedByteCount) {
+                try {
+                    await reader.cancel('Upload part exceeds its expected size.');
+                } catch {
+                    // The size failure is already decisive. A request-stream
+                    // cancellation error must not turn it into an R2 attempt.
+                }
+                return null;
+            }
+            bytes.set(chunk, offset);
+            offset += chunk.byteLength;
+        }
+    } finally {
+        reader.releaseLock();
+    }
+}
+
+function bytesToReadable(bytes) {
+    return new ReadableStream({
+        start(controller) {
+            controller.enqueue(bytes);
+            controller.close();
         }
     });
 }
