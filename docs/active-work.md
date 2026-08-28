@@ -2,23 +2,22 @@
 
 ## Current task: owner-authenticated Gallery media upload foundation
 
-### Status — 27 August 2026
+### Status — 28 August 2026
 
 The storage, authentication, access, processing, and publication decision is
-accepted and documented on `codex/gallery-upload-architecture`. The owner
-approved the Cloudflare-managed `workers.dev` pilot and, on 26 August, approved
-Phase B non-production provisioning and deployment with synthetic text records
-only. That approval does not include DNS changes, real media, GitHub Apps,
-Pull Requests, merges, or production publication. On 27 August the owner
-accepted the projected family-scale cost, approved the existing Cloudflare
-account for this isolated resource set, and completed sign-in. One empty
-non-production D1 database, three empty private R2 buckets, and the two
-least-privilege Workers are now provisioned. Zero Trust Free, account MFA, and
-the $5 account-email budget alert are active. The administration Worker is
-owner-only behind Worker-level Access; the media Worker remains public but can
-read only the empty approved-derivative bucket. No original, derivative,
-manifest item, DNS record, or public media URL has been created. Pull Request
-#76 contains implementation code and documentation only.
+accepted and documented on `codex/gallery-upload-architecture`. Pull Request
+#76 merged the Gallery foundation to `main` as
+`41ac3ef614030cdd1c4a1efdb6e9a59769315a48`; its Pages deployment and exact
+72-file public data bundle were verified separately. On 28 August the owner
+explicitly approved the isolated non-production Phase C deployment and two
+built-in synthetic media rehearsals. That approval does not include DNS
+changes, real media, sanitized or public derivatives, GitHub Apps, Pull
+Requests, merges, or production publication. Phase C is now deployed and
+verified behind the existing owner-only Worker-level Access boundary. One
+synthetic Family photo and one synthetic Everyone video exist only as private
+originals and private D1 records. The public media Worker, production site,
+three public Gallery JSON files, DNS, staging bucket, and approved-derivative
+bucket did not change.
 
 The selected first implementation keeps the championship site static and uses
 a separate Cloudflare Access-protected Worker for the one owner. Private R2
@@ -268,23 +267,76 @@ for its public sources and
 for suppression. A final full `pnpm test` passed after that fix, including the
 responsive browser screenshots.
 
+The owner then approved the non-production Phase C deployment and rehearsal.
+Migration `0002_private_uploads.sql` applied cleanly to D1: the resulting remote
+schema has 13 application tables, 70 triggers, no foreign-key violations, and
+no pending migration. The ignored admin configuration grants exactly `DB` and
+`PRIVATE_ORIGINALS`, with one hourly `0 * * * *` schedule. The deployed Worker
+version `dc845e2d-1f60-41ce-bc8d-3ab24ef087ab` has exactly `fetch` and
+`scheduled` handlers plus the existing three secrets. The public media Worker
+remains on its previous version and still has only the approved-derivative
+binding.
+
+The separate provider fallback now preserves Cloudflare's default seven-day
+multipart-abort rule and adds a one-day rule only for
+`private-originals/phase-c/`. It cannot expire completed objects. The Worker
+also enforces `expiresAt` on every part and completion request, so the 24-hour
+boundary closes immediately rather than waiting for the hourly cleanup or the
+provider's eventual lifecycle pass.
+
+The first live synthetic photo found one real Workers/R2 compatibility defect:
+the reviewed implementation passed R2 a transformed and teed request stream,
+which the live multipart path rejected before recording a part. The session
+remained active and resumable. The repair reads exactly one bounded part of at
+most 5 MiB, rejects short, long, hash-mismatched, or signature-mismatched bytes
+before R2, then passes a fixed-length `Uint8Array` to `uploadPart`. Regression
+tests prove malformed bodies without `Content-Length` never touch R2 and a
+correct body still succeeds. The resumed Family upload and a fresh Everyone
+video then both completed with independent server checksums.
+
+Remote D1 now contains exactly two synthetic-only drafts: one Family photo and
+one Everyone video, both in `private-review`, each with its own consent record,
+one completed upload session, and one part. It contains zero pending athlete
+exclusions, derivatives, publication references, or Phase B canaries. The
+authenticated interface showed runners before other public athlete IDs, no
+destination selector, no Family draft in Everyone, and a protected preview for
+each completed original. Anonymous requests to both original routes redirect
+to Access. Direct `r2.dev` access is disabled and all three buckets have no
+custom domain. R2's bucket summary remained at its eventually updated zero
+metric during the rehearsal, so both remote objects were independently fetched
+through Wrangler with `--remote`; their byte counts and SHA-256 values exactly
+matched the completed D1 evidence. The temporary verification copies were
+deleted immediately.
+
+The staging and approved-derivative buckets remain empty. Live production still
+serves empty `family.json` and `everyone.json`, an empty suppression ID list,
+and `404` for `/gallery-admin/`. No derivative, public media URL, manifest item,
+DNS change, Pull Request, merge, or publication was created. The complete
+`pnpm test` suite passed twice around the live compatibility repair, including
+repository safety, both Gallery modes, Phase C integration, 70-trigger schema,
+artifact isolation, and desktop/mobile browser smoke tests.
+
+The two required source repairs are recorded locally on
+`codex/gallery-phase-c-expiry-guard` as `3815392` and `eb5b291`. They have not
+been pushed and no follow-up Pull Request has been opened. The non-production
+Worker is therefore intentionally ahead of the repository until the owner
+separately authorizes that Git action.
+
 ### Handoff
 
-- Phase C is complete locally and synthetic-only. The next step requires a new
-  explicit approval: apply migration `0002` to non-production D1, add only the
-  originals binding and hourly schedule to the ignored admin configuration,
-  configure the 24-hour incomplete-multipart lifecycle fallback, deploy the
-  reviewed admin Worker, and rehearse one synthetic photo and one synthetic
-  video remotely through Access.
-- The currently deployed administration Worker remains the verified Phase B
-  D1-only version. All three R2 buckets and public manifests remain empty.
+- Phase C's non-production exit gate is complete: the owner-only Family photo
+  and Everyone video reached private R2, exact remote bytes match D1, and
+  anonymous access is denied. Leave both synthetic originals in private review
+  so later cleanup, retention, and takedown rehearsals use the normal workflow.
+- The next repository step requires explicit approval to push
+  `codex/gallery-phase-c-expiry-guard` and open a follow-up Pull Request for the
+  request-time expiry guard, live-R2 fixed-length part repair, and this handoff.
 - Do not use real family media until synthetic photo, video, metadata-stripping,
   failure, cleanup, and takedown rehearsals pass.
 - Phase D processing, sanitized derivatives, GitHub Apps/environments, and a
   manifest Pull Request have not begun. The existing approval does not permit
-  real media,
-  DNS changes, public media derivatives, Pull Requests, merges, or production
-  publication.
+  real media, DNS changes, public media derivatives, Pull Requests, merges, or
+  production publication.
 
 ## Previous task: exact-bundle post-MERGE verification and cleanup portability
 

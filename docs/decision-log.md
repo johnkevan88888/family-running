@@ -633,8 +633,8 @@ Unknown historical details are labelled rather than inferred.
 
 - **Status:** Accepted; provider-independent Phase A and non-production Phase B
   infrastructure/authentication are implemented and verified; synthetic-only
-  Phase C is implemented and verified locally but is not deployed
-- **Date:** 25–27 August 2026
+  Phase C is deployed and remotely verified in non-production
+- **Date:** 25–28 August 2026
 - **Decision:** Keep the public championship site static and add no public
   upload page. A separate Cloudflare Worker administration application is
   protected in full by Cloudflare Access for one MFA-enabled owner identity and
@@ -723,15 +723,36 @@ Unknown historical details are labelled rather than inferred.
   requests fail closed. D1 stores private consent, guardian, optional evidence-
   reference, draft, multipart, receipt, and hashed audit facts. The admin Worker
   binds only D1 and private originals, accepts only built-in synthetic fixtures
-  in this phase, uses sequential 5 MiB multipart uploads, verifies each chunk
-  and the complete R2 object with independent streaming SHA-256, and exposes
-  the original only to a current signed owner session through version-checked
+  in this phase, uses sequential 5 MiB multipart uploads, reads exactly one
+  bounded part into a fixed-length byte array so size, SHA-256, and first-part
+  signature are checked before R2, verifies the complete R2 object with an
+  independent streaming SHA-256, and exposes the original only to a current
+  signed owner session through version-checked
   `GET`, `HEAD`, and range reads. An hourly
   internal cleanup job expires incomplete uploads after 24 hours only with
-  confirmed abort/object absence. Staging, approved derivatives, manifests,
-  GitHub, merge, and publication are unreachable from this Worker. The tracked
-  Phase C configuration is inert; the deployed admin remains the earlier D1-
-  only Phase B version until a separate deployment approval.
+  confirmed abort/object absence. Part and completion routes independently
+  reject a session at its exact expiry time, and a one-day provider lifecycle
+  rule is limited to the Worker's `private-originals/phase-c/` prefix while
+  preserving Cloudflare's global seven-day fallback. Staging, approved
+  derivatives, manifests, GitHub, merge, and publication are unreachable from
+  this Worker. The tracked
+  Phase C configuration remains tracked without account identifiers; the
+  ignored local configuration and synthetic-only non-production deployment now
+  carry the reviewed originals binding and hourly schedule.
+- **Phase C non-production proof:** On 28 August 2026 the owner separately
+  approved migration `0002`, the private-original binding, hourly cleanup, the
+  prefix-scoped one-day multipart fallback, deployment, and one built-in
+  synthetic fixture in each site mode. Remote D1 has the complete 70-trigger
+  schema and exactly one private-review Family photo plus one private-review
+  Everyone video. Their completed private R2 bytes independently match D1's
+  byte-count and SHA-256 evidence. The signed owner interface proves fixed-area
+  isolation, runner-first public-ID tags, consent capture, checksum completion,
+  and protected previews; anonymous original requests stop at Access. Direct
+  bucket URLs remain disabled, all buckets have no custom domain, staging and
+  approved-derivative storage remain empty, and the live public manifests and
+  suppression list remain empty. No real media, derivative, public URL, DNS
+  change, GitHub App, Pull Request, merge, or production publication was
+  authorized or created.
 - **Service identity compatibility:** Worker-level Service Auth supplies a
   validated `ctx.access` context and an injected signed application assertion,
   but the current runtime resolves `ctx.access.getIdentity()` to `undefined` for
