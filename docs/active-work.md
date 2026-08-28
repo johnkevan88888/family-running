@@ -255,6 +255,19 @@ media Workers in dry-run mode with the intended isolated bindings. This resolves
 the feature branch only; Pull Request #76 has not been merged to `main`, and
 nothing was deployed or published.
 
+The first post-push GitHub Actions replay then exposed a Windows/Linux catalog
+determinism defect: Git's LF-normalized CSV and JSON sources were checked out as
+CRLF on Windows, and their working-copy line endings had been included in the
+catalog revision hashes. The generator now canonicalizes public text newlines
+before parsing and hashing, the generated snapshot is explicitly pinned to LF
+in `.gitattributes`, and a fixture proves that LF and CRLF inputs produce the
+same complete catalog and revision. The canonical snapshot revisions are now
+`sha256:76a58d9443532209758f39dba33686fd3090be050a689e8a6b7a85d9a194825f`
+for its public sources and
+`sha256:d9f63d28d14853b9452c95c4f15b912e4a0385134e699b9be1bf229eab687cda`
+for suppression. A final full `pnpm test` passed after that fix, including the
+responsive browser screenshots.
+
 ### Handoff
 
 - Phase C is complete locally and synthetic-only. The next step requires a new

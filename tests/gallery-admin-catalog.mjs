@@ -17,6 +17,12 @@ const { buildAthleteTagChoices } = uploadContractModule.default || uploadContrac
 const generatedModule = await import('../gallery-admin/generated/catalog-snapshot.js');
 const generatedSnapshot = generatedModule.default;
 const digestRevisionPattern = /^sha256:[a-f0-9]{64}$/;
+const gitAttributes = await fs.readFile(path.join(repoRoot, '.gitattributes'), 'utf8');
+
+assert.match(
+    gitAttributes,
+    /^gallery-admin\/generated\/catalog-snapshot\.js text eol=lf$/m
+);
 
 const builtSnapshot = await buildGalleryAdminCatalog();
 assert.deepEqual(builtSnapshot, generatedSnapshot);
@@ -193,6 +199,26 @@ try {
         buildGalleryAdminCatalog(unsupportedShapeRoot),
         /unsupported CSV shape/
     );
+
+    const lineEndingRoot = await createFixture();
+    fixtureRoots.push(lineEndingRoot);
+    await writeGalleryAdminCatalog({ root: lineEndingRoot });
+    const lfSnapshot = await buildGalleryAdminCatalog(lineEndingRoot);
+    const revisionSourcePaths = [
+        'data/export_manifest.csv',
+        'data/athlete_results.csv',
+        'data/family/age_grade_standards.csv',
+        'data/everyone/age_grade_standards.csv',
+        'gallery-data/hidden-athlete-ids.json'
+    ];
+    await Promise.all(revisionSourcePaths.map(async relativePath => {
+        const sourcePath = path.join(lineEndingRoot, ...relativePath.split('/'));
+        const lfText = await fs.readFile(sourcePath, 'utf8');
+        assert.doesNotMatch(lfText, /\r\n/);
+        await fs.writeFile(sourcePath, lfText.replace(/\n/g, '\r\n'), 'utf8');
+    }));
+    assert.deepEqual(await buildGalleryAdminCatalog(lineEndingRoot), lfSnapshot);
+    await writeGalleryAdminCatalog({ root: lineEndingRoot, check: true });
 
     const staleRoot = await createFixture();
     fixtureRoots.push(staleRoot);

@@ -202,7 +202,8 @@ export function exportedDateToIso(value, label = 'exported date') {
 
 async function readPublicText(root, relativePath) {
     try {
-        return await fs.readFile(path.join(root, ...relativePath.split('/')), 'utf8');
+        const text = await fs.readFile(path.join(root, ...relativePath.split('/')), 'utf8');
+        return canonicalizeTextNewlines(text);
     } catch {
         throw new Error(`${relativePath}: could not read the required public source file.`);
     }
@@ -500,13 +501,21 @@ function revisionForEntries(domain, entries) {
     for (const entry of [...entries].sort((left, right) =>
         comparePublicText(left.relativePath, right.relativePath)
     )) {
-        const bytes = Buffer.from(entry.text, 'utf8');
+        // Git stores these public text sources with LF endings, while a Windows
+        // checkout may present the same content with CRLF endings. Hash the
+        // repository-canonical form so one committed snapshot is valid on both
+        // Windows and Linux without weakening any content comparison.
+        const bytes = Buffer.from(canonicalizeTextNewlines(entry.text), 'utf8');
         hash.update(`${entry.relativePath}\0${bytes.byteLength}\0`, 'utf8');
         hash.update(bytes);
         hash.update('\0', 'utf8');
     }
 
     return `sha256:${hash.digest('hex')}`;
+}
+
+function canonicalizeTextNewlines(text) {
+    return text.replace(/\r\n?/g, '\n');
 }
 
 function requireExactBundle(value, expected, label) {
