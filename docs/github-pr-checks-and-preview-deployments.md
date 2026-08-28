@@ -1,9 +1,10 @@
 # GitHub PR Checks And Preview Deployments
 
-This repository has three Pull Request review pathways:
+This repository has four Pull Request review pathways:
 
 - standard change: feature branch -> automated tests -> Netlify preview URLs -> John approval -> merge -> production verification;
-- lightweight data refresh: feature branch -> automated eligibility gate and full tests -> responsive screenshots and CSV diff review -> John approval -> merge -> production verification.
+- no visual change: feature branch -> automated eligibility gate and full tests -> exact diff, responsive screenshots, and any service-specific evidence -> John approval -> merge -> production verification;
+- lightweight data refresh: feature branch -> automated eligibility gate and full tests -> responsive screenshots and CSV diff review -> John approval -> merge -> production verification;
 - custom-domain configuration: feature branch -> automated eligibility gate and full tests -> responsive screenshots and exact diff review -> John approval -> merge -> DNS and production verification.
 
 ## Automated Pull Request Checks
@@ -12,18 +13,24 @@ Workflow file:
 
 - `.github/workflows/pr-checks.yml`
 
-The workflow runs for Pull Requests targeting `main` and for manual dispatches. It:
+The workflow runs on the Pull Request commit. It:
 
-- checks out the repository;
-- validates any Pull Request whose title contains `[skip netlify]` as either a
-  narrow existing-schema data refresh or custom-domain configuration;
+- checks out the Pull Request merge/head content;
+- validates any `[skip netlify]` request against the changed-file contracts;
 - installs Node 24 and pnpm;
 - installs the locked dependencies;
 - installs the Playwright Chromium browser;
 - runs `pnpm test`;
 - uploads responsive screenshots as a workflow artifact.
 
-Recommended required GitHub status check:
+The release-path gate is a regression and review control, not an independent
+security boundary against a contributor deliberately rewriting Pull Request
+workflow code. The unmodified rule classifies the validator, its artifact-list
+source, and every workflow as preview-relevant controls. A change to any of them
+must use the standard preview pathway and receive separate John review; it never
+inherits automatic data-refresh merge authority.
+
+Required GitHub status check:
 
 - `Pull Request Checks / Test static site`
 
@@ -38,8 +45,10 @@ exactly one bot-maintained comment headed `Family Running preview review links`.
 That comment is the authoritative entry point for preview review and includes
 the Family link, Everyone link, preview root, and current short head commit SHA.
 For Pull Requests whose title contains `[skip netlify]`, it instead maintains a
-`Family Running Netlify preview skipped` comment with exact-diff and screenshot
-review instructions.
+`Family Running Netlify preview skip requested` comment with exact-diff and
+screenshot review instructions. That comment reflects the title only; it does
+not prove the diff is eligible. `Pull Request Checks / Test static site` must
+pass and classify the pathway.
 
 The workflow uses the verified Netlify hostname stored in its source-controlled configuration. It runs from trusted `main` with `pull_request_target`, does not check out repository code, and does not run Pull Request code.
 
@@ -66,6 +75,45 @@ Netlify build settings from the repository:
 - Node version: `24`
 
 The preview build copies only the static runtime site files and `data/` exports into the publish directory. It does not publish docs, scripts, tests, dependency folders, reports, or local artifacts.
+
+## No-Visual-Change Pathway
+
+Use `[skip netlify]` when the exact Pull Request diff cannot alter the static
+artifact that Netlify would display. The automated gate requires at least one
+changed file and rejects the pathway if any changed path is either:
+
+- published directly or through a copied-whole directory such as `data/`,
+  `vendor/`, `assets/`, or `gallery-data/`; or
+- a publishing control that can change dependency installation, artifact
+  construction, or deployment.
+
+The published-path decision comes from
+`scripts/published-site-entries.mjs`, which is also the artifact builder's
+source of truth. Adding a new runtime entry therefore makes that file
+preview-relevant in the same change. Publishing controls include Netlify and
+package-manager configuration, the root package/lock/workspace files, checkout
+attributes, artifact-build contracts, the release-path guard itself, and
+GitHub workflows. The unmodified gate rejects changes to the guard or its
+source-of-truth list; they require the standard pathway plus separate John
+review.
+
+The classifier positively recognizes known non-public areas and an explicit
+set of reviewed local tools rather than assuming every unlisted path is safe.
+An unfamiliar root configuration, future script, or future GitHub action
+therefore fails closed and requires the standard preview until it is
+deliberately classified.
+
+Documentation, tests, workbook/local release tooling, and private
+`gallery-admin/` implementation can qualify when they are not accompanied by a
+published or publishing-control file. That does not waive review. The complete
+automated suite and responsive screenshots still run, the exact diff must be
+reviewed, and a private service or administration surface needs its own
+authenticated/environment-specific evidence because the public Netlify site
+cannot display it.
+
+Put `[skip netlify]` in the Pull Request title before opening it. Omitting the
+marker always selects the standard preview pathway. If the gate rejects a
+marked Pull Request, remove the marker and use the standard pathway.
 
 ## Lightweight Data-Refresh Pathway
 
@@ -100,23 +148,26 @@ modes in Chromium. Scoped cleanup happens only after that proof succeeds; a
 failure is resumable and never repeats the merge.
 
 The `Pull Request Checks / Test static site` job fails closed if the marker is
-used outside the data-refresh or custom-domain allowlists. Remove
+used outside the no-visual, data-refresh, or custom-domain contracts. Remove
 `[skip netlify]` from the title and push a new commit to return the Pull Request
 to the standard preview pathway.
 
 ## Custom-Domain Pathway
 
 Use this pathway only when the change includes a valid root `CNAME` and stays
-within the explicit domain, analytics, test, workflow, and documentation
-allowlist enforced by `scripts/validate-pr-release-path.mjs`. The full automated
-suite and responsive screenshots still run. Netlify is skipped because its
-preview hostname cannot verify GitHub Pages DNS, canonical-host redirects, or
-HTTPS certificate provisioning; verify those behaviors on production after
-merge and DNS propagation.
+within the explicit CNAME, production-only analytics, Pull Request template,
+test, and documentation allowlist enforced by
+`scripts/validate-pr-release-path.mjs`. The full automated suite and responsive
+screenshots still run. This is a deliberate exception to the ordinary
+published-file rule: Netlify's preview hostname cannot verify GitHub Pages DNS,
+canonical-host redirects, HTTPS certificate provisioning, or the analytics
+loader that is disabled away from approved production hostnames. Verify those
+behaviors on production after merge and DNS propagation. Changes to the release
+guard or preview-comment workflow cannot accompany this skip pathway.
 
-## Expected Preview URLs
+## Expected Standard-Pathway Preview URLs
 
-For Pull Request `123`, Netlify will use these preview URLs:
+For standard-pathway Pull Request `123`, Netlify will use these preview URLs:
 
 - Family: `https://deploy-preview-123--thunderous-moxie-c5aac5.netlify.app/?site=family`
 - Everyone: `https://deploy-preview-123--thunderous-moxie-c5aac5.netlify.app/?site=everyone`
@@ -132,15 +183,15 @@ John needs to complete these once:
 3. Confirm Netlify uses the repository `netlify.toml` build settings.
 4. Enable Netlify Deploy Previews for Pull Requests.
 5. Open GitHub branch protection for `main`.
-6. Require Pull Request review before merge for standard and custom-domain
-   changes. Do not add an unconditional review requirement if the guided
-   routine-data `PUBLISH` auto-merge path must remain available; its explicit
-   local approval is paired with the protected required check.
+6. Require Pull Request review before merge for standard, no-visual, and
+   custom-domain changes. Do not add an unconditional review requirement if
+   the guided routine-data `PUBLISH` auto-merge path must remain available; its
+   explicit local approval is paired with the protected required check.
 7. Require `Pull Request Checks / Test static site` before merge.
 8. Treat the Netlify Deploy Preview status as a required process gate for the
    standard pathway, but do not configure it as an unconditional repository
-   ruleset check because eligible lightweight Pull Requests intentionally do
-   not create that status.
+   ruleset check because eligible skip pathways intentionally do not create
+   that status.
 9. Require John approval before production release.
 
 ## Why Not GitHub Pages For PR Previews
@@ -154,8 +205,16 @@ No passing automated tests, no release.
 For standard changes: no successful Netlify Deploy Preview status and no review
 of both automated Family and Everyone links, no release.
 
+For validated no-visual changes: no accepted eligibility gate, exact diff
+review, responsive screenshot review, and any required service-specific
+evidence, no release.
+
 For validated lightweight data refreshes: no accepted eligibility gate, exact
 CSV diff review, and Family and Everyone responsive screenshot review, no
+release.
+
+For validated custom-domain changes: no accepted eligibility gate, exact diff
+and screenshot review, and post-merge DNS/HTTPS production verification, no
 release.
 
 No explicit John approval, no release. For the guided routine-data command,

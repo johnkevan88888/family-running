@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 import {
     assessReleasePath,
@@ -16,6 +17,17 @@ const unchangedCsv = {
 assert.equal(hasNetlifySkipMarker('[skip netlify] Refresh race times'), true);
 assert.equal(hasNetlifySkipMarker('[SKIP NETLIFY] Refresh race times'), true);
 assert.equal(hasNetlifySkipMarker('Refresh race times'), false);
+
+// Tests and the release-path regression gate stay on the ordinary Pull Request
+// event. Do not move untrusted installation or test execution into a privileged
+// pull_request_target workflow.
+const pullRequestChecksWorkflow = fs.readFileSync(
+    new URL('../.github/workflows/pr-checks.yml', import.meta.url),
+    'utf8'
+);
+assert.match(pullRequestChecksWorkflow, /^  pull_request:/m);
+assert.doesNotMatch(pullRequestChecksWorkflow, /^  pull_request_target:/m);
+assert.match(pullRequestChecksWorkflow, /run: pnpm test/);
 
 assert.deepEqual(
     assessReleasePath({
@@ -110,6 +122,22 @@ const broadCustomDomainChange = assessReleasePath({
 });
 assert.match(broadCustomDomainChange.errors.join('\n'), /leaderboard\.js/);
 
+for (const selfApprovingPath of [
+    '.github/workflows/pr-preview-review-links.yml',
+    'scripts/validate-pr-release-path.mjs'
+]) {
+    const selfApprovingDomainChange = assessReleasePath({
+        title: '[skip netlify] Configure custom domain and its guard',
+        changedFiles: ['CNAME', selfApprovingPath],
+        cnameContents: 'www.aceofrace.com'
+    });
+
+    assert.match(
+        selfApprovingDomainChange.errors.join('\n'),
+        new RegExp(selfApprovingPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    );
+}
+
 const schemaChange = assessReleasePath({
     title: '[skip netlify] Refresh race times',
     changedFiles: ['data/athlete_results.csv'],
@@ -159,6 +187,50 @@ assert.deepEqual(documentationAndTooling, {
     errors: []
 });
 
+// PR #75 was release tooling, tests, and documentation only. None of those
+// files can enter or alter the static artifact, so this is the concrete case
+// that the no-visual-change pathway must accept.
+const postMergeVerificationTooling = assessReleasePath({
+    title: '[skip netlify] Add exact post-merge production verification',
+    changedFiles: [
+        'docs/active-work.md',
+        'docs/decision-log.md',
+        'docs/github-pr-checks-and-preview-deployments.md',
+        'docs/testing-and-release-protocol.md',
+        'docs/workbook-export-workflow.md',
+        'scripts/pages-deployment-verification.mjs',
+        'scripts/run-all-tests.mjs',
+        'scripts/simple-data-update.mjs',
+        'scripts/verify-production-data.mjs',
+        'tests/pages-deployment-verification.mjs',
+        'tests/simple-data-update.mjs',
+        'tests/verify-production-data.mjs'
+    ],
+    csvMetadata: new Map()
+});
+assert.deepEqual(postMergeVerificationTooling, {
+    pathway: 'no-visual-change',
+    errors: []
+});
+
+// The separate owner administration surface is not part of the static
+// Netlify artifact. Its own authenticated/service-specific review still
+// applies, but a static Family/Everyone preview cannot display these files.
+const galleryAdministrationOnly = assessReleasePath({
+    title: '[skip netlify] Harden private Gallery administration',
+    changedFiles: [
+        'docs/gallery-upload-architecture.md',
+        'gallery-admin/README.md',
+        'gallery-admin/src/admin-worker.js',
+        'tests/gallery-admin-boundaries.mjs'
+    ],
+    csvMetadata: new Map()
+});
+assert.deepEqual(galleryAdministrationOnly, {
+    pathway: 'no-visual-change',
+    errors: []
+});
+
 // A published file is preview-relevant by definition, marker or not.
 const publishedFileChange = assessReleasePath({
     title: '[skip netlify] Tweak a heading',
@@ -194,6 +266,59 @@ const deployWorkflowChange = assessReleasePath({
 assert.match(
     deployWorkflowChange.errors.join('\n'),
     /decide what is published or how it is deployed/
+);
+
+const compositeBuildActionChange = assessReleasePath({
+    title: '[skip netlify] Adjust a local build action',
+    changedFiles: ['.github/actions/build-site/action.yml'],
+    csvMetadata: new Map()
+});
+assert.match(
+    compositeBuildActionChange.errors.join('\n'),
+    /decide what is published or how it is deployed/
+);
+
+for (const controlPath of [
+    '.gitattributes',
+    '.npmrc',
+    '.pnpmfile.cjs',
+    'package.json',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    'pnpmfile.cjs',
+    'scripts/validate-pr-release-path.mjs'
+]) {
+    const controlChange = assessReleasePath({
+        title: '[skip netlify] Change preview controls',
+        changedFiles: [controlPath],
+        csvMetadata: new Map()
+    });
+
+    assert.match(
+        controlChange.errors.join('\n'),
+        new RegExp(controlPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+        `${controlPath} must require a full preview.`
+    );
+}
+
+const unknownRootConfiguration = assessReleasePath({
+    title: '[skip netlify] Add an unknown local configuration',
+    changedFiles: ['future-build-hook.config.js'],
+    csvMetadata: new Map()
+});
+assert.match(
+    unknownRootConfiguration.errors.join('\n'),
+    /cannot prove.*future-build-hook\.config\.js/
+);
+
+const unknownScript = assessReleasePath({
+    title: '[skip netlify] Add a future script',
+    changedFiles: ['scripts/future-artifact-transform.mjs'],
+    csvMetadata: new Map()
+});
+assert.match(
+    unknownScript.errors.join('\n'),
+    /cannot prove.*scripts\/future-artifact-transform\.mjs/
 );
 
 // Without the marker nothing changes: a full preview is still required.

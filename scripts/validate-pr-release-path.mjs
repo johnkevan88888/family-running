@@ -8,17 +8,50 @@ const DATA_CSV_PATH = /^data\/(?:[^/]+\/)*[^/]+\.csv$/i;
 const CUSTOM_DOMAIN_PATH = 'CNAME';
 const CUSTOM_DOMAIN_ALLOWED_PATHS = new Set([
     '.github/pull_request_template.md',
-    '.github/workflows/pr-preview-review-links.yml',
     'CNAME',
     'README.md',
     'analytics.js',
     'docs/decision-log.md',
     'docs/github-pr-checks-and-preview-deployments.md',
     'docs/testing-and-release-protocol.md',
-    'scripts/validate-pr-release-path.mjs',
     'tests/analytics-config.mjs',
     'tests/pr-release-path.mjs'
 ]);
+const NO_VISUAL_SAFE_PATHS = new Set([
+    '.github/pull_request_template.md',
+    '.gitignore',
+    'AGENTS.md',
+    'README.md',
+    'gallery-media-policy.js',
+    'gallery-upload-contract.js',
+    'preview-local.cmd',
+    // These are current local validation, release, and workbook tools. Keep
+    // this explicit: a future script is unclassified until its relationship to
+    // the publication build has been reviewed.
+    'scripts/browser-runtime.mjs',
+    'scripts/build-gallery-admin-catalog.mjs',
+    'scripts/compare-export-bundle.mjs',
+    'scripts/export-bundle-validation.mjs',
+    'scripts/pages-deployment-verification.mjs',
+    'scripts/promote-staged-export.mjs',
+    'scripts/reconcile-personal-bests.mjs',
+    'scripts/run-all-tests.mjs',
+    'scripts/run-workbook-staged-export.ps1',
+    'scripts/serve-site.mjs',
+    'scripts/simple-data-update.mjs',
+    'scripts/sync-vendor.mjs',
+    'scripts/validate-csv.mjs',
+    'scripts/validate-gallery.mjs',
+    'scripts/validate-repository-safety.mjs',
+    'scripts/verify-production-data.mjs',
+    'scripts/workbook-export-contract.json',
+    'update-website-data.cmd'
+]);
+const NO_VISUAL_SAFE_PREFIXES = [
+    'docs/',
+    'gallery-admin/',
+    'tests/'
+];
 const DOMAIN_NAME = /^(?=.{1,253}$)(?!-)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
 // The one approved production hostname. The custom-domain pathway lets a change
 // skip the Netlify preview, so a syntax check alone would let a Pull Request
@@ -82,6 +115,11 @@ export function assessReleasePath({
         const errors = [];
         const publishedFiles = normalizedFiles.filter(isPublishedPath);
         const publishingControlFiles = normalizedFiles.filter(isPublishingControlPath);
+        const unclassifiedFiles = normalizedFiles.filter(file => (
+            !isPublishedPath(file) &&
+            !isPublishingControlPath(file) &&
+            !isKnownNoVisualPath(file)
+        ));
 
         if (normalizedFiles.length === 0) {
             errors.push('The no-visual-change pathway requires at least one changed file.');
@@ -96,6 +134,12 @@ export function assessReleasePath({
         if (publishingControlFiles.length > 0) {
             errors.push(
                 `The no-visual-change pathway cannot include files that decide what is published or how it is deployed: ${publishingControlFiles.join(', ')}`
+            );
+        }
+
+        if (unclassifiedFiles.length > 0) {
+            errors.push(
+                `The no-visual-change pathway cannot prove these files are outside the published site and its build controls: ${unclassifiedFiles.join(', ')}`
             );
         }
 
@@ -151,6 +195,11 @@ export function assessReleasePath({
 
 export function hasNetlifySkipMarker(title) {
     return NETLIFY_SKIP_MARKER.test(title || '');
+}
+
+function isKnownNoVisualPath(file) {
+    return NO_VISUAL_SAFE_PATHS.has(file) ||
+        NO_VISUAL_SAFE_PREFIXES.some(prefix => file.startsWith(prefix));
 }
 
 function normalizePath(file) {
