@@ -80,12 +80,12 @@ jobs:
             const commentBody = skipsNetlify
               ? [
                   process.env.PREVIEW_COMMENT_MARKER,
-                  "## Family Running Netlify preview skipped",
+                  "## Family Running Netlify preview skip requested",
                   "",
-                  "Netlify preview intentionally skipped for an eligible release pathway.",
+                  "The Pull Request title requests that Netlify be skipped. This comment records the request; it does not prove eligibility.",
                   "",
-                  "The Pull Request Checks workflow must confirm that this is either a complete existing-schema data refresh or a narrowly scoped custom-domain configuration.",
-                  "Review the exact diff and the uploaded Family and Everyone responsive screenshots before approval.",
+                  "Do not approve unless Pull Request Checks / Test static site passes and classifies the diff as an eligible no-visual change, complete existing-schema data refresh, or narrowly scoped custom-domain configuration.",
+                  "Review the exact diff and uploaded Family and Everyone responsive screenshots before approval. For a no-visual change, also review any service-specific evidence that a static Netlify preview cannot provide.",
                   "",
                   `Head commit: \`${headSha.slice(0, 7)}\``,
                 ].join("\n")

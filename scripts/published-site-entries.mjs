@@ -56,11 +56,22 @@ export const publishedSiteEntries = [
 // how it is deployed. A change to any of these can alter the rendered site, so
 // they must not qualify as a no-visual-change release.
 export const publishingControlPaths = new Set([
+    // Checkout attributes can transform the bytes that the build sees.
+    '.gitattributes',
+    // Package-manager configuration and workspace membership determine the
+    // dependency graph available to the Netlify artifact build.
+    '.npmrc',
+    '.pnpmfile.cjs',
     'netlify.toml',
     'package.json',
     'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    'pnpmfile.cjs',
     'scripts/build-preview-artifact.mjs',
     'scripts/published-site-entries.mjs',
+    // The unmodified gate rejects changes to this guard, requiring the
+    // standard pathway plus separate John review.
+    'scripts/validate-pr-release-path.mjs',
     // The artifact build imports these to decide where it may write and what
     // `data/` and `vendor/` are allowed to contain, so a change to any of them
     // can change the published site.
@@ -69,7 +80,10 @@ export const publishingControlPaths = new Set([
     'scripts/export-bundle-tools.mjs'
 ]);
 
-const publishingControlPrefixes = ['.github/workflows/'];
+const publishingControlPrefixes = [
+    '.github/actions/',
+    '.github/workflows/'
+];
 
 export function normalizePublishedPath(value) {
     return String(value || '')
