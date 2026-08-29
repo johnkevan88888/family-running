@@ -201,12 +201,19 @@ async function checkViewport(browserInstance, adminOrigin, viewport, area) {
         const screenshotSuffix = area.siteMode === 'family'
             ? viewport.name
             : `${area.siteMode}-${viewport.name}`;
+        await page.evaluate(() => {
+            window.scrollTo(0, 0);
+            if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+            }
+        });
         await page.screenshot({
             path: path.join(
                 screenshotsDirectory,
                 `gallery-admin-phase-c-${screenshotSuffix}.png`
             ),
-            fullPage: true
+            fullPage: true,
+            scale: 'css'
         });
     } finally {
         await context.close();

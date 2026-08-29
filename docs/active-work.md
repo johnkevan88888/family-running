@@ -680,6 +680,18 @@ destination selector. After final review and documentation corrections,
 `pnpm run validate:safety`, `pnpm run test:artifact-safety`, and
 `git diff --check` also passed.
 
+The reviewed Phase D commit was then rebased without conflicts onto current
+`origin/main` at `f944526`. The complete `pnpm test` suite passed again against
+that integrated data and updater baseline. Post-rebase visual QA found that a
+few exceptionally tall 3x mobile PNGs repeated their opening pixels after
+bitmap row 16,384 even though the live layout assertions passed. Full-page
+browser captures now use CSS-pixel scale while retaining 390 x 844 mobile
+device emulation, and the owner-page capture resets to the top before saving.
+The focused public and owner browser suites and the complete suite passed with
+the correction. The regenerated mobile images are 390 pixels wide; the tallest
+current capture is 15,576 pixels, below the stitching boundary, and its real
+lower-page content was visually reviewed.
+
 After review, the exact ignored Phase D one-use credential runner, private
 synthetic evidence copies, downloaded type-package snapshots, diagnostic SQL,
 generated Wrangler configurations, and Phase D dry-run bundles were removed.
