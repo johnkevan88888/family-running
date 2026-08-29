@@ -41,9 +41,9 @@ workflow, and the old promoted data, staged export, promotion artifacts, and
 state now remain only under the ignored
 `test-artifacts/retired-data-updates/data-refresh-20260829-124743/` quarantine.
 No fresh workbook export should start until this tooling repair is integrated;
-otherwise it will repeat the same stale-catalogue failure. The repair is
-recorded in a local commit; it has not yet been pushed, opened as a Pull
-Request, merged, deployed, or published.
+otherwise it will repeat the same stale-catalogue failure. The repair is now
+pushed for standard-path review in Pull Request #81. It has not been merged,
+deployed, or published.
 
 ### Handoff
 
