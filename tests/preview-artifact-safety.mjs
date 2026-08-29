@@ -194,6 +194,7 @@ const unpublishedProcessorEntries = [
     'gallery-admin/src/processing-service.js',
     'gallery-admin/migrations/0004_private_processing_staging.sql',
     'gallery-admin/migrations/0005_private_processing_cleanup.sql',
+    'gallery-admin/migrations/0006_transition_receipt_state_version.sql',
     'gallery-admin/wrangler.processing.example.jsonc',
     '.github/workflows/gallery-media-review.yml',
     'test-artifacts/gallery-media-processing/run-test/display.webp',

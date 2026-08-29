@@ -13,6 +13,7 @@ import {
 const uploadContract = globalThis.galleryUploadContract;
 const textEncoder = new TextEncoder();
 const START_KEYS = Object.freeze(['expectedStateVersion', 'idempotencyKey']);
+const RETRY_KEYS = Object.freeze(['expectedStateVersion', 'idempotencyKey']);
 const CLEANUP_KEYS = Object.freeze(['expectedStateVersion', 'idempotencyKey']);
 const STAGED_RESULT_KEYS = Object.freeze([
     'outcome',
@@ -78,6 +79,7 @@ SELECT
     draft.public_item_id AS publicItemId,
     draft.state,
     draft.state_version AS stateVersion,
+    draft.processing_diagnostics_json AS processingDiagnosticsJson,
     draft.site_modes_json AS siteModesJson,
     draft.export_bundle_id AS exportBundleId,
     draft.source_revision AS sourceRevision,
@@ -374,12 +376,146 @@ export async function processingOriginalResponse(env, processingRunId) {
     }
 }
 
+export async function retryProcessingRun(
+    env,
+    identity,
+    processingRunId,
+    input,
+    nowMilliseconds
+) {
+    if (
+        !hasProcessingBindings(env) ||
+        !validServiceIdentity(identity) ||
+        !RUN_ID_PATTERN.test(processingRunId || '') ||
+        !isExactObject(input, RETRY_KEYS) ||
+        !Number.isSafeInteger(input.expectedStateVersion) ||
+        input.expectedStateVersion < 0 ||
+        !IDEMPOTENCY_KEY_PATTERN.test(input.idempotencyKey || '')
+    ) {
+        return failure(400, 'invalid-request');
+    }
+
+    const payloadFingerprint = await fingerprint({
+        operation: 'processing-retry',
+        processingRunId,
+        expectedStateVersion: input.expectedStateVersion,
+        idempotencyKey: input.idempotencyKey
+    });
+
+    try {
+        const runIdentity = await readRunIdentity(env.DB, processingRunId);
+        if (!runIdentity) {
+            return failure(404, 'not-found');
+        }
+        const subjectHash = await sha256Text(`draft:${runIdentity.draftId}`);
+
+        const replay = await processingRetryReplay(
+            env.DB,
+            runIdentity,
+            input,
+            payloadFingerprint,
+            subjectHash
+        );
+        if (replay) {
+            return replay;
+        }
+
+        const actorIdentityHash = await hashIdentity(identity);
+
+        const run = await readRun(env.DB, processingRunId);
+        const cleanupProof = await readRetryCleanupProof(env.DB, processingRunId);
+        if (!await failedRunIsRetryEligible(run, cleanupProof, input, env.DB)) {
+            return failure(409, 'processing-not-eligible');
+        }
+
+        const occurredAt = isoTime(nowMilliseconds);
+        const expectedDiagnostics = JSON.stringify({
+            schemaVersion: '1.0',
+            code: run.failureCode
+        });
+
+        await runBatch(env.DB, [
+            retryDraftCasStatement(env.DB, {
+                run,
+                cleanupProof,
+                input,
+                expectedDiagnostics,
+                occurredAt
+            }),
+            env.DB.prepare(`
+                INSERT INTO draft_transition_receipts (
+                    draft_id, idempotency_key, payload_fingerprint,
+                    from_state, to_state, expected_state_version,
+                    result_state_version, created_at
+                ) VALUES (
+                    ?1, ?2, ?3, 'processing-failed',
+                    'approved-for-processing', ?4, ?5, ?6
+                )
+            `).bind(
+                run.draftId,
+                input.idempotencyKey,
+                payloadFingerprint,
+                input.expectedStateVersion,
+                input.expectedStateVersion + 1,
+                occurredAt
+            ),
+            auditInsert(env.DB, {
+                eventType: 'processing-retry-approved',
+                subjectHash,
+                actorIdentityHash,
+                payloadHash: payloadFingerprint,
+                stateVersion: input.expectedStateVersion + 1,
+                occurredAt
+            })
+        ]);
+
+        const committed = await processingRetryReplay(
+            env.DB,
+            runIdentity,
+            input,
+            payloadFingerprint,
+            subjectHash
+        );
+        if (!committed?.ok) {
+            throw new Error('Processing retry transition was not durable.');
+        }
+        return retrySuccess(processingRunId, input, false);
+    } catch {
+        try {
+            const runIdentity = await readRunIdentity(env.DB, processingRunId);
+            if (!runIdentity) {
+                return failure(503, 'service-unavailable');
+            }
+            const subjectHash = await sha256Text(`draft:${runIdentity.draftId}`);
+            const replay = await processingRetryReplay(
+                env.DB,
+                runIdentity,
+                input,
+                payloadFingerprint,
+                subjectHash
+            );
+            if (replay) {
+                return replay;
+            }
+
+            const run = await readRun(env.DB, processingRunId);
+            const cleanupProof = await readRetryCleanupProof(env.DB, processingRunId);
+            return await failedRunIsRetryEligible(run, cleanupProof, input, env.DB)
+                ? failure(503, 'service-unavailable')
+                : failure(409, 'processing-not-eligible');
+        } catch {
+            return failure(503, 'service-unavailable');
+        }
+    }
+}
+
 export async function storeProcessingDerivative(
     env,
     processingRunId,
     role,
     request,
-    nowMilliseconds
+    nowMilliseconds,
+    dependencies = {}
 ) {
     const roleLimits = ROLE_LIMITS[role];
     const idempotencyKey = request.headers.get('Idempotency-Key');
@@ -521,7 +657,8 @@ export async function storeProcessingDerivative(
             env,
             output,
             bytes,
-            nowMilliseconds
+            nowMilliseconds,
+            dependencies
         );
         if (!storedObject) {
             return failure(503, 'service-unavailable');
@@ -1028,6 +1165,179 @@ function cleanupReplayMatches(cleanup, input, payloadFingerprint) {
         cleanup.expectedStateVersion === input.expectedStateVersion;
 }
 
+function retrySuccess(processingRunId, input, replayed) {
+    return success(200, {
+        schemaVersion: '1.0',
+        processingRunId,
+        state: 'approved-for-processing',
+        stateVersion: input.expectedStateVersion + 1,
+        replayed
+    });
+}
+
+async function processingRetryReplay(
+    database,
+    runIdentity,
+    input,
+    payloadFingerprint,
+    subjectHash
+) {
+    const receipt = await readTransitionReceipt(
+        database,
+        runIdentity.draftId,
+        input.idempotencyKey
+    );
+    if (!receipt) {
+        return null;
+    }
+    if (
+        receipt.payloadFingerprint !== payloadFingerprint ||
+        receipt.fromState !== 'processing-failed' ||
+        receipt.toState !== 'approved-for-processing' ||
+        receipt.expectedStateVersion !== input.expectedStateVersion ||
+        receipt.resultStateVersion !== input.expectedStateVersion + 1
+    ) {
+        return failure(409, 'conflict');
+    }
+    const auditMatches = await readRetryAuditMatches(database, {
+        subjectHash,
+        payloadFingerprint,
+        stateVersion: receipt.resultStateVersion,
+        occurredAt: receipt.createdAt
+    });
+    if (auditMatches !== 1) {
+        return failure(503, 'service-unavailable');
+    }
+    return retrySuccess(runIdentity.processingRunId, input, true);
+}
+
+async function failedRunIsRetryEligible(run, cleanupProof, input, database) {
+    const problems = await processingEligibilityProblems(run, {
+        requiredState: 'processing-failed',
+        expectedStateVersion: input.expectedStateVersion,
+        requiredRunStatus: 'failed',
+        allowProcessingCleanup: true
+    }, database);
+    return problems.length === 0 &&
+        runMatchesEvidence(run) &&
+        run.processingStateVersion + 1 === input.expectedStateVersion &&
+        validProcessingFailureDiagnostics(run) &&
+        await retryCleanupProofMatches(cleanupProof, run, input);
+}
+
+function validProcessingFailureDiagnostics(run) {
+    if (!FAILURE_CODES.has(run?.failureCode)) {
+        return false;
+    }
+    try {
+        const diagnostics = JSON.parse(run.processingDiagnosticsJson);
+        return isPlainObject(diagnostics) &&
+            hasExactKeys(diagnostics, ['schemaVersion', 'code']) &&
+            diagnostics.schemaVersion === '1.0' &&
+            diagnostics.code === run.failureCode;
+    } catch {
+        return false;
+    }
+}
+
+async function retryCleanupProofMatches(cleanup, run, input) {
+    if (
+        !cleanup ||
+        cleanup.processingRunId !== run?.processingRunId ||
+        cleanup.draftId !== run.draftId ||
+        cleanup.cleanupReason !== 'processing-failed' ||
+        cleanup.expectedStateVersion !== input.expectedStateVersion ||
+        cleanup.status !== 'cleaned' ||
+        !SHA256_PATTERN.test(cleanup.cleanupEvidenceHash || '') ||
+        typeof cleanup.completedAt !== 'string' ||
+        cleanup.completedAt.length < 1 ||
+        cleanup.outputRowCount !== 0 ||
+        cleanup.multipartRowCount !== 0 ||
+        cleanup.derivativeRowCount !== 0 ||
+        cleanup.cleanupObjectCount !== cleanup.outputCount ||
+        cleanup.activeCleanupObjectCount !== 0 ||
+        cleanup.matchingTombstoneCount !== 1
+    ) {
+        return false;
+    }
+    return cleanup.cleanupIdHash === await sha256Text(cleanup.cleanupId) &&
+        cleanup.draftIdHash === await sha256Text(run.draftId) &&
+        cleanup.processingRunIdHash === await sha256Text(run.processingRunId);
+}
+
+function retryDraftCasStatement(database, {
+    run,
+    cleanupProof,
+    input,
+    expectedDiagnostics,
+    occurredAt
+}) {
+    return database.prepare(`
+        UPDATE gallery_drafts
+        SET state = 'approved-for-processing',
+            state_version = state_version + 1,
+            processing_diagnostics_json = NULL,
+            updated_at = ?1
+        WHERE draft_id = ?2
+          AND state = 'processing-failed'
+          AND state_version = ?3
+          AND processing_diagnostics_json = ?4
+          AND export_bundle_id = ?5
+          AND source_revision = ?6
+          AND suppression_revision = ?7
+          AND media_type = 'photo'
+          AND upload_complete = 1
+          -- Keep the transactional CAS shallow enough for D1's expression-depth
+          -- limit. The eligibility read above validates the complete evidence
+          -- graph. At mutation time the draft triggers recheck the volatile
+          -- consent, exclusion, upload, state, and revision gates, while a
+          -- cleaned cleanup and its tombstone are immutable terminal evidence.
+          AND EXISTS (
+              SELECT 1
+              FROM draft_processing_runs AS retry_run
+              JOIN draft_processing_cleanups AS cleanup
+                ON cleanup.processing_run_id = retry_run.processing_run_id
+              JOIN gallery_processing_cleanup_tombstones AS tombstone
+                ON tombstone.cleanup_id_hash = cleanup.cleanup_id_hash
+               AND tombstone.draft_id_hash = cleanup.draft_id_hash
+               AND tombstone.processing_run_id_hash = cleanup.processing_run_id_hash
+               AND tombstone.cleanup_reason = cleanup.cleanup_reason
+               AND tombstone.evidence_hash = cleanup.cleanup_evidence_hash
+               AND tombstone.completed_at = cleanup.completed_at
+              WHERE retry_run.processing_run_id = ?8
+                AND retry_run.draft_id = gallery_drafts.draft_id
+                AND retry_run.status = 'failed'
+                AND retry_run.failure_code = ?9
+                AND retry_run.processing_state_version + 1 = ?3
+                AND cleanup.cleanup_id = ?10
+                AND cleanup.cleanup_id_hash = ?11
+                AND cleanup.processing_run_id_hash = ?12
+                AND cleanup.draft_id = retry_run.draft_id
+                AND cleanup.draft_id_hash = ?13
+                AND cleanup.cleanup_reason = 'processing-failed'
+                AND cleanup.expected_state_version = ?3
+                AND cleanup.status = 'cleaned'
+                AND cleanup.cleanup_evidence_hash = ?14
+                AND cleanup.completed_at IS NOT NULL
+          )
+    `).bind(
+        occurredAt,
+        run.draftId,
+        input.expectedStateVersion,
+        expectedDiagnostics,
+        catalogSnapshot.exportBundleId,
+        catalogSnapshot.sourceRevision,
+        catalogSnapshot.suppressionRevision,
+        run.processingRunId,
+        run.failureCode,
+        cleanupProof.cleanupId,
+        cleanupProof.cleanupIdHash,
+        cleanupProof.processingRunIdHash,
+        cleanupProof.draftIdHash,
+        cleanupProof.cleanupEvidenceHash
+    );
+}
+
 function resultReplay(run, input, payloadFingerprint) {
     if (
         run.resultIdempotencyKey !== input.idempotencyKey ||
@@ -1057,6 +1367,7 @@ async function processingEligibilityProblems(record, requirements, database) {
     }
     if (
         record.processingRunId &&
+        requirements.allowProcessingCleanup !== true &&
         await processingCleanupExists(database, record.processingRunId)
     ) {
         problems.push('cleanup');
@@ -1335,7 +1646,13 @@ function stagedResultMatchesRun(input, run, outputs) {
     });
 }
 
-async function ensureExactMultipartObject(env, output, bytes, nowMilliseconds) {
+async function ensureExactMultipartObject(
+    env,
+    output,
+    bytes,
+    nowMilliseconds,
+    dependencies
+) {
     const bucket = env.DERIVATIVE_STAGING;
     let multipart = await readMultipartUpload(
         env.DB,
@@ -1493,7 +1810,12 @@ async function ensureExactMultipartObject(env, output, bytes, nowMilliseconds) {
             partNumber: 1,
             etag: multipart.providerPartEtag
         }]);
-    } catch {
+    } catch (error) {
+        if (
+            dependencies?.shouldInterruptProviderRecovery?.(error, 'complete') === true
+        ) {
+            throw error;
+        }
         // Completion may have committed even when its response was lost. Only
         // the exact object at the server-owned key can be adopted below.
     }
@@ -1683,36 +2005,40 @@ async function continueProcessingCleanup(env, initialCleanup, nowMilliseconds) {
 }
 
 async function terminateMultipartForCleanup(env, multipart, nowMilliseconds) {
-    let terminalKind;
+    let terminalKind = 'aborted';
     try {
         const resumed = env.DERIVATIVE_STAGING.resumeMultipartUpload(
             multipart.stagingObjectKey,
             multipart.providerUploadId
         );
         await resumed.abort();
-        terminalKind = 'aborted';
     } catch (error) {
         if (!isNoSuchUploadError(error)) {
             throw error;
         }
-        const head = await env.DERIVATIVE_STAGING.head(multipart.stagingObjectKey);
-        if (head) {
-            const output = await readOutput(
-                env.DB,
-                multipart.processingRunId,
-                multipart.role
-            );
-            if (
-                !output ||
-                !storedObjectShapeMatches(head, output) ||
-                !await exactStagedObject(env.DERIVATIVE_STAGING, output, head)
-            ) {
-                throw new Error('Completed staging object does not match reserved evidence.');
-            }
-            terminalKind = 'completed';
-        } else {
-            terminalKind = 'not-found';
+        terminalKind = 'not-found';
+    }
+
+    // A resumable R2 handle does not prove that its underlying upload is still
+    // active. In particular, an abort can resolve after a competing completion
+    // has already made the object visible. HEAD is strongly consistent after
+    // completion, so adopt only the exact server-owned object and record that
+    // completion won; otherwise retain the abort/not-found outcome above.
+    const head = await env.DERIVATIVE_STAGING.head(multipart.stagingObjectKey);
+    if (head) {
+        const output = await readOutput(
+            env.DB,
+            multipart.processingRunId,
+            multipart.role
+        );
+        if (
+            !output ||
+            !storedObjectShapeMatches(head, output) ||
+            !await exactStagedObject(env.DERIVATIVE_STAGING, output, head)
+        ) {
+            throw new Error('Completed staging object does not match reserved evidence.');
         }
+        terminalKind = 'completed';
     }
 
     const terminalAt = nextIsoTime(nowMilliseconds, multipart.updatedAt);
@@ -1771,14 +2097,16 @@ async function deleteCleanupObject(env, cleanup, cleanupObject, nowMilliseconds)
     const head = await env.DERIVATIVE_STAGING.head(cleanupObject.stagingObjectKey);
     if (head) {
         if (
-            (multipart && multipart.terminalKind !== 'completed') ||
             !storedObjectShapeMatches(head, output) ||
             !await providerFactsMatchCleanupObject(head, cleanupObject) ||
             !await exactStagedObject(env.DERIVATIVE_STAGING, output, head)
         ) {
             throw new Error('Staging object deletion evidence did not match.');
         }
-        providerTerminalKind = 'completed';
+        // Keep the immutable multipart terminal fact. A provider may report an
+        // abort as successful after completion already won; the observed object
+        // hashes and deleted_at below separately prove that exact object's
+        // deletion without rewriting the historical multipart result.
         observedObjectVersionHash = await hashProviderFact(
             'object-version',
             head.version
@@ -2029,6 +2357,48 @@ async function readRun(database, processingRunId) {
     );
 }
 
+async function readRunIdentity(database, processingRunId) {
+    return queryFirst(database, `
+        SELECT processing_run_id AS processingRunId, draft_id AS draftId
+        FROM draft_processing_runs
+        WHERE processing_run_id = ?1
+    `, processingRunId);
+}
+
+async function readTransitionReceipt(database, draftId, idempotencyKey) {
+    return queryFirst(database, `
+        SELECT
+            draft_id AS draftId,
+            idempotency_key AS idempotencyKey,
+            payload_fingerprint AS payloadFingerprint,
+            from_state AS fromState,
+            to_state AS toState,
+            expected_state_version AS expectedStateVersion,
+            result_state_version AS resultStateVersion,
+            created_at AS createdAt
+        FROM draft_transition_receipts
+        WHERE draft_id = ?1 AND idempotency_key = ?2
+    `, draftId, idempotencyKey);
+}
+
+async function readRetryAuditMatches(database, {
+    subjectHash,
+    payloadFingerprint,
+    stateVersion,
+    occurredAt
+}) {
+    const row = await queryFirst(database, `
+        SELECT COUNT(*) AS matchCount
+        FROM gallery_audit_events
+        WHERE event_type = 'processing-retry-approved'
+          AND subject_reference_hash = ?1
+          AND payload_hash = ?2
+          AND state_version = ?3
+          AND occurred_at = ?4
+    `, subjectHash, payloadFingerprint, stateVersion, occurredAt);
+    return Number(row?.matchCount);
+}
+
 async function readStartReplay(database, draftId, idempotencyKey) {
     return queryFirst(
         database,
@@ -2152,6 +2522,61 @@ async function readCleanup(database, processingRunId) {
         FROM draft_processing_cleanups AS cleanup
         JOIN draft_processing_runs AS run
           ON run.processing_run_id = cleanup.processing_run_id
+        WHERE cleanup.processing_run_id = ?1
+    `, processingRunId);
+}
+
+async function readRetryCleanupProof(database, processingRunId) {
+    return queryFirst(database, `
+        SELECT
+            cleanup.cleanup_id AS cleanupId,
+            cleanup.cleanup_id_hash AS cleanupIdHash,
+            cleanup.processing_run_id AS processingRunId,
+            cleanup.processing_run_id_hash AS processingRunIdHash,
+            cleanup.draft_id AS draftId,
+            cleanup.draft_id_hash AS draftIdHash,
+            cleanup.cleanup_reason AS cleanupReason,
+            cleanup.expected_state_version AS expectedStateVersion,
+            cleanup.output_count AS outputCount,
+            cleanup.status,
+            cleanup.cleanup_evidence_hash AS cleanupEvidenceHash,
+            cleanup.completed_at AS completedAt,
+            (SELECT COUNT(*)
+                FROM draft_processing_outputs AS output
+                WHERE output.processing_run_id = cleanup.processing_run_id
+            ) AS outputRowCount,
+            (SELECT COUNT(*)
+                FROM draft_processing_multipart_uploads AS multipart
+                WHERE multipart.processing_run_id = cleanup.processing_run_id
+            ) AS multipartRowCount,
+            (SELECT COUNT(*)
+                FROM draft_derivatives AS derivative
+                WHERE derivative.draft_id = cleanup.draft_id
+            ) AS derivativeRowCount,
+            (SELECT COUNT(*)
+                FROM draft_processing_cleanup_objects AS object
+                WHERE object.cleanup_id = cleanup.cleanup_id
+            ) AS cleanupObjectCount,
+            (SELECT COUNT(*)
+                FROM draft_processing_cleanup_objects AS object
+                WHERE object.cleanup_id = cleanup.cleanup_id
+                  AND (
+                      object.status <> 'absent' OR
+                      object.staging_object_key IS NOT NULL OR
+                      object.provider_terminal_kind IS NULL OR
+                      object.absence_verified_at IS NULL
+                  )
+            ) AS activeCleanupObjectCount,
+            (SELECT COUNT(*)
+                FROM gallery_processing_cleanup_tombstones AS tombstone
+                WHERE tombstone.cleanup_id_hash = cleanup.cleanup_id_hash
+                  AND tombstone.draft_id_hash = cleanup.draft_id_hash
+                  AND tombstone.processing_run_id_hash = cleanup.processing_run_id_hash
+                  AND tombstone.cleanup_reason = cleanup.cleanup_reason
+                  AND tombstone.evidence_hash = cleanup.cleanup_evidence_hash
+                  AND tombstone.completed_at = cleanup.completed_at
+            ) AS matchingTombstoneCount
+        FROM draft_processing_cleanups AS cleanup
         WHERE cleanup.processing_run_id = ?1
     `, processingRunId);
 }

@@ -4,22 +4,33 @@ Phase 1 is an owner-curated public gallery. It deliberately does not accept
 visitor uploads and does not put photographs or videos into Git or the GitHub
 Pages artifact.
 
-The owner-only upload architecture, provider-independent contract, and
-non-production Phase B authentication boundary are complete. The Phase C owner
-form, private drafts, synthetic-only multipart upload, checksum, protected
-preview, moderation, and cleanup are implemented and verified locally but have
-not been deployed. The existing Cloudflare Access-protected admin service will
-keep originals, consent/moderation records, and candidate derivatives private;
-verified derivatives explicitly approved for Pull Request preview will be
-served from a derivative-only media boundary. The committed manifests and
-normal reviewed Pull Request remain the publication path. See
+The owner-only upload architecture, provider-independent contract, Phase B
+authentication boundary, and synthetic-only Phase C owner workflow are
+complete. Phase C is remotely verified behind Cloudflare Access with private
+originals and D1 evidence only. The private Phase D photo-processing and
+staging-cleanup boundary has also passed its approved non-production A–F
+rehearsal. Its final display and thumbnail remain private Scenario F staging
+evidence; they are not approved or public media.
+
+The normal processing Worker was restored after the fault-injection proof with
+exactly D1, private originals, and private derivative staging. It cannot reach
+approved media, a public manifest, GitHub, DNS, merge, or publication controls.
+The temporary rehearsal service token and its dedicated policy were deleted
+after the proof. The processing Access application remains installed with zero
+policies, so it is deliberately parked fail closed until a separately approved
+service identity and policy are created for future work. The owner application
+and owner policy remain unchanged.
+Verified derivatives may become reachable for Pull Request review only through
+a later, separately approved promotion and candidate-manifest workflow. The
+committed manifests and normal reviewed Pull Request remain the only public
+publication path. See
 [Owner-Authenticated Gallery Upload Architecture](gallery-upload-architecture.md).
 
-The current deployed admin remains the D1-only Phase B version and all buckets
-are empty. Deploying Phase C, enabling the incomplete-multipart lifecycle rule,
-or uploading even synthetic media requires a separate explicit approval. Real
-family media remains forbidden until the later synthetic derivative, metadata-
-stripping, deletion, and takedown rehearsals pass.
+Approved-media promotion, candidate-manifest generation, the repository-scoped
+GitHub App and protected environment, and the full synthetic Pull Request
+rehearsal remain future work. Video processing and real family media remain
+forbidden. The completed private rehearsal does not authorize a public media
+URL, manifest change, DNS change, Pull Request, merge, or publication.
 
 ## Public And Private Boundaries
 
@@ -35,6 +46,10 @@ stripping, deletion, and takedown rehearsals pass.
   search visibility but is not access control and does not prevent downloading.
 
 ## Before Adding A Moment
+
+This checklist describes the future explicitly approved end-to-end publication
+workflow. The current private service cannot yet promote media or create a
+candidate manifest or Pull Request.
 
 1. Confirm that the people shown have approved public use of the photograph or
    video. Take particular care with children.
@@ -154,8 +169,8 @@ manifest entry.
 - `sourceUrl` is the large image or playable video. `thumbnailUrl` is the card
   image and the poster shown before a video plays.
 - `caption` is public editorial text. Geotags and embedded EXIF/device metadata
-  are private repository metadata, are not fields in this schema, and must not
-  be present in either public derivative.
+  remain only in access-controlled private media storage, are not fields in
+  this schema, and must not be present in either public derivative.
 
 ## Championship Podiums
 
@@ -181,6 +196,9 @@ The browser fails closed if the suppression list is missing or malformed. The
 artifact build also rejects every unexpected file under `gallery-data/`,
 including photographs and videos.
 
-Gallery work is a standard site change: use a feature branch, a normal Pull
-Request, a successful Netlify preview, responsive screenshot review for both
-site modes, and explicit approval before merge or publication.
+Any public manifest or runtime Gallery change is a standard site change: use a
+feature branch, a normal Pull Request, a successful Netlify preview, responsive
+screenshot review for both site modes, and explicit approval before merge or
+publication. A private-service-only change follows the repository's release-
+path classifier and still requires the complete local suite, exact-diff review,
+service-specific evidence, and explicit approval for every remote mutation.

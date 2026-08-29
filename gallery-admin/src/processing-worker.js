@@ -3,6 +3,7 @@ import {
     cleanupProcessingRun,
     processingOriginalResponse,
     recordProcessingResult,
+    retryProcessingRun,
     startProcessingRun,
     storeProcessingDerivative
 } from './processing-service.js';
@@ -25,8 +26,12 @@ const RESULT_PATH_PATTERN = new RegExp(
 const CLEANUP_PATH_PATTERN = new RegExp(
     `^/api/service/processing-runs/${RUN_ID_FRAGMENT}/cleanup$`
 );
+const RETRY_PATH_PATTERN = new RegExp(
+    `^/api/service/processing-runs/${RUN_ID_FRAGMENT}/retry$`
+);
 const PROCESSOR_IDENTITY_PATTERN = /^subject:([0-9a-f]{32}\.access)$/;
 const JSON_BODY_LIMIT = 32 * 1024;
+export const PROCESSING_REHEARSAL_HEADER = 'X-Gallery-Rehearsal-Fault';
 const EXACT_ENVIRONMENT_KEYS = Object.freeze([
     'DB',
     'PRIVATE_ORIGINALS',
@@ -36,6 +41,12 @@ const EXACT_ENVIRONMENT_KEYS = Object.freeze([
 ]);
 
 export async function handleProcessingRequest(request, env, dependencies = {}) {
+    const hasRehearsalHeader = request.headers.has(PROCESSING_REHEARSAL_HEADER);
+    const prepareRehearsalRequest = dependencies.prepareRehearsalRequest;
+    if (hasRehearsalHeader && typeof prepareRehearsalRequest !== 'function') {
+        return adminFailure(403);
+    }
+
     const identityVerifier = dependencies.verifyAccessIdentity ||
         (() => verifyWorkerAccessIdentity(dependencies.accessContext, request));
     const identity = await verifyIdentity(identityVerifier);
@@ -43,7 +54,7 @@ export async function handleProcessingRequest(request, env, dependencies = {}) {
         !identity ||
         !matchesSingleProcessorIdentity(identity, env?.PROCESSOR_IDENTITIES) ||
         !requestUsesConfiguredOrigin(request, env?.PROCESSING_ORIGIN) ||
-        request.headers.has('Cookie') ||
+        !requestUsesOnlyAccessAssertionCookie(request) ||
         request.headers.has('X-CSRF-Token')
     ) {
         return adminFailure(403);
@@ -65,6 +76,36 @@ export async function handleProcessingRequest(request, env, dependencies = {}) {
     }
     if (!hasExactBindings(env)) {
         return adminFailure(503);
+    }
+
+    let processingServiceDependencies = {};
+    if (hasRehearsalHeader) {
+        let prepared;
+        try {
+            prepared = await prepareRehearsalRequest({
+                env,
+                request,
+                route
+            });
+        } catch {
+            return adminFailure(503);
+        }
+        if (prepared?.ok !== true) {
+            return adminFailure(prepared?.status === 403 ? 403 : 503);
+        }
+        if (
+            !rehearsalRequestMatches(request, prepared.request) ||
+            !rehearsalEnvironmentMatches(env, prepared.env) ||
+            typeof prepared.shouldInterruptProviderRecovery !== 'function'
+        ) {
+            return adminFailure(503);
+        }
+        request = prepared.request;
+        env = prepared.env;
+        processingServiceDependencies = {
+            shouldInterruptProviderRecovery:
+                prepared.shouldInterruptProviderRecovery
+        };
     }
 
     const now = readNow(dependencies.now);
@@ -105,7 +146,8 @@ export async function handleProcessingRequest(request, env, dependencies = {}) {
             route.processingRunId,
             route.role,
             request,
-            now
+            now,
+            processingServiceDependencies
         ));
     }
 
@@ -125,7 +167,15 @@ export async function handleProcessingRequest(request, env, dependencies = {}) {
                 parsed.value,
                 now
             )
-            : recordProcessingResult(
+            : route.kind === 'retry'
+                ? retryProcessingRun(
+                    env,
+                    identity,
+                    route.processingRunId,
+                    parsed.value,
+                    now
+                )
+                : recordProcessingResult(
                 env,
                 identity,
                 route.processingRunId,
@@ -155,6 +205,10 @@ function matchRoute(pathname) {
     match = RESULT_PATH_PATTERN.exec(pathname);
     if (match) {
         return { kind: 'result', processingRunId: match[1] };
+    }
+    match = RETRY_PATH_PATTERN.exec(pathname);
+    if (match) {
+        return { kind: 'retry', processingRunId: match[1] };
     }
     match = CLEANUP_PATH_PATTERN.exec(pathname);
     return match
@@ -201,6 +255,17 @@ function requestUsesConfiguredOrigin(request, configuredOrigin) {
     }
 }
 
+function requestUsesOnlyAccessAssertionCookie(request) {
+    const cookie = request.headers.get('Cookie');
+    if (cookie === null) {
+        return true;
+    }
+    const assertion = request.headers.get('Cf-Access-Jwt-Assertion');
+    return typeof assertion === 'string' &&
+        assertion.length > 0 &&
+        cookie === `CF_Authorization=${assertion}`;
+}
+
 function normalizeConfiguredOrigin(value) {
     if (typeof value !== 'string' || value.trim() !== value) {
         return null;
@@ -244,6 +309,40 @@ function hasExactBindings(env) {
         env.PUBLIC_MANIFESTS === undefined &&
         env.GITHUB_TOKEN === undefined &&
         env.GITHUB_REPOSITORY === undefined;
+}
+
+function rehearsalRequestMatches(original, prepared) {
+    if (
+        !(prepared instanceof Request) ||
+        prepared.url !== original.url ||
+        prepared.method !== original.method ||
+        prepared.headers.has(PROCESSING_REHEARSAL_HEADER) ||
+        prepared.bodyUsed ||
+        (prepared.body === null) !== (original.body === null)
+    ) {
+        return false;
+    }
+    const originalHeaders = normalizedHeadersWithoutRehearsal(original.headers);
+    const preparedHeaders = normalizedHeadersWithoutRehearsal(prepared.headers);
+    return JSON.stringify(preparedHeaders) === JSON.stringify(originalHeaders);
+}
+
+function normalizedHeadersWithoutRehearsal(headers) {
+    return [...headers.entries()]
+        .filter(([name]) =>
+            name.toLowerCase() !== PROCESSING_REHEARSAL_HEADER.toLowerCase()
+        )
+        .sort(([left], [right]) => left.localeCompare(right));
+}
+
+function rehearsalEnvironmentMatches(original, prepared) {
+    return hasExactBindings(prepared) &&
+        prepared !== original &&
+        prepared.DB === original.DB &&
+        prepared.PRIVATE_ORIGINALS === original.PRIVATE_ORIGINALS &&
+        prepared.DERIVATIVE_STAGING !== original.DERIVATIVE_STAGING &&
+        prepared.PROCESSOR_IDENTITIES === original.PROCESSOR_IDENTITIES &&
+        prepared.PROCESSING_ORIGIN === original.PROCESSING_ORIGIN;
 }
 
 function isBodylessRead(request) {

@@ -623,7 +623,7 @@ Unknown historical details are labelled rather than inferred.
 
 ## Gallery media is owner-curated and stored outside Git
 
-- **Status:** Accepted and implemented locally; no media published yet
+- **Status:** Accepted and implemented; no media published yet
 - **Date:** 23 August 2026
 - **Decision:** Phase 1 adds a public, owner-curated Gallery without accepting
   visitor uploads. Family and Everyone each load their own versioned JSON
@@ -633,20 +633,19 @@ Unknown historical details are labelled rather than inferred.
   items may be featured on Championships and Overview or associated with public
   athlete IDs for profile presentation, but they do not affect championship
   data or calculations.
-- **Uploader preparation:** A future authenticated upload flow is constrained to
+- **Uploader preparation:** The authenticated upload flow is constrained to
   select an exported race rather than accept a free-text event: the uploader
   chooses a race date, then one of the distinct event-and-distance combinations
   in public results for that date and site mode. People tags use public athlete
   IDs; runners in the selected race appear first, with other public athletes in
   that mode still available for spectators and supporters. The stored
-  `raceDate`, `raceEvent`, `raceDistance`, and `athleteIds` fields already match
-  that flow. File transfer, uploader identity, and moderation remain outside
-  Phase 1 until authenticated media storage is selected. Captions are public;
-  geotags and embedded device metadata remain private repository metadata. A
-  public derivative strips them, and neither public manifest has a geotag field.
-  The later 24–25 August 2026 decision below now selects that owner-only
-  storage and access model without changing the completed Phase 1 public
-  contract.
+  `raceDate`, `raceEvent`, `raceDistance`, and `athleteIds` fields match that
+  flow. File transfer, uploader identity, and moderation remain outside public
+  Phase 1; the later decision below implements their owner-only private storage
+  and access boundary without changing the completed public contract. Captions
+  are public; geotags and embedded device metadata remain only in
+  access-controlled private media storage. Public derivatives strip them, and
+  neither public manifest has a geotag field.
 - **Person-tag suppression:** The shared owner-maintained
   `gallery-data/hidden-athlete-ids.json` list suppresses every item tagged with
   a listed public athlete ID across both site modes, including Gallery cards,
@@ -678,10 +677,10 @@ Unknown historical details are labelled rather than inferred.
 
 - **Status:** Accepted; provider-independent Phase A and non-production Phase B
   infrastructure/authentication are implemented and verified; synthetic-only
-  Phase C is deployed and remotely verified in non-production; the first local
-  Phase D photo-processing and private-staging bridge slices are implemented
-  but not committed, pushed, deployed, or published
-- **Date:** 25–28 August 2026
+  Phase C is deployed and remotely verified; the private Phase D photo-
+  processing and staging-cleanup boundary has passed its non-production A–F
+  rehearsal. Approved-media promotion and public publication remain disabled.
+- **Date:** 25–29 August 2026
 - **Decision:** Keep the public championship site static and add no public
   upload page. A separate Cloudflare Worker administration application is
   protected in full by Cloudflare Access for one MFA-enabled owner identity and
@@ -703,15 +702,16 @@ Unknown historical details are labelled rather than inferred.
   consent, exclusion, location, device, or mutable state. D1 supplies private
   organisation and any friendly owner download name; the selected area's
   manifest alone determines where approved media appears. Existing synthetic
-  `private-originals/phase-c/` objects remain unchanged. Real v1 uploads require
-  a forward-only migration and reviewed lifecycle/test changes before use.
-  Migration `0003_private_original_v1_keys.sql` and the server-only key builder
-  are now implemented locally but not remotely applied. The migration preserves
-  old rows and uses one narrow rolling-deployment compatibility branch for the
-  exact Phase C UUID grammar while the updated Worker creates v1 only. This is
-  required because a D1 migration and Worker replacement are separate platform
-  operations; a later migration may remove legacy insertion only after every
-  deployed Worker is confirmed v1-only.
+  `private-originals/phase-c/` objects remain unchanged. Migration
+  `0003_private_original_v1_keys.sql` and the server-only key builder are
+  implemented and the migration was applied remotely during the approved Phase
+  D sequence. It preserves old rows and uses one narrow rolling-deployment
+  compatibility branch for the exact Phase C UUID grammar while updated upload
+  code creates v1 only. This is required because a D1 migration and Worker
+  replacement are separate platform operations; a later migration may remove
+  legacy insertion only after every deployed upload Worker is confirmed
+  v1-only. Applying the migration does not enable real uploads, which remain
+  blocked by the later media and publication gates.
 - **Processing and publication:** A protected default-branch GitHub Actions job
   uses pinned photo/video and metadata-inspection tools. It may obtain one
   approved original through a narrowly scoped Access service route, but must
@@ -761,9 +761,12 @@ Unknown historical details are labelled rather than inferred.
   service policy, application assignment, and Worker automation allowlist secret
   were deleted immediately after the proof, and the revoked credential remains
   denied. The media Worker rejects its root, queries, nonexistent immutable
-  objects, and writes. D1 remains empty and all three R2 buckets remain private
-  and empty. No real media, public derivative, manifest change, DNS change,
-  GitHub App, Pull Request, merge, or production publication was created.
+  objects, and writes. At that Phase B checkpoint, D1 was empty and all three
+  R2 buckets were private and empty. Later approved Phase C and Phase D
+  rehearsals added only synthetic private D1 records, private originals, and
+  private-staging derivatives; the approved bucket and public manifests remain
+  empty. No real media, public derivative, manifest change, DNS change, GitHub
+  App, Pull Request, merge, or production publication was created by Phase B.
 - **Local Phase B boundary:** The admin Worker consumes Cloudflare's validated
   `ctx.access` identity, repeats an exact single-owner check, uses a signed
   30-minute browser session with same-origin and CSRF controls for mutations,
@@ -811,19 +814,21 @@ Unknown historical details are labelled rather than inferred.
 - **Phase C non-production proof:** On 28 August 2026 the owner separately
   approved migration `0002`, the private-original binding, hourly cleanup, the
   prefix-scoped one-day multipart fallback, deployment, and one built-in
-  synthetic fixture in each site mode. Remote D1 has the complete 70-trigger
-  schema and exactly one private-review Family photo plus one private-review
-  Everyone video. Their completed private R2 bytes independently match D1's
+  synthetic fixture in each site mode. At that checkpoint, remote D1 had the
+  complete 70-trigger schema and exactly one private-review Family photo plus
+  one private-review Everyone video. Their completed private R2 bytes
+  independently matched D1's
   byte-count and SHA-256 evidence. The signed owner interface proves fixed-area
   isolation, runner-first public-ID tags, consent capture, checksum completion,
   and protected previews; anonymous original requests stop at Access. Direct
-  bucket URLs remain disabled, all buckets have no custom domain, staging and
-  approved-derivative storage remain empty, and the live public manifests and
-  suppression list remain empty. No real media, derivative, public URL, DNS
+  bucket URLs remain disabled and all buckets have no custom domain. At that
+  checkpoint, staging and approved-derivative storage were empty; the live
+  public manifests and suppression list remain empty. No real media, public
+  URL, DNS
   change, GitHub App, Pull Request, merge, or production publication was
   authorized or created.
-- **Local Phase D photo-processing boundary:** The first derivative slice is a
-  local synthetic-only module, not a Worker route or public upload feature. It
+- **Phase D photo-processing boundary:** The derivative processor remains a
+  private synthetic-only runner module, not a public upload feature. It
   accepts only JPEG and opaque PNG inputs with canonical site, draft, and
   processing-run identifiers. The standalone module validates their storage-key
   grammar but does not authenticate or look up a D1 draft; its future trusted
@@ -840,12 +845,16 @@ Unknown historical details are labelled rather than inferred.
   immutable FFmpeg/ffprobe runner is selected; this slice has no storage,
   service identity, GitHub, manifest, Pull Request, merge, or publication
   capability. Both public manifests remain empty.
-- **Local Phase D private-staging bridge boundary:** A separate processing
-  Worker now joins the pinned photo processor to private evidence locally. It
+- **Phase D private-staging bridge boundary:** A separate processing Worker
+  joins the pinned photo processor to private evidence. It
   accepts one exact Access service identity and has exactly three bindings: D1,
-  private originals, and derivative staging. It has no browser route,
-  approved-media binding, public manifest, GitHub credential, promotion,
-  deletion, merge, or publication capability. D1—not the caller—derives the
+  private originals, and derivative staging. That is an application-code
+  allowlist capability: after rehearsal cleanup the retained processing Access
+  application has zero policies and no active service identity can invoke it.
+  It has no browser route,
+  approved-media binding, public manifest, GitHub credential, public-host
+  deletion, promotion, merge, or publication capability. Its only deletion
+  authority is exact, evidence-bound private-staging cleanup. D1—not the caller—derives the
   signed site area, original, upload checksum/version, race/item, consent,
   athlete tags, catalog revisions, suppression revision, and opaque run and
   object keys. A run atomically claims one `approved-for-processing` draft.
@@ -867,19 +876,18 @@ Unknown historical details are labelled rather than inferred.
   staging. Partial output is deliberately retained as private, evidenced state;
   any processing output blocks purge. Because an HTTP Worker has no hard
   wall-clock duration, a fixed delay cannot prove an in-flight R2 write has
-  ended. Migration `0004` and the processing Worker must not be deployed until
-  a companion cleanup design closes new writes, handles in-flight requests,
-  verifies exact object absence, and preserves a hash-only audit commitment
-  without weakening immediate consent/exclusion takedown. This local slice uses
-  synthetic media only and changes no Cloudflare, GitHub, public-media,
-  manifest, or site state.
+  ended. That created the original no-deploy gate until the companion cleanup
+  design below closed new writes, handled in-flight requests, verified exact
+  object absence, and preserved a hash-only audit commitment without weakening
+  immediate consent/exclusion takedown. This slice uses synthetic media only
+  and grants no GitHub, public-media, manifest, or site authority.
   Supported multi-row start and failure changes use transactional `D1.batch()`;
   unsupported direct SQL may strand a non-public intermediate state, but the
   schema does not allow that partial state to stage, publish, mutate verified
   derivatives, or create a valid failure receipt. Recovery remains part of the
   required cleanup companion.
-- **Local Phase D race-safe cleanup uses persisted one-part multipart handles:**
-  The direct conditional R2 `put()` design is superseded before deployment.
+- **Phase D race-safe cleanup uses persisted one-part multipart handles:**
+  The direct conditional R2 `put()` design was superseded before deployment.
   Each content-addressed derivative output is still reserved in D1 first, but
   the Worker then creates an empty multipart upload and persists its exact
   provider ID while the run's one-way write gate is open. Only a persisted
@@ -903,19 +911,75 @@ Unknown historical details are labelled rather than inferred.
   Cleanup does not fabricate private-original or public-host deletion evidence,
   and resolving an athlete exclusion never reopens a closed run. The absolute
   `candidate-public` guard remains.
-  The design relies on R2's provider-side multipart terminal state instead of a
-  duration lease because HTTP Workers have no hard wall-clock limit. Cloudflare
-  documents parallel abort/completion, immediate visibility after completion,
-  and strong object deletion/list consistency, but does not phrase the exact
-  abort-versus-complete race as a formal linearizability guarantee. Migration
-  `0005_private_processing_cleanup.sql` and the combined Worker therefore remain
-  local and synthetic-only. A separately approved non-production remote race
-  rehearsal is still required before migrations `0004`–`0005` or the Worker can
-  be deployed.
-- **Service identity compatibility:** Worker-level Service Auth supplies a
-  validated `ctx.access` context and an injected signed application assertion,
-  but the current runtime resolves `ctx.access.getIdentity()` to `undefined` for
-  that non-human caller. The Worker falls back only in that exact state, requires
+  The design relies on R2's provider-side multipart state and exact object
+  checks instead of a duration lease because HTTP Workers have no hard
+  wall-clock limit. The remote rehearsal proved that `abort()` on a resumed
+  handle can resolve after completion has already made the exact object visible.
+  A successful abort is therefore not absence evidence. Cleanup always checks
+  the exact server-owned key after abort or `NoSuchUpload`; any present object
+  must match its reserved shape, metadata, bytes, and SHA-256 before exact
+  deletion and final absence verification. A historical terminal fact already
+  persisted as `aborted` remains immutable. When the exact object is present,
+  separate observed-version and ETag hashes plus deletion and absence timestamps
+  prove removal. If replay finds the object already absent after a lost delete
+  response, those earlier observed and deletion fields may remain null; final
+  absence, the cleaned cleanup record, and its tombstone prove recovery.
+- **Phase D retries use a shallow D1 compare-and-swap plus one receipt per draft
+  version:** The first remote retry's complete evidence graph exceeded D1's
+  expression-depth limit of 100 when embedded in one `UPDATE`. The service now
+  pre-reads and validates the full graph, then runs a shallow transactional
+  compare-and-swap containing the exact draft/revision facts and one immutable
+  failed-run, completed-cleanup, and tombstone join. Existing D1 triggers
+  recheck volatile consent, exclusion, upload, state, and revision gates.
+  Migration `0006_transition_receipt_state_version.sql` adds a unique
+  `(draft_id, expected_state_version)` index; a competing same-version retry
+  conflicts on its receipt and rolls the entire losing batch back. The migration
+  also extends the append-only no-replace guard to both idempotency-key and
+  state-version collisions, preventing `INSERT OR REPLACE` from evicting the
+  winner under a different key. Exact idempotency replay remains read-only.
+- **Phase D non-production remote proof:** On 29 August 2026 the separately
+  approved private synthetic A–F rehearsal passed all six scenarios:
+  `failed-no-output`, `lost-upload-part`, `abort-wins-lost-abort`,
+  `complete-wins-lost-delete`, `exact-prefix-refusal`, and `final-staged`. It
+  recorded five completed cleanups, four acknowledged derivative puts, and five
+  deliberate response interruptions. The interrupted
+  complete-wins case resumed from exact D1 and R2 evidence without a reset or
+  manual database repair. D1 finished at draft state version 19 with six runs,
+  five failed runs, one staged run, five cleaned cleanup records, five
+  tombstones, two verified private derivatives, no approved or publication
+  references, no publicward drafts, no pending athlete exclusions, and no
+  foreign-key violations. Scenario F's two derivatives deliberately remain in
+  private staging; they are not approved or public media.
+- **Rehearsal restoration and public boundary:** The fault-enabled rehearsal
+  Worker was version `3df7ad5e-59b8-4fa1-9186-f42b71a9b546`. Normal Worker
+  version `bd830cfc-c18b-465e-8835-7232309b33e4` was then restored with exactly
+  D1, private originals, and private derivative staging. It rejected the
+  rehearsal header with `403`; an exact immutable retry returned `200` with
+  `replayed: true`; and temporary retry diagnostics were removed. Both public
+  manifests retain repository-canonical LF-byte SHA-256
+  `4C6E8E443A53C2172F54AC75E79463C2480878B5C59F0B2B066C330B44664186`, while
+  the suppression file retains the corresponding LF-byte SHA-256
+  `FA82A4312752DED30ABD97EB2B44C39A4D31FE75E33F127CFA1F2E705C980050`.
+  Windows CRLF working-copy hashes differ without changing the tracked
+  content.
+  Approved-media promotion, candidate-manifest generation, the GitHub App and
+  synthetic Pull Request rehearsal remain a separately approved future scope.
+  Video processing and real family media remain blocked. After fresh explicit
+  approval, the dedicated rehearsal Service Auth policy was detached from the
+  processing Access application, then that unused policy and its temporary
+  service token were deleted. Dashboard and Access API checks confirmed the
+  application remains present with zero policies, both deleted IDs are absent,
+  and a credential-free origin request is intercepted by Cloudflare Access.
+  The application is intentionally retained in that fail-closed state. The
+  one-time client secret was already absent from the ephemeral session, so the
+  exact old credential pair was not replayed after deletion; authoritative
+  Cloudflare absence is the revocation proof. The owner application and owner
+  policy were unchanged.
+- **Service identity compatibility:** During the configured rehearsal,
+  Worker-level Service Auth supplied a validated `ctx.access` context and an
+  injected signed application assertion, but the runtime resolved
+  `ctx.access.getIdentity()` to `undefined` for that non-human caller. The
+  Worker falls back only in that exact state, requires
   a strict service-token application claim with an Access issuer, empty subject,
   no email, Client ID form, positive issuance/expiry fields, and a string or
   array audience equal to `ctx.access.aud`, then repeats the exact encrypted

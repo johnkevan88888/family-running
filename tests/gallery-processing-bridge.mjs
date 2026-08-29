@@ -27,7 +27,8 @@ const migrationSources = await Promise.all([
     '0002_private_uploads.sql',
     '0003_private_original_v1_keys.sql',
     '0004_private_processing_staging.sql',
-    '0005_private_processing_cleanup.sql'
+    '0005_private_processing_cleanup.sql',
+    '0006_transition_receipt_state_version.sql'
 ].map(fileName => readFile(
     new URL(`../gallery-admin/migrations/${fileName}`, import.meta.url),
     'utf8'
@@ -917,17 +918,81 @@ for (const replacement of replacementCandidates) {
 // A failed run with no output still gets a durable cleanup closure. Repeating
 // a presumed-lost successful response returns the same safe public result and
 // does not make another storage call.
+const failedRetryPath =
+    `/api/service/processing-runs/${failedRun.processingRunId}/retry`;
+assert.equal((await processorRequest(failedRetryPath, {
+    method: 'POST',
+    json: {
+        expectedStateVersion: failedResult.stateVersion,
+        idempotencyKey: 'phase-d-failed-retry-no-identity'
+    }
+})).status, 403);
+assert.equal((await processorRequest(failedRetryPath, {
+    method: 'GET',
+    identity: processorIdentity()
+})).status, 405);
+assert.equal((await processorRequest(`${failedRetryPath}?run=forged`, {
+    method: 'POST',
+    identity: processorIdentity(),
+    json: {
+        expectedStateVersion: failedResult.stateVersion,
+        idempotencyKey: 'phase-d-failed-retry-query'
+    }
+})).status, 404);
+assert.equal((await processorRequest(failedRetryPath, {
+    method: 'POST',
+    identity: processorIdentity(),
+    json: {
+        expectedStateVersion: failedResult.stateVersion,
+        idempotencyKey: 'phase-d-failed-retry-extra-field',
+        site: 'everyone'
+    }
+})).status, 400);
+assert.equal((await retryRun(
+    failedRun.processingRunId,
+    failedResult.stateVersion,
+    'phase-d-failed-retry-before-cleanup'
+)).status, 409);
+assert.equal(sqlite.prepare(
+    "SELECT COUNT(*) AS count FROM draft_transition_receipts " +
+    "WHERE draft_id = ? AND from_state = 'processing-failed' " +
+    "AND to_state = 'approved-for-processing'"
+).get(failedDraft.draftId).count, 0);
+
+// A cleanup row without its terminal tombstone is still in progress. The
+// retry route must not treat a nearly finished cleanup as proof that the old
+// run can be requeued.
+d1.failNextRunContaining = 'INSERT INTO gallery_processing_cleanup_tombstones';
+const failedCleanupInterrupted = await cleanupRun(
+    failedRun.processingRunId,
+    failedResult.stateVersion,
+    'phase-d-failed-no-output-cleanup'
+);
+assert.equal(failedCleanupInterrupted.status, 503);
+assert.equal(sqlite.prepare(
+    'SELECT status FROM draft_processing_cleanups WHERE processing_run_id = ?'
+).get(failedRun.processingRunId).status, 'deleting');
+assert.equal(sqlite.prepare(
+    'SELECT COUNT(*) AS count FROM gallery_processing_cleanup_tombstones ' +
+    'WHERE processing_run_id_hash = ?'
+).get(sha256Text(failedRun.processingRunId)).count, 0);
+assert.equal((await retryRun(
+    failedRun.processingRunId,
+    failedResult.stateVersion,
+    'phase-d-failed-retry-before-tombstone'
+)).status, 409);
+
 const failedCleanupResponse = await cleanupRun(
     failedRun.processingRunId,
     failedResult.stateVersion,
     'phase-d-failed-no-output-cleanup'
 );
-assert.equal(failedCleanupResponse.status, 201, await failedCleanupResponse.clone().text());
+assert.equal(failedCleanupResponse.status, 200, await failedCleanupResponse.clone().text());
 assert.deepEqual(await failedCleanupResponse.json(), {
     processingRunId: failedRun.processingRunId,
     cleanupReason: 'processing-failed',
     status: 'cleaned',
-    replayed: false
+    replayed: true
 });
 const callsAfterFailedCleanup = staging.calls.length;
 const failedCleanupReplay = await cleanupRun(
@@ -939,24 +1004,459 @@ assert.equal(failedCleanupReplay.status, 200);
 assert.equal((await failedCleanupReplay.json()).replayed, true);
 assert.equal(staging.calls.length, callsAfterFailedCleanup);
 
+assert.equal(sqlite.prepare(
+    'SELECT COUNT(*) AS count FROM draft_processing_outputs WHERE processing_run_id = ?'
+).get(failedRun.processingRunId).count, 0);
+assert.equal(sqlite.prepare(
+    'SELECT COUNT(*) AS count FROM draft_processing_multipart_uploads ' +
+    'WHERE processing_run_id = ?'
+).get(failedRun.processingRunId).count, 0);
+assert.equal(sqlite.prepare(
+    'SELECT COUNT(*) AS count FROM draft_processing_cleanup_objects AS object ' +
+    'JOIN draft_processing_cleanups AS cleanup ON cleanup.cleanup_id = object.cleanup_id ' +
+    "WHERE cleanup.processing_run_id = ? AND object.status <> 'absent'"
+).get(failedRun.processingRunId).count, 0);
+
+// The application independently joins the tombstone back to every cleanup
+// hash. This deliberately corrupts that one append-only row only for the
+// duration of the probe, then restores its trigger and exact value.
+const tombstoneNoUpdateTrigger = sqlite.prepare(
+    "SELECT sql FROM sqlite_master WHERE type = 'trigger' " +
+    "AND name = 'gallery_processing_cleanup_tombstones_no_update'"
+).get().sql;
+const exactCleanupEvidenceHash = sqlite.prepare(
+    'SELECT cleanup_evidence_hash AS evidenceHash ' +
+    'FROM draft_processing_cleanups WHERE processing_run_id = ?'
+).get(failedRun.processingRunId).evidenceHash;
+const mismatchedCleanupEvidenceHash = exactCleanupEvidenceHash === '0'.repeat(64)
+    ? '1'.repeat(64)
+    : '0'.repeat(64);
+sqlite.exec('DROP TRIGGER gallery_processing_cleanup_tombstones_no_update');
+try {
+    sqlite.prepare(
+        'UPDATE gallery_processing_cleanup_tombstones SET evidence_hash = ? ' +
+        'WHERE processing_run_id_hash = ?'
+    ).run(mismatchedCleanupEvidenceHash, sha256Text(failedRun.processingRunId));
+    assert.equal((await retryRun(
+        failedRun.processingRunId,
+        failedResult.stateVersion,
+        'phase-d-failed-retry-mismatched-tombstone'
+    )).status, 409);
+    assert.equal(sqlite.prepare(
+        "SELECT state FROM gallery_drafts WHERE draft_id = ?"
+    ).get(failedDraft.draftId).state, 'processing-failed');
+} finally {
+    sqlite.prepare(
+        'UPDATE gallery_processing_cleanup_tombstones SET evidence_hash = ? ' +
+        'WHERE processing_run_id_hash = ?'
+    ).run(exactCleanupEvidenceHash, sha256Text(failedRun.processingRunId));
+    sqlite.exec(tombstoneNoUpdateTrigger);
+}
+
+assert.equal((await retryRun(
+    failedRun.processingRunId,
+    failedResult.stateVersion + 1,
+    'phase-d-failed-retry-stale-version'
+)).status, 409);
+
+// Consent withdrawal, original deletion, a changed diagnostic, and a newly
+// pending tagged-athlete exclusion can all land after the service's read
+// checks but before its transactional CAS. The draft guards recheck the live
+// consent, upload, and exclusion facts. The receipt result guard also makes a
+// zero-row diagnostic CAS abort the whole batch, so none of these races leaves
+// a false retry receipt or audit event.
+const consentRace = await createFailedCleanedProcessingRun('retry-consent-race');
+d1.beforeNextBatch = async () => {
+    transitionDraftDirect(sqlite, consentRace.draft.draftId, 'withdrawal-pending');
+    markPrivateOriginalDeleted(sqlite, consentRace.draft.draftId);
+    insertDeletionPublication(sqlite, consentRace.draft.draftId);
+    withdrawActiveConsent(sqlite, consentRace.draft.draftId);
+};
+assert.equal((await retryRun(
+    consentRace.run.processingRunId,
+    consentRace.failed.stateVersion,
+    'phase-d-retry-consent-race'
+)).status, 409);
+assert.equal(sqlite.prepare(
+    'SELECT state, active_consent_revision AS consentRevision ' +
+    'FROM gallery_drafts WHERE draft_id = ?'
+).get(consentRace.draft.draftId).consentRevision, null);
+
+const originalDeletionRace = await createFailedCleanedProcessingRun(
+    'retry-original-deletion-race'
+);
+d1.beforeNextBatch = async () => {
+    markPrivateOriginalDeleted(sqlite, originalDeletionRace.draft.draftId);
+};
+assert.equal((await retryRun(
+    originalDeletionRace.run.processingRunId,
+    originalDeletionRace.failed.stateVersion,
+    'phase-d-retry-original-deletion-race'
+)).status, 409);
+assert.equal(sqlite.prepare(
+    'SELECT state FROM gallery_drafts WHERE draft_id = ?'
+).get(originalDeletionRace.draft.draftId).state, 'processing-failed');
+
+const diagnosticRace = await createFailedCleanedProcessingRun('retry-diagnostic-race');
+d1.beforeNextBatch = async () => {
+    sqlite.prepare(
+        'UPDATE gallery_drafts SET processing_diagnostics_json = ? WHERE draft_id = ?'
+    ).run(
+        '{"schemaVersion":"1.0","code":"toolchain-unavailable"}',
+        diagnosticRace.draft.draftId
+    );
+};
+assert.equal((await retryRun(
+    diagnosticRace.run.processingRunId,
+    diagnosticRace.failed.stateVersion,
+    'phase-d-retry-diagnostic-race'
+)).status, 409);
+assert.equal(sqlite.prepare(
+    "SELECT COUNT(*) AS count FROM draft_transition_receipts " +
+    "WHERE draft_id = ? AND from_state = 'processing-failed'"
+).get(diagnosticRace.draft.draftId).count, 0);
+
+const exclusionRace = await createFailedCleanedProcessingRun('retry-exclusion-race');
+d1.beforeNextBatch = async () => {
+    insertPendingExclusion(sqlite, selectedResult.athleteId, catalog.suppressionRevision);
+};
+assert.equal((await retryRun(
+    exclusionRace.run.processingRunId,
+    exclusionRace.failed.stateVersion,
+    'phase-d-retry-exclusion-race'
+)).status, 409);
+assert.equal(sqlite.prepare(
+    "SELECT state FROM gallery_drafts WHERE draft_id = ?"
+).get(exclusionRace.draft.draftId).state, 'processing-failed');
+resolveAndRemoveSyntheticExclusion();
+assert.equal(sqlite.prepare(
+    "SELECT COUNT(*) AS count FROM gallery_audit_events " +
+    "WHERE event_type = 'processing-retry-approved'"
+).get().count, 0);
+
 // The replacement guard is narrow: it blocks eviction of a still-current
 // active/staged run, but a genuinely failed run with completed cleanup and its
-// tombstone remains eligible for a new processor run. The Phase C browser
-// route intentionally covers only first moderation, so this harness advances
-// the broader contract-allowed retry state directly, then exercises the real
-// processing-start service and database guards.
-const failedRetryApprovedStateVersion = transitionDraftDirect(
-    sqlite,
-    failedDraft.draftId,
-    'approved-for-processing'
+// tombstone remains eligible for an authenticated service requeue and then a
+// new processor run. The requeue clears only private failure diagnostics and
+// records its receipt plus audit event in the same D1 batch.
+const failedRetryInput = {
+    expectedStateVersion: failedResult.stateVersion,
+    idempotencyKey: 'phase-d-failed-cleaned-retry'
+};
+const failedRetryResponse = await retryRun(
+    failedRun.processingRunId,
+    failedRetryInput.expectedStateVersion,
+    failedRetryInput.idempotencyKey
 );
+assert.equal(failedRetryResponse.status, 200, await failedRetryResponse.clone().text());
+const failedRetry = await failedRetryResponse.json();
+assert.deepEqual(failedRetry, {
+    schemaVersion: '1.0',
+    processingRunId: failedRun.processingRunId,
+    state: 'approved-for-processing',
+    stateVersion: failedResult.stateVersion + 1,
+    replayed: false
+});
+const failedRetryFingerprint = sha256Text(JSON.stringify({
+    operation: 'processing-retry',
+    processingRunId: failedRun.processingRunId,
+    ...failedRetryInput
+}));
+assert.deepEqual({ ...sqlite.prepare(`
+    SELECT payload_fingerprint AS payloadFingerprint,
+           from_state AS fromState, to_state AS toState,
+           expected_state_version AS expectedStateVersion,
+           result_state_version AS resultStateVersion
+    FROM draft_transition_receipts
+    WHERE draft_id = ? AND idempotency_key = ?
+`).get(failedDraft.draftId, failedRetryInput.idempotencyKey) }, {
+    payloadFingerprint: failedRetryFingerprint,
+    fromState: 'processing-failed',
+    toState: 'approved-for-processing',
+    expectedStateVersion: failedRetryInput.expectedStateVersion,
+    resultStateVersion: failedRetry.stateVersion
+});
+assert.equal(sqlite.prepare(
+    'SELECT processing_diagnostics_json AS diagnostics FROM gallery_drafts ' +
+    'WHERE draft_id = ?'
+).get(failedDraft.draftId).diagnostics, null);
+assert.deepEqual({ ...sqlite.prepare(`
+    SELECT event_type AS eventType,
+           subject_reference_hash AS subjectReferenceHash,
+           actor_identity_hash AS actorIdentityHash,
+           state_version AS stateVersion, payload_hash AS payloadHash
+    FROM gallery_audit_events
+    WHERE event_type = 'processing-retry-approved'
+      AND subject_reference_hash = ?
+`).get(sha256Text(`draft:${failedDraft.draftId}`)) }, {
+    eventType: 'processing-retry-approved',
+    subjectReferenceHash: sha256Text(`draft:${failedDraft.draftId}`),
+    actorIdentityHash: sha256Text(`subject:${processorSubject}`),
+    stateVersion: failedRetry.stateVersion,
+    payloadHash: failedRetryFingerprint
+});
+
+const retryReceiptCount = sqlite.prepare(
+    "SELECT COUNT(*) AS count FROM draft_transition_receipts " +
+    "WHERE draft_id = ? AND from_state = 'processing-failed' " +
+    "AND to_state = 'approved-for-processing'"
+).get(failedDraft.draftId).count;
+const retryAuditCount = sqlite.prepare(
+    "SELECT COUNT(*) AS count FROM gallery_audit_events " +
+    "WHERE event_type = 'processing-retry-approved'"
+).get().count;
+const failedRetryReplayResponse = await retryRun(
+    failedRun.processingRunId,
+    failedRetryInput.expectedStateVersion,
+    failedRetryInput.idempotencyKey
+);
+assert.equal(failedRetryReplayResponse.status, 200);
+assert.deepEqual(await failedRetryReplayResponse.json(), {
+    ...failedRetry,
+    replayed: true
+});
+const rotatedProcessorSubject = 'fedcba9876543210fedcba9876543210.access';
+const rotatedIdentityReplayResponse = await processorRequest(
+    `/api/service/processing-runs/${failedRun.processingRunId}/retry`,
+    {
+        method: 'POST',
+        identity: { type: 'service', subject: rotatedProcessorSubject },
+        env: {
+            ...processingEnv,
+            PROCESSOR_IDENTITIES: `subject:${rotatedProcessorSubject}`
+        },
+        json: failedRetryInput
+    }
+);
+assert.equal(rotatedIdentityReplayResponse.status, 200);
+assert.deepEqual(await rotatedIdentityReplayResponse.json(), {
+    ...failedRetry,
+    replayed: true
+});
+assert.equal((await retryRun(
+    failedRun.processingRunId,
+    failedRetryInput.expectedStateVersion + 1,
+    failedRetryInput.idempotencyKey
+)).status, 409);
+assert.equal((await retryRun(
+    failedRun.processingRunId,
+    failedRetryInput.expectedStateVersion,
+    'phase-d-failed-retry-different-key'
+)).status, 409);
+assert.equal(sqlite.prepare(
+    "SELECT COUNT(*) AS count FROM draft_transition_receipts " +
+    "WHERE draft_id = ? AND from_state = 'processing-failed' " +
+    "AND to_state = 'approved-for-processing'"
+).get(failedDraft.draftId).count, retryReceiptCount);
+assert.equal(sqlite.prepare(
+    "SELECT COUNT(*) AS count FROM gallery_audit_events " +
+    "WHERE event_type = 'processing-retry-approved'"
+).get().count, retryAuditCount);
+
+const concurrentRetry = await createFailedCleanedProcessingRun('retry-cas-race');
+let concurrentRetryWinner;
+d1.beforeNextBatch = async () => {
+    const response = await retryRun(
+        concurrentRetry.run.processingRunId,
+        concurrentRetry.failed.stateVersion,
+        'phase-d-retry-cas-race-winner'
+    );
+    assert.equal(response.status, 200, await response.clone().text());
+    concurrentRetryWinner = await response.json();
+};
+const concurrentRetryLoser = await retryRun(
+    concurrentRetry.run.processingRunId,
+    concurrentRetry.failed.stateVersion,
+    'phase-d-retry-cas-race-loser'
+);
+assert.equal(concurrentRetryLoser.status, 409);
+assert.equal(concurrentRetryWinner.replayed, false);
+assert.equal(sqlite.prepare(
+    "SELECT COUNT(*) AS count FROM draft_transition_receipts " +
+    "WHERE draft_id = ? AND from_state = 'processing-failed' " +
+    "AND to_state = 'approved-for-processing'"
+).get(concurrentRetry.draft.draftId).count, 1);
+assert.equal(sqlite.prepare(
+    "SELECT COUNT(*) AS count FROM gallery_audit_events " +
+    "WHERE event_type = 'processing-retry-approved' " +
+    "AND subject_reference_hash = ?"
+).get(sha256Text(`draft:${concurrentRetry.draft.draftId}`)).count, 1);
+assert.equal(sqlite.prepare(
+    'SELECT processing_diagnostics_json AS diagnostics FROM gallery_drafts ' +
+    'WHERE draft_id = ?'
+).get(concurrentRetry.draft.draftId).diagnostics, null);
+
+// Receipt and audit insertion are part of the same transaction as the draft
+// CAS. Either evidence write failing rolls back the state and diagnostics too.
+const receiptFailureRetry = await createFailedCleanedProcessingRun(
+    'retry-receipt-failure'
+);
+d1.failNextRunContaining = 'INSERT INTO draft_transition_receipts';
+assert.equal((await retryRun(
+    receiptFailureRetry.run.processingRunId,
+    receiptFailureRetry.failed.stateVersion,
+    'phase-d-retry-receipt-failure'
+)).status, 503);
+assert.equal(sqlite.prepare(
+    'SELECT state FROM gallery_drafts WHERE draft_id = ?'
+).get(receiptFailureRetry.draft.draftId).state, 'processing-failed');
+assert.notEqual(sqlite.prepare(
+    'SELECT processing_diagnostics_json AS diagnostics FROM gallery_drafts ' +
+    'WHERE draft_id = ?'
+).get(receiptFailureRetry.draft.draftId).diagnostics, null);
+assert.equal(sqlite.prepare(
+    "SELECT COUNT(*) AS count FROM draft_transition_receipts " +
+    "WHERE draft_id = ? AND from_state = 'processing-failed'"
+).get(receiptFailureRetry.draft.draftId).count, 0);
+assert.equal(sqlite.prepare(
+    "SELECT COUNT(*) AS count FROM gallery_audit_events " +
+    "WHERE event_type = 'processing-retry-approved' " +
+    'AND subject_reference_hash = ?'
+).get(sha256Text(`draft:${receiptFailureRetry.draft.draftId}`)).count, 0);
+
+const auditFailureRetry = await createFailedCleanedProcessingRun(
+    'retry-audit-failure'
+);
+d1.failNextRunContaining = 'INSERT INTO gallery_audit_events';
+assert.equal((await retryRun(
+    auditFailureRetry.run.processingRunId,
+    auditFailureRetry.failed.stateVersion,
+    'phase-d-retry-audit-failure'
+)).status, 503);
+assert.equal(sqlite.prepare(
+    'SELECT state FROM gallery_drafts WHERE draft_id = ?'
+).get(auditFailureRetry.draft.draftId).state, 'processing-failed');
+assert.notEqual(sqlite.prepare(
+    'SELECT processing_diagnostics_json AS diagnostics FROM gallery_drafts ' +
+    'WHERE draft_id = ?'
+).get(auditFailureRetry.draft.draftId).diagnostics, null);
+assert.equal(sqlite.prepare(
+    "SELECT COUNT(*) AS count FROM draft_transition_receipts " +
+    "WHERE draft_id = ? AND from_state = 'processing-failed'"
+).get(auditFailureRetry.draft.draftId).count, 0);
+assert.equal(sqlite.prepare(
+    "SELECT COUNT(*) AS count FROM gallery_audit_events " +
+    "WHERE event_type = 'processing-retry-approved' " +
+    'AND subject_reference_hash = ?'
+).get(sha256Text(`draft:${auditFailureRetry.draft.draftId}`)).count, 0);
+
+// Cloudflare's result metadata is observability data, not transition proof.
+// The durable receipt and exact audit tuple remain authoritative when a
+// provider reports cumulative-looking changes or omits that optional field.
+for (const batchMetaMode of ['cumulative', 'omitted']) {
+    const metadataRetry = await createFailedCleanedProcessingRun(
+        `retry-${batchMetaMode}-metadata`
+    );
+    d1.batchMetaMode = batchMetaMode;
+    let metadataRetryResponse;
+    try {
+        metadataRetryResponse = await retryRun(
+            metadataRetry.run.processingRunId,
+            metadataRetry.failed.stateVersion,
+            `phase-d-retry-${batchMetaMode}-metadata`
+        );
+    } finally {
+        d1.batchMetaMode = 'statement';
+    }
+    assert.equal(
+        metadataRetryResponse.status,
+        200,
+        await metadataRetryResponse.clone().text()
+    );
+    assert.equal((await metadataRetryResponse.json()).replayed, false);
+    assert.equal(sqlite.prepare(
+        "SELECT COUNT(*) AS count FROM draft_transition_receipts " +
+        "WHERE draft_id = ? AND expected_state_version = ?"
+    ).get(
+        metadataRetry.draft.draftId,
+        metadataRetry.failed.stateVersion
+    ).count, 1);
+}
+
+// If D1 commits the complete batch but its response is lost, the immutable
+// receipt and exact audit tuple are the operation result. Recovery must report
+// an exact replay rather than claiming the committed transition failed.
+const lostResponseRetry = await createFailedCleanedProcessingRun(
+    'retry-lost-batch-response'
+);
+d1.failAfterNextBatch = true;
+const lostResponseRetryResult = await retryRun(
+    lostResponseRetry.run.processingRunId,
+    lostResponseRetry.failed.stateVersion,
+    'phase-d-retry-lost-response'
+);
+assert.equal(lostResponseRetryResult.status, 200);
+assert.deepEqual(await lostResponseRetryResult.json(), {
+    schemaVersion: '1.0',
+    processingRunId: lostResponseRetry.run.processingRunId,
+    state: 'approved-for-processing',
+    stateVersion: lostResponseRetry.failed.stateVersion + 1,
+    replayed: true
+});
+assert.equal(sqlite.prepare(
+    "SELECT COUNT(*) AS count FROM draft_transition_receipts " +
+    "WHERE draft_id = ? AND from_state = 'processing-failed'"
+).get(lostResponseRetry.draft.draftId).count, 1);
+assert.equal(sqlite.prepare(
+    "SELECT COUNT(*) AS count FROM gallery_audit_events " +
+    "WHERE event_type = 'processing-retry-approved' " +
+    'AND subject_reference_hash = ?'
+).get(sha256Text(`draft:${lostResponseRetry.draft.draftId}`)).count, 1);
+
+// The current caller is authenticated before the service runs, but an exact
+// replay proves the historical operation from its immutable receipt and audit
+// tuple. Ambiguous duplicate historical audit evidence must fail closed.
+const duplicateAuditRetry = await createFailedCleanedProcessingRun(
+    'retry-duplicate-audit-proof'
+);
+const duplicateAuditInput = {
+    expectedStateVersion: duplicateAuditRetry.failed.stateVersion,
+    idempotencyKey: 'phase-d-retry-duplicate-audit-proof'
+};
+const duplicateAuditFirst = await retryRun(
+    duplicateAuditRetry.run.processingRunId,
+    duplicateAuditInput.expectedStateVersion,
+    duplicateAuditInput.idempotencyKey
+);
+assert.equal(duplicateAuditFirst.status, 200);
+const duplicateAuditSubjectHash = sha256Text(
+    `draft:${duplicateAuditRetry.draft.draftId}`
+);
+const duplicateAuditRow = sqlite.prepare(`
+    SELECT subject_reference_hash, event_type, state_version,
+           actor_identity_hash, payload_hash, occurred_at
+    FROM gallery_audit_events
+    WHERE event_type = 'processing-retry-approved'
+      AND subject_reference_hash = ?
+`).get(duplicateAuditSubjectHash);
+sqlite.prepare(`
+    INSERT INTO gallery_audit_events (
+        audit_event_id, subject_reference_hash, event_type, state_version,
+        actor_identity_hash, payload_hash, occurred_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+`).run(
+    'audit_duplicate_retry_proof',
+    duplicateAuditRow.subject_reference_hash,
+    duplicateAuditRow.event_type,
+    duplicateAuditRow.state_version,
+    duplicateAuditRow.actor_identity_hash,
+    duplicateAuditRow.payload_hash,
+    duplicateAuditRow.occurred_at
+);
+const ambiguousAuditReplay = await retryRun(
+    duplicateAuditRetry.run.processingRunId,
+    duplicateAuditInput.expectedStateVersion,
+    duplicateAuditInput.idempotencyKey
+);
+assert.equal(ambiguousAuditReplay.status, 503);
+
 const failedRetryRunResponse = await processorRequest(
     `/api/service/drafts/${failedDraft.draftId}/processing-runs`,
     {
         method: 'POST',
         identity: processorIdentity(),
         json: {
-            expectedStateVersion: failedRetryApprovedStateVersion,
+            expectedStateVersion: failedRetry.stateVersion,
             idempotencyKey: 'phase-d-failed-cleaned-retry-start'
         }
     }
@@ -964,6 +1464,16 @@ const failedRetryRunResponse = await processorRequest(
 assert.equal(failedRetryRunResponse.status, 201, await failedRetryRunResponse.clone().text());
 const failedRetryRun = await failedRetryRunResponse.json();
 assert.notEqual(failedRetryRun.processingRunId, failedRun.processingRunId);
+const replayAfterReplacementStart = await retryRun(
+    failedRun.processingRunId,
+    failedRetryInput.expectedStateVersion,
+    failedRetryInput.idempotencyKey
+);
+assert.equal(replayAfterReplacementStart.status, 200);
+assert.deepEqual(await replayAfterReplacementStart.json(), {
+    ...failedRetry,
+    replayed: true
+});
 assert.equal(sqlite.prepare(
     'SELECT COUNT(*) AS count FROM draft_processing_runs WHERE draft_id = ?'
 ).get(failedDraft.draftId).count, 2);
@@ -978,6 +1488,16 @@ assert.equal(sqlite.prepare(
     'WHERE processing_run_id_hash = ?'
 ).get(sha256Text(failedRun.processingRunId)).count, 1);
 insertPendingExclusion(sqlite, selectedResult.athleteId, catalog.suppressionRevision);
+const replayAfterLaterExclusion = await retryRun(
+    failedRun.processingRunId,
+    failedRetryInput.expectedStateVersion,
+    failedRetryInput.idempotencyKey
+);
+assert.equal(replayAfterLaterExclusion.status, 200);
+assert.deepEqual(await replayAfterLaterExclusion.json(), {
+    ...failedRetry,
+    replayed: true
+});
 const failedRetryCleanupResponse = await cleanupRun(
     failedRetryRun.processingRunId,
     failedRetryRun.stateVersion,
@@ -1210,6 +1730,31 @@ const partialStagingKey = buildV1StagingDerivativeKey({
     role: 'photo-display'
 });
 assert.equal(staging.objects.has(partialStagingKey), false);
+assert.equal(sqlite.prepare(
+    'SELECT COUNT(*) AS count FROM draft_processing_outputs ' +
+    'WHERE processing_run_id = ?'
+).get(partialRun.processingRunId).count, 1);
+assert.equal(sqlite.prepare(`
+    SELECT COUNT(*) AS count
+    FROM draft_processing_cleanup_objects AS object
+    JOIN draft_processing_cleanups AS cleanup ON cleanup.cleanup_id = object.cleanup_id
+    WHERE cleanup.processing_run_id = ?
+      AND object.status = 'pending'
+      AND object.staging_object_key IS NOT NULL
+`).get(partialRun.processingRunId).count, 1);
+const partialRetryBeforeCleanup = await retryRun(
+    partialRun.processingRunId,
+    partialFailedBody.stateVersion,
+    'phase-d-partial-retry-before-cleanup'
+);
+assert.equal(partialRetryBeforeCleanup.status, 409);
+assert.equal(sqlite.prepare(
+    'SELECT state FROM gallery_drafts WHERE draft_id = ?'
+).get(partialDraft.draftId).state, 'processing-failed');
+assert.notEqual(sqlite.prepare(
+    'SELECT processing_diagnostics_json AS diagnostics FROM gallery_drafts ' +
+    'WHERE draft_id = ?'
+).get(partialDraft.draftId).diagnostics, null);
 assert.equal((await uploadDerivative(
     partialRun.processingRunId,
     display,
@@ -1657,8 +2202,11 @@ sqlite.prepare('DELETE FROM pending_athlete_exclusions WHERE athlete_id = ?')
     .run(selectedResult.athleteId);
 
 // Complete wins: exclusion lands just after R2's terminal completion but
-// before D1 can record it. Cleanup recognizes the exact completed object,
-// deletes it, verifies HEAD-null, and the old request cannot resurrect it.
+// before D1 can record it. The fake deliberately mirrors R2's observed edge
+// case where resume+abort can still resolve after the object is already
+// complete. Cleanup HEADs after that abort, recognizes the exact completed
+// object, deletes it, verifies HEAD-null, and the old request cannot resurrect
+// it.
 const completeWinsDraft = await createApprovedSyntheticPhotoDraft(
     'synthetic-phase-d-complete-wins',
     'complete-wins'
@@ -1677,7 +2225,9 @@ const completeWinsRunResponse = await processorRequest(
 assert.equal(completeWinsRunResponse.status, 201, await completeWinsRunResponse.clone().text());
 const completeWinsRun = await completeWinsRunResponse.json();
 let completeWinsCleanupResponse;
-staging.afterNextComplete = async () => {
+staging.afterNextComplete = async ({ record, uploadId }) => {
+    record.terminal = null;
+    staging.uploads.set(uploadId, record);
     insertPendingExclusion(sqlite, selectedResult.athleteId, catalog.suppressionRevision);
     completeWinsCleanupResponse = await cleanupRun(
         completeWinsRun.processingRunId,
@@ -1706,7 +2256,9 @@ const completeWinsDiagnostic = {
     ).all(completeWinsRun.processingRunId),
     cleanupObjects: sqlite.prepare(`
         SELECT object.role, object.status, object.provider_terminal_kind,
-               object.expected_object_version_hash, object.expected_etag_hash
+               object.expected_object_version_hash, object.expected_etag_hash,
+               object.observed_object_version_hash, object.observed_etag_hash,
+               object.deleted_at, object.absence_verified_at
         FROM draft_processing_cleanup_objects AS object
         JOIN draft_processing_cleanups AS cleanup ON cleanup.cleanup_id = object.cleanup_id
         WHERE cleanup.processing_run_id = ?
@@ -1720,6 +2272,13 @@ assert.equal(
     201,
     `${await completeWinsCleanupResponse.clone().text()} ${JSON.stringify(completeWinsDiagnostic)}`
 );
+assert.equal(completeWinsDiagnostic.cleanupObjects.length, 1);
+assert.equal(completeWinsDiagnostic.cleanupObjects[0].status, 'absent');
+assert.equal(completeWinsDiagnostic.cleanupObjects[0].provider_terminal_kind, 'completed');
+assert.equal(typeof completeWinsDiagnostic.cleanupObjects[0].observed_object_version_hash, 'string');
+assert.equal(typeof completeWinsDiagnostic.cleanupObjects[0].observed_etag_hash, 'string');
+assert.equal(typeof completeWinsDiagnostic.cleanupObjects[0].deleted_at, 'string');
+assert.equal(typeof completeWinsDiagnostic.cleanupObjects[0].absence_verified_at, 'string');
 const completeWinsCreate = staging.calls.find(call =>
     call.operation === 'createMultipartUpload' &&
     call.key.includes(`/${completeWinsRun.processingRunId}/`)
@@ -2010,6 +2569,109 @@ resolvePendingExclusion(sqlite, selectedResult.athleteId, catalog.suppressionRev
 sqlite.prepare('DELETE FROM pending_athlete_exclusions WHERE athlete_id = ?')
     .run(selectedResult.athleteId);
 
+// The first live complete-wins rehearsal recorded the provider's resolved
+// abort before checking the already-completed object. That multipart terminal
+// fact is immutable. An exact replay must therefore keep `aborted` as the
+// historical provider result while separately proving and deleting the exact
+// object that completion had made visible.
+const legacyAbortedExact = await createLegacyAbortedCleanupFixture(
+    'legacy-aborted-exact-object',
+    displayBytes
+);
+const legacyAbortedExactCleanup = await cleanupRun(
+    legacyAbortedExact.run.processingRunId,
+    legacyAbortedExact.failed.stateVersion,
+    'phase-d-legacy-aborted-exact-object-cleanup'
+);
+assert.equal(
+    legacyAbortedExactCleanup.status,
+    200,
+    await legacyAbortedExactCleanup.clone().text()
+);
+assert.deepEqual(await legacyAbortedExactCleanup.json(), {
+    processingRunId: legacyAbortedExact.run.processingRunId,
+    cleanupReason: 'processing-failed',
+    status: 'cleaned',
+    replayed: true
+});
+assert.equal(staging.objects.has(legacyAbortedExact.creation.key), false);
+const legacyAbortedExactEvidence = sqlite.prepare(`
+    SELECT object.status, object.provider_terminal_kind,
+           object.observed_object_version_hash, object.observed_etag_hash,
+           object.deleted_at, object.absence_verified_at
+    FROM draft_processing_cleanup_objects AS object
+    JOIN draft_processing_cleanups AS cleanup ON cleanup.cleanup_id = object.cleanup_id
+    WHERE cleanup.processing_run_id = ? AND object.role = 'photo-display'
+`).get(legacyAbortedExact.run.processingRunId);
+assert.equal(legacyAbortedExactEvidence.status, 'absent');
+assert.equal(legacyAbortedExactEvidence.provider_terminal_kind, 'aborted');
+assert.equal(
+    legacyAbortedExactEvidence.observed_object_version_hash,
+    sha256Text(`object-version:${legacyAbortedExact.seeded.version}`)
+);
+assert.equal(
+    legacyAbortedExactEvidence.observed_etag_hash,
+    sha256Text(`etag:${legacyAbortedExact.seeded.etag}`)
+);
+assert.equal(typeof legacyAbortedExactEvidence.deleted_at, 'string');
+assert.equal(typeof legacyAbortedExactEvidence.absence_verified_at, 'string');
+assert.ok(
+    legacyAbortedExactEvidence.absence_verified_at >=
+        legacyAbortedExactEvidence.deleted_at
+);
+assert.equal(sqlite.prepare(
+    'SELECT status FROM draft_processing_cleanups WHERE processing_run_id = ?'
+).get(legacyAbortedExact.run.processingRunId).status, 'cleaned');
+assert.equal(sqlite.prepare(
+    'SELECT COUNT(*) AS count FROM gallery_processing_cleanup_tombstones ' +
+    'WHERE processing_run_id_hash = ?'
+).get(sha256Text(legacyAbortedExact.run.processingRunId)).count, 1);
+
+// The compatibility path does not turn an immutable `aborted` row into broad
+// deletion authority. A same-key object with different bytes remains intact,
+// the cleanup stays incomplete, and no terminal tombstone can be written.
+const legacyAbortedMismatch = await createLegacyAbortedCleanupFixture(
+    'legacy-aborted-mismatching-object',
+    thumbnailBytes
+);
+const mismatchDeleteCountBefore = staging.calls.filter(call =>
+    call.operation === 'delete' && call.key === legacyAbortedMismatch.creation.key
+).length;
+const legacyAbortedMismatchCleanup = await cleanupRun(
+    legacyAbortedMismatch.run.processingRunId,
+    legacyAbortedMismatch.failed.stateVersion,
+    'phase-d-legacy-aborted-mismatching-object-cleanup'
+);
+assert.equal(legacyAbortedMismatchCleanup.status, 503);
+assert.deepEqual(
+    staging.objects.get(legacyAbortedMismatch.creation.key).bytes,
+    thumbnailBytes
+);
+assert.equal(staging.calls.filter(call =>
+    call.operation === 'delete' && call.key === legacyAbortedMismatch.creation.key
+).length, mismatchDeleteCountBefore);
+assert.deepEqual({ ...sqlite.prepare(`
+    SELECT cleanup.status AS cleanup_status, object.status AS object_status,
+           object.provider_terminal_kind,
+           object.observed_object_version_hash, object.observed_etag_hash,
+           object.deleted_at, object.absence_verified_at
+    FROM draft_processing_cleanups AS cleanup
+    JOIN draft_processing_cleanup_objects AS object ON object.cleanup_id = cleanup.cleanup_id
+    WHERE cleanup.processing_run_id = ? AND object.role = 'photo-display'
+`).get(legacyAbortedMismatch.run.processingRunId) }, {
+    cleanup_status: 'deleting',
+    object_status: 'pending',
+    provider_terminal_kind: null,
+    observed_object_version_hash: null,
+    observed_etag_hash: null,
+    deleted_at: null,
+    absence_verified_at: null
+});
+assert.equal(sqlite.prepare(
+    'SELECT COUNT(*) AS count FROM gallery_processing_cleanup_tombstones ' +
+    'WHERE processing_run_id_hash = ?'
+).get(sha256Text(legacyAbortedMismatch.run.processingRunId)).count, 0);
+
 // The separate Worker has no approved bucket, manifest, GitHub, branch, or PR
 // capability. Its complete rehearsal leaves every public Gallery contract byte
 // for byte unchanged.
@@ -2139,6 +2801,17 @@ async function cleanupRun(runId, expectedStateVersion, idempotencyKey) {
     );
 }
 
+async function retryRun(runId, expectedStateVersion, idempotencyKey) {
+    return processorRequest(
+        `/api/service/processing-runs/${runId}/retry`,
+        {
+            method: 'POST',
+            identity: processorIdentity(),
+            json: { expectedStateVersion, idempotencyKey }
+        }
+    );
+}
+
 async function createSyntheticProcessingRun(caseId) {
     const caseDraft = await createApprovedSyntheticPhotoDraft(
         `synthetic-phase-d-${caseId}`,
@@ -2177,6 +2850,19 @@ async function failSyntheticProcessingRun(caseRun, caseId) {
     return response.json();
 }
 
+async function createFailedCleanedProcessingRun(caseId) {
+    const current = await createSyntheticProcessingRun(caseId);
+    const failed = await failSyntheticProcessingRun(current.run, caseId);
+    const cleanup = await cleanupRun(
+        current.run.processingRunId,
+        failed.stateVersion,
+        `phase-d-${caseId}-cleanup`
+    );
+    assert.equal(cleanup.status, 201, await cleanup.clone().text());
+    assert.equal((await cleanup.json()).status, 'cleaned');
+    return { ...current, failed };
+}
+
 async function createPausedPartUploadedRun(caseId) {
     const current = await createSyntheticProcessingRun(caseId);
     staging.beforeNextComplete = () => {
@@ -2199,6 +2885,65 @@ async function createPausedPartUploadedRun(caseId) {
         'WHERE processing_run_id = ? AND role = ?'
     ).get(current.run.processingRunId, 'photo-display').status, 'part-uploaded');
     return { ...current, creation };
+}
+
+async function createLegacyAbortedCleanupFixture(caseId, objectBytes) {
+    const current = await createPausedPartUploadedRun(caseId);
+    const seeded = staging.seedObject(current.creation.key, objectBytes, {
+        customMetadata: {
+            contract: 'gallery-private-staging-v1',
+            role: 'photo-display'
+        }
+    });
+    const failed = await failSyntheticProcessingRun(current.run, caseId);
+
+    // Let the service atomically establish the cleanup closure and object
+    // snapshot, but pause before the provider abort so the historical terminal
+    // outcome can be reproduced without bypassing those D1 admission guards.
+    staging.beforeNextAbort = () => {
+        throw providerError('SyntheticLegacyAbortSnapshotPaused', 19998);
+    };
+    const firstCleanup = await cleanupRun(
+        current.run.processingRunId,
+        failed.stateVersion,
+        `phase-d-${caseId}-cleanup`
+    );
+    assert.equal(firstCleanup.status, 503);
+    assert.equal(sqlite.prepare(
+        'SELECT status FROM draft_processing_cleanups WHERE processing_run_id = ?'
+    ).get(current.run.processingRunId).status, 'closing');
+
+    // This is the observed provider edge: abort resolves even though an object
+    // from the already-winning completion remains. The old Worker then durably
+    // recorded `aborted`; current migrations correctly make that fact immutable.
+    await staging.resumeMultipartUpload(
+        current.creation.key,
+        current.creation.uploadId
+    ).abort();
+    const terminalAt = new Date(currentNow += 1).toISOString();
+    const terminalUpdate = sqlite.prepare(`
+        UPDATE draft_processing_multipart_uploads
+        SET status = 'terminal', terminal_kind = 'aborted',
+            updated_at = ?, terminal_at = ?
+        WHERE processing_run_id = ? AND role = 'photo-display'
+          AND status = 'part-uploaded' AND provider_upload_id = ?
+    `).run(
+        terminalAt,
+        terminalAt,
+        current.run.processingRunId,
+        current.creation.uploadId
+    );
+    assert.equal(Number(terminalUpdate.changes), 1);
+    assert.deepEqual({ ...sqlite.prepare(
+        'SELECT status, terminal_kind FROM draft_processing_multipart_uploads ' +
+        "WHERE processing_run_id = ? AND role = 'photo-display'"
+    ).get(current.run.processingRunId) }, {
+        status: 'terminal',
+        terminal_kind: 'aborted'
+    });
+    assert.equal(staging.objects.has(current.creation.key), true);
+
+    return { ...current, failed, seeded };
 }
 
 async function assertMalformedNoSuchUploadFailsClosed(caseId, providerFailure) {
@@ -2504,6 +3249,7 @@ function createSqliteD1(database) {
         beforeNextBatch: null,
         failNextRunContaining: null,
         failAfterNextBatch: false,
+        batchMetaMode: 'statement',
         lastError: null,
         prepare(sql) {
             return new Statement(sql);
@@ -2527,6 +3273,17 @@ function createSqliteD1(database) {
                     }
                     return statement.runSynchronously();
                 });
+                if (api.batchMetaMode === 'cumulative') {
+                    let cumulativeChanges = 0;
+                    for (const result of results) {
+                        cumulativeChanges += Number(result.meta.changes);
+                        result.meta.changes = cumulativeChanges;
+                    }
+                } else if (api.batchMetaMode === 'omitted') {
+                    for (const result of results) {
+                        delete result.meta.changes;
+                    }
+                }
                 database.exec('COMMIT');
                 committed = true;
                 if (api.failAfterNextBatch) {
@@ -2860,7 +3617,8 @@ function createStagingBucket() {
                 await consumeHook(bucket, 'afterNextComplete', {
                     key: record.key,
                     uploadId: record.uploadId,
-                    object
+                    object,
+                    record
                 });
                 if (consumeFailure(bucket, 'failAfterNextComplete')) {
                     throw providerError('SyntheticLostCompleteResponse', 19993);
