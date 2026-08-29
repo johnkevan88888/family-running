@@ -186,6 +186,7 @@ Unknown historical details are labelled rather than inferred.
   added 9 August 2026; guarded routine-data auto-merge added 9 August 2026;
   no-visual classifier added 10 August 2026; exact-bundle post-merge production
   gate added 27 August 2026; no-visual policy surfaces reconciled 28 August
+  2026; deterministic Gallery catalogue added to routine refreshes 29 August
   2026.
 - **Decision:** Changes use a feature branch and Pull Request. A diff that can
   alter the published artifact or any file controlling dependency installation,
@@ -222,8 +223,9 @@ Unknown historical details are labelled rather than inferred.
   authenticated/environment-specific review when applicable.
   The lightweight route fails closed unless every tracked public CSV is
   refreshed, every changed runtime file is an existing CSV under `data/` with
-  an unchanged header, and only
-  `docs/active-work.md` notes may accompany those exports. Every automated test
+  an unchanged header, and the exact deterministic private Gallery catalogue is
+  regenerated from that bundle. Only that derived catalogue and optional
+  `docs/active-work.md` notes may accompany the exports. Every automated test
   and screenshot still runs. The custom-domain route requires the exact approved
   root `CNAME` and accepts only its explicit CNAME, production-only analytics,
   Pull Request template, test, and documentation allowlist. That narrow route
@@ -285,6 +287,18 @@ Unknown historical details are labelled rather than inferred.
   retained on failure, and `--resume` retries only this proof. Cleanup is
   structurally refused until `production-verified`, so a verifier interruption
   cannot cause another merge or destroy its recovery evidence.
+- **Derived Gallery catalogue, 29 August 2026.** The private Gallery owner
+  interface has a tracked catalogue generated from the public export manifest,
+  athlete results, both modes' age-grade standards, and the public suppression
+  document. That derived file initially made every promoted data bundle fail
+  the complete suite as stale, even though the workbook export itself was
+  valid. Routine promotion now regenerates the catalogue before testing,
+  fingerprints it with the 72 CSVs, requires it in both working-tree and staged
+  file sets, and permits only that exact non-public path through the lightweight
+  release gate. The full suite rebuilds and byte-compares it. The catalogue is
+  excluded from GitHub Pages, remains downstream of workbook-owned data, and
+  grants no permission for unrelated Gallery code or service changes to join a
+  routine data refresh.
 
 ## Crown history is exported, not reconstructed in the browser
 

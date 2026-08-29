@@ -7,7 +7,8 @@ import { parseCsv, repoRoot } from './export-bundle-tools.mjs';
 
 const snapshotSchemaVersion = '1.0';
 const siteModes = Object.freeze(['family', 'everyone']);
-const outputRelativePath = 'gallery-admin/generated/catalog-snapshot.js';
+export const galleryAdminCatalogOutputRelativePath =
+    'gallery-admin/generated/catalog-snapshot.js';
 const manifestRelativePath = 'data/export_manifest.csv';
 const athleteResultsRelativePath = 'data/athlete_results.csv';
 const suppressionRelativePath = 'gallery-data/hidden-athlete-ids.json';
@@ -153,7 +154,10 @@ export function renderGalleryAdminCatalog(snapshot) {
 
 export async function writeGalleryAdminCatalog(options = {}) {
     const root = options.root || repoRoot;
-    const outputPath = path.join(root, ...outputRelativePath.split('/'));
+    const outputPath = path.join(
+        root,
+        ...galleryAdminCatalogOutputRelativePath.split('/')
+    );
     const snapshot = await buildGalleryAdminCatalog(root);
     const expected = renderGalleryAdminCatalog(snapshot);
 
@@ -163,14 +167,18 @@ export async function writeGalleryAdminCatalog(options = {}) {
             actual = await fs.readFile(outputPath, 'utf8');
         } catch (error) {
             if (error?.code === 'ENOENT') {
-                throw new Error(`${outputRelativePath}: generated catalog snapshot is missing.`);
+                throw new Error(
+                    `${galleryAdminCatalogOutputRelativePath}: generated catalog snapshot is missing.`
+                );
             }
-            throw new Error(`${outputRelativePath}: could not read the generated catalog snapshot.`);
+            throw new Error(
+                `${galleryAdminCatalogOutputRelativePath}: could not read the generated catalog snapshot.`
+            );
         }
 
         if (actual !== expected) {
             throw new Error(
-                `${outputRelativePath}: generated catalog snapshot is stale; rebuild it without --check.`
+                `${galleryAdminCatalogOutputRelativePath}: generated catalog snapshot is stale; rebuild it without --check.`
             );
         }
         return { outputPath, snapshot, changed: false };
@@ -587,7 +595,7 @@ async function runCli() {
     await writeGalleryAdminCatalog({ check });
     console.log(check
         ? 'Gallery admin catalog snapshot is current.'
-        : `Generated ${outputRelativePath}.`
+        : `Generated ${galleryAdminCatalogOutputRelativePath}.`
     );
 }
 

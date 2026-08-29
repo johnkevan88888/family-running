@@ -147,6 +147,11 @@ This preflight opens the workbook read-only, creates no data branch or staged
 run, and prints its exact capability signature. The guided updater performs the
 same check before branch creation and the full export repeats it.
 
+After a reviewed promotion, the updater also regenerates the private
+`gallery-admin/generated/catalog-snapshot.js` from the promoted public CSV
+bundle. This is deterministic derived data and is not published by GitHub
+Pages. It does not become a source for rankings or other championship values.
+
 Resume an update stopped at a review checkpoint:
 
 ```powershell
@@ -531,9 +536,12 @@ custom-domain configuration. The no-visual route requires at least one changed
 file, rejects every published or publishing-control path, and rejects unknown
 paths it cannot prove are in a known non-public area. The data route requires at
 least one changed existing CSV under `data/`, requires the complete tracked public
-CSV bundle to be refreshed, permits only optional
-`docs/active-work.md` notes alongside it, rejects added or removed CSVs, and
-compares every changed CSV header against `main` to reject schema changes. The
+CSV bundle and its exact deterministic
+`gallery-admin/generated/catalog-snapshot.js` to be refreshed, permits only
+optional `docs/active-work.md` notes alongside them, rejects added or removed
+CSVs or any other Gallery path, and compares every changed CSV header against
+`main` to reject schema changes. The complete test suite independently rebuilds
+the catalogue and rejects a stale or hand-edited result. The
 domain route requires the root `CNAME` to contain exactly the approved
 production hostname, `www.aceofrace.com`, compared case-insensitively, and
 permits only the explicit CNAME, production-only analytics, Pull Request
@@ -845,7 +853,9 @@ Before approving a Pull Request:
   service-specific evidence has been reviewed.
 - For a validated lightweight data refresh, confirm the Pull Request title
   contains `[skip netlify]`, the automated eligibility gate passed, and the
-  exact CSV diff contains only the intended new data and bundle metadata.
+  exact CSV diff contains only the intended new data and bundle metadata. Also
+  confirm that the only non-CSV routine artifact is the generated private
+  Gallery catalogue and that its freshness check passed.
   When using the guided updater, this review happens at its `MERGE`
   checkpoint, after the Pull Request and its screenshot artifact exist.
 - For a validated custom-domain change, confirm the title contains
@@ -917,8 +927,8 @@ explicit promotion approval, tracked-data validation, full-suite and
 responsive review before release.
 
 For validated lightweight data refreshes, no accepted eligibility gate, exact
-CSV diff review, and responsive screenshot review for both site modes, no
-release.
+CSV and derived-catalogue diff review, and responsive screenshot review for
+both site modes, no release.
 
 For validated no-visual changes, no accepted eligibility gate, exact diff
 review, responsive screenshot review, and any required service-specific
@@ -1002,8 +1012,10 @@ before opening it. Netlify's supported title marker prevents a Deploy Preview
 from being generated. The preview-review-links workflow instead maintains a
 `Netlify preview skip requested` comment. `Pull Request Checks / Test static
 site` confirms that only existing-schema CSV exports and optional active-work
-notes changed, runs every local-style test, and uploads the responsive
-screenshots. Do not use `[skip ci]`, because GitHub Actions must not be skipped.
+notes changed apart from the one exact deterministic private Gallery catalogue,
+runs every local-style test, and uploads the responsive screenshots. Any other
+Gallery path fails this route. Do not use `[skip ci]`, because GitHub Actions
+must not be skipped.
 
 Once the workflow exists on `main`, test it manually by opening `PR Preview Review Links` in GitHub Actions, choosing **Run workflow**, selecting the implementation branch, entering the Pull Request number, and running it. Re-running it updates the same marked comment rather than adding another. GitHub does not expose `workflow_dispatch` for the first Pull Request that introduces a workflow because the workflow file is not yet on the default branch.
 

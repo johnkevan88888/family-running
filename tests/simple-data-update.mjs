@@ -295,9 +295,24 @@ assert.match(
 
 const commitBody = functionSource(updater, 'function commitUpdate');
 const bundleRecheckIndex = commitBody.indexOf('const workingBundleId');
-const stageDataIndex = commitBody.indexOf("['add', '--', 'data']");
+const stageDataIndex = commitBody.indexOf("['add', '--', 'data', ...routineDerivedDataFiles]");
 assert(bundleRecheckIndex >= 0 && stageDataIndex > bundleRecheckIndex);
 assert.match(commitBody, /promoted export bundle changed after staged validation/);
+
+const promoteAndTestBody = functionSource(updater, 'function promoteAndTest');
+const savePromotedStateIndex = promoteAndTestBody.indexOf('saveState(state)');
+const regenerateDerivedIndex = promoteAndTestBody.indexOf(
+    'regenerateDerivedDataArtifactsAndRunTests(state, git)'
+);
+assert(savePromotedStateIndex >= 0 && regenerateDerivedIndex > savePromotedStateIndex);
+
+const regenerateBody = functionSource(
+    updater,
+    'function regenerateDerivedDataArtifactsAndRunTests'
+);
+assert.match(regenerateBody, /scripts\/build-gallery-admin-catalog\.mjs/);
+assert.match(regenerateBody, /requireDerivedFiles: false/);
+assert.match(regenerateBody, /afterGenerationErrors/);
 
 const failedCleanupBody = functionSource(updater, 'function cleanupFailedPreparation');
 assert.match(failedCleanupBody, /fs\.existsSync\(statePath\)/);
@@ -562,13 +577,19 @@ assert.equal(
 );
 
 assert.deepEqual(assessPublishableDataChange({
-    changedFiles: ['data/family/a.csv', 'data/everyone/b.csv'],
-    expectedDataFiles: ['data/family/a.csv', 'data/everyone/b.csv']
+    changedFiles: [
+        'data/family/a.csv',
+        'data/everyone/b.csv',
+        'gallery-admin/generated/catalog-snapshot.js'
+    ],
+    expectedDataFiles: ['data/family/a.csv', 'data/everyone/b.csv'],
+    expectedDerivedFiles: ['gallery-admin/generated/catalog-snapshot.js']
 }), []);
 assert.match(
     assessPublishableDataChange({
         changedFiles: ['data/family/a.csv', 'scripts/site.js'],
-        expectedDataFiles: ['data/family/a.csv', 'data/everyone/b.csv']
+        expectedDataFiles: ['data/family/a.csv', 'data/everyone/b.csv'],
+        expectedDerivedFiles: ['gallery-admin/generated/catalog-snapshot.js']
     }).join('\n'),
     /Unexpected changed files: scripts\/site\.js/
 );
@@ -579,6 +600,20 @@ assert.match(
     }).join('\n'),
     /complete public CSV bundle/
 );
+assert.match(
+    assessPublishableDataChange({
+        changedFiles: ['data/family/a.csv', 'data/everyone/b.csv'],
+        expectedDataFiles: ['data/family/a.csv', 'data/everyone/b.csv'],
+        expectedDerivedFiles: ['gallery-admin/generated/catalog-snapshot.js']
+    }).join('\n'),
+    /required derived data artifacts/
+);
+assert.deepEqual(assessPublishableDataChange({
+    changedFiles: ['data/family/a.csv', 'data/everyone/b.csv'],
+    expectedDataFiles: ['data/family/a.csv', 'data/everyone/b.csv'],
+    expectedDerivedFiles: ['gallery-admin/generated/catalog-snapshot.js'],
+    requireDerivedFiles: false
+}), []);
 
 assert.equal(validateUpdateState({
     version: 1,

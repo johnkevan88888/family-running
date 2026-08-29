@@ -43,6 +43,7 @@ const eligible = assessReleasePath({
     changedFiles: [
         'data/athlete_results.csv',
         'data/family/5km-current-all-family.csv',
+        'gallery-admin/generated/catalog-snapshot.js',
         'docs/active-work.md'
     ],
     csvMetadata: new Map([
@@ -59,9 +60,48 @@ assert.deepEqual(eligible, {
     errors: []
 });
 
+const missingDerivedCatalog = assessReleasePath({
+    title: '[skip netlify] Refresh race times',
+    changedFiles: [
+        'data/athlete_results.csv',
+        'data/family/5km-current-all-family.csv'
+    ],
+    csvMetadata: new Map([
+        ['data/athlete_results.csv', unchangedCsv],
+        ['data/family/5km-current-all-family.csv', unchangedCsv]
+    ]),
+    expectedDataCsvFiles: [
+        'data/athlete_results.csv',
+        'data/family/5km-current-all-family.csv'
+    ]
+});
+assert.match(
+    missingDerivedCatalog.errors.join('\n'),
+    /gallery-admin\/generated\/catalog-snapshot\.js/
+);
+
+const unrelatedGalleryAdminChange = assessReleasePath({
+    title: '[skip netlify] Refresh race times',
+    changedFiles: [
+        'data/athlete_results.csv',
+        'gallery-admin/generated/catalog-snapshot.js',
+        'gallery-admin/src/admin-worker.js'
+    ],
+    csvMetadata: new Map([['data/athlete_results.csv', unchangedCsv]]),
+    expectedDataCsvFiles: ['data/athlete_results.csv']
+});
+assert.match(
+    unrelatedGalleryAdminChange.errors.join('\n'),
+    /gallery-admin\/src\/admin-worker\.js/
+);
+
 const codeChange = assessReleasePath({
     title: '[skip netlify] Refresh race times',
-    changedFiles: ['data/athlete_results.csv', 'leaderboard.js'],
+    changedFiles: [
+        'data/athlete_results.csv',
+        'gallery-admin/generated/catalog-snapshot.js',
+        'leaderboard.js'
+    ],
     csvMetadata: new Map([['data/athlete_results.csv', unchangedCsv]])
 });
 assert.match(codeChange.errors.join('\n'), /leaderboard\.js/);
