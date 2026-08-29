@@ -11,6 +11,7 @@ import {
     repoRoot,
     resolveStagedRoot
 } from './export-bundle-tools.mjs';
+import { galleryAdminCatalogOutputRelativePath } from './build-gallery-admin-catalog.mjs';
 import {
     waitForPagesRunCompletion,
     waitForPagesRunRegistration
@@ -22,6 +23,9 @@ const REPOSITORY = 'johnkevan88888/family-running';
 const BASE_BRANCH = 'main';
 const REQUIRED_CHECK = 'Test static site';
 const EXPECTED_PUBLIC_CSV_COUNT = 72;
+const routineDerivedDataFiles = Object.freeze([
+    galleryAdminCatalogOutputRelativePath
+]);
 const stateDirectory = path.join(repoRoot, 'test-artifacts', 'simple-data-update');
 const statePath = path.join(stateDirectory, 'latest.json');
 const promotionDirectory = path.join(
@@ -315,13 +319,27 @@ export function createWorkbookExportArguments({
     return argumentsList;
 }
 
-export function assessPublishableDataChange({ changedFiles, expectedDataFiles }) {
+export function assessPublishableDataChange({
+    changedFiles,
+    expectedDataFiles,
+    expectedDerivedFiles = [],
+    requireDerivedFiles = true
+}) {
     const normalizedChanged = [...new Set(changedFiles.map(normalizePath))].sort();
-    const normalizedExpected = [...new Set(expectedDataFiles.map(normalizePath))].sort();
-    const expectedSet = new Set(normalizedExpected);
+    const normalizedExpectedData = [...new Set(expectedDataFiles.map(normalizePath))].sort();
+    const normalizedExpectedDerived = [
+        ...new Set(expectedDerivedFiles.map(normalizePath))
+    ].sort();
+    const expectedSet = new Set([
+        ...normalizedExpectedData,
+        ...normalizedExpectedDerived
+    ]);
     const changedSet = new Set(normalizedChanged);
     const unexpected = normalizedChanged.filter(file => !expectedSet.has(file));
-    const missing = normalizedExpected.filter(file => !changedSet.has(file));
+    const missingData = normalizedExpectedData.filter(file => !changedSet.has(file));
+    const missingDerived = requireDerivedFiles
+        ? normalizedExpectedDerived.filter(file => !changedSet.has(file))
+        : [];
     const errors = [];
 
     if (normalizedChanged.length === 0) {
@@ -330,8 +348,13 @@ export function assessPublishableDataChange({ changedFiles, expectedDataFiles })
     if (unexpected.length > 0) {
         errors.push(`Unexpected changed files: ${unexpected.join(', ')}`);
     }
-    if (missing.length > 0) {
-        errors.push(`The complete public CSV bundle was not refreshed: ${missing.join(', ')}`);
+    if (missingData.length > 0) {
+        errors.push(`The complete public CSV bundle was not refreshed: ${missingData.join(', ')}`);
+    }
+    if (missingDerived.length > 0) {
+        errors.push(
+            `The required derived data artifacts were not refreshed: ${missingDerived.join(', ')}`
+        );
     }
 
     return errors;
@@ -578,16 +601,16 @@ async function main() {
 
         state = promoteAndTest(state, tools.git);
     } else if (state.phase === 'promoted') {
-        state = runFullTests(state, tools.git);
+        state = regenerateDerivedDataArtifactsAndRunTests(state, tools.git);
     }
 
     if (
         state.phase === 'tested' &&
         state.testedDataFingerprint !== captureDataFingerprint(tools.git)
     ) {
-        console.log('The saved update predates the tested-data fingerprint or its CSV diff changed. Running the full tests again...');
+        console.log('The saved update predates the tested-data fingerprint or its routine-data diff changed. Regenerating derived artifacts and running the full tests again...');
         delete state.productionApprovedAt;
-        state = runFullTests(state, tools.git);
+        state = regenerateDerivedDataArtifactsAndRunTests(state, tools.git);
     }
 
     if (state.phase === 'tested') {
@@ -600,7 +623,7 @@ async function main() {
     ) {
         const approved = options.approvePublish || await confirmExactWord(
             'PUBLISH',
-            'Publish will commit and push the validated CSV bundle, open a lightweight Pull Request, and wait for GitHub checks and screenshots. It does not merge: the run stops afterwards so you can review the exact diff and screenshots, and merging needs a separate MERGE confirmation.'
+            'Publish will commit and push the validated CSV bundle plus its deterministic private Gallery catalogue, open a lightweight Pull Request, and wait for GitHub checks and screenshots. It does not merge: the run stops afterwards so you can review the exact diff and screenshots, and merging needs a separate MERGE confirmation.'
         );
 
         if (!approved) {
@@ -851,6 +874,41 @@ function promoteAndTest(state, git) {
     state.promotionRoot = resolvePromotionRoot(promotionMatch[1].trim());
     state.phase = 'promoted';
     saveState(state);
+    return regenerateDerivedDataArtifactsAndRunTests(state, git);
+}
+
+function regenerateDerivedDataArtifactsAndRunTests(state, git) {
+    ensureCurrentBranch(git, state.branch);
+    const expectedDataFiles = expectedRoutineDataFiles();
+    const beforeGenerationFiles = changedWorkingTreeFiles(git);
+    const beforeGenerationErrors = assessPublishableDataChange({
+        changedFiles: beforeGenerationFiles,
+        expectedDataFiles,
+        expectedDerivedFiles: routineDerivedDataFiles,
+        requireDerivedFiles: false
+    });
+
+    if (beforeGenerationErrors.length > 0) {
+        throw new Error(
+            `Derived-data generation refused because the promoted working tree is unexpected:\n- ${beforeGenerationErrors.join('\n- ')}`
+        );
+    }
+
+    console.log('Regenerating the private Gallery catalogue from the promoted public data...');
+    runNodeScript('scripts/build-gallery-admin-catalog.mjs');
+
+    const afterGenerationErrors = assessPublishableDataChange({
+        changedFiles: changedWorkingTreeFiles(git),
+        expectedDataFiles,
+        expectedDerivedFiles: routineDerivedDataFiles
+    });
+
+    if (afterGenerationErrors.length > 0) {
+        throw new Error(
+            `Derived-data generation did not produce the exact routine-update file set:\n- ${afterGenerationErrors.join('\n- ')}`
+        );
+    }
+
     return runFullTests(state, git);
 }
 
@@ -894,21 +952,24 @@ function commitUpdate(state, git) {
         );
     }
 
-    const changedFiles = splitNullTerminated(runCommand(
-        git,
-        ['diff', '--name-only', '-z'],
-        { label: 'Changed-file inspection', quiet: true }
-    ).stdout);
-    const expectedDataFiles = listPublicCsvFiles(path.join(repoRoot, 'data'))
-        .map(file => `data/${normalizePath(file)}`);
-    const errors = assessPublishableDataChange({ changedFiles, expectedDataFiles });
+    const changedFiles = changedWorkingTreeFiles(git);
+    const expectedDataFiles = expectedRoutineDataFiles();
+    const errors = assessPublishableDataChange({
+        changedFiles,
+        expectedDataFiles,
+        expectedDerivedFiles: routineDerivedDataFiles
+    });
 
     if (errors.length > 0) {
         throw new Error(`This update is not eligible for the lightweight path:\n- ${errors.join('\n- ')}`);
     }
 
     assertUnchangedCsvHeaders(git, expectedDataFiles);
-    runCommand(git, ['add', '--', 'data'], { label: 'Stage public data' });
+    runCommand(
+        git,
+        ['add', '--', 'data', ...routineDerivedDataFiles],
+        { label: 'Stage routine data update' }
+    );
 
     const stagedFiles = splitNullTerminated(runCommand(
         git,
@@ -917,7 +978,8 @@ function commitUpdate(state, git) {
     ).stdout);
     const stagedErrors = assessPublishableDataChange({
         changedFiles: stagedFiles,
-        expectedDataFiles
+        expectedDataFiles,
+        expectedDerivedFiles: routineDerivedDataFiles
     });
 
     if (stagedErrors.length > 0) {
@@ -1550,6 +1612,7 @@ function createPullRequestBody(state) {
         '## Summary',
         '',
         '- Refresh the complete workbook-generated public CSV bundle.',
+        '- Regenerate the deterministic private Gallery catalogue from that reviewed bundle.',
         `- Update ${changedCount} CSV file(s) with meaningful data differences.`,
         '- Use the validated lightweight data-refresh pathway; Netlify preview is intentionally skipped.',
         '',
@@ -1621,7 +1684,13 @@ function ensureCurrentBranch(git, expectedBranch) {
 function showWorkingTreeSummary(git) {
     console.log('');
     console.log('Validated public-data change summary:');
-    const result = runCommand(git, ['diff', '--stat', '--', 'data'], {
+    const result = runCommand(git, [
+        'diff',
+        '--stat',
+        '--',
+        'data',
+        ...routineDerivedDataFiles
+    ], {
         label: 'Git difference summary',
         quiet: true
     });
@@ -1864,9 +1933,28 @@ merging again.`);
 }
 
 function captureDataFingerprint(git) {
-    const dataDiff = captureGit(git, ['diff', '--binary', '--', 'data']);
+    const dataDiff = captureGit(git, [
+        'diff',
+        '--binary',
+        '--',
+        'data',
+        ...routineDerivedDataFiles
+    ]);
 
     return createHash('sha256').update(dataDiff, 'utf8').digest('hex');
+}
+
+function expectedRoutineDataFiles() {
+    return listPublicCsvFiles(path.join(repoRoot, 'data'))
+        .map(file => `data/${normalizePath(file)}`);
+}
+
+function changedWorkingTreeFiles(git) {
+    return splitNullTerminated(runCommand(
+        git,
+        ['diff', '--name-only', '-z'],
+        { label: 'Changed-file inspection', quiet: true }
+    ).stdout);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

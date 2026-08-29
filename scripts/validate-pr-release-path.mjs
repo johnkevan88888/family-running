@@ -1,10 +1,14 @@
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { galleryAdminCatalogOutputRelativePath } from './build-gallery-admin-catalog.mjs';
 import { isPublishedPath, isPublishingControlPath } from './published-site-entries.mjs';
 
 const NETLIFY_SKIP_MARKER = /\[skip netlify\]/i;
 const ACTIVE_WORK_PATH = 'docs/active-work.md';
 const DATA_CSV_PATH = /^data\/(?:[^/]+\/)*[^/]+\.csv$/i;
+const ROUTINE_DERIVED_DATA_PATHS = new Set([
+    galleryAdminCatalogOutputRelativePath
+]);
 const CUSTOM_DOMAIN_PATH = 'CNAME';
 const CUSTOM_DOMAIN_ALLOWED_PATHS = new Set([
     '.github/pull_request_template.md',
@@ -150,9 +154,13 @@ export function assessReleasePath({
     }
 
     const disallowedFiles = normalizedFiles.filter(
-        file => file !== ACTIVE_WORK_PATH && !DATA_CSV_PATH.test(file)
+        file => file !== ACTIVE_WORK_PATH &&
+            !DATA_CSV_PATH.test(file) &&
+            !ROUTINE_DERIVED_DATA_PATHS.has(file)
     );
     const errors = [];
+    const missingDerivedDataFiles = [...ROUTINE_DERIVED_DATA_PATHS]
+        .filter(file => !normalizedFiles.includes(file));
 
     if (expectedDataCsvFiles) {
         const changedSet = new Set(dataCsvFiles);
@@ -171,6 +179,11 @@ export function assessReleasePath({
     if (disallowedFiles.length > 0) {
         errors.push(
             `The lightweight pathway cannot include these files: ${disallowedFiles.join(', ')}`
+        );
+    }
+    if (missingDerivedDataFiles.length > 0) {
+        errors.push(
+            `The lightweight pathway requires refreshed deterministic data artifacts: ${missingDerivedDataFiles.join(', ')}`
         );
     }
 

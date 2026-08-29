@@ -198,26 +198,38 @@ The guided updater:
 5. validates and reconciles the bundle without changing tracked data;
 6. lists every meaningful CSV difference and requires the exact word
    `PROMOTE` before replacing tracked `data/`;
-7. runs the complete repository test and responsive screenshot suite;
-8. confirms that every tracked CSV was refreshed, no header changed, and the
-   tested data-diff fingerprint still matches;
-9. requires the exact word `PUBLISH` before committing, pushing, and opening a
+7. regenerates `gallery-admin/generated/catalog-snapshot.js` deterministically
+   from the promoted manifest, athlete results, age-grade standards, and public
+   suppression document;
+8. runs the complete repository test and responsive screenshot suite;
+9. confirms that every tracked CSV and the one exact derived catalogue were
+   refreshed, no CSV header changed, and the tested routine-data fingerprint
+   still matches;
+10. requires the exact word `PUBLISH` before committing, pushing, and opening a
    `[skip netlify]` Pull Request;
-10. waits for GitHub checks, then stops and prints the Pull Request, its exact
+11. waits for GitHub checks, then stops and prints the Pull Request, its exact
    diff command, and the run holding the responsive-screenshot artifact;
-11. requires the exact word `MERGE` as explicit production approval, then
+12. requires the exact word `MERGE` as explicit production approval, then
     re-verifies the PR title, base branch, data branch, exact tested head
     commit, and required check before merging through the protected Pull
     Request pathway;
-12. waits for the `Deploy to GitHub Pages` workflow run whose commit is exactly
+13. waits for the `Deploy to GitHub Pages` workflow run whose commit is exactly
     that merge commit, and requires it to finish successfully;
-13. fetches the production manifest and all 71 files it lists with cache
+14. fetches the production manifest and all 71 files it lists with cache
     revalidation, compares all 72 CSV files byte-for-byte with the reviewed
     data commit, and opens both the Family and Everyone production URLs in a
     real browser to prove that the correct mode and standings render; and
-14. only after that live proof, fast-forwards local `main`, deletes the verified
+15. only after that live proof, fast-forwards local `main`, deletes the verified
     merged branch locally and remotely, and removes only the staged export,
     promotion backup, and state paths recorded for that update.
+
+The Gallery catalogue is derived data, not a second source of championship
+truth. It is excluded from the public GitHub Pages artifact and cannot affect
+rankings, standards, medals, crowns, or the workbook export. Requiring its exact
+regeneration keeps the private owner interface aligned without making a routine
+refresh depend on unrelated Gallery source changes. The lightweight gate
+accepts only this one generated path alongside all 72 CSVs; any other code,
+schema, configuration, or Gallery file still requires the normal change path.
 
 This automatic merge authority is limited to the existing fail-closed routine
 data pathway. Code, schema, configuration, export-set, and broader

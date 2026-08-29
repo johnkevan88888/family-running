@@ -120,11 +120,13 @@ marked Pull Request, remove the marker and use the standard pathway.
 Use this pathway only for a routine full-bundle refresh, such as adding new
 race times, when all of the following are true:
 
-- every changed runtime file is an existing CSV below `data/`;
+- every changed public runtime file is an existing CSV below `data/`;
 - every tracked public CSV is part of the refreshed bundle;
 - no CSV header or schema changes;
 - no export is added, removed, or renamed;
-- the only optional non-data change is `docs/active-work.md` handoff notes;
+- `gallery-admin/generated/catalog-snapshot.js` is regenerated exactly from
+  that bundle and is the only required non-CSV data artifact;
+- the only optional remaining change is `docs/active-work.md` handoff notes;
 - the complete automated suite, including repository safety, bundle
   consistency, CSV validation, browser smoke tests, and responsive screenshots,
   still passes.
@@ -137,7 +139,8 @@ must still run.
 
 For routine workbook updates, `pnpm run data:update` is the preferred guided
 entry point. It prepares the complete export, preserves the staged review and
-promotion boundary, runs the full local suite, verifies lightweight-path
+promotion boundary, regenerates the deterministic private Gallery catalogue,
+runs the full local suite, verifies lightweight-path
 eligibility, and requires `PUBLISH` before opening the correctly titled Pull
 Request and waiting for GitHub checks. It then stops for review and requires a
 separate `MERGE` confirmation, after which it re-verifies the PR branch, title,
