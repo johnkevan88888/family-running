@@ -1,13 +1,15 @@
 # Gallery Administration Workers
 
-This directory contains the deployed authentication baseline and the remotely
-verified, synthetic-only Phase C owner workflow. It is not part of the GitHub
-Pages runtime and does not provide a public-site upload control. The deployed
-administration Worker remains owner-only and can reach only D1 and private
-originals; the separate media Worker can reach only approved derivatives.
-The local Phase D processing Worker is a third, service-only component that can
-read private originals and write private staging, but cannot reach approved
-media or either public manifest.
+This directory contains the deployed authentication baseline, the remotely
+verified synthetic-only Phase C owner workflow, and the Phase D private photo-
+processing boundary. It is not part of the GitHub Pages runtime and does not
+provide a public-site upload control. The deployed administration Worker
+remains owner-only and can reach only D1 and private originals; the separate
+media Worker can reach only approved derivatives. The normal Phase D processing
+Worker is a third, service-only component that can read private originals and
+write private staging, but cannot reach approved media or either public
+manifest. Its non-production Access application is currently parked fail closed
+with zero policies and no retained rehearsal service identity.
 
 ## Historical Phase B boundary
 
@@ -83,7 +85,7 @@ full object size, raw ETag, and returned range exactly match the preceding
 `head`. A changed object or missing proof returns `503` rather than mixing
 bytes from different versions.
 
-## Local Phase D private-processing bridge
+## Phase D private-processing bridge
 
 `src/processing-worker.js` is a separate service-only Worker entry point. It has
 no HTML, owner session, browser route, list/search route, caller-selected
@@ -95,7 +97,9 @@ deletion route, or public-media route. It accepts only these exact operations:
   staging key; and
 - record a canonical staged result or one fixed safe failure code; and
 - close and clean one exact processing run after D1 proves an athlete exclusion,
-  withdrawal, or processing-failure reason.
+  withdrawal, or processing-failure reason; and
+- return a fully cleaned failed draft to `approved-for-processing` through one
+  exact immutable retry receipt.
 
 The caller supplies only opaque route IDs, idempotency evidence, finalized
 bytes and hashes, and the pinned processor result. D1 supplies and repeatedly
@@ -156,12 +160,14 @@ ignored local copy must have exactly `DB`, `PRIVATE_ORIGINALS`, and
   `subject:<Cloudflare-Access-service-Client-ID>` entry; and
 - `PROCESSING_ORIGIN`: the exact HTTPS processing Worker origin.
 
-This component is currently local and synthetic-only. Do not apply migrations
-`0004` or `0005`, create a new Access service token, or deploy it until the
-combined processing/cleanup implementation has passed review and a separately
-approved non-production Cloudflare rehearsal has confirmed the provider race
-behavior. Any later external action and all real media still require separate
-approval.
+This component remains synthetic-only. Migrations `0003`–`0006` and the normal
+processing Worker were applied and remotely rehearsed after separate approval;
+the A–F photo and cleanup-race proof passed. The fault-enabled entry point was
+then replaced by the normal entry point, and the temporary Access service token
+and rehearsal policy were deleted. Do not create a new service identity,
+reattach a policy, or deploy the rehearsal entry point without fresh explicit
+approval. Approved-media promotion, manifest generation, video, publication,
+and all real media remain separate blocked scopes.
 
 ## Configuration boundary
 
@@ -172,9 +178,9 @@ identifier is omitted. Make ignored local configuration only after the exact
 non-production resources are confirmed, replace the markers there, and never
 commit a real database or account identifier.
 
-The currently deployed Phase B admin Worker binds only D1. The tracked Phase C
-example adds exactly the private-original bucket plus an hourly cleanup trigger.
-It does not bind derivative staging or approved-public storage. The three
+The currently deployed Phase C admin Worker binds only D1 and private originals
+plus an hourly cleanup trigger. It does not bind derivative staging or approved-
+public storage. The three
 provisioned bucket names are:
 
 - `family-running-gallery-originals-dev`
@@ -182,7 +188,7 @@ provisioned bucket names are:
 - `family-running-gallery-approved-dev`
 
 The public media Worker binds only the last bucket. Phase C binds only the first.
-The local processing example binds D1 plus only the first two buckets. Neither
+The processing Worker binds D1 plus only the first two buckets. Neither
 administration, processing, nor delivery can reach all three buckets.
 
 Set these admin values outside Git:
@@ -252,8 +258,8 @@ upload-to-review transition without complete server verification. Provider IDs
 and object keys stay private. The second migration also strengthens purge so
 original-upload evidence cannot cascade away before terminal cleanup.
 
-`migrations/0003_private_original_v1_keys.sql` is the unpromoted forward
-migration for the accepted storage-key contract. It preserves existing
+`migrations/0003_private_original_v1_keys.sql` is the applied forward migration
+for the accepted storage-key contract. It preserves existing
 `private-originals/phase-c/` session and part evidence while new Worker-created
 uploads use
 `private-originals/v1/<site>/<UTC-year>/<UTC-month>/<draft-id>/<upload-id>/original.<extension>`.
@@ -261,37 +267,41 @@ Its rolling-deployment guard temporarily accepts the exact legacy UUID form as
 well as exact v1, because applying the database migration and replacing the
 Worker cannot be one atomic Cloudflare operation. The Worker generates v1 only
 and validates the site, timestamp, opaque IDs, and extension against D1 before
-any R2 read, write, abort, completion, preview, or cleanup action. This third
-migration is local only; do not apply it until the v1 multipart-lifecycle rule
-and remote rehearsal are separately approved.
+any R2 read, write, abort, completion, preview, or cleanup action.
 
-When that later deployment is approved, the safe order is: review and extend
-the multipart fallback for the v1 prefix, apply `0003` while the old Worker can
-still use its compatibility branch, deploy the v1-only Worker, then repeat the
-synthetic remote proof. Do not deploy the v1-only Worker against schema `0002`;
-that older schema correctly rejects v1 keys.
+The approved deployment used the safe rolling order: review the multipart
+fallback for the v1 prefix, apply `0003` while the old Worker can still use its
+compatibility branch, deploy the v1-only Worker, then repeat the synthetic
+remote proof. Do not deploy the v1-only Worker against schema `0002`; that older
+schema correctly rejects v1 keys.
 
-`migrations/0004_private_processing_staging.sql` is the unpromoted local Phase D
-run/output ledger. It records the exact original and current consent/catalog/
+`migrations/0004_private_processing_staging.sql` is the applied Phase D run/
+output ledger. It records the exact original and current consent/catalog/
 suppression evidence claimed by each processing run, reserves one immutable
 private staging object per role, and permits only the one-way
 `reserved -> stored -> verified` path. Database triggers reject replacement,
 stale draft or consent evidence, unresolved tagged-athlete exclusions, extra or
 missing photo roles, and a staged result without the exact verified private
-derivative pair. It blocks `candidate-public`, processing-derivative mutation,
-and draft purge absolutely because this slice has no race-safe cleanup
-operation. The migration adds no promotion or public-manifest writer and is not
-applied remotely.
+derivative pair. Its original absolute processing-cleanup guards are narrowed
+only by the evidence-gated cleanup companion below. The migration adds no
+promotion or public-manifest writer.
 
-`migrations/0005_private_processing_cleanup.sql` is that local companion. It
+`migrations/0005_private_processing_cleanup.sql` is the applied cleanup
+companion. It
 records every admitted one-part multipart handle, closes a run permanently when
 cleanup starts, snapshots the exact private targets, permits deletion only
 after terminal provider and R2-absence evidence, and retains only an append-only
 hash commitment after normal private rows are purged. Its narrow exceptions
 replace `0004`'s absolute deletion guards; the absolute `candidate-public`
 guard remains. The migration adds no binding, scheduled job, approved-media
-access, promotion path, public URL, manifest writer, or GitHub authority, and it
-has not been applied remotely.
+access, promotion path, public URL, manifest writer, or GitHub authority.
+
+`migrations/0006_transition_receipt_state_version.sql` adds one unique
+transition receipt for each draft and expected state version. It also extends
+the append-only no-replace trigger to both idempotency-key and state-version
+collisions. That prevents a different `INSERT OR REPLACE` key from evicting the
+winner and makes competing failed-run retries single-winner without relying on
+connection-local statement metadata.
 
 Private consent, derivative, publication, and transition rows cascade when an
 eligible draft is explicitly purged. Original, staging, and approved object
@@ -308,10 +318,16 @@ explicit `DELETE`; never `INSERT OR REPLACE`. Phase C cleanup is an internal
 scheduled event, not a browser or service endpoint.
 
 The owner separately approved and completed the non-production application of
-migration `0002`, the private-original binding, hourly cleanup schedule,
-prefix-scoped one-day multipart fallback, and synthetic Phase C deployment.
-Remote D1 and private R2 contain exactly one built-in Family photo and one
-built-in Everyone video in private review. Staging and approved storage remain
-empty. Use synthetic records and media only. Real family media and real consent
-or editorial records remain prohibited until the later synthetic derivative,
-metadata-stripping, deletion, and takedown gates have passed.
+migrations through `0006`, the private-original binding, hourly cleanup
+schedule, prefix-scoped one-day multipart fallback, synthetic Phase C upload
+proof, and synthetic Phase D photo-processing and cleanup-race proof. Remote D1
+and private R2 retain one built-in Family photo original and one built-in
+Everyone video original. The Everyone draft remains in `private-review`; the
+Family draft is in `processing` at state version 19 with the final photo run's
+display and thumbnail derivatives in private staging. Approved storage and both
+public manifests remain empty. The normal processing Worker is restored with
+only D1, private originals, and private staging; its Access application has zero
+policies after the temporary rehearsal identity and policy were deleted. Use synthetic
+records and media only. Real family media and real consent or editorial records
+remain prohibited until the later video, promotion, manifest, deletion, and
+takedown gates have passed.

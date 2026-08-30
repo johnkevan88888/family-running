@@ -718,13 +718,14 @@ const processingAccessResponse = await processingModule.default.fetch(
 assert.equal(processingAccessResponse.status, 405);
 assert.deepEqual(processingBoundaryCalls, []);
 
+const processingServiceAssertion = createAccessAssertion(serviceAssertionPayload);
 const processingAssertionResponse = await processingModule.default.fetch(
     new Request(
         `${processingOrigin}/api/service/drafts/${processingSampleDraftId}/processing-runs`,
         {
             method: 'GET',
             headers: {
-                'Cf-Access-Jwt-Assertion': createAccessAssertion(serviceAssertionPayload)
+                'Cf-Access-Jwt-Assertion': processingServiceAssertion
             }
         }
     ),
@@ -738,6 +739,101 @@ const processingAssertionResponse = await processingModule.default.fetch(
 );
 assert.equal(processingAssertionResponse.status, 405);
 assert.deepEqual(processingBoundaryCalls, []);
+
+// Worker-level Service Auth injects one cookie whose value is the same signed
+// assertion carried by the Access header. That exact pair is admitted, while
+// browser cookies, altered values, aliases, casing variations, and additional
+// cookies all stop before D1 or either R2 binding.
+const processingAccessCookieResponse = await processingModule.default.fetch(
+    new Request(
+        `${processingOrigin}/api/service/drafts/${processingSampleDraftId}/processing-runs`,
+        {
+            method: 'GET',
+            headers: {
+                'Cf-Access-Jwt-Assertion': processingServiceAssertion,
+                Cookie: `CF_Authorization=${processingServiceAssertion}`
+            }
+        }
+    ),
+    processingBoundaryEnv,
+    {
+        access: {
+            aud: serviceAudience,
+            async getIdentity() { return undefined; }
+        }
+    }
+);
+assert.equal(processingAccessCookieResponse.status, 405);
+assert.deepEqual(processingBoundaryCalls, []);
+
+const rejectedProcessingCookies = [
+    {
+        label: 'mismatched Access assertion cookie',
+        cookie: `CF_Authorization=${processingServiceAssertion}altered`
+    },
+    {
+        label: 'additional cookie',
+        cookie: `CF_Authorization=${processingServiceAssertion}; extra=1`
+    },
+    {
+        label: 'duplicated Access cookie',
+        cookie: `CF_Authorization=${processingServiceAssertion}; ` +
+            `CF_Authorization=${processingServiceAssertion}`
+    },
+    {
+        label: 'lowercase Access cookie name',
+        cookie: `cf_authorization=${processingServiceAssertion}`
+    },
+    {
+        label: 'hyphenated Access cookie name',
+        cookie: `CF-Authorization=${processingServiceAssertion}`
+    },
+    {
+        label: 'whitespace-altered Access cookie',
+        cookie: `CF_Authorization =${processingServiceAssertion}`
+    }
+];
+for (const testCase of rejectedProcessingCookies) {
+    const callsBefore = processingBoundaryCalls.length;
+    const response = await processingModule.default.fetch(
+        new Request(
+            `${processingOrigin}/api/service/drafts/${processingSampleDraftId}/processing-runs`,
+            {
+                method: 'GET',
+                headers: {
+                    'Cf-Access-Jwt-Assertion': processingServiceAssertion,
+                    Cookie: testCase.cookie
+                }
+            }
+        ),
+        processingBoundaryEnv,
+        {
+            access: {
+                aud: serviceAudience,
+                async getIdentity() { return undefined; }
+            }
+        }
+    );
+    assert.equal(response.status, 403, testCase.label);
+    assert.equal(processingBoundaryCalls.length, callsBefore, testCase.label);
+}
+
+const cookieWithoutAssertionCallsBefore = processingBoundaryCalls.length;
+const cookieWithoutAssertionResponse = await processingModule.default.fetch(
+    new Request(
+        `${processingOrigin}/api/service/drafts/${processingSampleDraftId}/processing-runs`,
+        {
+            method: 'GET',
+            headers: {
+                Cookie: `CF_Authorization=${processingServiceAssertion}`
+            }
+        }
+    ),
+    processingBoundaryEnv,
+    processingAccessContext
+);
+assert.equal(cookieWithoutAssertionResponse.status, 403);
+assert.equal(processingBoundaryCalls.length, cookieWithoutAssertionCallsBefore);
 
 // Issue a real signed session through the owner route. The cookie must be
 // host-only, secure, HTTP-only, strict same-site, and contain no raw identity or
@@ -1333,6 +1429,13 @@ const processingMigrationSource = await readFile(
 );
 const processingCleanupMigrationSource = await readFile(
     new URL('../gallery-admin/migrations/0005_private_processing_cleanup.sql', import.meta.url),
+    'utf8'
+);
+const transitionReceiptStateVersionMigrationSource = await readFile(
+    new URL(
+        '../gallery-admin/migrations/0006_transition_receipt_state_version.sql',
+        import.meta.url
+    ),
     'utf8'
 );
 const database = new DatabaseSync(':memory:');
@@ -2817,6 +2920,164 @@ for (const table of [
         assert.equal(columns.includes(forbiddenColumn), false, `${table}.${forbiddenColumn}`);
     }
 }
+
+// The state-version receipt index is a forward-only upgrade over a populated
+// Phase D database. Refuse the migration when legacy evidence already contains
+// two transitions from the same draft state version, then prove the reviewed
+// populated schema upgrades without changing any private row.
+const duplicateReceiptMigrationDatabase = new DatabaseSync(':memory:');
+for (const source of [
+    migrationSource,
+    phaseCMigrationSource,
+    storageKeyMigrationSource,
+    processingMigrationSource,
+    processingCleanupMigrationSource
+]) {
+    duplicateReceiptMigrationDatabase.exec(source);
+}
+const duplicateReceiptFixture = insertMigrationProcessingFixture(
+    duplicateReceiptMigrationDatabase,
+    0x7000
+);
+for (const ordinal of [1, 2]) {
+    duplicateReceiptMigrationDatabase.prepare(
+        'INSERT INTO draft_transition_receipts (' +
+        'draft_id, idempotency_key, payload_fingerprint, from_state, to_state, ' +
+        'expected_state_version, result_state_version, created_at' +
+        ') VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+        duplicateReceiptFixture.draftId,
+        `phase-d-legacy-duplicate-${ordinal}`,
+        sha256Text(`phase-d-legacy-duplicate-${ordinal}`),
+        'approved-for-processing',
+        'processing',
+        3,
+        4,
+        `2026-08-26T12:1${ordinal}:00.000Z`
+    );
+}
+assert.throws(
+    () => duplicateReceiptMigrationDatabase.exec(
+        transitionReceiptStateVersionMigrationSource
+    ),
+    /UNIQUE constraint failed: draft_transition_receipts\.draft_id, draft_transition_receipts\.expected_state_version/i
+);
+duplicateReceiptMigrationDatabase.close();
+
+const preflightReceiptFixture = insertMigrationProcessingFixture(database, 9);
+database.prepare(
+    'INSERT INTO draft_transition_receipts (' +
+    'draft_id, idempotency_key, payload_fingerprint, from_state, to_state, ' +
+    'expected_state_version, result_state_version, created_at' +
+    ') VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+).run(
+    preflightReceiptFixture.draftId,
+    'phase-d-state-version-winner',
+    sha256Text('phase-d-state-version-winner'),
+    'approved-for-processing',
+    'processing',
+    3,
+    4,
+    '2026-08-26T12:11:00.000Z'
+);
+assert.equal(database.prepare(
+    'SELECT COUNT(*) AS count FROM draft_transition_receipts'
+).get().count > 0, true);
+assert.deepEqual(database.prepare(
+    'SELECT draft_id, expected_state_version FROM draft_transition_receipts ' +
+    'GROUP BY draft_id, expected_state_version HAVING COUNT(*) > 1'
+).all(), []);
+const phaseDStateBeforeReceiptIndexMigration = migrationPhaseDStateSnapshot(database);
+database.exec(transitionReceiptStateVersionMigrationSource);
+assert.equal(
+    migrationPhaseDStateSnapshot(database),
+    phaseDStateBeforeReceiptIndexMigration
+);
+assert.equal(database.prepare(
+    "SELECT COUNT(*) AS count FROM sqlite_schema " +
+    "WHERE type = 'index' AND name NOT LIKE 'sqlite_%'"
+).get().count, 10);
+assert.deepEqual(
+    database.prepare(
+        "SELECT name, \"unique\" AS isUnique FROM pragma_index_list('draft_transition_receipts') " +
+        "WHERE name = 'draft_transition_receipts_state_version_unique'"
+    ).all().map(row => ({ ...row })),
+    [{ name: 'draft_transition_receipts_state_version_unique', isUnique: 1 }]
+);
+assert.deepEqual(
+    database.prepare(
+        "SELECT name FROM pragma_index_info('draft_transition_receipts_state_version_unique') " +
+        'ORDER BY seqno'
+    ).all().map(row => row.name),
+    ['draft_id', 'expected_state_version']
+);
+assert.deepEqual(database.prepare('PRAGMA foreign_key_check').all(), []);
+assert.equal(database.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
+
+assert.throws(
+    () => database.prepare(
+        'INSERT INTO draft_transition_receipts (' +
+        'draft_id, idempotency_key, payload_fingerprint, from_state, to_state, ' +
+        'expected_state_version, result_state_version, created_at' +
+        ') VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+        preflightReceiptFixture.draftId,
+        'phase-d-state-version-loser',
+        sha256Text('phase-d-state-version-loser'),
+        'approved-for-processing',
+        'processing',
+        3,
+        4,
+        '2026-08-26T12:12:00.000Z'
+    ),
+    /transition receipt replacement is forbidden/i
+);
+assert.equal(database.prepare(
+    'SELECT COUNT(*) AS count FROM draft_transition_receipts ' +
+    'WHERE draft_id = ? AND expected_state_version = ?'
+).get(preflightReceiptFixture.draftId, 3).count, 1);
+const stateVersionWinnerBeforeReplace = migrationRowsSnapshot(
+    database,
+    'SELECT * FROM draft_transition_receipts ' +
+        'WHERE draft_id = ? AND expected_state_version = ?',
+    preflightReceiptFixture.draftId,
+    3
+);
+assert.throws(
+    () => database.prepare(
+        'INSERT OR REPLACE INTO draft_transition_receipts (' +
+        'draft_id, idempotency_key, payload_fingerprint, from_state, to_state, ' +
+        'expected_state_version, result_state_version, created_at' +
+        ') VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+        preflightReceiptFixture.draftId,
+        'phase-d-state-version-replacement',
+        sha256Text('phase-d-state-version-replacement'),
+        'approved-for-processing',
+        'processing',
+        3,
+        4,
+        '2026-08-26T12:13:00.000Z'
+    ),
+    /transition receipt replacement is forbidden/i
+);
+assert.equal(
+    migrationRowsSnapshot(
+        database,
+        'SELECT * FROM draft_transition_receipts ' +
+            'WHERE draft_id = ? AND expected_state_version = ?',
+        preflightReceiptFixture.draftId,
+        3
+    ),
+    stateVersionWinnerBeforeReplace
+);
+assert.equal(database.prepare(
+    'SELECT COUNT(*) AS count FROM draft_transition_receipts ' +
+    'WHERE draft_id = ? AND idempotency_key = ?'
+).get(
+    preflightReceiptFixture.draftId,
+    'phase-d-state-version-replacement'
+).count, 0);
 
 // The winning provider multipart ID must be persisted before a part can be
 // admitted. Completion is possible only from the persisted part-uploaded

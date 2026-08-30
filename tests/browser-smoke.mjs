@@ -422,7 +422,8 @@ async function runNewsPageTests(browserInstance) {
 
                 await page.screenshot({
                     path: path.join(artifactsDir, `${mode}-news-${viewport.name}.png`),
-                    fullPage: true
+                    fullPage: true,
+                    scale: 'css'
                 });
 
                 if (updateScreenshots) {
@@ -2855,7 +2856,8 @@ async function capturePageScreenshot(page, mode, viewport, pageKey, waitForPage)
     await waitForNetworkToSettle(page);
     await page.screenshot({
         path: path.join(artifactsDir, `${mode}-${pageKey}-${viewport.name}.png`),
-        fullPage: true
+        fullPage: true,
+        scale: 'css'
     });
 }
 
@@ -3813,7 +3815,8 @@ async function runGalleryEdgeCaseTests(browserInstance) {
 
         await page.screenshot({
             path: path.join(artifactsDir, 'gallery-populated-desktop.png'),
-            fullPage: true
+            fullPage: true,
+            scale: 'css'
         });
 
         await page.goto(`${preview.baseUrl}/index.html?site=family`, { waitUntil: 'domcontentloaded' });
@@ -3835,7 +3838,8 @@ async function runGalleryEdgeCaseTests(browserInstance) {
         }
         await page.screenshot({
             path: path.join(artifactsDir, 'championship-populated-desktop.png'),
-            fullPage: true
+            fullPage: true,
+            scale: 'css'
         });
 
         await page.goto(`${preview.baseUrl}/athlete.html?id=carolyn-kevan&site=family`, { waitUntil: 'domcontentloaded' });
@@ -3911,7 +3915,8 @@ async function runGalleryEdgeCaseTests(browserInstance) {
 
         await mobilePage.screenshot({
             path: path.join(artifactsDir, 'gallery-populated-mobile.png'),
-            fullPage: true
+            fullPage: true,
+            scale: 'css'
         });
 
         await mobilePage.goto(`${preview.baseUrl}/index.html?site=family`, { waitUntil: 'domcontentloaded' });
@@ -3932,7 +3937,8 @@ async function runGalleryEdgeCaseTests(browserInstance) {
         }
         await mobilePage.screenshot({
             path: path.join(artifactsDir, 'championship-populated-mobile.png'),
-            fullPage: true
+            fullPage: true,
+            scale: 'css'
         });
     } catch (error) {
         failures.push(`gallery mobile edge case: ${error.message}`);

@@ -81,10 +81,28 @@ pnpm run test:gallery-admin-phase-c
 pnpm run test:gallery-admin-browser
 ```
 
+Run the synthetic-only Phase D processor, private-staging bridge, rehearsal
+boundary, deployment-configuration, and remote-driver contract suites:
+
+```bash
+pnpm run test:gallery-media-processor
+pnpm run test:gallery-processing-bridge
+pnpm run test:gallery-processing-rehearsal-worker
+pnpm run test:gallery-phase-d-migration-configs
+pnpm run test:gallery-phase-d-processing-configs
+pnpm run test:gallery-phase-d-remote-rehearsal
+```
+
+These commands use generated synthetic bytes, in-memory substitutes, and fake
+command/service adapters. They do not mutate Cloudflare. Running the actual
+remote rehearsal requires separate explicit approval and an Access credential
+passed only in memory, never through an argument, environment variable, file,
+report, or log.
+
 The Phase C integration suite drives the actual administration router through
-signed-session and CSRF controls, applies all private migrations, and uses a
-deterministic in-memory multipart store with synthetic bytes only. It covers
-draft and consent revisions, exact inherited Family/Everyone context, separate
+signed-session and CSRF controls, applies Phase C migrations `0001`–`0003`, and
+uses a deterministic in-memory multipart store with synthetic bytes only. It
+covers draft and consent revisions, exact inherited Family/Everyone context, separate
 area-bound sessions, server-injected single-area drafts, cross-area denial,
 current public tags, pending exclusions, stale catalogs, interrupted and
 concurrent parts, whole-object checksums, signature and size failures,
@@ -110,11 +128,12 @@ ownership, withdrawal and retention evidence, cascaded private deletion, and
 surviving append-only opaque audit/tombstone records. Delivery coverage proves
 exact immutable `GET`/`HEAD` paths, conditional ranges tied to one R2 ETag and
 size, security headers, hostile R2 metadata rejection, and the absence of
-originals, staging, D1, listing, or write capability. Static checks keep both
-Wrangler examples inert, disable preview URLs, give the Phase C admin Worker
-only D1 plus private originals and one hourly cleanup schedule, and preserve the
-approved-only public Worker binding. The deployed Phase B admin remains D1-only
-until a separately approved Phase C deployment.
+originals, staging, D1, listing, or write capability. Static checks keep the
+tracked Wrangler examples inert and disable preview URLs. The Phase C
+administration Worker has only D1 plus private originals and one hourly cleanup
+schedule; the public media Worker has only approved derivatives; and the
+separate processing Worker has exactly D1, private originals, and private
+derivative staging.
 
 Check that the committed `vendor/` browser libraries still match the pinned
 dependencies:
@@ -635,7 +654,7 @@ PNG inputs fail before unnecessary native-tool work. It does not authorize real
 media or claim video processing coverage.
 
 The local private-processing bridge test then drives the real administration
-router, all five D1 migrations, a deterministic in-memory R2 implementation,
+router, all six D1 migrations, a deterministic in-memory R2 implementation,
 the real pinned photo processor, and the service-only processing router from
 end to end with synthetic bytes. It proves that the site area, race, tags,
 consent, revisions, suppression state, original key, run ID, and staging keys
@@ -651,17 +670,38 @@ required to stage a run. Deterministic race hooks must also prove that only one
 simultaneous staged-versus-failed or conflicting-failure result can win and
 that the losing request cannot append a false receipt or audit event.
 
+Retry coverage must apply migration `0006_transition_receipt_state_version.sql`
+and prove its exact unique `(draft_id, expected_state_version)` index, reject a
+pre-existing duplicate pair before remote use, and prove that both plain insert
+and distinct-idempotency-key `INSERT OR REPLACE` collisions preserve the exact
+winning receipt. The migration's no-replace guard must cover both the original
+idempotency constraint and the new state-version constraint. Keep the D1
+mutation below the provider's expression-depth limit. The service may pre-read the complete
+evidence graph, but the transactional mutation must remain a shallow draft
+compare-and-swap plus one immutable failed-run, completed-cleanup, and tombstone
+join. Existing D1 triggers must recheck concurrent consent, exclusion, upload,
+state, and revision changes. A competing same-version transition must roll its
+draft, receipt, and audit batch back; an exact committed retry must replay
+without changing evidence.
+
 Cleanup coverage must prove that a D1 closure committed before multipart-handle
 admission prevents any media part from being sent, while a handle committed
 first is included in the immutable cleanup snapshot. The in-memory R2 substitute
-must model both abort-wins and complete-wins orderings, exact `NoSuchUpload`, a
-lost abort response, a lost completion response, a lost delete response, and a
-D1 failure after provider success. Direct `put()` must fail the test so it
-cannot silently return to the processing path. Cleanup must reject a mismatched
-expected object, an unknown object under the canonical run prefix, any caller-
-supplied target, and any new output, result, or derivative after closure. It
-must verify exact bytes and metadata before deletion, final `head()` absence,
-and a fully paginated empty prefix before removing D1 operational evidence.
+must model abort-wins, complete-wins, exact `NoSuchUpload`, and the observed case
+where `abort()` resolves even though completion has already made the exact
+object visible. It must also model a lost abort response, lost completion
+response, lost delete response, and D1 failure after provider success. Direct
+`put()` must fail the test so it cannot silently return to the processing path.
+Cleanup must reject a mismatched expected object, an unknown object under the
+canonical run prefix, any caller-supplied target, and any new output, result, or
+derivative after closure. It must verify exact bytes and metadata before
+deletion, final `head()` absence, and a fully paginated empty prefix before
+removing D1 operational evidence. If an older Worker already stored terminal
+kind `aborted`, recovery must preserve that immutable fact. When the exact
+object is present, it must record observed provider hashes, deletion time, and
+absence time. If a replay instead finds the object already absent after a lost
+delete response, those earlier observed and deletion fields may remain null,
+but final absence, the cleaned cleanup record, and its tombstone are mandatory.
 No-output, partial-output, failed, fully staged, withdrawal, and pending tagged-
 athlete exclusion cases must converge under exact retries; resolving an
 exclusion must not reopen an old run. Every processing run must have completed
@@ -676,12 +716,48 @@ suppression file before and after the flow and proves the Worker has no
 approved-media binding. It does not exercise Cloudflare, use real media,
 promote an object, write a manifest, or open a Pull Request.
 
+The remote-driver contract must expect exactly six passed scenarios, five
+completed cleanups, four acknowledged derivative puts, five deliberately
+interrupted responses, final private status `staged`, zero approved references,
+zero publication references, zero publicward drafts, and zero foreign-key
+violations. Its fresh path must admit only an `approved-for-processing` draft at
+state version 3 and its final staged query must prove draft state version 19; a
+drifted fresh fixture must stop before the first processing request. Its
+Scenario A and Scenario D resume paths must accept only exact
+server-discovered checkpoints and prove the complete immutable run, cleanup,
+object, receipt, audit, and tombstone history before continuing; they must never
+reset or manually reconstruct remote state. Scenario F must leave its two
+verified derivatives in private staging and must not promote them.
+
+The approved 29 August 2026 remote A–F execution matched that report and ended
+at draft state version 19 with six runs, five failed runs, one staged run, five
+cleaned cleanup records, five tombstones, two verified private derivatives, no
+pending exclusion, and no approved or publication reference. After fault
+injection, normal Worker version `bd830cfc-c18b-465e-8835-7232309b33e4` was
+restored with exactly three private bindings. The normal header probe returned
+`403`, the immutable retry replay returned `200` with `replayed: true`, and
+temporary diagnostics were removed. Both public manifests and the suppression
+file retained their recorded canonical hashes. After fresh explicit approval,
+the rehearsal policy was detached and deleted and the temporary Access service
+token was deleted. Dashboard and API checks found neither deleted ID, the
+retained processing application reported zero policies, and a credential-free
+origin request was intercepted by Cloudflare Access. The old one-time secret
+was already absent, so this evidence does not claim an exact credential replay.
+
 Every public page is also checked for a `noindex` robots meta tag. The site is
 kept out of search results by that tag rather than by a `robots.txt` Disallow,
 so a new page shipping without it would be indexed while every other page is
 not.
 
 Desktop contexts run at 1440 x 900. Mobile contexts run at 390 x 844 with Chromium device emulation enabled, so the page's `<meta name="viewport">` tag is honoured and mobile assertions and screenshots reflect a real phone. Every public page is checked directly for a `width=device-width` viewport tag, an `<html lang>` attribute, and a layout width matching the emulated viewport. That check is deliberately explicit: a page missing the tag lays out at the roughly 980px desktop fallback, which does not overflow, so the horizontal overflow assertion alone would not catch it.
+
+Mobile layout still runs with a three-times device scale factor, but full-page
+screenshots are saved at Playwright's CSS-pixel scale. That keeps the current
+390px-wide pages below Chromium's 16,384-bitmap-row full-page stitching limit.
+Without the CSS-scale capture, very tall 3x mobile screenshots can repeat their
+opening pixels after that boundary and appear complete while omitting the real
+lower page. If a future page itself exceeds 16,384 CSS pixels, capture it in
+reviewable vertical sections rather than treating one stitched image as proof.
 
 Locally the tests use an installed system Chrome or Edge when one is present. When `CI` is set they use Playwright's own pinned Chromium, so continuous integration always tests the browser version recorded in the lockfile rather than whichever build the runner image happens to ship.
 
@@ -897,6 +973,23 @@ No passing tests, no release.
 
 For standard changes, no successful preview and review of both site modes, no
 release.
+
+A passing private synthetic media rehearsal is service evidence, not approval
+to publish. Every fault-injection run must finish by restoring the normal
+processing Worker, proving its exact D1/private-original/private-staging binding
+inventory, proving the rehearsal header is rejected, and reconciling D1, R2,
+approved/public references, public manifest hashes, and foreign keys. No real
+media, approved-media promotion, candidate manifest, GitHub App or environment,
+Pull Request, merge, DNS change, or production publication follows without its
+own explicit approval. Credential deletion is also a separate destructive step
+and must not be reported complete before fresh approval and revoked-token
+verification. Prefer replaying the exact old credential pair after deletion
+when its one-time secret is still available. If that secret was already removed
+from the ephemeral session, do not recreate it or claim an exact replay:
+instead require the exact token lookup to return not found, the token and policy
+lists to omit their IDs, the retained Access application to report zero
+policies, and a credential-free request to be intercepted before the Worker.
+Record that limitation explicitly in the handoff.
 
 The first Official Results News release changes the workbook, export set, CSV
 contract, published runtime, and browser behavior. It must use the standard

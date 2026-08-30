@@ -6,18 +6,24 @@
 - **Approved pilot boundaries:** Cloudflare-managed `workers.dev` hostnames and
   temporary processing of each private original on an ephemeral GitHub-hosted
   runner
-- **Infrastructure state:** Synthetic-only Phase C is complete on isolated
-  non-production `workers.dev` resources: Zero Trust Free and MFA active, a $5
-  alert, migrated D1, an owner-only administration Worker bound only to D1 and
-  private originals, and a media Worker bound only to approved derivatives.
-  Derivative staging and approved storage remain empty.
+- **Infrastructure state:** Synthetic-only Phases C and D are complete on
+  isolated non-production `workers.dev` resources. D1 carries migrations
+  `0001`–`0006`; the owner administration Worker can reach only D1 and private
+  originals; the media Worker can reach only approved derivatives; and the
+  restored normal processing Worker can reach only D1, private originals, and
+  private derivative staging. Its Access application is parked fail closed with
+  zero policies after deletion of the temporary rehearsal identity and policy.
 - **Media state:** exactly one built-in synthetic Family photo and one built-in
-  synthetic Everyone video exist only as protected private originals and D1
-  `private-review` records; no real original or public derivative exists
+  synthetic Everyone video remain protected private originals with D1 records.
+  The final Phase D photo run leaves exactly two verified synthetic derivatives
+  in private staging. Approved storage and both public manifests remain empty;
+  no real original or public derivative exists.
 - **Implementation state:** provider-independent Phase A, infrastructure and
-  authentication Phase B, and synthetic private-upload Phase C are complete;
-  no DNS change, real-media transfer, derivative, manifest Pull Request, merge,
-  or publication is authorized by this decision
+  authentication Phase B, synthetic private-upload Phase C, and the private
+  synthetic photo-processing and cleanup-race rehearsal in Phase D are
+  complete. Video processing, approved-media promotion, candidate manifests,
+  GitHub App/Pull Request automation, DNS changes, real-media transfer, merge,
+  and publication remain outside this decision.
 
 This document selects the storage, authentication, and access model needed to
 continue the owner-curated Gallery after Phase 1. It does not turn the Gallery
@@ -299,16 +305,16 @@ private evidence and are never returned by administration APIs.
 
 The two deployed synthetic Phase C originals retain their existing
 `private-originals/phase-c/` keys. They are not copied or renamed. Migration
-`0003_private_original_v1_keys.sql` now implements the forward-only local D1
-change: it rebuilds the upload parent and part tables together, preserves every
-existing Phase C row, and temporarily accepts both the exact old UUID grammar
-and the exact site-bound v1 grammar so the database and Worker can be updated
-without an unsafe gap. The updated Worker itself generates only v1 keys and
-revalidates the D1 identity before every private R2 operation. This migration
-has not been applied remotely, and the current one-day multipart-lifecycle rule
-still covers only `private-originals/phase-c/`. Applying `0003`, extending and
-reviewing that lifecycle boundary for v1, deploying the Worker, and repeating
-the synthetic remote proof remain separate approval-gated work.
+`0003_private_original_v1_keys.sql` implements the forward-only D1 change: it
+rebuilds the upload parent and part tables together, preserves every existing
+Phase C row, and temporarily accepts both the exact old UUID grammar and the
+exact site-bound v1 grammar so the database and Worker can be updated without
+an unsafe gap. The migration was applied during the approved Phase D sequence.
+The updated Worker generates only v1 keys and revalidates the D1 identity before
+every private R2 operation. The current one-day multipart-lifecycle rule still
+covers only `private-originals/phase-c/`; do not begin another remote multipart
+upload until v1 lifecycle coverage is separately approved, configured, and
+verified. Applying the migration did not authorize real uploads.
 
 ## Owner Workflow
 
@@ -503,14 +509,15 @@ compare-and-swap. On 27 August, minimally scoped Wrangler authorization was
 completed against the approved existing account, the empty non-production D1
 database was created in Cloudflare's automatic ENAM region, and the exact
 migration was applied and verified with zero draft or synthetic records.
-**External completion record — 27 August 2026:** Zero Trust Free, account MFA,
-and the $5 account-email alert are active. The three R2 Standard buckets are
-empty and private with direct development URLs and custom domains disabled.
-The reviewed D1 schema still has 11 tables, 43 triggers, zero drafts, and zero
-synthetic records. The D1-only admin Worker and approved-R2-only delivery Worker
-are deployed on isolated `workers.dev` hostnames; the admin Worker is protected
-for production and previews by the exact owner policy. Remote checks prove the
-owner shell succeeds, anonymous access fails, the temporary exact Service Auth
+**External Phase B completion record — 27 August 2026:** At that checkpoint,
+Zero Trust Free, account MFA, and the $5 account-email alert were active. The
+three R2 Standard buckets were empty and private with direct development URLs
+and custom domains disabled. The reviewed D1 schema had 11 tables, 43 triggers,
+zero drafts, and zero synthetic records. The D1-only admin Worker and approved-
+R2-only delivery Worker were deployed on isolated `workers.dev` hostnames; the
+admin Worker was protected for production and previews by the exact owner
+policy. Remote checks proved the owner shell succeeded, anonymous access
+failed, the temporary exact Service Auth
 credential reached only the service route, wrong credentials failed, and the
 delivery Worker rejects listing, queries, missing immutable objects, and writes.
 The temporary credential, reusable service policy, assignment, and Worker
@@ -518,8 +525,9 @@ allowlist secret were removed after that proof. All redacted diagnostic routes
 were removed, the revoked credential remains denied, and `pnpm test` passes the
 complete repository, artifact, and desktop/mobile browser suites. No real media,
 public derivative, manifest change, DNS change, Pull Request, or publication
-exists. No R2 lifecycle rule is enabled; it remains a separately approved part
-of a future Phase C deployment.
+was created by Phase B. A separately approved Phase C deployment later added
+the prefix-scoped one-day multipart fallback and the private synthetic records
+described below.
 
 ### Phase C — private upload and moderation
 
@@ -535,7 +543,7 @@ of a future Phase C deployment.
 **Exit gate:** synthetic files reach only the private bucket and cannot be
 requested anonymously.
 
-**Local implementation record — 27 August 2026:** The deterministic current-
+**Local pre-deployment record — 27 August 2026:** The deterministic current-
 export selector snapshot, area-locked owner form, consent/guardian capture,
 private draft and moderation service, `0002` multipart schema, 5 MiB resumable
 upload, independent server whole-object SHA-256, protected original preview,
@@ -549,19 +557,23 @@ drives the actual router with all private migrations and proves stale/pending-
 exclusion blocks, area isolation, interruption/resume, concurrent and
 idempotent operations, MIME/signature/size/checksum failures, moderation,
 range reads, cleanup, and anonymous denial. The complete repository suite
-passes and both public manifests remain empty. This local record does not claim
-a Cloudflare deployment or real R2 write; the deployed admin is still the
-D1-only Phase B version and the external lifecycle fallback remains disabled
-pending explicit approval.
+passes and both public manifests remain empty. At that checkpoint this local
+record did not claim a Cloudflare deployment or real R2 write; the deployed
+admin was still the D1-only Phase B version and the lifecycle fallback remained
+disabled. The separately approved Phase C deployment subsequently applied
+migration `0002`, deployed the owner workflow with only D1 and private-original
+access, enabled the prefix-scoped one-day multipart fallback, and created only
+the one built-in Family photo and one built-in Everyone video now retained in
+private review.
 
 ### Phase D — derivatives and reviewed publication
 
 **Local photo-processing slice — 28 August 2026:** The first Phase D building
-block is implemented locally for synthetic media only. A pinned processor
-accepts JPEG or opaque PNG bytes only with canonical site, draft, and processing-run
-identifiers supplied by its future trusted integration; this standalone module
-does not authenticate or look up D1 drafts. The future service boundary must
-derive and verify those identifiers rather than accepting a browser-selected
+block was implemented locally for synthetic media only. A pinned processor
+accepts JPEG or opaque PNG bytes only with canonical site, draft, and processing-
+run identifiers supplied by its trusted integration; this standalone module
+does not authenticate or look up D1 drafts. The processing service boundary
+derives and verifies those identifiers rather than accepting a browser-selected
 Family/Everyone destination. The processor auto-orients and decodes the source, creates an at-most
 1600-pixel WebP display image and an at-most 480-pixel WebP thumbnail without
 upscaling, hashes the finalized bytes, scans the exact bytes again, and returns
@@ -573,14 +585,15 @@ file names and paths contain no editorial or identity data. Their contents still
 hold private source or derivative bytes inside the isolated operating-system
 directory until cleanup, and cleanup failure is terminal.
 
-This slice has no real-media entry point, storage binding, service route,
-GitHub credential, manifest writer, Pull Request authority, or public runtime
-file. Video remains unavailable until an immutable FFmpeg/ffprobe runner is
+At that standalone-slice checkpoint it had no real-media entry point, storage
+binding, service route, GitHub credential, manifest writer, Pull Request
+authority, or public runtime file. Video remains unavailable until an immutable
+FFmpeg/ffprobe runner is
 selected and pinned. Both public manifests remain empty, so this record does
 not satisfy the Phase D exit gate or authorize any external change.
 
-**Local private-processing bridge slice — 28 August 2026:** A separate third
-Worker now supplies the processor's least-privilege service boundary locally.
+**Private-processing bridge design — 28 August 2026:** A separate third Worker
+supplies the processor's least-privilege service boundary.
 It is not an owner page and accepts only one exact Cloudflare Access service
 identity. Its only bindings are D1, private originals, and private derivative
 staging; it has no approved-media, public-manifest, GitHub, or merge capability.
@@ -589,10 +602,12 @@ catalog revisions, consent, athlete tags, and suppression state from current
 D1 evidence. A caller cannot select Family/Everyone, a race, an athlete, an
 object key, or a processing-run ID.
 
-The bridge has five narrow operations: atomically claim one approved draft,
+The bridge has six narrow operations: atomically claim one approved draft,
 download its version-pinned original, reserve and upload the exact display or
-thumbnail WebP, record a staged or safely coded failed result, and clean one
-exact run for a reason derived from D1. D1 reserves each output before R2
+thumbnail WebP, record a staged or safely coded failed result, clean one exact
+run for a reason derived from D1, and return a fully cleaned failed draft to
+`approved-for-processing` through one immutable retry receipt. D1 reserves each
+output before R2
 creates an empty one-part multipart upload. The exact provider upload ID must be
 persisted while the write gate remains open before any media part is sent. An
 exact retry reconciles a lost part, completion, or D1 response, while different
@@ -617,8 +632,8 @@ derivative rows remain immutable outside the exact cleanup transition,
 `candidate-public` is blocked absolutely, and every run must have completed
 staging-cleanup evidence before draft purge.
 
-**Local race-safe private-staging cleanup companion — 28 August 2026:** A
-cleanup request atomically creates a permanent D1 closure gate and snapshots
+**Race-safe private-staging cleanup companion — 28 August 2026:** A cleanup
+request atomically creates a permanent D1 closure gate and snapshots
 every admitted output and multipart handle. The caller supplies only the opaque
 run ID, expected draft state version, and an idempotency key; D1 derives whether
 the valid reason is a pending tagged-athlete exclusion, withdrawal, or terminal
@@ -644,11 +659,10 @@ parallel Worker invocations and later operations must handle an upload that no
 longer exists. R2 then provides strongly consistent object reads, deletes, and
 listings. The local deterministic store exercises both terminal race orderings,
 but Cloudflare does not present the abort-versus-complete rule as a formal
-linearizability guarantee. Migrations `0004_private_processing_staging.sql` and
-`0005_private_processing_cleanup.sql`, together with the example processing
-configuration, therefore remain unpromoted and must not be deployed until a
-separately approved non-production synthetic rehearsal confirms the observed
-provider behavior.
+linearizability guarantee. That uncertainty was the reason migrations
+`0004_private_processing_staging.sql` and
+`0005_private_processing_cleanup.sql` originally remained unpromoted until the
+separately approved non-production synthetic rehearsal recorded below.
 
 Cleanup is not consent withdrawal or publication. It neither deletes the
 private original nor invents host-deletion evidence. The existing host-first,
@@ -662,24 +676,55 @@ use transactional `D1.batch()` calls. The cleanup operation can recover the
 supported partial private-output states. Unsupported direct SQL remains outside
 the service contract and still fails closed without a route to stage or publish.
 
-1. Independently review the combined local processing and race-safe cleanup
-   schema and run the complete deterministic race suite. Only after a separate
-   deployment approval may migrations `0003`–`0005`, the processing Worker
-   identity, and its exact three bindings be provisioned for a complete
-   non-production synthetic photo and cleanup rehearsal.
-2. Select and pin immutable FFmpeg/ffprobe tooling, then implement the same
-   fail-closed processing and bridge contract for synthetic video.
-3. Add the separately approved staging-to-approved promotion step and its
+**Non-production remote photo rehearsal — 29 August 2026:** After separate
+owner approval, migrations `0003`–`0006` were applied and the processing Worker
+was rehearsed with exactly D1, private originals, and private derivative
+staging. The A–F sequence proved no-output failure, lost-part recovery,
+abort-wins cleanup, complete-wins cleanup, unknown-prefix refusal, and one final
+staged photo run. It finished at draft state version 19 with five cleaned failed
+runs, five hash-only cleanup tombstones, one staged run, and exactly two verified
+synthetic photo derivatives retained only in private staging. It left zero
+approved references, publication references, publicward drafts, pending tagged-
+athlete exclusions, and foreign-key violations.
+
+The remote complete-versus-abort race established that a resolved multipart
+`abort()` is not proof that the final object is absent. Cleanup therefore always
+checks the exact server-owned key, verifies any completed object against its
+reserved bytes and metadata, deletes only that object, and proves final absence
+and an empty paginated prefix before D1 operational evidence is removed.
+Migration `0006` supplies one receipt per draft and expected state version and
+extends the append-only replacement guard to that new uniqueness boundary, so
+competing retries cannot both commit or replace the winner.
+
+After the proof, the normal processing Worker was restored with only its three
+private bindings. Its normal entry point rejects the rehearsal fault header.
+The temporary service token and rehearsal policy were deleted; the retained
+processing Access application has zero policies and is parked fail closed. A
+future remote request therefore needs a new separately approved service identity
+and policy. The two staged derivatives are not approved or public, and no DNS,
+GitHub App, Pull Request, merge, or publication change occurred.
+
+The remaining Phase D plan is:
+
+1. Add the separately approved photo staging-to-approved promotion step and its
    approved-side cleanup, then verify public delivery, byte ranges, headers,
    and deletion.
-4. Generate a candidate manifest edit, run Gallery validation and the complete
-   repository suite, and only with explicit approval open a standard Pull
-   Request without merge authority.
-5. Cover single-area publication, the existing duplicate-ID equality safeguard,
+2. Generate a candidate photo manifest edit through a repository-scoped GitHub
+   App and protected environment, run Gallery validation and the complete
+   repository suite, and only with explicit approval open a standard synthetic
+   Pull Request without merge authority.
+3. Cover single-area publication, the existing duplicate-ID equality safeguard,
    editorial insertion order, retry/idempotency, closed-PR cleanup, and rollback.
+4. Separately select and pin immutable FFmpeg/ffprobe tooling, implement the
+   same fail-closed processing and bridge contract for synthetic video, and
+   repeat the promotion and Pull Request rehearsal before enabling video.
 
-**Exit gate:** one synthetic photo and one synthetic video pass the full PR and
-preview path. Close the rehearsal Pull Request; do not merge it.
+**Next photo checkpoint:** one synthetic photo passes the full promotion, Pull
+Request, and preview path. Close the rehearsal Pull Request; do not merge it.
+
+**Full Phase D exit gate:** repeat the same complete path for one synthetic
+video after the immutable video toolchain is selected. Do not enable routine
+video processing from the photo-only checkpoint.
 
 ### Phase E — takedown rehearsal and first real-media pilot
 
