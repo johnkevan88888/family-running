@@ -60,7 +60,9 @@ const wranglerPath = path.join(
     'bin',
     'wrangler.js'
 );
-const temporaryConfigRoot = await fs.mkdtemp(path.join(repositoryRoot, 'test-artifacts', 'wrangler-help-'));
+const temporaryArtifactRoot = path.join(repositoryRoot, 'test-artifacts');
+await fs.mkdir(temporaryArtifactRoot, { recursive: true });
+const temporaryConfigRoot = await fs.mkdtemp(path.join(temporaryArtifactRoot, 'wrangler-help-'));
 try {
     const help = spawnSync(process.execPath, [
         wranglerPath,
