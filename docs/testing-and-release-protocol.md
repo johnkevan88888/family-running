@@ -653,10 +653,11 @@ also proves that oversized inputs, malformed storage-binding IDs, and transparen
 PNG inputs fail before unnecessary native-tool work. It does not authorize real
 media or claim video processing coverage.
 
-The local private-processing bridge test then drives the real administration
-router, all six D1 migrations, a deterministic in-memory R2 implementation,
-the real pinned photo processor, and the service-only processing router from
-end to end with synthetic bytes. It proves that the site area, race, tags,
+The local private-processing and photo-promotion bridge test then drives the
+real administration router, all eight D1 migrations, deterministic in-memory
+private-staging and approved R2 implementations, the real pinned photo
+processor, and the two separately bound service-only routers from end to end
+with synthetic bytes. The processing portion proves that the site area, race, tags,
 consent, revisions, suppression state, original key, run ID, and staging keys
 come from current server evidence rather than request choices. It also covers
 exact Access identity and origin checks, version-pinned original download,
@@ -712,9 +713,72 @@ is `deleted`, with retained version/ETag/SHA and a deletion timestamp, before a
 cleaned run can reach `withdrawn`. Staging cleanup alone must never invent
 private-original deletion, public-host deletion, consent withdrawal, or
 publication evidence. The test byte-compares both public manifests and the
-suppression file before and after the flow and proves the Worker has no
-approved-media binding. It does not exercise Cloudflare, use real media,
-promote an object, write a manifest, or open a Pull Request.
+suppression file before and after the flow and proves the processing Worker has
+no approved-media binding.
+
+The isolated photo-promotion portion uses D1, private-staging read access, and
+approved-media write access only. It accepts no area, race, athlete, role,
+object key, URL, or manifest target from the caller. It must prove that an exact
+verified display/thumbnail pair is copied only after a unique hashed D1
+admission wins; the provider create is never called directly from `reserved`;
+and the exact one-part multipart ID is handed to the open promotion or a
+concurrently closing cleanup before a media part is sent. Staging and approved
+bytes, hashes, versions, ETags, WebP dimensions, content type, and custom
+metadata are independently re-read; current consent, guardian approval,
+revisions, suppression, and pending athlete exclusions are rechecked; an
+initially forged verified row and direct evidence deletion fail; and lost part,
+completion, or D1 responses have one exact idempotent recovery. Candidate
+replay must re-read both approved R2 objects and then re-read current D1
+eligibility, so removing or changing either object fails closed even when D1
+still says it is verified. The final synthetic transition may reach
+`candidate-public`, but `pr-open`, `published`, publication, and draft purge
+remain blocked.
+
+Approved-storage cleanup coverage must prove whole-item display-and-thumbnail
+closure for cancellation, pending athlete exclusion, and withdrawal, with
+consent withdrawal taking irreversible priority over any weaker reason. It must
+cover cleanup before provider admission, exact-ID handoff while create and
+cleanup race, abort-wins, complete-wins, lost create/part/complete/abort/delete
+and D1 responses, an unresolved `admitting` row, and the lifecycle fallback's
+strictly non-evidentiary role. Even after simulated lifecycle removal, unresolved
+admission must not permit terminal cleanup, a tombstone, or purge. R2 evidence
+must include conditioned exact-object verification, final `head()` absence, a
+fully paginated empty server-built prefix, hostile foreign keys, malformed or
+repeating cursors, and a strict completion timestamp later than all absence
+timestamps. Database tests must reject direct state jumps and plain or
+`OR REPLACE` deletion/identity collisions. Terminal replay must work after
+operational promotion rows and the draft are purged, while retaining only hashes
+and outcome evidence—never raw object keys. The cleanup must not set public-host
+or private-original deletion evidence, and tracked public manifests must remain
+byte-identical.
+
+The local candidate-manifest tests must prove that exactly one inherited
+`family.json` or `everyone.json` document is derived from the current public
+catalogue and suppression list; that the result contains only the public `1.0`
+photo fields; and that duplicate IDs, cross-mode sharing, hidden tags, unsafe
+insertion positions, and conflicting retries fail closed. They also prove the
+generator emits one canonical document. The GitHub review-client tests use only
+an injected local HTTP substitute. They must reject supplied non-canonical bytes
+and prove one fixed repository, `main` parent, owned candidate namespace,
+one-file diff, exact manifest bytes, lost-response reconciliation, and refusal
+of merge, deployment, Pages, settings, secret, environment, default-branch,
+force-update, `PATCH`, `PUT`, and `DELETE` operations. Before mutation, it must
+read the target manifest at the exact expected `main` commit and reject any
+candidate that removes, edits, or reorders an existing item instead of adding
+exactly one new item. Configuration tests must prove the promotion Worker has
+exactly its intended D1, staging, and approved bindings, with no originals,
+GitHub token, manifest, or caller-selected deletion target. The tracked approved
+R2 lifecycle contract must describe exactly one enabled, one-day incomplete-
+multipart abort rule under `media/v1/`, explicitly label it orphan containment
+only, and forbid its use as cleanup, tombstone, or purge proof.
+
+These tests do not exercise Cloudflare, use real media, write either tracked
+manifest, create a GitHub App, open a remote Pull Request, merge, deploy, or
+publish. Migrations `0007`–`0008` and the promotion Worker remain undeployable
+until a separate fixed-origin, generation-bound public-host verifier and
+append-only receipt are implemented, the approved-prefix lifecycle rule is
+applied and verified with separate approval, and protected candidate retrieval
+and orchestration exist. R2 storage absence alone is not public-host absence.
 
 The remote-driver contract must expect exactly six passed scenarios, five
 completed cleanups, four acknowledged derivative puts, five deliberately

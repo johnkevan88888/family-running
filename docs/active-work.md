@@ -1,5 +1,132 @@
 # Active Work
 
+## Current task: photo promotion, approved-storage cleanup, and review-only manifest Pull Request foundation
+
+### Status — 30 August 2026
+
+Pull Request #83 was merged only after its exact head
+`c852ae0b610ce8ce91212f0a0c34b50f8064c98f` was green and mergeable. The
+resulting `main` merge is
+`a0e820afbd184e2dc181c76cb5f3b97919ee256b`. GitHub Pages run
+`33286368899` completed successfully for that exact merge. Its immutable
+artifact contained 114 files; production byte-matched all 114, including all
+72 manifest-listed CSVs. Both Family and Everyone rendered successfully from
+bundle `20260829T135012063Z-3C37E180`. Both public Gallery manifests remain
+empty. That verification proved the merged Phase D private-processing release;
+it did not publish media or authorize the next Cloudflare/GitHub changes.
+
+The first local promotion and manifest-review slice is now implemented on
+`codex/gallery-photo-promotion-manifest`, based on that verified `main`.
+Migrations `0007_photo_promotion.sql` and
+`0008_photo_promotion_cleanup.sql` add immutable photo-promotion, exact
+per-role object evidence, durable provider admission, storage-only cleanup, and
+hash-only terminal replay evidence. A separate service-only Worker can promote
+only the
+two already verified `photo-display` and `photo-thumbnail` WebPs from private
+staging. It derives the one fixed Family or Everyone area, storage keys, URLs,
+race, tags, consent, export/source/suppression revisions, and candidate state
+from D1 and the generated public catalogue; the configured
+`APPROVED_MEDIA_ORIGIN` supplies the fixed public host for D1-derived keys. The
+request has no destination, race, athlete, role, key, URL, or manifest-path
+control.
+
+Before creating an R2 multipart upload, the promotion service first writes a
+unique hashed admission token to D1. Only the invocation that wins that D1
+state may call R2. It then hands the exact provider upload ID to either the
+still-open promotion or an already-closing cleanup in one D1 batch before
+sending a byte. Every staging and approved read rechecks exact byte
+count, SHA-256, static WebP dimensions, version, ETag, content type, and the
+two-field metadata contract. Current consent, guardian approval, revisions,
+and pending athlete exclusions are rechecked throughout. The final D1 batch
+can reach `candidate-public` only after both approved objects are verified;
+`pr-open` and `published` remain blocked. Candidate retries re-read and hash
+both current approved R2 objects and then re-read current D1 eligibility instead
+of trusting either earlier snapshot. Direct deletion, replacement, an initially
+forged verified object, and unsupported state jumps are database-blocked.
+
+The same service boundary now has one fixed cleanup route. The caller supplies
+only an opaque promotion ID, expected draft version, and idempotency key; D1
+derives cancellation, athlete-exclusion, or withdrawal intent and both exact
+approved keys. Starting cleanup closes new object admission. A still-unresolved
+provider admission cannot be called absent, tombstoned, or purged. A known
+multipart handle is aborted; if completion won, the service verifies and
+deletes only the exact owned object. It then requires exact `head()` absence and
+an empty, fully paginated server-built prefix before a strictly later completion
+timestamp and hash-only tombstone can commit. Exact promotion and cleanup
+retries remain deterministic after operational rows or the draft are purged.
+Consent withdrawal is the highest, one-way intent and cannot be downgraded to an
+athlete or editorial reason.
+
+The local candidate generator reuses the existing publication contract and
+derives exactly one target manifest from `draft.siteModes[0]`. It supports
+photo append or a safe zero-based editorial insertion, writes only the public
+Gallery fields, prevents an automated shared Family/Everyone item, validates
+the complete current catalogue/suppression/manifests, and safely reconciles an
+exact retry. The separate GitHub client fixes the repository, `main` base,
+candidate branch namespace, and two allowed manifest paths. With a future
+short-lived repository GitHub App token it can create or reconcile exactly one
+one-file review branch and Pull Request. Before mutation it reads the exact
+target manifest from the expected `main` commit and proves one new item while
+preserving every existing item and its order; afterwards it re-proves the
+parent, bytes, and diff. The client contains no merge, deployment, Pages,
+environment, secret, default-branch mutation, force-update, `PATCH`, `PUT`, or
+`DELETE` operation.
+
+Focused migration, processing/promotion/cleanup bridge, Worker
+boundary/configuration, lifecycle-contract, candidate-manifest, GitHub-client,
+upload-contract, and Gallery-contract tests pass. The bridge covers admission
+and cleanup races, lost provider and D1 responses, abort-wins and complete-wins,
+hostile pagination, chronology, provider-identity replacement attacks,
+consent-intent escalation, exact terminal replay after purge, changed and
+missing approved objects, and a final D1 eligibility read after both R2 checks.
+The final independent re-audit found no remaining local blocker in the
+admission, parent-hash, replacement, chronology, or final-resume cleanup paths.
+The complete `pnpm test` suite then passed: repository safety covered 231
+tracked files; vendor, both-mode CSV and Gallery, every administration/media/
+release regression, the isolated 114-file public artifact, and Family/Everyone
+desktop/mobile browser smoke checks all passed. Fresh empty and populated
+Gallery captures plus the fixed-area Family and Everyone owner-admin captures
+were visually inspected without apparent overflow, clipping, cross-mode
+leakage, or a destination selector. The tracked public manifests and suppression
+file remain byte-for-byte unchanged. No Cloudflare migration, Worker, or R2
+lifecycle rule was applied, no Access identity or policy was created, no
+approved object was uploaded remotely,
+no GitHub App or protected workflow was created, and no candidate branch or Pull
+Request was opened.
+
+### Deliberate deployment blockers and handoff
+
+This slice must not be deployed yet. The new cleanup proves absence only in the
+approved R2 bucket. It deliberately does not set public-host deletion or
+private-original deletion evidence and therefore cannot by itself authorize a
+withdrawal or purge. The next safety slice must add a fixed-origin,
+generation-bound public-host verifier and append-only receipt covering every
+historical owned display and thumbnail URL. A new promotion must invalidate an
+older host-absence cycle. R2 storage absence must never be treated as proof that
+the configured delivery Worker, a wrong binding, or a cache cannot still serve
+the URL.
+
+The tracked one-day, `media/v1/` incomplete-multipart lifecycle requirement is
+only crash containment for an R2 create whose response was permanently lost.
+It is not synchronous cleanup evidence and cannot permit a tombstone or purge.
+That rule has not been applied or verified remotely. A lost create response
+therefore remains in D1 `admitting`, and cleanup continues to fail closed even
+after a later provider lifecycle pass.
+
+The remaining review-path work is a read-only candidate
+retrieval/orchestration boundary and a protected
+default-branch workflow accepting only one opaque `draft_id`. It must retrieve
+a fresh candidate immediately before repository mutation, recheck the service
+state after that mutation, and close or block review after a later consent
+withdrawal or athlete exclusion. Creating or
+installing the repository-scoped GitHub App, creating the protected environment,
+or changing `main` rules remains a separate external approval. Before any App
+installation, the remote rules must prove an App token is denied both a direct
+`main` update and a Pull Request merge; local absence of a merge API is not by
+itself a cryptographic permission boundary. The first remote checkpoint remains
+one synthetic photo and an unmerged rehearsal Pull Request. Real family media,
+video, merge, deployment, and publication remain out of scope.
+
 ## Current task: keep routine data refreshes independent of Gallery changes
 
 ### Status — 29 August 2026
@@ -127,8 +254,9 @@ public-preview derivatives; D1 holds private consent, moderation, state, and
 audit records; and a separate public Worker can read only approved derivatives.
 A protected default-branch GitHub Actions job applies deterministic photo/video
 processing and independently verifies metadata removal before a repository-
-scoped GitHub App opens a normal manifest Pull Request. The App has no merge
-authority.
+scoped GitHub App opens a normal manifest Pull Request. Its client contains no
+merge operation, and repository rules plus a token rehearsal must separately
+prove the App cannot update `main` or merge a Pull Request.
 
 The protected processing-environment approval is the explicit authorization to
 make sanitized, unguessable media URLs reachable for the standard Netlify Pull

@@ -679,7 +679,9 @@ Unknown historical details are labelled rather than inferred.
   infrastructure/authentication are implemented and verified; synthetic-only
   Phase C is deployed and remotely verified; the private Phase D photo-
   processing and staging-cleanup boundary has passed its non-production A–F
-  rehearsal. Approved-media promotion and public publication remain disabled.
+  rehearsal. A photo-only promotion, candidate-manifest, and review-client
+  foundation is implemented locally but deliberately blocked from deployment;
+  remote approved-media promotion and public publication remain disabled.
 - **Date:** 25–29 August 2026
 - **Decision:** Keep the public championship site static and add no public
   upload page. A separate Cloudflare Worker administration application is
@@ -718,10 +720,14 @@ Unknown historical details are labelled rather than inferred.
   never retain it as an artifact or disclose its bytes, filename, metadata,
   consent record, or credentials in public logs. It fails closed unless every
   derivative is free of location and device metadata. A repository-scoped
-  GitHub App creates only a candidate branch and normal Pull Request. It has no
-  merge authority. Existing Gallery validation, standard Netlify preview,
-  responsive review, and explicit merge approval remain the only way a
-  manifest reaches GitHub Pages.
+  GitHub App client creates only a candidate branch and normal Pull Request; its
+  code contains no merge or default-branch update operation. Because the needed
+  GitHub permissions do not alone make those actions cryptographically
+  impossible, remote `main` rules must exclude the App from update and bypass
+  actors, and an installation-token rehearsal must prove direct `main` update
+  and Pull Request merge are both denied. Existing Gallery validation, standard
+  Netlify preview, responsive review, and explicit merge approval remain the
+  only way a manifest reaches GitHub Pages.
 - **Approval boundary:** Approval of the protected processing environment is
   the explicit authorization to make the verified unguessable derivative URLs
   reachable for Pull Request preview. Merge approval separately authorizes the
@@ -962,9 +968,10 @@ Unknown historical details are labelled rather than inferred.
   `FA82A4312752DED30ABD97EB2B44C39A4D31FE75E33F127CFA1F2E705C980050`.
   Windows CRLF working-copy hashes differ without changing the tracked
   content.
-  Approved-media promotion, candidate-manifest generation, the GitHub App and
-  synthetic Pull Request rehearsal remain a separately approved future scope.
-  Video processing and real family media remain blocked. After fresh explicit
+  Remote approved-media promotion, the GitHub App, and the synthetic Pull
+  Request rehearsal remain a separately approved future scope. The first local
+  photo-only promotion, candidate-manifest, and review-client slice is described
+  below. Video processing and real family media remain blocked. After fresh explicit
   approval, the dedicated rehearsal Service Auth policy was detached from the
   processing Access application, then that unused policy and its temporary
   service token were deleted. Dashboard and Access API checks confirmed the
@@ -975,6 +982,74 @@ Unknown historical details are labelled rather than inferred.
   exact old credential pair was not replayed after deletion; authoritative
   Cloudflare absence is the revocation proof. The owner application and owner
   policy were unchanged.
+- **Local photo promotion and review-only candidate foundation:** Migration
+  `0007_photo_promotion.sql` and a fourth service-only Worker locally bind one
+  already staged photo run to exactly two approved objects: display and
+  thumbnail. The fixed route carries one opaque draft ID and its JSON body
+  supplies only the expected draft version and an idempotency key. D1 derives
+  the inherited Family or Everyone area, item, race, public athlete IDs,
+  revisions, and approved storage keys; the fixed `APPROVED_MEDIA_ORIGIN`
+  supplies the public host. The Worker rechecks consent, guardian approval,
+  suppression, and pending exclusions and
+  independently verifies exact staging and approved bytes, SHA-256, version,
+  ETag, static WebP dimensions, content type, and custom metadata. Each approved
+  write first persists a unique hashed admission token in D1, then uses a
+  one-part multipart handle whose exact provider ID is durably handed to the
+  open promotion or its already-closing cleanup before the media part is sent.
+  Candidate replay reads and verifies both approved R2
+  objects again, so D1 evidence alone cannot create a public candidate.
+- **Approved-storage cleanup is separate from public-host proof:** Migration
+  `0008_photo_promotion_cleanup.sql` and the same service boundary add one fixed
+  cleanup route. D1 derives cancellation, athlete-exclusion, or withdrawal
+  intent and the exact two keys; cleanup closes admission, resolves every known
+  multipart handle, verifies a complete-wins object before exact deletion, and
+  requires exact-object plus fully paginated prefix absence. Only then may it
+  remove operational promotion rows and retain a hash-only, no-foreign-key
+  terminal replay receipt. Promotion and cleanup retries remain deterministic
+  after draft purge. This is storage evidence only: it never sets the existing
+  public-host or private-original deletion fields. Consent withdrawal is a
+  one-way highest-priority intent and cannot be downgraded to an athlete or
+  editorial reason.
+- **Provider lifecycle is containment, never cleanup proof:** A tracked
+  requirement describes one prefix-scoped, one-day abort rule for incomplete
+  approved-media multipart uploads. It limits an orphan created when the R2
+  create response is permanently lost, but it is not synchronous evidence and
+  cannot authorize a tombstone or purge. D1 deliberately keeps that admission
+  unresolved. The rule still requires separately approved remote application
+  and verification.
+- **Local manifest and repository-review boundary:** The candidate generator
+  reads current public catalogues, suppression, and both manifests, then derives
+  exactly one `1.0` photo item and target path from the draft's single signed
+  area. It has no destination selector and cannot automatically create a shared
+  Family/Everyone item. The GitHub client fixes this repository, the `main`
+  parent, an owned branch namespace, and the two allowed manifest paths; creates
+  at most one one-file candidate commit and Pull Request; and re-proves the
+  parent, bytes, and diff after lost-response recovery. Its code has no merge,
+  deploy, Pages, settings, secret, environment, default-branch mutation,
+  force-update, `PATCH`, `PUT`, or `DELETE` operation. Remote branch rules and
+  an installation-token denial rehearsal remain mandatory before an App is
+  installed.
+- **Approved visibility is logically, not physically, atomic:** R2 exposes two
+  separate photo objects. The promotion service therefore keeps D1 closed until
+  both exact objects verify, and manifests reference neither object until the
+  later reviewed Pull Request. A head-then-multipart-create sequence is not a
+  provider conditional create, so the approved bucket requires one reviewed
+  code writer plus D1 unique key ownership. A pre-existing object fails closed;
+  it is never adopted or overwritten. Candidate responses re-read both R2
+  objects and then re-read current D1 eligibility, while the future protected
+  workflow must retrieve a fresh candidate by opaque draft ID immediately
+  before repository mutation.
+- **Promotion remains locally gated:** This slice is intentionally
+  undeployable. Local storage cleanup now closes every known persisted approved
+  multipart handle, resolves abort-versus-complete, deletes only exact owned
+  objects, proves R2 absence, and retains safe replay evidence. That is not
+  public-host absence. Before deployment, a separate fixed-origin verifier must
+  produce append-only evidence bound to the exact promotion generation and
+  every historical owned URL, and a new promotion must invalidate an older
+  absence cycle. Protected candidate retrieval/orchestration and the remote
+  lifecycle-rule proof also remain missing. These gates preserve host-first
+  withdrawal and athlete-exclusion takedown rather than weakening them for
+  publication work.
 - **Service identity compatibility:** During the configured rehearsal,
   Worker-level Service Auth supplied a validated `ctx.access` context and an
   injected signed application assertion, but the runtime resolved
