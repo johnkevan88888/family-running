@@ -358,7 +358,7 @@ export async function fetchProductionFile(relativePath, {
             redirect: 'error',
             cache: 'no-store',
             signal: requestTimeoutMs > 0 && typeof AbortSignal?.timeout === 'function'
-                ? AbortSignal.timeout(requestTimeoutMs)
+                ? AbortSignal.timeout(Math.max(1, Math.ceil(requestTimeoutMs)))
                 : undefined
         });
 
@@ -1028,7 +1028,10 @@ export function isExpectedSiteRuntimePath(relativePath) {
 }
 
 function defaultSleep(milliseconds) {
-    return new Promise(resolve => setTimeout(resolve, milliseconds));
+    return new Promise(resolve => setTimeout(
+        resolve,
+        Math.max(0, Math.ceil(milliseconds))
+    ));
 }
 
 function monotonicNow() {

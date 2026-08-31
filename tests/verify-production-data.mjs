@@ -300,6 +300,16 @@ async function verifyFetchContract() {
     assert.deepEqual(fetched.bytes, exactCsv);
     assert.equal(seen[0].url, 'https://production.example.test/data/family/siteinfo.csv');
 
+    const fractionalTimeout = await fetchProductionFile('data/family/siteinfo.csv', {
+        productionOrigin: 'https://production.example.test',
+        requestTimeoutMs: 12.5,
+        fetchImpl: async (_url, options) => {
+            assert.ok(options.signal instanceof AbortSignal);
+            return response(exactCsv);
+        }
+    });
+    assert.equal(fractionalTimeout.ok, true);
+
     const missing = await fetchProductionFile('data/family/siteinfo.csv', {
         productionOrigin: 'https://production.example.test',
         requestTimeoutMs: 0,

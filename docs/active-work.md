@@ -106,6 +106,11 @@ smoke tests all pass. Two independent final security reviews report no blocker.
 The tracked public manifests and suppression file are unchanged, and no real
 media or public candidate has been created.
 
+Pull Request #85 carries this source integration through the standard preview
+path because `package.json` is conservatively treated as a publishing-control
+file. Its initial no-visual classification was rejected before tests ran, then
+corrected without weakening the release gate.
+
 ### Deliberate deployment blockers and handoff
 
 This slice must not be deployed yet. Migration `0009`, the modified media
