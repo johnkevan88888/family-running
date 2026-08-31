@@ -9,9 +9,17 @@ media Worker can reach only approved derivatives. The normal Phase D processing
 Worker is a third, service-only component that can read private originals and
 write private staging, but cannot reach approved media or either public
 manifest. Its non-production Access application is currently parked fail closed
-with zero policies and no retained rehearsal service identity. A fourth local-
-only promotion Worker now covers D1 plus staging-read and approved-write access;
-it is not deployed and cannot reach originals, manifests, or GitHub.
+with zero policies and no retained rehearsal service identity. A fourth
+repository-only promotion Worker now covers D1 plus staging-read and approved-
+write access;
+it is not deployed and cannot reach originals, manifests, or GitHub. Pull
+Request #84 merged that promotion/cleanup and review foundation to `main` at
+exact commit `4b6c7be70d77ce389f7ee9a5b103858cd31ff55b`; the exact 114-file
+GitHub Pages artifact and production site were byte-verified, with both modes
+rendered and both public Gallery manifests still empty. That static verification
+did not deploy a Cloudflare migration or Worker. A fifth service-only public-
+host verifier, migration `0009`, and the delivery-proof media changes are now
+implemented and fully locally validated in source but remain undeployed.
 
 ## Historical Phase B boundary
 
@@ -80,6 +88,18 @@ It cannot list a bucket, choose an object from a query parameter, proxy another
 host, or access private originals, derivative staging, D1, or an administration
 route. Response media types come from the validated key rather than mutable R2
 metadata.
+
+The locally modified delivery boundary adds only Cloudflare version metadata to
+that one approved-media binding. Recognized responses carry
+`X-Family-Running-Media-Contract: approved-media-v1` and a canonical lowercase
+Worker-version UUID in `X-Family-Running-Media-Version`. The fixed 28-byte WebP
+witness lives only at
+`media/v1/54bdb34ea423475fe0544cacbf32ab4f7e75846b5f25f1296e9bb2d157cd9f77/display.webp`.
+Its bytes must hash to the path digest. Witness and all failure responses are
+`Cache-Control: no-store`; ordinary immutable media keeps
+`public, max-age=60, must-revalidate`. A missing binding, extra environment
+binding, malformed version, wrong witness, or changed object fails closed. This
+modified Worker and witness are not deployed or present in remote approved R2.
 
 A ranged read also requires one nonempty raw R2 ETag. The Worker passes that
 ETag as an `onlyIf.etagMatches` condition and accepts the response only when its
@@ -170,8 +190,8 @@ and rehearsal policy were deleted. Do not create a new service identity,
 reattach a policy, or deploy the rehearsal entry point without fresh explicit
 approval. Remote approved-media promotion, protected manifest orchestration,
 video, publication, and all real media remain separate blocked scopes. The
-local-only photo promotion and candidate-generation modules described below do
-not relax that deployment boundary.
+repository-only photo promotion and candidate-generation modules described
+below do not relax that deployment boundary.
 
 ## Local photo-promotion boundary
 
@@ -214,6 +234,16 @@ hashes and outcome evidence, not raw keys. Consent withdrawal is a one-way
 highest-priority intent. Storage cleanup deliberately does not set public-host
 or private-original deletion evidence.
 
+Migration `0009_public_host_verification.sql` extends promotion without changing
+its caller contract. Each promotion creates one immutable public generation
+containing exactly the display and thumbnail targets. The fixed origin,
+candidate version, object-key and public-URL hashes, and expected media hashes
+are stored with that generation, which survives approved-storage cleanup until
+an approved parent-draft purge. This preserves the existing inherited-area/no-
+selector, race/event/date/distance, public-athlete-ID tagging, consent/guardian,
+whole-item exclusion/suppression, metadata-stripping, external-media, and
+server-generated naming contracts.
+
 `wrangler.promotion.example.jsonc` is intentionally non-deployable. An ignored
 copy would require the confirmed D1/staging/approved resource identifiers plus:
 
@@ -222,19 +252,97 @@ copy would require the confirmed D1/staging/approved resource identifiers plus:
 - `PROMOTION_ORIGIN`: the exact HTTPS promotion Worker origin; and
 - `APPROVED_MEDIA_ORIGIN`: the exact HTTPS read-only media Worker origin.
 
-Do not deploy migrations `0007`–`0008` or this Worker yet. A separate
-fixed-origin, generation-bound public-host absence verifier and receipt remain
-required; R2 bucket absence is not host-absence proof. The tracked one-day
+Do not deploy migrations `0007`–`0009` or this Worker yet. R2 bucket absence is
+not host-absence proof, and the local verifier below has not completed final
+validation or remote rehearsal. The tracked one-day
 `media/v1/` incomplete-multipart lifecycle requirement is orphan containment
 only, cannot authorize a tombstone or purge, and has not been applied remotely.
 Protected live candidate retrieval/orchestration is also missing. No Access
 policy/identity, remote migration, lifecycle change, Worker deployment,
-approved object, manifest edit, GitHub App, or Pull Request was created by this
-local slice.
+approved object, manifest edit, GitHub App, or candidate-media Pull Request was
+created by this repository slice.
+
+## Local public-host verifier boundary
+
+`src/public-host-verifier-worker.js` is a fifth service-only entry point. It has
+one exact `POST /api/service/drafts/{draft-id}/public-host-absence-verifications`
+route. Its JSON body contains only `expectedStateVersion` and `idempotencyKey`.
+Its environment is D1 plus fixed verifier identity/origin, approved-media
+origin, delivery-contract/version, and witness scalars. It has no R2 binding,
+private original, staging, approved write/delete, caller-selected host or key,
+manifest, suppression-edit, GitHub, merge, deployment, or browser route.
+The entire inbound body has one five-second default deadline, capped at 30
+seconds through the test seam; this includes all stream reads and a bounded
+cancellation attempt, so a stalled body stops before D1 or outbound fetch. D1
+derives `withdrawal` from the current editorial, athlete-exclusion, or
+consent-withdrawal intent. It derives `retention-expiry` only for a rejected or
+processing-failed draft with no withdrawal intent and the exact approved
+retention tombstone. The request cannot select either purpose.
+
+Migration `0009` adds append-only delivery epochs and sequential activations.
+An epoch binds the exact HTTPS public origin, delivery contract, deployed media
+Worker version, configuration hash, and fixed witness key/hash/size/type. Before
+network checks the verifier permanently retires every historical approved-key
+hash, so neither a later generation nor a different draft can resurrect it. A
+reservation's stable ownership lineage is its key, promotion, and draft hash;
+its first verification, cycle, idempotency, actor, and timestamp remain
+immutable audit provenance. A stronger current intent can invalidate the former
+receipt and begin a new cycle, and a rotated authorized service identity can
+recover against the same lineage, while same-actor cycle forks and cross-cycle
+idempotency reuse fail closed.
+The verifier then uses only the configured public front door with
+`redirect: manual`, `cache: no-store`, `credentials: omit`, and explicit
+`Cache-Control: no-cache, no-store` plus `Pragma: no-cache`.
+
+Witness `HEAD` and full-body-hashed `GET` checks run first. Each historical
+target then needs an exact contract- and current-version-marked, empty `404` for
+both `HEAD` and `GET`. The witness is proved again before a final `HEAD` of every
+target; exact response URLs, no redirect or `Location`, and
+`Cache-Control: no-store` are mandatory. A live
+object is a conflict, while a generic `404`, cached path, wrong binding, wrong
+witness, credential-dependent response, version drift, redirect, response body,
+or timeout is unverifiable and fails closed. The service re-reads the complete
+generation set, current epoch, D1-derived purpose and evidence, current intent,
+withdrawal cycle, state version, and cleanup evidence before one final
+transaction appends target/witness proofs and a permanent hash-only absence
+receipt. A genuine zero-history draft proves the canonical empty set with only
+the two witness passes and creates no target or reservation. Any historical
+generation requires exact proof for every retained target.
+
+A withdrawal-purpose receipt may set the legacy `host_deletion_confirmed`
+compatibility scalar only in that final transaction. Migration `0009` resets
+older true scalars, and a later generation, withdrawal-intent cycle, or epoch
+activation invalidates current withdrawal confirmation. A retention-expiry
+receipt deliberately leaves the scalar `0`; its successful API response still
+contains `hostDeletionConfirmed: true` because that field reports verified
+public-host absence, not the legacy withdrawal scalar. Its current status is
+instead bound to the exact approved retention-tombstone evidence. Withdrawal
+and consent withdrawal consume the withdrawal receipt. A rejected or
+processing-failed retention purge consumes the retention receipt while still
+requiring private-original deletion and the approved retention tombstone. The
+final hash-only receipt survives parent-draft purge.
+
+The combined real-SQLite bridge deliberately fails the final withdrawal scalar
+statement. Target proof, witness proof, and receipt roll back together; the
+resumable verification and permanent reservations remain; and the exact retry
+then commits once. This is required evidence for the final-batch contract, not
+only an in-memory service simulation.
+
+`wrangler.public-host-verifier.example.jsonc` is intentionally non-deployable.
+Migration `0009`, the media delivery changes and witness, this Worker, delivery
+epochs, and any verifier Access service identity/policy are implemented in
+source but unapplied and undeployed. Remote work needs separately approved rolling steps:
+apply migrations `0007`–`0009`; deploy and identify the exact media Worker
+version; upload and byte-verify only the witness; register and activate the
+matching epoch; create the narrow Access identity/policy; deploy the verifier;
+and run the synthetic public-front-door and guarded-withdrawal/purge rehearsal.
+The one-day approved-prefix lifecycle rule and promotion Worker deployment/
+Access are later, separate approval gates. No source or local test grants
+approval for any remote mutation.
 
 ## Configuration boundary
 
-The four example Wrangler files contain resource names and unmistakable invalid
+The five example Wrangler files contain resource names and unmistakable invalid
 replacement markers only. They are not deployable as committed. This is
 deliberate: current Wrangler can automatically provision a D1 database when an
 identifier is omitted. Make ignored local configuration only after the exact
@@ -252,7 +360,9 @@ provisioned bucket names are:
 
 The public media Worker binds only the last bucket. Phase C binds only the first.
 The processing Worker binds D1 plus only the first two buckets. The undeployed
-promotion Worker binds D1 plus only staging and approved storage. No component
+promotion Worker binds D1 plus only staging and approved storage. The
+undeployed verifier binds D1 only; its fixed public checks use outbound fetch,
+not an R2 binding. No component
 can reach originals, staging, approved storage, and GitHub together.
 
 Set these admin values outside Git:
@@ -375,7 +485,8 @@ to move only from `NULL` to the exact reserved keys in the same final
 transaction. It keeps review, publication, approved deletion, processing
 cleanup after promotion, and draft purge hard-blocked until their own forward
 evidence migrations exist. It must be applied only together with the reviewed
-promotion Worker and migration `0008`.
+promotion Worker and migrations `0008` and `0009`, using the reviewed rolling
+deployment order.
 
 The unapplied `migrations/0008_photo_promotion_cleanup.sql` adds the narrow
 storage-cleanup exceptions. It records one immutable cleanup and exact object
@@ -386,12 +497,26 @@ then permits operational promotion evidence to be removed only while inserting
 a hash-only replay tombstone. It adds no host verifier, private-original
 deletion, manifest writer, GitHub capability, merge, or deployment authority.
 
+The unapplied `migrations/0009_public_host_verification.sql` adds immutable
+exactly-two-target public generations, append-only delivery epochs and
+activations, permanent approved-key-hash retirement, append-only witness/target
+proofs, and permanent hash-only public-host absence receipts. Its current-
+receipt view binds a receipt to the exact withdrawal cycle, draft state version,
+complete generation/target set, approved cleanup state, fixed origin, and
+current epoch. It resets the compatibility scalar and allows it to become true
+only in the same transaction as a complete current receipt. It also permits the
+canonical zero-generation withdrawal case and narrows the purge exception to
+consume the same current receipt without weakening private-original deletion or
+retention-tombstone requirements. It adds no network capability by itself.
+
 Private consent, derivative, publication, and transition rows cascade when an
 eligible draft is explicitly purged. Original, staging, and approved object
 keys are unique while present, so cleanup cannot delete another draft's
 object. Purge requires verified public-host absence, verified private-original
 deletion, an eligible cleanup state, and an approved append-only retention
-tombstone. Consent withdrawal follows the same host-first evidence boundary.
+tombstone. Under migration `0009`, verified public-host absence means a complete
+current-epoch receipt, not the scalar alone. Consent withdrawal follows the same
+host-first evidence boundary.
 The surviving audit and retention tables have no draft foreign key and contain
 only opaque references, closed state/purge facts, hashes, identity hashes, and
 timestamps—never captions, names, reasons, consent notes, object keys, or JSON

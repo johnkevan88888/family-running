@@ -283,6 +283,7 @@ assert.equal(derivativeKeyMatchesRecord(approvedKeys[0], {
 // approved key. Private and staging paths stop before any R2 call.
 const deliveryCalls = [];
 const deliveryEnv = {
+    MEDIA_VERSION: { id: '11111111-1111-4111-8111-111111111111' },
     APPROVED_MEDIA: {
         async head(key) {
             deliveryCalls.push(key);

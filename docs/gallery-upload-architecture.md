@@ -21,14 +21,22 @@
 - **Implementation state:** provider-independent Phase A, infrastructure and
   authentication Phase B, synthetic private-upload Phase C, and the private
   synthetic photo-processing and cleanup-race rehearsal in Phase D are
-  complete. The local-only photo-promotion, approved-storage cleanup,
-  candidate-manifest, and review-only GitHub client slices are implemented but
-  deliberately undeployable until generation-bound public-host absence proof
-  and protected candidate retrieval/orchestration exist. The approved-prefix
-  orphan-multipart lifecycle requirement is tracked but has not been applied
-  remotely. The protected workflow, GitHub App and remote branch-rule proof,
-  video processing, DNS changes, real-media transfer, merge, and publication
-  remain future work.
+  complete. Pull Request #84 merged the photo-promotion,
+  approved-storage-cleanup, candidate-manifest, and review-only GitHub client
+  foundation to `main` at exact commit
+  `4b6c7be70d77ce389f7ee9a5b103858cd31ff55b`. Its 114-file Pages artifact and
+  production site were verified byte-for-byte at that exact commit, including
+  all 72 manifest-listed CSVs and both rendered modes; both public Gallery
+  manifests stayed empty. That was static release proof, not Cloudflare
+  deployment. Migrations `0007` and `0008` and the promotion Worker remain
+  unapplied and undeployed. Migration `0009`, the delivery-proof media Worker,
+  synthetic witness, and fixed-origin verifier are implemented and fully
+  locally validated in source but remain unapplied and undeployed. The
+  approved-prefix orphan-multipart lifecycle requirement is
+  tracked but has not been applied remotely. Protected candidate
+  retrieval/orchestration, the protected workflow, GitHub App and remote
+  branch-rule proof, video processing, DNS changes, real-media transfer, merge,
+  and publication remain future work.
 
 This document selects the storage, authentication, and access model needed to
 continue the owner-curated Gallery after Phase 1. It does not turn the Gallery
@@ -723,9 +731,10 @@ future remote request therefore needs a new separately approved service identity
 and policy. The two staged derivatives are not approved or public, and no DNS,
 GitHub App, Pull Request, merge, or publication change occurred.
 
-**Local promotion, approved-storage cleanup, and review-foundation slice — 30
-August 2026:** A fourth, service-only Worker and two forward migrations now
-implement the first photo
+**Local promotion, approved-storage cleanup, public-host verification, and
+review-foundation slice — 30 August 2026:** A fourth service-only promotion
+Worker, a fifth service-only verifier, and three forward migrations now
+implement the photo
 staging-to-approved boundary locally. Its exact environment is D1, private
 derivative staging, approved media, one exact service identity, and fixed
 Worker/media origins. It has no private-original, browser, manifest, GitHub,
@@ -785,20 +794,86 @@ The tracked `media/v1/` one-day incomplete-multipart lifecycle requirement is
 only eventual containment for a create whose response was permanently lost. It
 cannot satisfy synchronous cleanup, permit a tombstone, or permit purge, and it
 has not been applied or verified remotely. No remote promotion is allowed until
-that lifecycle boundary and the remaining host-proof boundary below are both
-implemented and rehearsed.
+that lifecycle boundary and the host-proof boundary below are independently
+validated, approved, deployed, and rehearsed.
 
 R2 absence is not public-host absence. This cleanup deliberately does not set
 `draft_publication_references.host_deletion_confirmed`, does not set
 `draft_derivatives.host_deleted_at`, and does not delete or claim deletion of a
-private original. A separate fixed-origin verifier must check every historical
-owned URL without redirects, require the delivery contract rather than an
-arbitrary `404`, and append evidence bound to the exact promotion/object
-generation and current withdrawal cycle. A new promotion must invalidate an
-older host-absence cycle. Until that forward receipt and verifier exist, the
-existing withdrawal and purge path remains closed.
+private original. Local migration `0009_public_host_verification.sql` makes that
+separation durable. Each promotion creates one immutable public generation with
+exactly two targets, `photo-display` and `photo-thumbnail`, bound to the fixed
+approved origin, candidate version, key and URL hashes, and expected content
+hashes. Generations survive approved-storage cleanup, so every possibly public
+URL remains enumerable until an approved parent-draft purge. Each approved-key
+hash is permanently retired before network verification and cannot be
+resurrected in another generation or draft.
 
-The local manifest generator accepts the service's public-safe candidate
+Delivery proof uses append-only epochs. Each epoch binds the exact HTTPS public
+origin, delivery-contract header, deployed media Worker version, fixed
+configuration hash, and one fixed content-addressed 28-byte synthetic WebP
+witness. Epoch activation is sequential and append-only. Activating a new epoch,
+creating another generation, or starting another withdrawal cycle invalidates
+older host-absence evidence. The modified media Worker remains read-only and
+approved-bucket-only. Recognized responses carry the exact delivery-contract
+and Worker-version headers; witness and failure responses are `no-store`, while
+ordinary immutable media retains the existing short revalidation policy.
+
+A fifth service-only verifier has only D1 plus fixed identity/origin/contract
+scalars and no R2 binding. It accepts only an opaque draft ID, expected state
+version, and idempotency key on one fixed route. One total inbound-body deadline
+covers every stream read and bounded cancellation: five seconds by default and
+never more than 30 seconds through the test seam. A stalled request therefore
+fails before D1 or public-host access. D1 derives the operation purpose. A
+current `withdrawal-pending` or `withdrawn` draft with an editorial-removal,
+athlete-exclusion, or consent-withdrawal intent uses `withdrawal`; a rejected or
+processing-failed draft with no withdrawal intent may use `retention-expiry`
+only when its exact approved retention tombstone supplies the purpose evidence.
+The caller cannot select or downgrade that purpose.
+
+Before any network check the verifier reserves all historical approved-key
+hashes. A permanent reservation is owned by the exact key/promotion/draft
+lineage. Its original verification, cycle, idempotency, service-identity, and
+timestamp hashes remain immutable provenance, but are not false ownership locks:
+a stronger current intent may invalidate the former receipt, begin a fresh
+cycle, and recover with a rotated authorized service identity against the same
+lineage. A same-actor fork within one cycle and an idempotency key reused across
+cycles remain forbidden. It then makes credential-free, `no-cache`/`no-store`,
+redirect-manual `HEAD` and `GET` requests through only the configured public
+front door. An exact witness `HEAD`/`GET` runs first; every historical target
+must then return an empty, contract-marked `404` from the current Worker version
+for `HEAD` and `GET`. The witness is proved again before a final `HEAD` of every
+target. A redirect, generic or cached `404`, credentialed route, wrong bucket
+binding, wrong witness, version drift, response body, timeout, or live object
+fails closed.
+
+One append-only receipt becomes current only if the final transaction still
+matches its D1-derived purpose and purpose evidence, current intent, withdrawal
+cycle, state version, complete immutable generation and target set,
+approved-storage cleanup, fixed origin, and current delivery epoch. A genuine
+zero-history case proves the canonical empty set using the two witness passes
+and creates no target or retirement row. Once any historical generation exists,
+every retained target needs its own exact three-observation absence proof; the
+witness-only shortcut is unavailable.
+
+Migration `0009` resets the legacy withdrawal-compatibility scalar
+`host_deletion_confirmed`. A withdrawal-purpose receipt may set it to `1` only
+in the same atomic final batch. A retention-expiry receipt deliberately keeps it
+at `0`: the successful API field `hostDeletionConfirmed: true` reports the
+verified public-host fact, not that legacy scalar. The current retention receipt
+instead matches the exact approved tombstone evidence. Withdrawal and consent
+withdrawal consume the withdrawal-purpose receipt. Rejected or
+processing-failed retention purge consumes the retention-purpose receipt while
+still requiring private-original deletion and the approved retention tombstone.
+The final permanent receipt is hash-only and survives the parent-draft purge.
+
+Migration `0009`, the modified media Worker and its witness, and the verifier
+are implemented in source but unapplied and undeployed. The current remote D1 schema
+still ends at `0006`; no delivery epoch, verifier Access identity/policy, or
+verifier Worker exists remotely. Their existence in source does not authorize
+withdrawal, purge, promotion, publication, or a compatibility scalar remotely.
+
+The repository manifest generator accepts the service's public-safe candidate
 package, derives only `gallery-data/family.json` or
 `gallery-data/everyone.json` from the draft's single inherited site, reuses the
 current consent/revision/suppression/race/roster/derivative publication gates,
@@ -812,17 +887,23 @@ target manifest at the exact expected `main` commit and proves the candidate is
 one new item while every existing item and its order remain unchanged. It has
 no merge, default-branch update, force-update, deployment, Pages, secret, or
 environment operation. No workflow, App, branch-rule change, candidate branch,
-or Pull Request was created by this local slice.
+or candidate-media Pull Request was created by this repository slice.
 
 The remaining Phase D plan is:
 
-1. Add the fixed-origin, generation-bound public-host absence verifier and
-   append-only receipt. Test delivery, byte ranges, headers, wrong bindings,
-   redirects, cache behaviour, new-promotion invalidation, exact deletion, and
-   final absence. Apply and verify the approved-prefix orphan-multipart
-   lifecycle rule only with separate approval. Only after both proofs may
-   migrations `0007`–`0008` or the promotion Worker be considered for
-   non-production deployment.
+1. Repeat the complete local suite after the final documentation reconciliation,
+   then finish diff and responsive validation. With separate approval for each
+   remote mutation, use the reviewed
+   rolling order: apply migrations `0007`–`0009`; deploy the exact modified
+   media Worker with version metadata; upload and byte-verify only the fixed
+   synthetic witness; register and activate its matching delivery epoch; create
+   the narrow verifier Access service identity and policy; deploy the fixed
+   verifier; then rehearse the public-front-door, wrong-binding, redirect,
+   cache, credential, epoch-rotation, zero-generation-withdrawal, and guarded
+   purge cases. Separately apply and verify the approved-prefix
+   orphan-multipart lifecycle rule. Deploying or granting Access to the
+   promotion Worker is a later separate gate after those proofs. No step may
+   infer approval for the next.
 2. Add read-only candidate retrieval and a protected default-branch workflow
    accepting only an opaque `draft_id`. Create/install the repository-scoped
    GitHub App and protected environment only with separate approval, prove the
@@ -873,6 +954,13 @@ Before review of implementation changes:
   individual-item withdrawal, and stale-bundle failure tests;
 - multipart completion, checksum, idempotent retry, abandoned-upload cleanup,
   and concurrent state-transition tests;
+- immutable exactly-two-target generation, append-only delivery-epoch,
+  permanent key-retirement, current-receipt invalidation, canonical
+  zero-generation withdrawal, and approved-purge-guard migration tests;
+- fixed public-front-door witness and target tests covering `HEAD` plus `GET`,
+  exact contract/version headers, empty `404`, manual redirects, no-cache,
+  no-store, omitted credentials, wrong binding, response-body, timeout, epoch
+  rotation, final-state recheck, and hash-only receipt survival after purge;
 - image/video content detection, limits, corrupt media, derivative dimensions,
   codec, range request, and metadata-stripping conformance;
 - Pull Request creation without merge, standard release-path enforcement,
@@ -888,7 +976,8 @@ The following actions are intentionally not performed by this architecture
 change:
 
 - create or change a Cloudflare account, Zero Trust organization, Access policy,
-  Worker, R2 bucket, D1 database, service token, billing plan, or alert;
+  Worker, R2 bucket, D1 database, service token, delivery epoch, lifecycle rule,
+  billing plan, or alert, or upload the fixed synthetic witness;
 - create or install a GitHub App, change Action permissions, create an
   environment, or add a secret;
 - change GoDaddy or GitHub Pages DNS;

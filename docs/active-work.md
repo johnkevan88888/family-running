@@ -1,110 +1,134 @@
 # Active Work
 
-## Current task: photo promotion, approved-storage cleanup, and review-only manifest Pull Request foundation
+## Current task: fixed-origin public-host verification for Gallery takedown
 
 ### Status — 30 August 2026
 
-Pull Request #83 was merged only after its exact head
-`c852ae0b610ce8ce91212f0a0c34b50f8064c98f` was green and mergeable. The
-resulting `main` merge is
-`a0e820afbd184e2dc181c76cb5f3b97919ee256b`. GitHub Pages run
-`33286368899` completed successfully for that exact merge. Its immutable
-artifact contained 114 files; production byte-matched all 114, including all
-72 manifest-listed CSVs. Both Family and Everyone rendered successfully from
-bundle `20260829T135012063Z-3C37E180`. Both public Gallery manifests remain
-empty. That verification proved the merged Phase D private-processing release;
-it did not publish media or authorize the next Cloudflare/GitHub changes.
+Pull Request #84 merged the photo-promotion and approved-storage-cleanup
+foundation to `main` at exact commit
+`4b6c7be70d77ce389f7ee9a5b103858cd31ff55b`. The Pages artifact and production
+site were then verified against that exact commit: all 114 published files,
+including the 72 manifest-listed CSVs, byte-matched; Family and Everyone both
+rendered; and both public Gallery manifests remained empty. This proves the
+static release only. Migrations `0007` and `0008`, the promotion service, the
+approved-media lifecycle rule, and all public-media operations remain
+undeployed.
 
-The first local promotion and manifest-review slice is now implemented on
-`codex/gallery-photo-promotion-manifest`, based on that verified `main`.
-Migrations `0007_photo_promotion.sql` and
-`0008_photo_promotion_cleanup.sql` add immutable photo-promotion, exact
-per-role object evidence, durable provider admission, storage-only cleanup, and
-hash-only terminal replay evidence. A separate service-only Worker can promote
-only the
-two already verified `photo-display` and `photo-thumbnail` WebPs from private
-staging. It derives the one fixed Family or Everyone area, storage keys, URLs,
-race, tags, consent, export/source/suppression revisions, and candidate state
-from D1 and the generated public catalogue; the configured
-`APPROVED_MEDIA_ORIGIN` supplies the fixed public host for D1-derived keys. The
-request has no destination, race, athlete, role, key, URL, or manifest-path
-control.
+The next safety slice is implemented and fully locally validated in this source
+change, based exactly on that verified `main`.
+Migration `0009_public_host_verification.sql` and the accompanying code make
+public-host absence a separate, stronger fact than approved-R2 absence. They do
+not add a destination selector or change the established inherited-area,
+race/date/event/distance, public-athlete-ID tagging, consent/guardian,
+metadata-stripping, external-media, storage-key, suppression, or whole-item
+exclusion contracts.
 
-Before creating an R2 multipart upload, the promotion service first writes a
-unique hashed admission token to D1. Only the invocation that wins that D1
-state may call R2. It then hands the exact provider upload ID to either the
-still-open promotion or an already-closing cleanup in one D1 batch before
-sending a byte. Every staging and approved read rechecks exact byte
-count, SHA-256, static WebP dimensions, version, ETag, content type, and the
-two-field metadata contract. Current consent, guardian approval, revisions,
-and pending athlete exclusions are rechecked throughout. The final D1 batch
-can reach `candidate-public` only after both approved objects are verified;
-`pr-open` and `published` remain blocked. Candidate retries re-read and hash
-both current approved R2 objects and then re-read current D1 eligibility instead
-of trusting either earlier snapshot. Direct deletion, replacement, an initially
-forged verified object, and unsupported state jumps are database-blocked.
+Each photo promotion now creates one immutable public generation containing
+exactly two targets—`photo-display` and `photo-thumbnail`—bound to the fixed
+approved origin, candidate state version, object-key hashes, public-URL hashes,
+and expected SHA-256 values. Generations survive approved-storage cleanup so
+every URL that may ever have been public remains enumerable until an approved
+parent-draft purge. A permanently retired approved-key hash cannot be reused by
+a later generation or another draft.
 
-The same service boundary now has one fixed cleanup route. The caller supplies
-only an opaque promotion ID, expected draft version, and idempotency key; D1
-derives cancellation, athlete-exclusion, or withdrawal intent and both exact
-approved keys. Starting cleanup closes new object admission. A still-unresolved
-provider admission cannot be called absent, tombstoned, or purged. A known
-multipart handle is aborted; if completion won, the service verifies and
-deletes only the exact owned object. It then requires exact `head()` absence and
-an empty, fully paginated server-built prefix before a strictly later completion
-timestamp and hash-only tombstone can commit. Exact promotion and cleanup
-retries remain deterministic after operational rows or the draft are purged.
-Consent withdrawal is the highest, one-way intent and cannot be downgraded to an
-athlete or editorial reason.
+The delivery boundary now has append-only media-delivery epochs. An epoch binds
+the exact HTTPS media origin, delivery-contract header, deployed media Worker
+version, fixed configuration hash, and one synthetic WebP witness. Only an
+explicitly registered and activated next epoch can become current. A new
+generation, withdrawal cycle, or delivery-epoch activation invalidates older
+host-absence evidence.
+The compatibility scalar `host_deletion_confirmed` is reset by migration `0009`
+and may become true again only in the same transaction that appends a complete
+receipt for the current generation set and current epoch.
 
-The local candidate generator reuses the existing publication contract and
-derives exactly one target manifest from `draft.siteModes[0]`. It supports
-photo append or a safe zero-based editorial insertion, writes only the public
-Gallery fields, prevents an automated shared Family/Everyone item, validates
-the complete current catalogue/suppression/manifests, and safely reconciles an
-exact retry. The separate GitHub client fixes the repository, `main` base,
-candidate branch namespace, and two allowed manifest paths. With a future
-short-lived repository GitHub App token it can create or reconcile exactly one
-one-file review branch and Pull Request. Before mutation it reads the exact
-target manifest from the expected `main` commit and proves one new item while
-preserving every existing item and its order; afterwards it re-proves the
-parent, bytes, and diff. The client contains no merge, deployment, Pages,
-environment, secret, default-branch mutation, force-update, `PATCH`, `PUT`, or
-`DELETE` operation.
+The locally modified read-only media Worker still has only `APPROVED_MEDIA`,
+plus Cloudflare version metadata. Recognized delivery responses carry the exact
+contract and Worker-version headers. A fixed 28-byte synthetic WebP at its
+content-addressed witness key is the proof that the public front door reaches
+the intended Worker version and approved bucket. Witness responses and all
+failure responses are `no-store`; ordinary immutable media retains the existing
+short revalidation policy. Missing or malformed delivery proof fails closed.
 
-Focused migration, processing/promotion/cleanup bridge, Worker
-boundary/configuration, lifecycle-contract, candidate-manifest, GitHub-client,
-upload-contract, and Gallery-contract tests pass. The bridge covers admission
-and cleanup races, lost provider and D1 responses, abort-wins and complete-wins,
-hostile pagination, chronology, provider-identity replacement attacks,
-consent-intent escalation, exact terminal replay after purge, changed and
-missing approved objects, and a final D1 eligibility read after both R2 checks.
-The final independent re-audit found no remaining local blocker in the
-admission, parent-hash, replacement, chronology, or final-resume cleanup paths.
-The complete `pnpm test` suite then passed: repository safety covered 231
-tracked files; vendor, both-mode CSV and Gallery, every administration/media/
-release regression, the isolated 114-file public artifact, and Family/Everyone
-desktop/mobile browser smoke checks all passed. Fresh empty and populated
-Gallery captures plus the fixed-area Family and Everyone owner-admin captures
-were visually inspected without apparent overflow, clipping, cross-mode
-leakage, or a destination selector. The tracked public manifests and suppression
-file remain byte-for-byte unchanged. No Cloudflare migration, Worker, or R2
-lifecycle rule was applied, no Access identity or policy was created, no
-approved object was uploaded remotely,
-no GitHub App or protected workflow was created, and no candidate branch or Pull
-Request was opened.
+A fifth, service-only public-host-verifier Worker has D1 and fixed scalar
+configuration only—no R2 binding, original, staging, manifest, GitHub, deletion,
+or caller-selected host/key route. Its one fixed `POST` route accepts only an
+opaque draft ID, expected state version, and idempotency key. The complete
+inbound JSON body—not each chunk separately—has one five-second default
+deadline, capped at 30 seconds for a test override; a stalled read or stalled
+cancellation fails before D1 or public-host fetch. D1, not the caller, derives
+the purpose: `withdrawal` only from a current editorial, athlete-exclusion, or
+consent-withdrawal intent, and `retention-expiry` only from a rejected or
+processing-failed draft with no withdrawal intent and the exact approved
+retention tombstone.
+
+Before network checks the verifier reserves every historical approved-key hash.
+The permanent reservation lineage is the exact key, promotion, and draft hash.
+Its first verification, cycle, idempotency, actor, and time remain immutable
+audit facts, while a stronger current intent may invalidate the old receipt and
+start a new cycle, and a rotated authorized service identity may recover against
+that same lineage. The database still rejects a same-actor fork of one cycle and
+reuse of an idempotency key for a different cycle. The verifier then uses
+credential-free, no-store/no-cache, redirect-manual `HEAD` and `GET` requests
+against only the configured public media origin. An exact witness `HEAD`/`GET`
+runs first, then every historical target must return the contract-marked,
+current-version, empty-body `404` for `HEAD` and `GET`; the witness is proved
+again before a final `HEAD` of every target. A redirect, cached or credentialed
+path, generic `404`, wrong binding, wrong witness, changed Worker version,
+response body, timeout, or live object cannot become absence evidence.
+
+The final append-only receipt is current only while its D1-derived purpose,
+purpose evidence, withdrawal cycle, state version, complete historical
+generation/target set, cleanup evidence, fixed origin, and current delivery
+epoch still match. A true zero-history draft uses the two witness passes and a
+canonical empty set without inventing a URL or reservation; any draft with
+historical generations must instead carry exact proof for every retained
+target. For a withdrawal-purpose receipt, the legacy
+`host_deletion_confirmed` scalar becomes `1` only in the same final transaction.
+For a retention-expiry receipt, the successful API still reports
+`hostDeletionConfirmed: true` because public-host absence was verified, while
+that withdrawal-compatibility scalar deliberately remains `0`; the current
+receipt is instead bound to the exact approved retention-tombstone evidence.
+Withdrawal and consent withdrawal consume the former. A rejected or
+processing-failed retention purge consumes the latter and still requires the
+existing private-original deletion and retention-tombstone gates. The permanent
+hash-only receipt survives parent-draft purge.
+
+Focused delivery-contract, media-boundary, storage-key, migration, verifier,
+combined-bridge, timeout, retention, purge, and security checks pass. The real
+SQLite bridge forces the final withdrawal scalar statement to fail, proves the
+same transaction rolls back target proof, witness proof, and final receipt while
+leaving only the resumable attempt and permanent reservations, then proves the
+exact retry commits once. The final post-documentation `pnpm test` passes:
+repository safety, vendored dependencies, both-mode CSV and Gallery validation,
+every focused Gallery service and migration suite, release/export regressions,
+the exact 114-file artifact build, and responsive Family and Everyone browser
+smoke tests all pass. Two independent final security reviews report no blocker.
+The tracked public manifests and suppression file are unchanged, and no real
+media or public candidate has been created.
 
 ### Deliberate deployment blockers and handoff
 
-This slice must not be deployed yet. The new cleanup proves absence only in the
-approved R2 bucket. It deliberately does not set public-host deletion or
-private-original deletion evidence and therefore cannot by itself authorize a
-withdrawal or purge. The next safety slice must add a fixed-origin,
-generation-bound public-host verifier and append-only receipt covering every
-historical owned display and thumbnail URL. A new promotion must invalidate an
-older host-absence cycle. R2 storage absence must never be treated as proof that
-the configured delivery Worker, a wrong binding, or a cache cannot still serve
-the URL.
+This slice must not be deployed yet. Migration `0009`, the modified media
+Worker, its synthetic witness, the verifier Worker, and the delivery-epoch
+records are implemented in source but unapplied and undeployed. The current
+Cloudflare D1 schema
+still ends at `0006`; the deployed media Worker has not been replaced or proved
+with the new version binding; the witness object does not exist remotely; and
+no verifier Access application, service identity, policy, or Worker has been
+created.
+
+Remote work requires separate approval for each mutation and must use a
+reviewed rolling order: apply forward D1 migrations `0007`–`0009`; deploy the
+exact media Worker with version metadata; place and byte-verify only the fixed synthetic
+witness in approved R2; register and activate the matching delivery epoch;
+create the narrow Access service identity and policy; deploy the fixed verifier;
+then run the synthetic fixed-origin absence, wrong-binding, redirect, cache,
+credential, epoch-rotation, zero-generation-withdrawal, and purge rehearsal.
+The exact live media Worker version ID must be confirmed before its epoch is
+activated. Failure at any step remains closed and does not authorize a scalar,
+withdrawal, tombstone, purge, promotion, Pull Request, or publication.
+Applying the approved-prefix lifecycle rule and deploying or granting Access to
+the promotion Worker remain later, separately approved gates after that proof.
 
 The tracked one-day, `media/v1/` incomplete-multipart lifecycle requirement is
 only crash containment for an R2 create whose response was permanently lost.
@@ -113,7 +137,8 @@ That rule has not been applied or verified remotely. A lost create response
 therefore remains in D1 `admitting`, and cleanup continues to fail closed even
 after a later provider lifecycle pass.
 
-The remaining review-path work is a read-only candidate
+After the public-host proof is independently validated and remotely rehearsed,
+the remaining review-path work is a read-only candidate
 retrieval/orchestration boundary and a protected
 default-branch workflow accepting only one opaque `draft_id`. It must retrieve
 a fresh candidate immediately before repository mutation, recheck the service
@@ -124,8 +149,11 @@ or changing `main` rules remains a separate external approval. Before any App
 installation, the remote rules must prove an App token is denied both a direct
 `main` update and a Pull Request merge; local absence of a merge API is not by
 itself a cryptographic permission boundary. The first remote checkpoint remains
-one synthetic photo and an unmerged rehearsal Pull Request. Real family media,
-video, merge, deployment, and publication remain out of scope.
+one synthetic photo and an unmerged rehearsal Pull Request. Applying any
+Cloudflare migration, changing or deploying a Worker, uploading the witness,
+creating Access credentials/policies, or running the remote rehearsal requires
+fresh explicit approval. Real family media, video, merge, production
+publication, and DNS changes remain out of scope.
 
 ## Current task: keep routine data refreshes independent of Gallery changes
 
