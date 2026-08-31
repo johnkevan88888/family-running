@@ -18,8 +18,9 @@ exact commit `4b6c7be70d77ce389f7ee9a5b103858cd31ff55b`; the exact 114-file
 GitHub Pages artifact and production site were byte-verified, with both modes
 rendered and both public Gallery manifests still empty. That static verification
 did not deploy a Cloudflare migration or Worker. A fifth service-only public-
-host verifier, migration `0009`, and the delivery-proof media changes are now
-implemented and fully locally validated in source but remain undeployed.
+host verifier and the delivery-proof media changes are implemented and fully
+locally validated in source but remain undeployed. Migrations `0007`–`0009`
+were applied to the non-production D1 database on 31 August 2026.
 
 ## Historical Phase B boundary
 
@@ -252,9 +253,10 @@ copy would require the confirmed D1/staging/approved resource identifiers plus:
 - `PROMOTION_ORIGIN`: the exact HTTPS promotion Worker origin; and
 - `APPROVED_MEDIA_ORIGIN`: the exact HTTPS read-only media Worker origin.
 
-Do not deploy migrations `0007`–`0009` or this Worker yet. R2 bucket absence is
-not host-absence proof, and the local verifier below has not completed final
-validation or remote rehearsal. The tracked one-day
+Migrations `0007`–`0009` are now applied to the non-production D1 database.
+Do not deploy this Worker without separate approval. R2 bucket absence is not
+host-absence proof, and the local verifier below has not completed remote
+rehearsal. The tracked one-day
 `media/v1/` incomplete-multipart lifecycle requirement is orphan containment
 only, cannot authorize a tombstone or purge, and has not been applied remotely.
 Protected live candidate retrieval/orchestration is also missing. No Access
@@ -329,11 +331,12 @@ then commits once. This is required evidence for the final-batch contract, not
 only an in-memory service simulation.
 
 `wrangler.public-host-verifier.example.jsonc` is intentionally non-deployable.
-Migration `0009`, the media delivery changes and witness, this Worker, delivery
-epochs, and any verifier Access service identity/policy are implemented in
-source but unapplied and undeployed. Remote work needs separately approved rolling steps:
-apply migrations `0007`–`0009`; deploy and identify the exact media Worker
-version; upload and byte-verify only the witness; register and activate the
+Migration `0009` is applied to the non-production D1 database. The media
+delivery changes and witness, this Worker, delivery epochs, and any verifier
+Access service identity/policy remain undeployed. Remote work needs separately
+approved rolling steps. The migration step is complete; next deploy and
+identify the exact media Worker version; upload and byte-verify only the
+witness; register and activate the
 matching epoch; create the narrow Access identity/policy; deploy the verifier;
 and run the synthetic public-front-door and guarded-withdrawal/purge rehearsal.
 The one-day approved-prefix lifecycle rule and promotion Worker deployment/
@@ -477,18 +480,20 @@ collisions. That prevents a different `INSERT OR REPLACE` key from evicting the
 winner and makes competing failed-run retries single-winner without relying on
 connection-local statement metadata.
 
-The unapplied `migrations/0007_photo_promotion.sql` replaces only the absolute
+Migration `migrations/0007_photo_promotion.sql`, applied to non-production on
+31 August 2026, replaces only the absolute
 `candidate-public` stop with exact photo-promotion evidence. It adds immutable
 promotion/object rows, preserves unique ownership of every approved key,
 permits only the two verified photo roles, and allows approved derivative keys
 to move only from `NULL` to the exact reserved keys in the same final
 transaction. It keeps review, publication, approved deletion, processing
 cleanup after promotion, and draft purge hard-blocked until their own forward
-evidence migrations exist. It must be applied only together with the reviewed
-promotion Worker and migrations `0008` and `0009`, using the reviewed rolling
-deployment order.
+evidence migrations exist. It was applied with migrations `0008` and `0009` as
+the schema-first step in the reviewed rolling deployment order; the promotion
+Worker remains separately gated and undeployed.
 
-The unapplied `migrations/0008_photo_promotion_cleanup.sql` adds the narrow
+Migration `migrations/0008_photo_promotion_cleanup.sql`, applied to
+non-production on 31 August 2026, adds the narrow
 storage-cleanup exceptions. It records one immutable cleanup and exact object
 snapshot, closes admission, supports the exact provider-ID handoff from a
 concurrent create, permits terminal abort/complete-wins deletion only through
@@ -497,7 +502,8 @@ then permits operational promotion evidence to be removed only while inserting
 a hash-only replay tombstone. It adds no host verifier, private-original
 deletion, manifest writer, GitHub capability, merge, or deployment authority.
 
-The unapplied `migrations/0009_public_host_verification.sql` adds immutable
+Migration `migrations/0009_public_host_verification.sql`, applied to
+non-production on 31 August 2026, adds immutable
 exactly-two-target public generations, append-only delivery epochs and
 activations, permanent approved-key-hash retirement, append-only witness/target
 proofs, and permanent hash-only public-host absence receipts. Its current-

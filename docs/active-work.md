@@ -10,9 +10,9 @@ foundation to `main` at exact commit
 site were then verified against that exact commit: all 114 published files,
 including the 72 manifest-listed CSVs, byte-matched; Family and Everyone both
 rendered; and both public Gallery manifests remained empty. This proves the
-static release only. Migrations `0007` and `0008`, the promotion service, the
-approved-media lifecycle rule, and all public-media operations remain
-undeployed.
+static release only. At that checkpoint, migrations `0007` and `0008`, the
+promotion service, the approved-media lifecycle rule, and all public-media
+operations remained undeployed.
 
 The next safety slice is implemented and fully locally validated in this source
 change, based exactly on that verified `main`.
@@ -111,21 +111,49 @@ path because `package.json` is conservatively treated as a publishing-control
 file. Its initial no-visual classification was rejected before tests ran, then
 corrected without weakening the release gate.
 
+### Non-production D1 migration deployment — 31 August 2026
+
+With separate owner approval for this database step only, forward migrations
+`0007_photo_promotion.sql`, `0008_photo_promotion_cleanup.sql`, and
+`0009_public_host_verification.sql` were applied in order to the existing
+non-production Gallery D1 database from exact merged source commit
+`693383ba03380b6e8d846e26fcd79b1cad5059f6`. Before mutation, Wrangler reported
+exactly those three files pending after `0001`–`0006`; the database had zero
+foreign-key violations and zero legacy true `host_deletion_confirmed` values.
+Cloudflare Time Travel recovery bookmarks were captured before and after the
+operation without adding them to the repository.
+
+Wrangler reported all three migrations successful and now reports no pending
+migrations. Independent remote checks found all 15 expected new tables, six
+named indexes, two views, and all 93 distinct migration safety triggers. Every
+new promotion, cleanup, delivery-epoch, generation, retirement, proof, and
+receipt table remains empty; both receipt views return zero rows; the legacy
+host-confirmation scalar remains zero; `PRAGMA foreign_key_check` returns no
+rows; and `PRAGMA quick_check` returns `ok`. The database now has 34 tables.
+Focused local public-host-migration, full processing-bridge, and promotion-
+Worker boundary tests also passed immediately before the remote application.
+
+This approval and deployment changed D1 schema only. It did not deploy or
+replace a Worker, upload the synthetic witness, register or activate a delivery
+epoch, create Access resources, apply an R2 lifecycle rule, create approved
+media, edit a manifest, open a Pull Request, or publish anything. The new
+database boundary therefore remains deliberately fail closed: there is no
+current delivery epoch and no current public-host-absence receipt.
+
 ### Deliberate deployment blockers and handoff
 
-This slice must not be deployed yet. Migration `0009`, the modified media
-Worker, its synthetic witness, the verifier Worker, and the delivery-epoch
-records are implemented in source but unapplied and undeployed. The current
-Cloudflare D1 schema
-still ends at `0006`; the deployed media Worker has not been replaced or proved
-with the new version binding; the witness object does not exist remotely; and
-no verifier Access application, service identity, policy, or Worker has been
-created.
+The approved non-production D1 schema step is complete through migration
+`0009`. The modified media Worker, its synthetic witness, the verifier Worker,
+and delivery-epoch records remain undeployed. The deployed media Worker has not
+been replaced or proved with the new version binding; the witness object does
+not exist remotely; and no verifier Access application, service identity,
+policy, or Worker has been created.
 
 Remote work requires separate approval for each mutation and must use a
-reviewed rolling order: apply forward D1 migrations `0007`–`0009`; deploy the
-exact media Worker with version metadata; place and byte-verify only the fixed synthetic
-witness in approved R2; register and activate the matching delivery epoch;
+reviewed rolling order. The completed first step was applying forward D1
+migrations `0007`–`0009`. The next separately approved step is to deploy the
+exact media Worker with version metadata; then place and byte-verify only the
+fixed synthetic witness in approved R2; register and activate the matching delivery epoch;
 create the narrow Access service identity and policy; deploy the fixed verifier;
 then run the synthetic fixed-origin absence, wrong-binding, redirect, cache,
 credential, epoch-rotation, zero-generation-withdrawal, and purge rehearsal.

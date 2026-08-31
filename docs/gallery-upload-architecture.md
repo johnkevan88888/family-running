@@ -8,7 +8,7 @@
   runner
 - **Infrastructure state:** Synthetic-only Phases C and D are complete on
   isolated non-production `workers.dev` resources. D1 carries migrations
-  `0001`–`0006`; the owner administration Worker can reach only D1 and private
+  `0001`–`0009`; the owner administration Worker can reach only D1 and private
   originals; the media Worker can reach only approved derivatives; and the
   restored normal processing Worker can reach only D1, private originals, and
   private derivative staging. Its Access application is parked fail closed with
@@ -28,10 +28,10 @@
   production site were verified byte-for-byte at that exact commit, including
   all 72 manifest-listed CSVs and both rendered modes; both public Gallery
   manifests stayed empty. That was static release proof, not Cloudflare
-  deployment. Migrations `0007` and `0008` and the promotion Worker remain
-  unapplied and undeployed. Migration `0009`, the delivery-proof media Worker,
-  synthetic witness, and fixed-origin verifier are implemented and fully
-  locally validated in source but remain unapplied and undeployed. The
+  deployment. Migrations `0007`–`0009` were applied to the non-production D1
+  database on 31 August 2026 after separate approval; the promotion Worker,
+  delivery-proof media Worker, synthetic witness, and fixed-origin verifier
+  remain undeployed. The
   approved-prefix orphan-multipart lifecycle requirement is
   tracked but has not been applied remotely. Protected candidate
   retrieval/orchestration, the protected workflow, GitHub App and remote
@@ -867,11 +867,12 @@ processing-failed retention purge consumes the retention-purpose receipt while
 still requiring private-original deletion and the approved retention tombstone.
 The final permanent receipt is hash-only and survives the parent-draft purge.
 
-Migration `0009`, the modified media Worker and its witness, and the verifier
-are implemented in source but unapplied and undeployed. The current remote D1 schema
-still ends at `0006`; no delivery epoch, verifier Access identity/policy, or
-verifier Worker exists remotely. Their existence in source does not authorize
-withdrawal, purge, promotion, publication, or a compatibility scalar remotely.
+Migration `0009` is applied to the non-production D1 database. The modified
+media Worker, its witness, and the verifier remain implemented in source but
+undeployed. The remote schema ends at `0009`, but no delivery epoch, verifier
+Access identity/policy, or verifier Worker exists remotely. Schema presence
+does not authorize withdrawal, purge, promotion, publication, or a
+compatibility scalar remotely.
 
 The repository manifest generator accepts the service's public-safe candidate
 package, derives only `gallery-data/family.json` or
@@ -894,8 +895,9 @@ The remaining Phase D plan is:
 1. Repeat the complete local suite after the final documentation reconciliation,
    then finish diff and responsive validation. With separate approval for each
    remote mutation, use the reviewed
-   rolling order: apply migrations `0007`–`0009`; deploy the exact modified
-   media Worker with version metadata; upload and byte-verify only the fixed
+   rolling order. Migrations `0007`–`0009` are complete. The next separately
+   approved step is to deploy the exact modified media Worker with version
+   metadata; then upload and byte-verify only the fixed
    synthetic witness; register and activate its matching delivery epoch; create
    the narrow verifier Access service identity and policy; deploy the fixed
    verifier; then rehearse the public-front-door, wrong-binding, redirect,
