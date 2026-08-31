@@ -1,0 +1,33 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "account_id": "REPLACE_ONLY_IN_IGNORED_LOCAL_CONFIG",
+  "name": "family-running-gallery-public-host-verifier-dev",
+  "main": "src/public-host-verifier-worker.js",
+  "compatibility_date": "2026-08-30",
+  "compatibility_flags": [
+    "global_fetch_strictly_public"
+  ],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": {
+    "enabled": false
+  },
+  "vars": {
+    "PUBLIC_HOST_VERIFIER_ORIGIN": "https://REPLACE_WITH_EXACT_VERIFIER_HOST",
+    "PUBLIC_HOST_VERIFIER_IDENTITY": "subject:REPLACE_WITH_EXACT_ACCESS_SERVICE_CLIENT_ID.access",
+    "APPROVED_MEDIA_ORIGIN": "https://REPLACE_WITH_EXACT_MEDIA_HOST",
+    "MEDIA_CONTRACT": "approved-media-v1",
+    "EXPECTED_MEDIA_VERSION": "REPLACE_WITH_EXACT_LOWERCASE_MEDIA_VERSION_UUID",
+    "MEDIA_WITNESS_KEY": "media/v1/54bdb34ea423475fe0544cacbf32ab4f7e75846b5f25f1296e9bb2d157cd9f77/display.webp",
+    "MEDIA_WITNESS_SHA256": "54bdb34ea423475fe0544cacbf32ab4f7e75846b5f25f1296e9bb2d157cd9f77",
+    "MEDIA_WITNESS_BYTE_COUNT": "28",
+    "MEDIA_WITNESS_CONTENT_TYPE": "image/webp"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "family-running-gallery-dev",
+      "database_id": "REPLACE_ONLY_IN_IGNORED_LOCAL_CONFIG"
+    }
+  ]
+}

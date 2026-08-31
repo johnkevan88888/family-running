@@ -679,10 +679,14 @@ Unknown historical details are labelled rather than inferred.
   infrastructure/authentication are implemented and verified; synthetic-only
   Phase C is deployed and remotely verified; the private Phase D photo-
   processing and staging-cleanup boundary has passed its non-production A–F
-  rehearsal. A photo-only promotion, candidate-manifest, and review-client
-  foundation is implemented locally but deliberately blocked from deployment;
-  remote approved-media promotion and public publication remain disabled.
-- **Date:** 25–29 August 2026
+  rehearsal. Pull Request #84 merged the photo-only promotion,
+  candidate-manifest, and review-client foundation to the repository, but no
+  Cloudflare part of that foundation is deployed. The generation-bound
+  public-host verifier, migration `0009`, modified media delivery proof, and
+  witness are implemented and fully locally validated in source; all remote
+  steps remain blocked. Remote approved-media
+  promotion and public publication remain disabled.
+- **Date:** 25–30 August 2026
 - **Decision:** Keep the public championship site static and add no public
   upload page. A separate Cloudflare Worker administration application is
   protected in full by Cloudflare Access for one MFA-enabled owner identity and
@@ -969,9 +973,10 @@ Unknown historical details are labelled rather than inferred.
   Windows CRLF working-copy hashes differ without changing the tracked
   content.
   Remote approved-media promotion, the GitHub App, and the synthetic Pull
-  Request rehearsal remain a separately approved future scope. The first local
-  photo-only promotion, candidate-manifest, and review-client slice is described
-  below. Video processing and real family media remain blocked. After fresh explicit
+  Request rehearsal remain a separately approved future scope. The repository
+  photo-only promotion, candidate-manifest, and review-client foundation merged
+  by Pull Request #84 is described below. Video processing and real family media
+  remain blocked. After fresh explicit
   approval, the dedicated rehearsal Service Auth policy was detached from the
   processing Access application, then that unused policy and its temporary
   service token were deleted. Dashboard and Access API checks confirmed the
@@ -982,8 +987,18 @@ Unknown historical details are labelled rather than inferred.
   exact old credential pair was not replayed after deletion; authoritative
   Cloudflare absence is the revocation proof. The owner application and owner
   policy were unchanged.
-- **Local photo promotion and review-only candidate foundation:** Migration
-  `0007_photo_promotion.sql` and a fourth service-only Worker locally bind one
+- **Exact static release of the promotion/review foundation:** Pull Request #84
+  merged to `main` at
+  `4b6c7be70d77ce389f7ee9a5b103858cd31ff55b`. The 114-file GitHub Pages
+  artifact and production site were verified byte-for-byte at that exact
+  commit, including all 72 manifest-listed CSVs; Family and Everyone rendered,
+  and both public Gallery manifests stayed empty. This is exact static-release
+  evidence only. It did not apply migrations `0007`–`0009`, deploy either local
+  service Worker or the modified media Worker, upload a witness or approved
+  derivative, create a delivery epoch or verifier Access identity/policy, or
+  authorize media publication.
+- **Repository photo promotion and review-only candidate foundation:** Migration
+  `0007_photo_promotion.sql` and a fourth service-only Worker bind one
   already staged photo run to exactly two approved objects: display and
   thumbnail. The fixed route carries one opaque draft ID and its JSON body
   supplies only the expected draft version and an idempotency key. D1 derives
@@ -1039,17 +1054,83 @@ Unknown historical details are labelled rather than inferred.
   objects and then re-read current D1 eligibility, while the future protected
   workflow must retrieve a fresh candidate by opaque draft ID immediately
   before repository mutation.
-- **Promotion remains locally gated:** This slice is intentionally
-  undeployable. Local storage cleanup now closes every known persisted approved
-  multipart handle, resolves abort-versus-complete, deletes only exact owned
-  objects, proves R2 absence, and retains safe replay evidence. That is not
-  public-host absence. Before deployment, a separate fixed-origin verifier must
-  produce append-only evidence bound to the exact promotion generation and
-  every historical owned URL, and a new promotion must invalidate an older
-  absence cycle. Protected candidate retrieval/orchestration and the remote
-  lifecycle-rule proof also remain missing. These gates preserve host-first
-  withdrawal and athlete-exclusion takedown rather than weakening them for
-  publication work.
+- **Public-host absence is immutable-generation and delivery-epoch evidence:**
+  Local migration `0009_public_host_verification.sql` creates one immutable
+  public generation for each promotion, with exactly the display and thumbnail
+  targets bound to the fixed approved origin, candidate version, key/URL hashes,
+  and expected content hashes. The generation survives approved-storage
+  cleanup, so every possibly public URL remains enumerable until approved
+  parent-draft purge. Append-only delivery epochs bind the exact HTTPS public
+  origin, delivery-contract header, deployed media Worker version,
+  configuration hash, and one fixed content-addressed 28-byte WebP witness.
+  Epoch activation is sequential and append-only. A new generation, withdrawal
+  cycle, or activated delivery epoch invalidates older absence evidence.
+- **Public-front-door proof is strict and credential-free:** The local modified
+  media Worker remains read-only and approved-bucket-only, adds only Cloudflare
+  version metadata, marks recognized responses with the exact contract and
+  deployed-version headers, and serves witness/failure responses as `no-store`.
+  The fifth service-only verifier has D1 and fixed scalars only, with no R2
+  binding or caller-selected host/key. It checks only the configured public
+  origin using redirect-manual, no-cache/no-store, credential-omitting `HEAD`
+  and `GET`. An exact witness check runs first; each historical target then
+  needs an empty, contract-marked `404` from the current Worker version for
+  `HEAD` and `GET`. The witness is proved again before a final target `HEAD`.
+  Redirects, cached or generic `404`s, credential-dependent paths,
+  wrong binding or witness, version drift, bodies, timeouts, and live objects
+  cannot become absence proof. The verifier route also gives the entire inbound
+  JSON stream one five-second default deadline, capped at 30 seconds through the
+  test seam, so a slow chunk sequence or stalled cancellation cannot reach D1 or
+  the public host.
+- **Verification purpose and reservation lineage come from durable D1 facts:**
+  The caller cannot choose withdrawal versus retention. D1 derives
+  `withdrawal` from a current editorial-removal, athlete-exclusion, or
+  consent-withdrawal intent, and derives `retention-expiry` only for a rejected
+  or processing-failed draft with no withdrawal intent and an exact approved
+  retention tombstone. A key-retirement reservation is permanently owned by its
+  key/promotion/draft lineage. Its first verification, cycle, idempotency,
+  service-identity, and time hashes remain immutable provenance, while a
+  stronger current intent may invalidate the old receipt, start a new cycle,
+  and recover through a rotated authorized identity against the same lineage.
+  Same-actor cycle forks and cross-cycle idempotency reuse remain forbidden.
+- **Retirement and current receipts are permanent safety commitments:** Every
+  historical approved-key hash is permanently retired before network checks,
+  preventing reuse by another generation or draft. A final append-only receipt
+  is current only while its D1-derived purpose and purpose evidence, current
+  intent, withdrawal cycle, state version, complete generation/target set,
+  approved cleanup, fixed origin, and delivery epoch all still match. A true
+  zero-history draft may use a canonical empty receipt only after the same two
+  witness passes, without inventing a target or retirement row; any historical
+  generation requires exact proof for every target. Migration `0009` resets the
+  legacy withdrawal scalar `host_deletion_confirmed`. A withdrawal-purpose
+  receipt may set it only in the same final transaction. A retention-expiry
+  receipt deliberately leaves it `0`, even though the successful API reports
+  `hostDeletionConfirmed: true` to describe the verified public-host fact. That
+  retention receipt is current only while it matches the approved tombstone
+  evidence. Withdrawal and consent withdrawal consume the former receipt;
+  rejected or processing-failed retention purge consumes the latter and still
+  requires private-original deletion plus the approved retention tombstone.
+  The final hash-only receipt and retired hashes survive parent-draft purge.
+- **Final receipt atomicity is tested with real SQLite:** The combined bridge
+  forces the last withdrawal scalar update to fail and proves the transaction
+  rolls back target proofs, witness proof, and receipt together while preserving
+  the resumable verification and permanent reservations. An exact retry then
+  commits once. This closes the gap between the isolated service substitute and
+  the actual migration triggers used by the repository integration.
+- **Promotion and public-host proof remain deployment-gated:** Migration `0009`,
+  the modified media Worker and witness, and the fixed verifier are implemented
+  in source but unapplied and undeployed. Focused verifier/migration/bridge
+  validation, two independent final security reviews, and the final complete
+  post-documentation `pnpm test` all pass, including the exact artifact build
+  and responsive Family and Everyone browser checks.
+  Remote D1 still ends at `0006`. Separate approval is required to apply migrations
+  `0007`–`0009`, deploy and identify the exact media Worker version, upload and
+  byte-verify the fixed witness, register and activate the matching epoch,
+  create the narrow verifier Access identity/policy, deploy the verifier, and
+  run the public-front-door/withdrawal/purge rehearsal. The approved-prefix
+  lifecycle rule, promotion Worker deployment/Access, and protected candidate
+  retrieval/orchestration remain separate gates. These constraints preserve
+  host-first withdrawal and athlete-exclusion takedown rather than weakening
+  them for publication work.
 - **Service identity compatibility:** During the configured rehearsal,
   Worker-level Service Auth supplied a validated `ctx.access` context and an
   injected signed application assertion, but the runtime resolved
@@ -1072,10 +1153,11 @@ Unknown historical details are labelled rather than inferred.
   check, tests, preview, rollback, and explicit release approval.
 - **Consequences:** The public `1.0` manifest and suppression schemas do not
   change. Consent, originals, admin identity, object keys, hashes, and private
-  notes never become public manifest fields. The uploader revalidates the exact
-  inherited site/date/event/distance/athlete tuple and current suppression list
-  before processing and publication; it cannot direct one upload into the
-  other site's manifest. Complete takedown remains host-first deletion
+  notes never become public manifest fields. The administration, processing,
+  promotion, and publication boundaries revalidate the exact inherited
+  site/date/event/distance/athlete tuple and current suppression list; the owner
+  has no destination selector and cannot direct one upload into the other site's
+  manifest. Complete takedown remains host-first deletion
   followed by the manifest/suppression correction. Public derivative URLs are
   still public and downloadable; `noindex`, opaque paths, and a private bucket
   do not revoke a copy already downloaded by a visitor.

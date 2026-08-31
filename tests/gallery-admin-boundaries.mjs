@@ -3880,7 +3880,10 @@ function objectMetadata(object, metadataSentinel, overrides = {}) {
 }
 
 function createDeliveryEnv(approvedMedia) {
-    const env = { APPROVED_MEDIA: approvedMedia };
+    const env = {
+        APPROVED_MEDIA: approvedMedia,
+        MEDIA_VERSION: { id: '11111111-1111-4111-8111-111111111111' }
+    };
     for (const forbiddenBinding of [
         'ORIGINALS',
         'ORIGINAL_MEDIA',

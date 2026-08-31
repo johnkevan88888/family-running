@@ -654,7 +654,7 @@ PNG inputs fail before unnecessary native-tool work. It does not authorize real
 media or claim video processing coverage.
 
 The local private-processing and photo-promotion bridge test then drives the
-real administration router, all eight D1 migrations, deterministic in-memory
+real administration router, all nine D1 migrations, deterministic in-memory
 private-staging and approved R2 implementations, the real pinned photo
 processor, and the two separately bound service-only routers from end to end
 with synthetic bytes. The processing portion proves that the site area, race, tags,
@@ -752,6 +752,75 @@ and outcome evidence—never raw object keys. The cleanup must not set public-ho
 or private-original deletion evidence, and tracked public manifests must remain
 byte-identical.
 
+Migration `0009_public_host_verification.sql` needs its own structural and
+behavioral suite. It must prove that every promotion creates one immutable
+generation with exactly the display and thumbnail targets; all generations and
+targets survive approved-storage cleanup; activation records and delivery
+epochs are append-only; and each epoch binds the exact fixed HTTPS origin,
+delivery contract, media Worker version, configuration hash, and synthetic
+witness. It must reject replacement, target-count or role drift, non-sequential
+activation, retirement reuse across generations or drafts, deletion of durable
+proof, and a generation created without the current epoch. A new generation,
+withdrawal cycle, or epoch activation must invalidate the prior current-receipt
+view and compatibility scalar. Reservation tests must distinguish stable
+ownership from attempt provenance: the key, promotion, and draft hashes are the
+permanent lineage; the first verification, cycle, idempotency, actor, and time
+remain immutable history. A stronger current intent and rotated authorized
+identity may start a new immutable attempt against that same lineage, but one
+actor cannot fork the same cycle and one idempotency key cannot be replayed into
+a changed cycle.
+
+The media-delivery contract test must run the real media Worker with only
+`APPROVED_MEDIA` and Cloudflare version metadata. It must require the exact
+contract and canonical Worker-version headers, byte-hash the fixed 28-byte WebP
+witness at its content-addressed key, require `no-store` for witness and every
+failure, preserve the short revalidation policy for ordinary immutable media,
+and fail closed for an extra/missing binding, malformed version, wrong witness,
+key/type mismatch, replacement, range drift, redirect-like input, or storage
+error.
+
+The separate public-host-verifier test must run the real fixed router with D1
+and fixed scalar configuration only. Before network checks it must prove that
+all historical approved-key hashes are permanently retired. Its injected public
+front door must observe `redirect: manual`, `cache: no-store`,
+`credentials: omit`, `Cache-Control: no-cache, no-store`, and
+`Pragma: no-cache`. An exact witness `HEAD` and full-body-hashed `GET` must run
+first. Every historical target `HEAD`/`GET` then needs the exact response URL,
+no redirect or `Location`, `no-store`, current contract/version, and an empty
+`404`. The witness must be proved again before a final `HEAD` of every target.
+Live media must be a
+conflict; a generic or cached `404`, credential-dependent route, wrong binding,
+wrong witness, version drift, body, timeout, redirect, or unexpected status must
+be unverifiable and cannot produce a receipt. The router test must also stall an
+inbound request stream and prove one total five-second default body deadline,
+with a test override capped at 30 seconds, covers all reads and bounded
+cancellation before D1 or public fetch.
+
+Purpose tests must prove D1 derives `withdrawal` only from the current editorial,
+athlete-exclusion, or consent-withdrawal intent, and derives `retention-expiry`
+only for a rejected or processing-failed draft with no withdrawal intent and a
+matching approved retention tombstone. The caller cannot choose the purpose.
+Before one transactional commit, the verifier must re-read that purpose and
+evidence, the current epoch, state version, withdrawal cycle, complete immutable
+generation/target set, and approved-storage cleanup. A true zero-history case
+must use canonical empty counts/hashes and the same two witness passes without
+inventing a target or retirement row. A historical retention or withdrawal case
+must instead prove every retained target; a witness-only shortcut must fail.
+
+The real SQLite bridge—not only the in-memory D1 substitute—must force the last
+withdrawal scalar statement to fail and prove that target proofs, witness proof,
+and final receipt all roll back together while the resumable verification and
+permanent reservations remain. Its exact retry must then commit once. A
+withdrawal-purpose receipt may set the legacy `host_deletion_confirmed` scalar
+only in that final transaction. A retention-expiry success must return API
+`hostDeletionConfirmed: true` to report verified public-host absence while the
+legacy withdrawal scalar remains `0`; its current receipt must be bound to the
+retention tombstone evidence. Withdrawal and consent-withdrawal tests consume
+the former receipt. Rejected/processing-failed retention purge consumes the
+latter and must still require private-original deletion and the approved
+retention tombstone. Parent-draft purge must retain the permanent hash-only
+receipt and any permanent retired-key commitments.
+
 The local candidate-manifest tests must prove that exactly one inherited
 `family.json` or `everyone.json` document is derived from the current public
 catalogue and suppression list; that the result contains only the public `1.0`
@@ -774,11 +843,17 @@ only, and forbid its use as cleanup, tombstone, or purge proof.
 
 These tests do not exercise Cloudflare, use real media, write either tracked
 manifest, create a GitHub App, open a remote Pull Request, merge, deploy, or
-publish. Migrations `0007`–`0008` and the promotion Worker remain undeployable
-until a separate fixed-origin, generation-bound public-host verifier and
-append-only receipt are implemented, the approved-prefix lifecycle rule is
-applied and verified with separate approval, and protected candidate retrieval
-and orchestration exist. R2 storage absence alone is not public-host absence.
+publish. Migrations `0007`–`0009`, the modified media Worker and witness, the
+promotion Worker, and the fixed-origin verifier remain undeployed. Their final
+combined migration/bridge and diff checks pass. The complete post-documentation
+`pnpm test` also passes, including the exact 114-file artifact and responsive
+Family and Everyone browser checks. Non-production deployment requires separate
+approval and an ordered migration/media-version/witness/epoch/Access/verifier
+rollout plus a synthetic public-front-door rehearsal. The approved-prefix
+lifecycle rule is a separate approval and verification gate, and protected
+candidate retrieval/orchestration is still required. Promotion Worker
+deployment and its Access identity/policy are later separate gates. R2 storage
+absence alone is not public-host absence.
 
 The remote-driver contract must expect exactly six passed scenarios, five
 completed cleanups, four acknowledged derivative puts, five deliberately
@@ -1001,6 +1076,16 @@ Before approving a Pull Request:
 - For a validated custom-domain change, confirm the title contains
   `[skip netlify]`, the eligibility gate passed, `CNAME` contains only the
   intended hostname, and the exact diff stays within the domain allowlist.
+- For Gallery promotion or takedown infrastructure, separate repository/static
+  proof from Cloudflare proof. Confirm the migration level, exact public media
+  origin and deployed Worker version, witness bytes, current delivery epoch,
+  narrow verifier Access identity/policy, no-redirect/no-cache/no-credential
+  front-door evidence, and current-generation receipt. Check the canonical
+  zero-generation case and the private-original/retention gates on purge. For a
+  candidate manifest, inspect the one-file structural diff and confirm it adds
+  only the intended item while preserving every existing item and order in the
+  upload's inherited Family or Everyone area; there must be no destination
+  selector or cross-mode edit.
 - Review desktop and mobile screenshots.
 - Manually check Hall of Fame, All-Time Official Crown Progression, Official
   Results News when it is part of the change, Records, the Calculator's grouped
@@ -1184,6 +1269,16 @@ After an approved release reaches GitHub Pages, verify:
 
 - [Family production](https://www.aceofrace.com/?site=family)
 - [Everyone production](https://www.aceofrace.com/?site=everyone)
+
+Pull Request #84 is the recorded exact-release example for this boundary. It
+merged to `main` at
+`4b6c7be70d77ce389f7ee9a5b103858cd31ff55b`; all 114 files in the Pages
+artifact and production site, including all 72 manifest-listed CSVs,
+byte-matched that commit, and both Family and Everyone rendered while both
+Gallery manifests remained empty. This verifies only that static GitHub Pages
+release. It is not evidence that migrations `0007`–`0009`, a media Worker
+version, the witness, a delivery epoch, verifier Access, or either local
+service-only Worker has been deployed.
 
 For a guided routine data refresh, a final `LIVE VERIFICATION PASSED` message is
 the automated evidence for this gate. It names the expected `ExportBundleID`,

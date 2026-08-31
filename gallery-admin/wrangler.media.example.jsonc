@@ -9,6 +9,9 @@
   "observability": {
     "enabled": false
   },
+  "version_metadata": {
+    "binding": "MEDIA_VERSION"
+  },
   "r2_buckets": [
     {
       "binding": "APPROVED_MEDIA",

@@ -8,13 +8,27 @@ import sharp from 'sharp';
 import { handleAdminRequest } from '../gallery-admin/src/admin-worker.js';
 import { handleProcessingRequest } from '../gallery-admin/src/processing-worker.js';
 import { cleanupPhotoPromotion } from '../gallery-admin/src/promotion-cleanup-service.js';
+import {
+    MEDIA_BINDING_WITNESS_CONTENT_TYPE,
+    MEDIA_BINDING_WITNESS_KEY,
+    MEDIA_BINDING_WITNESS_SHA256,
+    MEDIA_BINDING_WITNESS_SIZE,
+    MEDIA_DELIVERY_CONTRACT_HEADER,
+    MEDIA_DELIVERY_CONTRACT_VALUE,
+    MEDIA_DELIVERY_VERSION_HEADER
+} from '../gallery-admin/src/media-delivery-contract.js';
 import { promotePhotoDraft } from '../gallery-admin/src/promotion-service.js';
+import { verifyPublicHostAbsence } from '../gallery-admin/src/public-host-verifier-service.js';
 import { buildV1StagingDerivativeKey } from '../gallery-admin/src/storage-keys.js';
 import { processSyntheticGalleryPhoto } from '../scripts/gallery-media/processor.mjs';
 
 const adminOrigin = 'https://synthetic-owner-admin.example';
 const processingOrigin = 'https://synthetic-processing.example';
+const approvedOrigin = 'https://synthetic-approved-media.example';
+const syntheticMediaDeliveryVersion = '12345678-1234-5678-9abc-1234567890ab';
 const processorSubject = '0123456789abcdef0123456789abcdef.access';
+const publicHostVerifierSubject = 'fedcba9876543210fedcba9876543210.access';
+const publicHostVerifierOrigin = 'https://synthetic-public-host-verifier.example';
 const fixedNow = Date.UTC(2026, 7, 28, 15, 0, 0);
 const sessionSecret = 'synthetic-phase-d-session-secret-0123456789abcdef';
 const manifestUrls = [
@@ -23,6 +37,18 @@ const manifestUrls = [
     new URL('../gallery-data/hidden-athlete-ids.json', import.meta.url)
 ];
 const manifestBaselines = await Promise.all(manifestUrls.map(url => readFile(url)));
+const mediaBindingWitnessBytes = new Uint8Array(await sharp(
+    Buffer.from([0, 0, 0, 0]),
+    { raw: { width: 1, height: 1, channels: 4 } }
+).webp({
+    lossless: true,
+    quality: 100,
+    effort: 6,
+    alphaQuality: 100,
+    smartSubsample: false
+}).toBuffer());
+assert.equal(mediaBindingWitnessBytes.byteLength, MEDIA_BINDING_WITNESS_SIZE);
+assert.equal(sha256(mediaBindingWitnessBytes), MEDIA_BINDING_WITNESS_SHA256);
 
 const migrationSources = await Promise.all([
     '0001_private_gallery.sql',
@@ -32,7 +58,8 @@ const migrationSources = await Promise.all([
     '0005_private_processing_cleanup.sql',
     '0006_transition_receipt_state_version.sql',
     '0007_photo_promotion.sql',
-    '0008_photo_promotion_cleanup.sql'
+    '0008_photo_promotion_cleanup.sql',
+    '0009_public_host_verification.sql'
 ].map(fileName => readFile(
     new URL(`../gallery-admin/migrations/${fileName}`, import.meta.url),
     'utf8'
@@ -41,6 +68,10 @@ const sqlite = new DatabaseSync(':memory:');
 for (const migrationSource of migrationSources) {
     sqlite.exec(migrationSource);
 }
+const mediaDeliveryEpoch = seedExactCurrentMediaDeliveryEpoch(
+    sqlite,
+    approvedOrigin
+);
 const d1 = createSqliteD1(sqlite);
 const originals = createPrivateOriginalsBucket();
 const staging = createStagingBucket();
@@ -2690,7 +2721,6 @@ const promotionIdentity = {
     type: 'service',
     subject: 'abcdef0123456789abcdef0123456789.access'
 };
-const approvedOrigin = 'https://synthetic-approved-media.example';
 const promotionEnv = {
     DB: d1,
     DERIVATIVE_STAGING: staging,
@@ -2987,6 +3017,23 @@ assert.equal(sqlite.prepare(
     'SELECT COUNT(*) AS count FROM draft_derivatives ' +
     'WHERE draft_id = ? AND approved_object_key IS NOT NULL'
 ).get(promotionFixture.draft.draftId).count, 2);
+assert.deepEqual({ ...sqlite.prepare(`
+    SELECT COUNT(*) AS generationCount,
+           MIN(generation.approved_origin) AS approvedOrigin,
+           MIN(generation.approved_origin_hash) AS approvedOriginHash,
+           MIN(generation.candidate_state_version) AS candidateStateVersion,
+           (SELECT COUNT(*)
+              FROM draft_photo_public_generation_targets AS target
+             WHERE target.promotion_id = generation.promotion_id) AS targetCount
+    FROM draft_photo_public_generations AS generation
+    WHERE generation.draft_id = ?
+`).get(promotionFixture.draft.draftId) }, {
+    generationCount: 1,
+    approvedOrigin,
+    approvedOriginHash: mediaDeliveryEpoch.approvedOriginHash,
+    candidateStateVersion: promotionFixture.run.stateVersion + 1,
+    targetCount: 2
+});
 assert.equal(approved.objects.size, 2);
 assert.equal(approved.calls.filter(call => call.operation === 'complete').length, 2);
 assert.equal(approved.calls.filter(call => call.operation === 'put').length, 0);
@@ -3379,8 +3426,103 @@ sqlite.prepare(`
         draft_id, host_deletion_confirmed,
         private_original_deletion_confirmed,
         withdrawal_kind, updated_at
-    ) VALUES (?, 1, 0, 'athlete-exclusion', ?)
+    ) VALUES (?, 0, 0, 'athlete-exclusion', ?)
 `).run(promotionFixture.draft.draftId, externalHostProofAt);
+assert.throws(
+    () => sqlite.prepare(`
+        UPDATE draft_publication_references
+        SET host_deletion_confirmed = 1, updated_at = ?
+        WHERE draft_id = ? AND host_deletion_confirmed = 0
+    `).run(
+        new Date(currentNow += 1).toISOString(),
+        promotionFixture.draft.draftId
+    ),
+    /current complete receipt/i,
+    'The legacy scalar alone must not stand in for current public-host proof.'
+);
+const externalHostStateVersion = sqlite.prepare(`
+    SELECT state_version AS stateVersion
+    FROM gallery_drafts
+    WHERE draft_id = ?
+`).get(promotionFixture.draft.draftId).stateVersion;
+const externalHostInput = {
+    expectedStateVersion: externalHostStateVersion,
+    idempotencyKey: 'bridge-real-public-host-verifier-0001'
+};
+const externalHostFetch = createExactPublicHostAbsenceFetch();
+const publicHostVerifierEnv = createPublicHostVerifierEnvironment(d1);
+
+// Exercise the real service and the actual SQLite triggers together. A forced
+// failure on the final scalar statement must roll proofs and receipt back while
+// preserving the resumable verification and permanent key reservations.
+d1.failNextRunContaining = 'public-host-verifier:confirm-host-deletion';
+const rolledBackHostVerification = await verifyPublicHostAbsence(
+    publicHostVerifierEnv,
+    { type: 'service', subject: publicHostVerifierSubject },
+    promotionFixture.draft.draftId,
+    externalHostInput,
+    currentNow += 1,
+    { fetch: externalHostFetch, now: () => currentNow }
+);
+assert.deepEqual(rolledBackHostVerification, {
+    ok: false,
+    status: 409,
+    code: 'state-or-generation-drift'
+});
+const retainedHostVerification = sqlite.prepare(`
+    SELECT verification_id AS verificationId
+    FROM draft_public_host_absence_verifications
+    WHERE draft_id = ? AND idempotency_key = ?
+`).get(promotionFixture.draft.draftId, externalHostInput.idempotencyKey);
+assert.match(retainedHostVerification.verificationId, /^hostverify_[a-f0-9]{32}$/);
+assert.equal(sqlite.prepare(`
+    SELECT COUNT(*) AS count
+    FROM draft_public_host_absence_target_proofs
+    WHERE verification_id = ?
+`).get(retainedHostVerification.verificationId).count, 0);
+assert.equal(sqlite.prepare(`
+    SELECT COUNT(*) AS count
+    FROM draft_public_host_absence_witness_proofs
+    WHERE verification_id = ?
+`).get(retainedHostVerification.verificationId).count, 0);
+assert.equal(sqlite.prepare(`
+    SELECT COUNT(*) AS count
+    FROM gallery_public_host_absence_receipts AS receipt
+    JOIN draft_public_host_absence_verifications AS verification
+      ON verification.verification_id_hash = receipt.verification_id_hash
+    WHERE verification.draft_id = ?
+`).get(promotionFixture.draft.draftId).count, 0);
+assert.equal(sqlite.prepare(`
+    SELECT host_deletion_confirmed AS confirmed
+    FROM draft_publication_references
+    WHERE draft_id = ?
+`).get(promotionFixture.draft.draftId).confirmed, 0);
+
+const completedHostVerification = await verifyPublicHostAbsence(
+    publicHostVerifierEnv,
+    { type: 'service', subject: publicHostVerifierSubject },
+    promotionFixture.draft.draftId,
+    externalHostInput,
+    currentNow += 1,
+    { fetch: externalHostFetch, now: () => currentNow }
+);
+assert.equal(completedHostVerification.ok, true, JSON.stringify(completedHostVerification));
+assert.equal(completedHostVerification.status, 201);
+assert.equal(completedHostVerification.replayed, false);
+assert.equal(completedHostVerification.verificationId, retainedHostVerification.verificationId);
+assert.equal(sqlite.prepare(`
+    SELECT host_deletion_confirmed AS confirmed
+    FROM draft_publication_references
+    WHERE draft_id = ?
+`).get(promotionFixture.draft.draftId).confirmed, 1);
+const externalHostReceipt = sqlite.prepare(`
+    SELECT final_receipt_hash AS finalReceiptHash, verified_at AS verifiedAt
+    FROM gallery_current_public_host_absence_receipts
+    WHERE draft_id = ? AND verification_purpose = 'withdrawal'
+`).get(promotionFixture.draft.draftId);
+assert.match(externalHostReceipt.finalReceiptHash, /^[a-f0-9]{64}$/);
+assert.equal(typeof externalHostReceipt.verifiedAt, 'string');
+assert.equal(externalHostFetch.calls.length, 20);
 transitionDraftDirect(sqlite, promotionFixture.draft.draftId, 'withdrawn');
 markPrivateOriginalDeleted(sqlite, promotionFixture.draft.draftId);
 sqlite.prepare(`
@@ -3432,6 +3574,95 @@ assert.deepEqual(await promotePhotoDraft(
     status: 409,
     code: 'promotion-cleaned'
 });
+
+// Run the same real service/SQLite integration for a genuinely never-public
+// processing failure. The immutable retention tombstone—not caller input—owns
+// the purpose; the normal witness bracket proves the empty target set, the
+// withdrawal-only scalar stays false, and the guarded purge retains the
+// permanent hash-only receipt without inventing a retired media key.
+const retentionVerifierFixture = await createFailedCleanedProcessingRun(
+    'real-public-host-retention'
+);
+markPrivateOriginalDeleted(sqlite, retentionVerifierFixture.draft.draftId);
+const retentionPublicationAt = new Date(currentNow += 1).toISOString();
+sqlite.prepare(`
+    INSERT INTO draft_publication_references (
+        draft_id, host_deletion_confirmed,
+        private_original_deletion_confirmed, withdrawal_kind, updated_at
+    ) VALUES (?, 0, 1, NULL, ?)
+`).run(retentionVerifierFixture.draft.draftId, retentionPublicationAt);
+const retentionTombstoneAt = new Date(currentNow += 1).toISOString();
+const retentionTombstoneEvidenceHash = sha256Text(
+    `bridge-retention-evidence:${retentionVerifierFixture.draft.draftId}`
+);
+sqlite.prepare(`
+    INSERT INTO gallery_retention_tombstones (
+        draft_id, purge_kind, eligible_at, approved_at,
+        approved_by_identity_hash, evidence_hash
+    ) VALUES (?, 'retention-expiry', ?, ?, ?, ?)
+`).run(
+    retentionVerifierFixture.draft.draftId,
+    retentionTombstoneAt,
+    retentionTombstoneAt,
+    sha256Text('bridge-retention-approver'),
+    retentionTombstoneEvidenceHash
+);
+const retentionHostFetch = createExactPublicHostAbsenceFetch();
+const retentionHostVerification = await verifyPublicHostAbsence(
+    createPublicHostVerifierEnvironment(d1),
+    { type: 'service', subject: publicHostVerifierSubject },
+    retentionVerifierFixture.draft.draftId,
+    {
+        expectedStateVersion: retentionVerifierFixture.failed.stateVersion,
+        idempotencyKey: 'bridge-real-retention-verifier-0001'
+    },
+    currentNow += 1,
+    { fetch: retentionHostFetch, now: () => currentNow }
+);
+assert.equal(
+    retentionHostVerification.ok,
+    true,
+    JSON.stringify(retentionHostVerification)
+);
+assert.equal(retentionHostVerification.status, 201);
+assert.equal(retentionHostVerification.hostDeletionConfirmed, true);
+assert.equal(retentionHostFetch.calls.length, 4);
+const currentRetentionReceipt = { ...sqlite.prepare(`
+    SELECT publication.host_deletion_confirmed AS hostDeleted,
+           receipt.verification_purpose AS verificationPurpose,
+           receipt.purpose_evidence_hash AS purposeEvidenceHash,
+           receipt.final_receipt_hash AS finalReceiptHash
+    FROM draft_publication_references AS publication
+    JOIN gallery_current_public_host_absence_receipts AS receipt
+      ON receipt.draft_id = publication.draft_id
+    WHERE publication.draft_id = ?
+`).get(retentionVerifierFixture.draft.draftId) };
+assert.deepEqual({
+    hostDeleted: currentRetentionReceipt.hostDeleted,
+    verificationPurpose: currentRetentionReceipt.verificationPurpose,
+    purposeEvidenceHash: currentRetentionReceipt.purposeEvidenceHash
+}, {
+    hostDeleted: 0,
+    verificationPurpose: 'retention-expiry',
+    purposeEvidenceHash: retentionTombstoneEvidenceHash
+});
+assert.match(currentRetentionReceipt.finalReceiptHash, /^[a-f0-9]{64}$/);
+const retentionDraftHash = sha256Text(
+    `draft-id:${retentionVerifierFixture.draft.draftId}`
+);
+sqlite.prepare('DELETE FROM gallery_drafts WHERE draft_id = ?')
+    .run(retentionVerifierFixture.draft.draftId);
+assert.equal(sqlite.prepare(
+    'SELECT COUNT(*) AS count FROM gallery_drafts WHERE draft_id = ?'
+).get(retentionVerifierFixture.draft.draftId).count, 0);
+assert.equal(sqlite.prepare(
+    'SELECT COUNT(*) AS count FROM gallery_public_host_absence_receipts ' +
+    "WHERE draft_id_hash = ? AND verification_purpose = 'retention-expiry'"
+).get(retentionDraftHash).count, 1);
+assert.equal(sqlite.prepare(
+    'SELECT COUNT(*) AS count FROM gallery_approved_media_key_retirement_reservations ' +
+    'WHERE draft_id_hash = ?'
+).get(retentionDraftHash).count, 0);
 
 // The one permitted provider create is admitted in D1 first. Suspend the
 // provider immediately before creation, prove the hashed admission is already
@@ -4759,7 +4990,7 @@ assert.throws(
         new Date(currentNow += 1).toISOString(),
         consentEscalationFixture.draft.draftId
     ),
-    /current verified withdrawal evidence is required/i
+    /current complete public-host absence receipt is required/i
 );
 resolvePendingExclusion(sqlite, selectedResult.athleteId, catalog.suppressionRevision);
 sqlite.prepare('DELETE FROM pending_athlete_exclusions WHERE athlete_id = ?')
@@ -4817,12 +5048,28 @@ assert.equal(
     201,
     await privateOriginalGuardStagingCleanup.clone().text()
 );
+assert.throws(
+    () => sqlite.prepare(`
+        UPDATE draft_publication_references
+        SET host_deletion_confirmed = 1, updated_at = ?
+        WHERE draft_id = ? AND withdrawal_kind = 'consent-withdrawal'
+    `).run(
+        new Date(currentNow += 1).toISOString(),
+        privateOriginalGuardFixture.draft.draftId
+    ),
+    /host deletion confirmation requires a current complete receipt/i
+);
+const privateOriginalGuardHostReceipt = seedExactCurrentPublicHostAbsenceReceipt(
+    sqlite,
+    privateOriginalGuardFixture.draft.draftId
+);
 sqlite.prepare(`
     UPDATE draft_publication_references
     SET host_deletion_confirmed = 1, updated_at = ?
-    WHERE draft_id = ? AND withdrawal_kind = 'consent-withdrawal'
+    WHERE draft_id = ? AND host_deletion_confirmed = 0
+      AND withdrawal_kind = 'consent-withdrawal'
 `).run(
-    new Date(currentNow += 1).toISOString(),
+    privateOriginalGuardHostReceipt.verifiedAt,
     privateOriginalGuardFixture.draft.draftId
 );
 // The ordinary consent-update guard already rejects this invalid ordering. Use
@@ -4864,7 +5111,7 @@ try {
             new Date(currentNow += 1).toISOString(),
             privateOriginalGuardFixture.draft.draftId
         ),
-        /current verified withdrawal evidence is required/i
+        /current complete public-host absence receipt is required/i
     );
 } finally {
     sqlite.exec('ROLLBACK TO private_original_withdrawal_guard_probe');
@@ -5380,17 +5627,31 @@ async function createSyntheticProcessingRun(caseId) {
 
 async function stageSyntheticProcessingRun(caseId) {
     const current = await createSyntheticProcessingRun(caseId);
+    const caseDerivatives = await Promise.all([
+        display,
+        thumbnail
+    ].map((derivative, index) => buildCaseSpecificPromotionDerivative(
+        derivative,
+        caseId,
+        index
+    )));
+    const caseDisplay = caseDerivatives.find(derivative =>
+        derivative.storageRole === 'photo-display'
+    );
+    const caseThumbnail = caseDerivatives.find(derivative =>
+        derivative.storageRole === 'photo-thumbnail'
+    );
     const displayResponse = await uploadDerivative(
         current.run.processingRunId,
-        display,
-        displayBytes,
+        caseDisplay,
+        caseDisplay.bytes,
         `phase-e-${caseId}-display`
     );
     assert.equal(displayResponse.status, 201, await displayResponse.clone().text());
     const thumbnailResponse = await uploadDerivative(
         current.run.processingRunId,
-        thumbnail,
-        thumbnailBytes,
+        caseThumbnail,
+        caseThumbnail.bytes,
         `phase-e-${caseId}-thumbnail`
     );
     assert.equal(thumbnailResponse.status, 201, await thumbnailResponse.clone().text());
@@ -5409,7 +5670,7 @@ async function stageSyntheticProcessingRun(caseId) {
                     detectedFormat: processed.source.detectedFormat
                 },
                 toolchain: { ...processed.toolchain },
-                derivatives: processed.derivatives.map(derivative => ({
+                derivatives: caseDerivatives.map(derivative => ({
                     role: derivative.storageRole,
                     sha256: derivative.sha256,
                     byteLength: derivative.byteLength,
@@ -5426,7 +5687,45 @@ async function stageSyntheticProcessingRun(caseId) {
     const stagedRun = await resultResponse.json();
     assert.equal(stagedRun.status, 'staged');
     assert.equal(stagedRun.state, 'processing');
-    return { ...current, run: stagedRun };
+    return {
+        ...current,
+        run: stagedRun,
+        promotionDerivatives: {
+            display: caseDisplay,
+            thumbnail: caseThumbnail
+        }
+    };
+}
+
+async function buildCaseSpecificPromotionDerivative(derivative, caseId, index) {
+    const colour = createHash('sha256')
+        .update(`gallery-promotion-derivative:${caseId}:${derivative.storageRole}`)
+        .digest();
+    const bytes = new Uint8Array(await sharp({
+        create: {
+            width: derivative.width,
+            height: derivative.height,
+            channels: 3,
+            background: {
+                r: colour[index],
+                g: colour[index + 8],
+                b: colour[index + 16]
+            }
+        }
+    }).webp({
+        quality: derivative.storageRole === 'photo-display' ? 82 : 78,
+        effort: 1,
+        smartSubsample: false
+    }).toBuffer());
+    return {
+        storageRole: derivative.storageRole,
+        sha256: sha256(bytes),
+        byteLength: bytes.byteLength,
+        width: derivative.width,
+        height: derivative.height,
+        metadataEntryCount: 0,
+        bytes
+    };
 }
 
 function promotionInputFor(fixture, idempotencyKey) {
@@ -5806,14 +6105,421 @@ function transitionDraftDirect(database, draftId, toState) {
     return current.stateVersion + 1;
 }
 
+function seedExactCurrentMediaDeliveryEpoch(database, mediaOrigin) {
+    const epochId = 'media_delivery_epoch_bridge_0001';
+    const epochIdHash = sha256Text(`media-delivery-epoch-id:${epochId}`);
+    const approvedOriginHash = sha256Text(
+        `approved-media-origin:${mediaOrigin}`
+    );
+    const deliveryContractHash = sha256Text(
+        `approved-media-contract:${MEDIA_DELIVERY_CONTRACT_VALUE}`
+    );
+    const deliveryVersionHash = sha256Text(
+        `approved-media-version:${syntheticMediaDeliveryVersion}`
+    );
+    const witnessObjectKeyHash = sha256Text(
+        `approved-object-key:${MEDIA_BINDING_WITNESS_KEY}`
+    );
+    const registeredAt = new Date(fixedNow - 2_000).toISOString();
+    const activatedAt = new Date(fixedNow - 1_000).toISOString();
+    const actorIdentityHash = sha256Text('media-delivery-epoch-bridge-actor');
+    const activationReceiptHash = sha256Text(
+        `media-delivery-epoch-activation:${epochIdHash}`
+    );
+    database.prepare(`
+        INSERT INTO gallery_media_delivery_epochs (
+            epoch_id, epoch_id_hash, epoch_sequence, approved_origin,
+            approved_origin_hash, delivery_contract_hash,
+            delivery_version_hash, witness_object_key_hash, witness_sha256,
+            witness_byte_count, witness_content_type, configuration_hash,
+            registered_by_identity_hash, registered_at
+        ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+        epochId,
+        epochIdHash,
+        mediaOrigin,
+        approvedOriginHash,
+        deliveryContractHash,
+        deliveryVersionHash,
+        witnessObjectKeyHash,
+        MEDIA_BINDING_WITNESS_SHA256,
+        MEDIA_BINDING_WITNESS_SIZE,
+        MEDIA_BINDING_WITNESS_CONTENT_TYPE,
+        sha256Text([
+            mediaOrigin,
+            MEDIA_DELIVERY_CONTRACT_VALUE,
+            syntheticMediaDeliveryVersion,
+            MEDIA_BINDING_WITNESS_KEY,
+            MEDIA_BINDING_WITNESS_SHA256,
+            String(MEDIA_BINDING_WITNESS_SIZE),
+            MEDIA_BINDING_WITNESS_CONTENT_TYPE
+        ].join('\n')),
+        actorIdentityHash,
+        registeredAt
+    );
+    database.prepare(`
+        INSERT INTO gallery_media_delivery_epoch_activations (
+            activation_receipt_hash, epoch_id_hash, epoch_sequence,
+            previous_epoch_id_hash, activation_idempotency_key_hash,
+            activation_payload_hash, service_actor_identity_hash, activated_at
+        ) VALUES (?, ?, 1, NULL, ?, ?, ?, ?)
+    `).run(
+        activationReceiptHash,
+        epochIdHash,
+        sha256Text(`media-delivery-epoch-activation-idempotency:${epochIdHash}`),
+        sha256Text(`media-delivery-epoch-activation-payload:${epochIdHash}`),
+        actorIdentityHash,
+        activatedAt
+    );
+    database.prepare(`
+        INSERT INTO gallery_media_delivery_current_epoch (
+            singleton_id, epoch_id_hash, epoch_sequence,
+            activation_receipt_hash, activated_at
+        ) VALUES (1, ?, 1, ?, ?)
+    `).run(epochIdHash, activationReceiptHash, activatedAt);
+    return {
+        epochIdHash,
+        approvedOriginHash,
+        deliveryContractHash,
+        deliveryVersionHash,
+        witnessObjectKeyHash,
+        activatedAt
+    };
+}
+
+function seedExactCurrentPublicHostAbsenceReceipt(database, draftId) {
+    const evidence = database.prepare(`
+        SELECT draft.state, draft.state_version AS stateVersion,
+               publication.withdrawal_kind AS withdrawalKind,
+               publication.host_deletion_confirmed AS hostDeletionConfirmed
+        FROM gallery_drafts AS draft
+        JOIN draft_publication_references AS publication
+          ON publication.draft_id = draft.draft_id
+        WHERE draft.draft_id = ?
+    `).get(draftId);
+    assert.ok(evidence);
+    assert.ok(['withdrawal-pending', 'withdrawn'].includes(evidence.state));
+    assert.equal(evidence.hostDeletionConfirmed, 0);
+    const draftIdHash = sha256Text(`draft-id:${draftId}`);
+
+    const generations = database.prepare(`
+        SELECT generation.promotion_id AS promotionId,
+               generation.promotion_id_hash AS promotionIdHash,
+               generation.draft_id_hash AS draftIdHash,
+               generation.approved_origin AS approvedOrigin,
+               generation.approved_origin_hash AS approvedOriginHash,
+               generation.target_set_hash AS generationTargetSetHash,
+               generation.created_at AS generationCreatedAt,
+               cleanup.evidence_hash AS cleanupEvidenceHash,
+               cleanup.completed_at AS cleanupCompletedAt
+        FROM draft_photo_public_generations AS generation
+        JOIN gallery_photo_promotion_cleanup_tombstones AS cleanup
+          ON cleanup.promotion_id_hash = generation.promotion_id_hash
+        WHERE generation.draft_id = ?
+        ORDER BY generation.promotion_id_hash
+    `).all(draftId);
+    const generationCount = database.prepare(
+        'SELECT COUNT(*) AS count FROM draft_photo_public_generations ' +
+        'WHERE draft_id = ?'
+    ).get(draftId).count;
+    assert.equal(generations.length, generationCount);
+    assert.ok(generations.every(generation =>
+        generation.draftIdHash === draftIdHash &&
+        generation.approvedOrigin === approvedOrigin &&
+        generation.approvedOriginHash === mediaDeliveryEpoch.approvedOriginHash
+    ));
+
+    const targets = database.prepare(`
+        SELECT generation.promotion_id_hash AS promotionIdHash,
+               target.role, target.approved_object_key AS approvedObjectKey,
+               target.approved_object_key_hash AS approvedObjectKeyHash,
+               target.public_url_hash AS publicUrlHash,
+               target.expected_sha256 AS expectedSha256,
+               target.generation_target_set_hash AS generationTargetSetHash
+        FROM draft_photo_public_generation_targets AS target
+        JOIN draft_photo_public_generations AS generation
+          ON generation.promotion_id = target.promotion_id
+        WHERE generation.draft_id = ?
+        ORDER BY generation.promotion_id_hash, target.role
+    `).all(draftId);
+    assert.equal(targets.length, generationCount * 2);
+    assert.equal(
+        new Set(targets.map(target => target.approvedObjectKeyHash)).size,
+        targets.length
+    );
+    for (const target of targets) {
+        const expectedFile = target.role === 'photo-display'
+            ? 'display'
+            : 'thumbnail';
+        assert.equal(
+            target.approvedObjectKey,
+            `media/v1/${target.expectedSha256}/${expectedFile}.webp`
+        );
+        assert.equal(
+            target.approvedObjectKeyHash,
+            sha256Text(`approved-object-key:${target.approvedObjectKey}`)
+        );
+        assert.equal(
+            target.publicUrlHash,
+            sha256Text(`public-media-url:${approvedOrigin}/${target.approvedObjectKey}`)
+        );
+    }
+    for (const generation of generations) {
+        const generationTargets = targets.filter(target =>
+            target.promotionIdHash === generation.promotionIdHash
+        );
+        assert.deepEqual(
+            generationTargets.map(target => target.role).sort(),
+            ['photo-display', 'photo-thumbnail']
+        );
+        assert.equal(
+            hashCanonicalFixtureRecords(generationTargets.map(publicTargetFixtureRecord)),
+            generation.generationTargetSetHash
+        );
+        assert.ok(generationTargets.every(target =>
+            target.generationTargetSetHash === generation.generationTargetSetHash
+        ));
+    }
+
+    const withdrawalCycleHash = evidence.state === 'withdrawn'
+        ? database.prepare(`
+            SELECT verification.withdrawal_cycle_hash AS withdrawalCycleHash
+            FROM draft_public_host_absence_verifications AS verification
+            WHERE verification.draft_id = ?
+              AND verification.withdrawal_kind = ?
+            ORDER BY verification.created_at DESC
+            LIMIT 1
+        `).get(draftId, evidence.withdrawalKind)?.withdrawalCycleHash
+        : sha256Text(
+            `withdrawal-cycle:${draftIdHash}:` +
+            `${evidence.withdrawalKind}:${evidence.stateVersion}`
+        );
+    assert.equal(typeof withdrawalCycleHash, 'string');
+    const promotionSetHash = hashCanonicalFixtureRecords(
+        generations.map(generation => `promotion:${generation.promotionIdHash}`)
+    );
+    const cleanupEvidenceSetHash = hashCanonicalFixtureRecords(
+        generations.map(generation =>
+            `cleanup:${generation.promotionIdHash}:${generation.cleanupEvidenceHash}`
+        )
+    );
+    const targetSetHash = hashCanonicalFixtureRecords(
+        targets.map(publicTargetFixtureRecord)
+    );
+    const fixtureIdentity = sha256Text([
+        draftIdHash,
+        String(evidence.stateVersion),
+        evidence.withdrawalKind,
+        withdrawalCycleHash,
+        mediaDeliveryEpoch.epochIdHash
+    ].join(':'));
+    const verificationId = `hostverify_${fixtureIdentity.slice(0, 32)}`;
+    const verificationIdHash = sha256Text(
+        `public-host-verification-id:${verificationId}`
+    );
+    const idempotencyKey = `bridge-host-proof-${fixtureIdentity.slice(0, 24)}`;
+    const idempotencyKeyHash = sha256Text(
+        `public-host-absence-idempotency-key:${idempotencyKey}`
+    );
+    const actorIdentityHash = sha256Text('bridge-public-host-verifier-actor');
+    const payloadFingerprint = sha256Text(JSON.stringify({
+        operation: 'bridge-public-host-absence-fixture',
+        verificationIdHash,
+        draftIdHash,
+        expectedStateVersion: evidence.stateVersion,
+        withdrawalCycleHash,
+        promotionSetHash,
+        cleanupEvidenceSetHash,
+        targetSetHash,
+        generationCount,
+        targetCount: targets.length,
+        mediaDeliveryEpochIdHash: mediaDeliveryEpoch.epochIdHash
+    }));
+    const latestPredecessor = Math.max(
+        Date.parse(mediaDeliveryEpoch.activatedAt),
+        ...generations.flatMap(generation => [
+            Date.parse(generation.generationCreatedAt),
+            Date.parse(generation.cleanupCompletedAt)
+        ])
+    );
+    currentNow = Math.max(currentNow + 1, latestPredecessor + 1);
+    const createdAt = new Date(currentNow).toISOString();
+    database.prepare(`
+        INSERT INTO draft_public_host_absence_verifications (
+            verification_id, verification_id_hash, draft_id, draft_id_hash,
+            expected_state_version, withdrawal_kind, withdrawal_cycle_hash,
+            promotion_set_hash, cleanup_evidence_set_hash,
+            approved_origin_hash, target_set_hash, generation_count,
+            generation_target_row_count, target_count,
+            media_delivery_epoch_id_hash, delivery_contract_hash,
+            delivery_version_hash, idempotency_key, idempotency_key_hash,
+            payload_fingerprint, service_actor_identity_hash, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+        verificationId,
+        verificationIdHash,
+        draftId,
+        draftIdHash,
+        evidence.stateVersion,
+        evidence.withdrawalKind,
+        withdrawalCycleHash,
+        promotionSetHash,
+        cleanupEvidenceSetHash,
+        mediaDeliveryEpoch.approvedOriginHash,
+        targetSetHash,
+        generationCount,
+        targets.length,
+        targets.length,
+        mediaDeliveryEpoch.epochIdHash,
+        mediaDeliveryEpoch.deliveryContractHash,
+        mediaDeliveryEpoch.deliveryVersionHash,
+        idempotencyKey,
+        idempotencyKeyHash,
+        payloadFingerprint,
+        actorIdentityHash,
+        createdAt
+    );
+
+    for (const target of targets) {
+        database.prepare(`
+            INSERT INTO gallery_approved_media_key_retirement_reservations (
+                approved_object_key_hash, verification_id_hash,
+                promotion_id_hash, draft_id_hash, withdrawal_cycle_hash,
+                reservation_idempotency_key_hash, reserved_by_identity_hash,
+                reserved_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            target.approvedObjectKeyHash,
+            verificationIdHash,
+            target.promotionIdHash,
+            draftIdHash,
+            withdrawalCycleHash,
+            idempotencyKeyHash,
+            actorIdentityHash,
+            createdAt
+        );
+    }
+
+    currentNow += 1;
+    const proofAt = new Date(currentNow).toISOString();
+    for (const target of targets) {
+        database.prepare(`
+            INSERT INTO draft_public_host_absence_target_proofs (
+                verification_id, approved_object_key_hash, role,
+                public_url_hash, expected_sha256, head_evidence_hash,
+                get_evidence_hash, final_head_evidence_hash,
+                observed_contract_hash, observed_version_hash, verified_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            verificationId,
+            target.approvedObjectKeyHash,
+            target.role,
+            target.publicUrlHash,
+            target.expectedSha256,
+            sha256Text(`bridge-host-head:${verificationId}:${target.role}`),
+            sha256Text(`bridge-host-get:${verificationId}:${target.role}`),
+            sha256Text(`bridge-host-final-head:${verificationId}:${target.role}`),
+            mediaDeliveryEpoch.deliveryContractHash,
+            mediaDeliveryEpoch.deliveryVersionHash,
+            proofAt
+        );
+    }
+    database.prepare(`
+        INSERT INTO draft_public_host_absence_witness_proofs (
+            verification_id, witness_object_key_hash, witness_sha256,
+            witness_byte_count, witness_content_type,
+            before_head_evidence_hash, before_get_evidence_hash,
+            after_head_evidence_hash, after_get_evidence_hash,
+            observed_contract_hash, observed_version_hash, verified_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+        verificationId,
+        mediaDeliveryEpoch.witnessObjectKeyHash,
+        MEDIA_BINDING_WITNESS_SHA256,
+        MEDIA_BINDING_WITNESS_SIZE,
+        MEDIA_BINDING_WITNESS_CONTENT_TYPE,
+        sha256Text(`bridge-witness-before-head:${verificationId}`),
+        sha256Text(`bridge-witness-before-get:${verificationId}`),
+        sha256Text(`bridge-witness-after-head:${verificationId}`),
+        sha256Text(`bridge-witness-after-get:${verificationId}`),
+        mediaDeliveryEpoch.deliveryContractHash,
+        mediaDeliveryEpoch.deliveryVersionHash,
+        proofAt
+    );
+
+    currentNow += 1;
+    const verifiedAt = new Date(currentNow).toISOString();
+    const finalReceiptHash = sha256Text(
+        `bridge-public-host-final-receipt:${payloadFingerprint}:${verifiedAt}`
+    );
+    database.prepare(`
+        INSERT INTO gallery_public_host_absence_receipts (
+            final_receipt_hash, verification_id_hash, draft_id_hash,
+            promotion_set_hash, cleanup_evidence_set_hash,
+            withdrawal_cycle_hash, approved_origin_hash, target_set_hash,
+            generation_count, target_count, verified_state_version,
+            media_delivery_epoch_id_hash, delivery_contract_hash,
+            delivery_version_hash, idempotency_key_hash,
+            payload_fingerprint, verified_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+        finalReceiptHash,
+        verificationIdHash,
+        draftIdHash,
+        promotionSetHash,
+        cleanupEvidenceSetHash,
+        withdrawalCycleHash,
+        mediaDeliveryEpoch.approvedOriginHash,
+        targetSetHash,
+        generationCount,
+        targets.length,
+        evidence.stateVersion,
+        mediaDeliveryEpoch.epochIdHash,
+        mediaDeliveryEpoch.deliveryContractHash,
+        mediaDeliveryEpoch.deliveryVersionHash,
+        idempotencyKeyHash,
+        payloadFingerprint,
+        verifiedAt
+    );
+    assert.deepEqual({ ...database.prepare(`
+        SELECT expected_state_version AS expectedStateVersion,
+               withdrawal_kind AS withdrawalKind,
+               final_receipt_hash AS finalReceiptHash
+        FROM gallery_complete_public_host_absence_receipts
+        WHERE draft_id = ?
+    `).get(draftId) }, {
+        expectedStateVersion: evidence.stateVersion,
+        withdrawalKind: evidence.withdrawalKind,
+        finalReceiptHash
+    });
+    return { finalReceiptHash, verifiedAt };
+}
+
+function hashCanonicalFixtureRecords(records) {
+    return sha256Text([...records].sort().join('\n'));
+}
+
+function publicTargetFixtureRecord(target) {
+    return `target:${target.promotionIdHash}:${target.role}:` +
+        `${target.approvedObjectKeyHash}:${target.publicUrlHash}:` +
+        `${target.expectedSha256}`;
+}
+
 function insertDeletionPublication(database, draftId) {
     const timestamp = new Date(currentNow += 1).toISOString();
     database.prepare(`
         INSERT INTO draft_publication_references (
             draft_id, host_deletion_confirmed,
             private_original_deletion_confirmed, withdrawal_kind, updated_at
-        ) VALUES (?, 1, 1, 'consent-withdrawal', ?)
+        ) VALUES (?, 0, 1, 'consent-withdrawal', ?)
     `).run(draftId, timestamp);
+    const receipt = seedExactCurrentPublicHostAbsenceReceipt(database, draftId);
+    const changed = database.prepare(`
+        UPDATE draft_publication_references
+        SET host_deletion_confirmed = 1, updated_at = ?
+        WHERE draft_id = ? AND host_deletion_confirmed = 0
+    `).run(receipt.verifiedAt, draftId);
+    assert.equal(Number(changed.changes), 1);
 }
 
 function withdrawActiveConsent(database, draftId) {
@@ -5851,6 +6557,64 @@ function insertConsentRetentionTombstone(database, draftId) {
             approved_by_identity_hash, evidence_hash
         ) VALUES (?, 'consent-withdrawal', ?, ?, ?, ?)
     `).run(draftId, timestamp, timestamp, '6'.repeat(64), '7'.repeat(64));
+}
+
+function createPublicHostVerifierEnvironment(database) {
+    return {
+        APPROVED_MEDIA_ORIGIN: approvedOrigin,
+        DB: database,
+        EXPECTED_MEDIA_VERSION: syntheticMediaDeliveryVersion,
+        MEDIA_CONTRACT: MEDIA_DELIVERY_CONTRACT_VALUE,
+        MEDIA_WITNESS_BYTE_COUNT: String(MEDIA_BINDING_WITNESS_SIZE),
+        MEDIA_WITNESS_CONTENT_TYPE: MEDIA_BINDING_WITNESS_CONTENT_TYPE,
+        MEDIA_WITNESS_KEY: MEDIA_BINDING_WITNESS_KEY,
+        MEDIA_WITNESS_SHA256: MEDIA_BINDING_WITNESS_SHA256,
+        PUBLIC_HOST_VERIFIER_IDENTITY: `subject:${publicHostVerifierSubject}`,
+        PUBLIC_HOST_VERIFIER_ORIGIN: publicHostVerifierOrigin
+    };
+}
+
+function createExactPublicHostAbsenceFetch() {
+    const calls = [];
+    const fetcher = async request => {
+        assert.equal(request.redirect, 'manual');
+        assert.equal(request.cache, 'no-store');
+        assert.equal(request.credentials, 'omit');
+        assert.equal(request.headers.get('Cache-Control'), 'no-cache, no-store');
+        assert.equal(request.headers.get('Pragma'), 'no-cache');
+        assert.equal(request.headers.get('Authorization'), null);
+        assert.equal(request.headers.get('Cookie'), null);
+        assert.equal(request.headers.get('Cf-Access-Jwt-Assertion'), null);
+        calls.push({ method: request.method, url: request.url });
+
+        const isWitness = request.url ===
+            `${approvedOrigin}/${MEDIA_BINDING_WITNESS_KEY}`;
+        const responseHeaders = new Headers({
+            'Cache-Control': 'no-store',
+            [MEDIA_DELIVERY_CONTRACT_HEADER]: MEDIA_DELIVERY_CONTRACT_VALUE,
+            [MEDIA_DELIVERY_VERSION_HEADER]: syntheticMediaDeliveryVersion
+        });
+        let body = new Uint8Array(0);
+        let status = 404;
+        if (isWitness) {
+            status = 200;
+            body = mediaBindingWitnessBytes;
+            responseHeaders.set('Content-Type', MEDIA_BINDING_WITNESS_CONTENT_TYPE);
+            responseHeaders.set(
+                'Content-Length',
+                String(MEDIA_BINDING_WITNESS_SIZE)
+            );
+        }
+        const response = new Response(
+            request.method === 'HEAD' ? null : body,
+            { status, headers: responseHeaders }
+        );
+        Object.defineProperty(response, 'url', { value: request.url });
+        Object.defineProperty(response, 'redirected', { value: false });
+        return response;
+    };
+    fetcher.calls = calls;
+    return fetcher;
 }
 
 function createSqliteD1(database) {

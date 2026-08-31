@@ -44,6 +44,17 @@ SELECT
     promotion.created_at AS promotionCreatedAt,
     promotion.updated_at AS promotionUpdatedAt,
     promotion.candidate_at AS candidateAt,
+    generation.approved_origin AS generationApprovedOrigin,
+    generation.approved_origin_hash AS generationApprovedOriginHash,
+    generation.candidate_state_version AS generationCandidateStateVersion,
+    generation.generation_fingerprint AS generationFingerprint,
+    generation.target_set_hash AS generationTargetSetHash,
+    epoch.approved_origin AS currentApprovedOrigin,
+    epoch.approved_origin_hash AS currentApprovedOriginHash,
+    (SELECT COUNT(*)
+        FROM draft_photo_public_generation_targets AS target
+        WHERE target.promotion_id = promotion.promotion_id
+    ) AS generationTargetCount,
     draft.public_item_id AS publicItemId,
     draft.state,
     draft.state_version AS stateVersion,
@@ -79,6 +90,12 @@ SELECT
         WHERE exclusion.resolved_at IS NULL) AS pendingExclusionCount
 FROM draft_photo_promotions AS promotion
 JOIN gallery_drafts AS draft ON draft.draft_id = promotion.draft_id
+JOIN draft_photo_public_generations AS generation
+  ON generation.promotion_id = promotion.promotion_id
+JOIN gallery_media_delivery_current_epoch AS current_epoch
+  ON current_epoch.singleton_id = 1
+JOIN gallery_media_delivery_epochs AS epoch
+  ON epoch.epoch_id_hash = current_epoch.epoch_id_hash
 LEFT JOIN draft_consent_attestations AS consent
   ON consent.draft_id = promotion.draft_id
  AND consent.consent_revision = promotion.consent_revision
@@ -143,20 +160,25 @@ export async function promotePhotoDraft(
     approvedOrigin,
     nowMilliseconds
 ) {
+    const normalizedApprovedOrigin = normalizeApprovedOrigin(approvedOrigin);
     if (
         !DRAFT_ID_PATTERN.test(draftId || '') ||
         !validInput(input) ||
         !validServiceIdentity(identity) ||
-        normalizeApprovedOrigin(approvedOrigin) === null
+        normalizedApprovedOrigin === null
     ) {
         return failure(400, 'invalid-request');
     }
 
+    const approvedOriginHash = await sha256Text(
+        `approved-media-origin:${normalizedApprovedOrigin}`
+    );
     const payloadFingerprint = await fingerprint({
         operation: 'photo-promotion',
         draftId,
         expectedStateVersion: input.expectedStateVersion,
-        idempotencyKey: input.idempotencyKey
+        idempotencyKey: input.idempotencyKey,
+        approvedOriginHash
     });
     const idempotencyKeyHash = await sha256Text(
         `promotion-idempotency-key:${input.idempotencyKey}`
@@ -172,7 +194,7 @@ export async function promotePhotoDraft(
             if (!promotionReplayMatches(promotion, input, payloadFingerprint)) {
                 return failure(409, 'conflict');
             }
-            return continuePromotion(env, promotion, approvedOrigin, nowMilliseconds, true);
+            return continuePromotion(env, promotion, nowMilliseconds, true);
         }
 
         const cleanedReceipt = await readCleanedPromotionReceipt(
@@ -194,17 +216,58 @@ export async function promotePhotoDraft(
             return failure(evidence ? 409 : 404, evidence ? 'promotion-not-eligible' : 'not-found');
         }
 
+        const deliveryEpoch = await readCurrentMediaDeliveryEpoch(env.DB);
+        if (
+            !deliveryEpoch ||
+            deliveryEpoch.approvedOrigin !== normalizedApprovedOrigin ||
+            deliveryEpoch.approvedOriginHash !== approvedOriginHash
+        ) {
+            return failure(409, 'promotion-not-eligible');
+        }
+
         const promotionId = randomIdentifier('promotion');
         const occurredAt = isoTime(nowMilliseconds);
         const actorIdentityHash = await hashIdentity(identity);
         const subjectHash = await sha256Text(`draft:${draftId}`);
-        const objectRows = outputs.map(output => ({
-            ...output,
-            approvedObjectKey: buildV1ApprovedDerivativeKey({
+        const promotionIdHash = await sha256Text(`promotion-id:${promotionId}`);
+        const draftIdHash = await sha256Text(`draft-id:${draftId}`);
+        const objectRows = [];
+        for (const output of outputs) {
+            const approvedObjectKey = buildV1ApprovedDerivativeKey({
                 sha256: output.sha256,
                 role: output.role
-            })
-        }));
+            });
+            const approvedObjectKeyHash = await sha256Text(
+                `approved-object-key:${approvedObjectKey}`
+            );
+            const publicUrlHash = await sha256Text(
+                `public-media-url:${normalizedApprovedOrigin}/${approvedObjectKey}`
+            );
+            objectRows.push({
+                ...output,
+                approvedObjectKey,
+                approvedObjectKeyHash,
+                publicUrlHash
+            });
+        }
+        objectRows.sort((left, right) => left.role.localeCompare(right.role));
+        const generationTargetSetHash = await hashCanonicalRecords(
+            objectRows.map(object => publicTargetRecord({
+                promotionIdHash,
+                role: object.role,
+                approvedObjectKeyHash: object.approvedObjectKeyHash,
+                publicUrlHash: object.publicUrlHash,
+                expectedSha256: object.sha256
+            }))
+        );
+        const generationFingerprint = await sha256Text([
+            'public-generation',
+            promotionIdHash,
+            draftIdHash,
+            approvedOriginHash,
+            String(input.expectedStateVersion + 1),
+            generationTargetSetHash
+        ].join(':'));
 
         try {
             await runBatch(env.DB, [
@@ -263,6 +326,43 @@ export async function promotePhotoDraft(
                     object.height,
                     occurredAt
                 )),
+                env.DB.prepare(`
+                    INSERT INTO draft_photo_public_generations (
+                        promotion_id, promotion_id_hash, draft_id, draft_id_hash,
+                        approved_origin, approved_origin_hash,
+                        candidate_state_version, generation_fingerprint,
+                        target_set_hash, created_at
+                    ) VALUES (
+                        ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10
+                    )
+                `).bind(
+                    promotionId,
+                    promotionIdHash,
+                    draftId,
+                    draftIdHash,
+                    normalizedApprovedOrigin,
+                    approvedOriginHash,
+                    input.expectedStateVersion + 1,
+                    generationFingerprint,
+                    generationTargetSetHash,
+                    occurredAt
+                ),
+                ...objectRows.map(object => env.DB.prepare(`
+                    INSERT INTO draft_photo_public_generation_targets (
+                        promotion_id, role, approved_object_key,
+                        approved_object_key_hash, public_url_hash,
+                        expected_sha256, generation_target_set_hash, created_at
+                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+                `).bind(
+                    promotionId,
+                    object.role,
+                    object.approvedObjectKey,
+                    object.approvedObjectKeyHash,
+                    object.publicUrlHash,
+                    object.sha256,
+                    generationTargetSetHash,
+                    occurredAt
+                )),
                 auditInsert(env.DB, {
                     eventType: 'photo-promotion-started',
                     subjectHash,
@@ -281,20 +381,20 @@ export async function promotePhotoDraft(
             if (!promotion || !promotionReplayMatches(promotion, input, payloadFingerprint)) {
                 return failure(409, 'conflict');
             }
-            return continuePromotion(env, promotion, approvedOrigin, nowMilliseconds, true);
+            return continuePromotion(env, promotion, nowMilliseconds, true);
         }
 
         promotion = await readPromotion(env.DB, promotionId);
-        return continuePromotion(env, promotion, approvedOrigin, nowMilliseconds, false);
+        return continuePromotion(env, promotion, nowMilliseconds, false);
     } catch {
         return failure(503, 'service-unavailable');
     }
 }
 
-async function continuePromotion(env, promotion, approvedOrigin, nowMilliseconds, replayed) {
+async function continuePromotion(env, promotion, nowMilliseconds, replayed) {
     if (!promotion) return failure(503, 'service-unavailable');
     if (promotion.promotionStatus === 'candidate') {
-        const candidate = await buildCandidatePackage(env, promotion, approvedOrigin);
+        const candidate = await buildCandidatePackage(env, promotion);
         return candidate
             ? success(200, { candidate, replayed: true })
             : failure(409, 'promotion-not-eligible');
@@ -321,7 +421,12 @@ async function continuePromotion(env, promotion, approvedOrigin, nowMilliseconds
         return failure(409, 'promotion-not-eligible');
     }
 
-    const provisional = candidatePackage(current, objects, approvedOrigin, 'candidate-public');
+    const provisional = candidatePackage(
+        current,
+        objects,
+        current.generationApprovedOrigin,
+        'candidate-public'
+    );
     if (!provisional) return failure(503, 'service-unavailable');
     const candidatePayloadHash = await fingerprint(provisional);
     const occurredAt = nextIsoTime(nowMilliseconds, current.promotionUpdatedAt);
@@ -390,14 +495,14 @@ async function continuePromotion(env, promotion, approvedOrigin, nowMilliseconds
         if (replay?.promotionStatus !== 'candidate') {
             return failure(409, 'conflict');
         }
-        const candidate = await buildCandidatePackage(env, replay, approvedOrigin);
+        const candidate = await buildCandidatePackage(env, replay);
         return candidate
             ? success(200, { candidate, replayed: true })
             : failure(409, 'promotion-not-eligible');
     }
 
     const completed = await readPromotion(env.DB, current.promotionId);
-    const candidate = await buildCandidatePackage(env, completed, approvedOrigin);
+    const candidate = await buildCandidatePackage(env, completed);
     return candidate
         ? success(201, { candidate, replayed })
         : failure(409, 'promotion-not-eligible');
@@ -751,6 +856,7 @@ function promotionEvidenceIsCurrent(evidence, outputs, expectedStateVersion) {
 function promotionSnapshotIsCurrent(promotion, evidence, outputs) {
     return Boolean(promotion) &&
         promotion.promotionStatus === 'active' &&
+        validPromotionGenerationSnapshot(promotion) &&
         Boolean(evidence) &&
         promotion.processingRunId === evidence.processingRunId &&
         promotion.draftId === evidence.draftId &&
@@ -852,10 +958,12 @@ function approvalContext(consentRevision, pendingHiddenAthleteIds, approved = {}
     };
 }
 
-async function buildCandidatePackage(env, promotion, approvedOrigin) {
+async function buildCandidatePackage(env, promotion) {
     let current = await readPromotion(env.DB, promotion.promotionId);
     if (!candidateEvidenceIsCurrent(current)) return null;
     const objects = await readPromotionObjects(env.DB, promotion.promotionId);
+    const targets = await readPublicGenerationTargets(env.DB, promotion.promotionId);
+    if (!await exactPublicGeneration(current, objects, targets)) return null;
     for (const object of objects) {
         if (object.status !== 'verified' || !await exactApprovedObject(env.APPROVED_MEDIA, object)) {
             return null;
@@ -867,7 +975,14 @@ async function buildCandidatePackage(env, promotion, approvedOrigin) {
     // both objects so a stale pre-read cannot authorize this response.
     current = await readPromotion(env.DB, promotion.promotionId);
     if (!candidateEvidenceIsCurrent(current)) return null;
-    const candidate = candidatePackage(current, objects, approvedOrigin, current.state);
+    const currentTargets = await readPublicGenerationTargets(env.DB, promotion.promotionId);
+    if (!await exactPublicGeneration(current, objects, currentTargets)) return null;
+    const candidate = candidatePackage(
+        current,
+        objects,
+        current.generationApprovedOrigin,
+        current.state
+    );
     if (!candidate) return null;
     return await fingerprint(candidate) === current.candidatePayloadHash
         ? candidate
@@ -875,6 +990,7 @@ async function buildCandidatePackage(env, promotion, approvedOrigin) {
 }
 
 function candidateEvidenceIsCurrent(promotion) {
+    if (!promotion || !validPromotionGenerationSnapshot(promotion)) return false;
     let siteModes;
     try {
         siteModes = JSON.parse(promotion.siteModesJson);
@@ -900,6 +1016,62 @@ function candidateEvidenceIsCurrent(promotion) {
         promotion.cleanupCount === 0 &&
         promotion.promotionCleanupCount === 0 &&
         promotion.pendingExclusionCount === 0;
+}
+
+function validPromotionGenerationSnapshot(promotion) {
+    return promotion.generationApprovedOrigin === promotion.currentApprovedOrigin &&
+        promotion.generationApprovedOriginHash === promotion.currentApprovedOriginHash &&
+        SHA256_PATTERN.test(promotion.generationApprovedOriginHash || '') &&
+        SHA256_PATTERN.test(promotion.generationFingerprint || '') &&
+        SHA256_PATTERN.test(promotion.generationTargetSetHash || '') &&
+        promotion.generationCandidateStateVersion === promotion.resultStateVersion &&
+        promotion.generationTargetCount === 2;
+}
+
+async function exactPublicGeneration(promotion, objects, targets) {
+    if (
+        !validPromotionGenerationSnapshot(promotion) ||
+        objects.length !== 2 ||
+        targets.length !== 2
+    ) return false;
+
+    const approvedOriginHash = await sha256Text(
+        `approved-media-origin:${promotion.generationApprovedOrigin}`
+    );
+    if (approvedOriginHash !== promotion.generationApprovedOriginHash) return false;
+
+    const objectsByRole = new Map(objects.map(object => [object.role, object]));
+    const records = [];
+    for (const target of targets) {
+        const object = objectsByRole.get(target.role);
+        if (
+            !object ||
+            target.promotionId !== promotion.promotionId ||
+            target.approvedObjectKey !== object.approvedObjectKey ||
+            target.expectedSha256 !== object.sha256 ||
+            target.generationTargetSetHash !== promotion.generationTargetSetHash
+        ) return false;
+
+        const approvedObjectKeyHash = await sha256Text(
+            `approved-object-key:${object.approvedObjectKey}`
+        );
+        const publicUrlHash = await sha256Text(
+            `public-media-url:${promotion.generationApprovedOrigin}/${object.approvedObjectKey}`
+        );
+        if (
+            target.approvedObjectKeyHash !== approvedObjectKeyHash ||
+            target.publicUrlHash !== publicUrlHash
+        ) return false;
+
+        records.push(publicTargetRecord({
+            promotionIdHash: target.promotionIdHash,
+            role: target.role,
+            approvedObjectKeyHash,
+            publicUrlHash,
+            expectedSha256: target.expectedSha256
+        }));
+    }
+    return await hashCanonicalRecords(records) === promotion.generationTargetSetHash;
 }
 
 function candidatePackage(promotion, objects, approvedOrigin, state) {
@@ -954,6 +1126,19 @@ function candidatePackage(promotion, objects, approvedOrigin, state) {
 
 async function readEligibility(database, draftId) {
     return queryFirst(database, `${ELIGIBILITY_SELECT} WHERE draft.draft_id = ?1`, draftId);
+}
+
+async function readCurrentMediaDeliveryEpoch(database) {
+    return queryFirst(database, `
+        SELECT
+            epoch.epoch_id_hash AS epochIdHash,
+            epoch.approved_origin AS approvedOrigin,
+            epoch.approved_origin_hash AS approvedOriginHash
+        FROM gallery_media_delivery_current_epoch AS current
+        JOIN gallery_media_delivery_epochs AS epoch
+          ON epoch.epoch_id_hash = current.epoch_id_hash
+        WHERE current.singleton_id = 1
+    `);
 }
 
 async function readEligibleOutputs(database, processingRunId) {
@@ -1014,6 +1199,25 @@ async function readPromotionObject(database, promotionId, role) {
 
 async function readPromotionObjects(database, promotionId) {
     return queryAll(database, `${promotionObjectSelect()} WHERE promotion_id = ?1 ORDER BY role`, promotionId);
+}
+
+async function readPublicGenerationTargets(database, promotionId) {
+    return queryAll(database, `
+        SELECT
+            target.promotion_id AS promotionId,
+            generation.promotion_id_hash AS promotionIdHash,
+            target.role,
+            target.approved_object_key AS approvedObjectKey,
+            target.approved_object_key_hash AS approvedObjectKeyHash,
+            target.public_url_hash AS publicUrlHash,
+            target.expected_sha256 AS expectedSha256,
+            target.generation_target_set_hash AS generationTargetSetHash
+        FROM draft_photo_public_generation_targets AS target
+        JOIN draft_photo_public_generations AS generation
+          ON generation.promotion_id = target.promotion_id
+        WHERE target.promotion_id = ?1
+        ORDER BY target.role
+    `, promotionId);
 }
 
 function promotionObjectSelect() {
@@ -1168,6 +1372,27 @@ async function fingerprint(value) {
 
 async function sha256Text(value) {
     return sha256Hex(textEncoder.encode(value));
+}
+
+async function hashCanonicalRecords(records) {
+    return sha256Text([...records].sort().join('\n'));
+}
+
+function publicTargetRecord({
+    promotionIdHash,
+    role,
+    approvedObjectKeyHash,
+    publicUrlHash,
+    expectedSha256
+}) {
+    return [
+        'target',
+        promotionIdHash,
+        role,
+        approvedObjectKeyHash,
+        publicUrlHash,
+        expectedSha256
+    ].join(':');
 }
 
 function randomIdentifier(prefix) {
