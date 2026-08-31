@@ -19,8 +19,11 @@ GitHub Pages artifact and production site were byte-verified, with both modes
 rendered and both public Gallery manifests still empty. That static verification
 did not deploy a Cloudflare migration or Worker. A fifth service-only public-
 host verifier and the delivery-proof media changes are implemented and fully
-locally validated in source but remain undeployed. Migrations `0007`–`0009`
-were applied to the non-production D1 database on 31 August 2026.
+locally validated in source. Migrations `0007`–`0009` were applied to the
+non-production D1 database on 31 August 2026, and the delivery-proof media
+Worker was separately deployed at exact version
+`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`. The witness and verifier remain
+undeployed.
 
 ## Historical Phase B boundary
 
@@ -100,7 +103,9 @@ Its bytes must hash to the path digest. Witness and all failure responses are
 `Cache-Control: no-store`; ordinary immutable media keeps
 `public, max-age=60, must-revalidate`. A missing binding, extra environment
 binding, malformed version, wrong witness, or changed object fails closed. This
-modified Worker and witness are not deployed or present in remote approved R2.
+modified Worker is deployed at exact non-production version
+`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`; the witness is not present in remote
+approved R2.
 
 A ranged read also requires one nonempty raw R2 ETag. The Worker passes that
 ETag as an `onlyIf.etagMatches` condition and accepts the response only when its
@@ -331,12 +336,13 @@ then commits once. This is required evidence for the final-batch contract, not
 only an in-memory service simulation.
 
 `wrangler.public-host-verifier.example.jsonc` is intentionally non-deployable.
-Migration `0009` is applied to the non-production D1 database. The media
-delivery changes and witness, this Worker, delivery epochs, and any verifier
-Access service identity/policy remain undeployed. Remote work needs separately
-approved rolling steps. The migration step is complete; next deploy and
-identify the exact media Worker version; upload and byte-verify only the
-witness; register and activate the
+Migration `0009` is applied to the non-production D1 database, and the media
+Worker is deployed at exact version
+`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`. The witness, this verifier Worker,
+delivery epochs, and any verifier Access service identity/policy remain
+undeployed. Remote work needs separately approved rolling steps. The migration
+and media-Worker steps are complete; next upload and byte-verify only the
+witness, then register and activate the
 matching epoch; create the narrow Access identity/policy; deploy the verifier;
 and run the synthetic public-front-door and guarded-withdrawal/purge rehearsal.
 The one-day approved-prefix lifecycle rule and promotion Worker deployment/

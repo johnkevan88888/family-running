@@ -41,8 +41,8 @@ The compatibility scalar `host_deletion_confirmed` is reset by migration `0009`
 and may become true again only in the same transaction that appends a complete
 receipt for the current generation set and current epoch.
 
-The locally modified read-only media Worker still has only `APPROVED_MEDIA`,
-plus Cloudflare version metadata. Recognized delivery responses carry the exact
+The non-production read-only media Worker has only `APPROVED_MEDIA`, plus
+Cloudflare version metadata. Recognized delivery responses carry the exact
 contract and Worker-version headers. A fixed 28-byte synthetic WebP at its
 content-addressed witness key is the proof that the public front door reaches
 the intended Worker version and approved bucket. Witness responses and all
@@ -140,20 +140,67 @@ media, edit a manifest, open a Pull Request, or publish anything. The new
 database boundary therefore remains deliberately fail closed: there is no
 current delivery epoch and no current public-host-absence receipt.
 
+### Non-production media Worker deployment — 31 August 2026
+
+With separate owner approval for the second rolling gate only, the reviewed
+read-only media Worker was deployed from the exact merged Worker source at
+`693383ba03380b6e8d846e26fcd79b1cad5059f6` to
+`https://family-running-gallery-media-dev.family-running.workers.dev`.
+Wrangler's strict deployment check succeeded. The active deployment routes
+100% of traffic to exact Worker version
+`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`; the previous exact rollback version
+`37180326-c31d-4872-9ab6-2c601abd41ad` remains available.
+
+Before deployment, the ignored local configuration was reconciled to the
+reviewed example by adding only `MEDIA_VERSION`. Generated binding types and
+the dry-run bundle proved exactly two runtime bindings:
+`APPROVED_MEDIA` for the existing approved derivative bucket and
+`MEDIA_VERSION` for Cloudflare Worker version metadata. The 9.18 KiB bundle
+passed the focused media-delivery contract and promotion-configuration tests;
+its local startup profile recorded zero active CPU time. Cloudflare's version
+record independently confirms only the `fetch` handler, compatibility date
+`2026-08-25`, and those exact two bindings. The deployed script ETag is
+`b544ea5adbd555852399065627fed86cc3055d116de6ee437a1e6824c57b4d79`.
+Using the reviewed newline-delimited epoch formula over exact origin, contract,
+version, witness key, witness digest, byte count, and content type gives fixed
+configuration hash
+`01dd06bfa9f40cc82b0989bec1d7a30cc92c3462dea4e041cf287b7d4fcace08`.
+
+Credential-free public-front-door `HEAD` and `GET` probes against both a
+canonical absent media key and the fixed absent witness key returned empty
+`404` responses with `Cache-Control: no-store`, contract
+`approved-media-v1`, and the exact new Worker version header. Root and
+query-bearing paths returned generic `404` responses without proof headers;
+`POST` to a canonical key returned `405`, `Allow: GET, HEAD`, and the same
+version-bound proof headers. No redirect or response body appeared.
+
+The complete post-deployment documentation `pnpm test` passes, including
+repository safety, both Gallery modes, upload/tagging/consent/exclusion
+contracts, media delivery, promotion and public-host verification, exact
+artifact isolation, and responsive desktop/mobile browser smoke tests.
+
+This step deployed code and version metadata only. It did not upload the
+synthetic witness, register or activate a delivery epoch, create Access
+resources, deploy the verifier, apply the approved-media lifecycle rule, deploy
+the promotion Worker, create approved media, edit a manifest, open a Pull
+Request, or publish anything. The next separately approved rolling gate is the
+fixed 28-byte witness upload and independent byte/hash verification.
+
 ### Deliberate deployment blockers and handoff
 
 The approved non-production D1 schema step is complete through migration
-`0009`. The modified media Worker, its synthetic witness, the verifier Worker,
-and delivery-epoch records remain undeployed. The deployed media Worker has not
-been replaced or proved with the new version binding; the witness object does
-not exist remotely; and no verifier Access application, service identity,
+`0009`, and the modified media Worker is deployed and proved at exact version
+`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`. Its synthetic witness, the verifier
+Worker, and delivery-epoch records remain undeployed. The witness object does
+not exist remotely, and no verifier Access application, service identity,
 policy, or Worker has been created.
 
 Remote work requires separate approval for each mutation and must use a
-reviewed rolling order. The completed first step was applying forward D1
-migrations `0007`–`0009`. The next separately approved step is to deploy the
-exact media Worker with version metadata; then place and byte-verify only the
-fixed synthetic witness in approved R2; register and activate the matching delivery epoch;
+reviewed rolling order. The completed first two steps were applying forward D1
+migrations `0007`–`0009` and deploying the exact media Worker with version
+metadata. The next separately approved step is to place and byte-verify only
+the fixed synthetic witness in approved R2; then register and activate the
+matching delivery epoch;
 create the narrow Access service identity and policy; deploy the fixed verifier;
 then run the synthetic fixed-origin absence, wrong-binding, redirect, cache,
 credential, epoch-rotation, zero-generation-withdrawal, and purge rehearsal.

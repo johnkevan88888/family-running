@@ -29,9 +29,10 @@
   all 72 manifest-listed CSVs and both rendered modes; both public Gallery
   manifests stayed empty. That was static release proof, not Cloudflare
   deployment. Migrations `0007`–`0009` were applied to the non-production D1
-  database on 31 August 2026 after separate approval; the promotion Worker,
-  delivery-proof media Worker, synthetic witness, and fixed-origin verifier
-  remain undeployed. The
+  database on 31 August 2026 after separate approval. The delivery-proof media
+  Worker was then separately approved and deployed at exact version
+  `cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`; the promotion Worker, synthetic
+  witness, and fixed-origin verifier remain undeployed. The
   approved-prefix orphan-multipart lifecycle requirement is
   tracked but has not been applied remotely. Protected candidate
   retrieval/orchestration, the protected workflow, GitHub App and remote
@@ -867,12 +868,13 @@ processing-failed retention purge consumes the retention-purpose receipt while
 still requiring private-original deletion and the approved retention tombstone.
 The final permanent receipt is hash-only and survives the parent-draft purge.
 
-Migration `0009` is applied to the non-production D1 database. The modified
-media Worker, its witness, and the verifier remain implemented in source but
-undeployed. The remote schema ends at `0009`, but no delivery epoch, verifier
-Access identity/policy, or verifier Worker exists remotely. Schema presence
-does not authorize withdrawal, purge, promotion, publication, or a
-compatibility scalar remotely.
+Migration `0009` is applied to the non-production D1 database, and the modified
+media Worker is deployed at exact version
+`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e` with only approved R2 and version-
+metadata bindings. Its witness and the verifier remain undeployed. The remote
+schema ends at `0009`, but no delivery epoch, verifier Access identity/policy,
+or verifier Worker exists remotely. Schema and Worker presence do not authorize
+withdrawal, purge, promotion, publication, or a compatibility scalar remotely.
 
 The repository manifest generator accepts the service's public-safe candidate
 package, derives only `gallery-data/family.json` or
@@ -895,10 +897,10 @@ The remaining Phase D plan is:
 1. Repeat the complete local suite after the final documentation reconciliation,
    then finish diff and responsive validation. With separate approval for each
    remote mutation, use the reviewed
-   rolling order. Migrations `0007`–`0009` are complete. The next separately
-   approved step is to deploy the exact modified media Worker with version
-   metadata; then upload and byte-verify only the fixed
-   synthetic witness; register and activate its matching delivery epoch; create
+   rolling order. Migrations `0007`–`0009` and the exact modified media Worker
+   deployment are complete. The next separately approved step is to upload and
+   byte-verify only the fixed synthetic witness; then register and activate its
+   matching delivery epoch; create
    the narrow verifier Access service identity and policy; deploy the fixed
    verifier; then rehearse the public-front-door, wrong-binding, redirect,
    cache, credential, epoch-rotation, zero-generation-withdrawal, and guarded

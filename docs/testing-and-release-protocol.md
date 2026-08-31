@@ -845,9 +845,12 @@ These tests do not exercise Cloudflare, use real media, write either tracked
 manifest, create a GitHub App, open a remote Pull Request, merge, deploy, or
 publish. Migrations `0007`–`0009` were subsequently applied to the
 non-production D1 database on 31 August 2026. The modified media Worker and
-witness, the promotion Worker, and the fixed-origin verifier remain undeployed.
-Their final combined migration/bridge and diff checks pass. The complete post-documentation
-`pnpm test` also passes, including the exact 114-file artifact and responsive
+witness were then separated into distinct approval gates: the Worker was
+deployed at exact version `cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`, while the
+witness remains absent. The promotion Worker and fixed-origin verifier remain
+undeployed. Their final combined migration/bridge and diff checks pass. The
+complete post-documentation `pnpm test` also passes, including the exact
+114-file artifact and responsive
 Family and Everyone browser checks. Non-production deployment requires separate
 approval and an ordered migration/media-version/witness/epoch/Access/verifier
 rollout plus a synthetic public-front-door rehearsal. The approved-prefix
