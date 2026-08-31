@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0",
+  "bucketName": "family-running-gallery-approved-dev",
+  "evidenceBoundary": {
+    "purpose": "orphan-multipart-containment-only",
+    "synchronousCleanupProof": false,
+    "permitsTombstoneOrPurge": false
+  },
+  "requiredRule": {
+    "id": "gallery-approved-v1-abort-incomplete-1d",
+    "enabled": true,
+    "conditions": {
+      "prefix": "media/v1/"
+    },
+    "abortMultipartUploadsTransition": {
+      "condition": {
+        "type": "Age",
+        "maxAge": 86400
+      }
+    }
+  }
+}

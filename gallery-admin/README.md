@@ -9,7 +9,9 @@ media Worker can reach only approved derivatives. The normal Phase D processing
 Worker is a third, service-only component that can read private originals and
 write private staging, but cannot reach approved media or either public
 manifest. Its non-production Access application is currently parked fail closed
-with zero policies and no retained rehearsal service identity.
+with zero policies and no retained rehearsal service identity. A fourth local-
+only promotion Worker now covers D1 plus staging-read and approved-write access;
+it is not deployed and cannot reach originals, manifests, or GitHub.
 
 ## Historical Phase B boundary
 
@@ -166,12 +168,73 @@ the A–F photo and cleanup-race proof passed. The fault-enabled entry point was
 then replaced by the normal entry point, and the temporary Access service token
 and rehearsal policy were deleted. Do not create a new service identity,
 reattach a policy, or deploy the rehearsal entry point without fresh explicit
-approval. Approved-media promotion, manifest generation, video, publication,
-and all real media remain separate blocked scopes.
+approval. Remote approved-media promotion, protected manifest orchestration,
+video, publication, and all real media remain separate blocked scopes. The
+local-only photo promotion and candidate-generation modules described below do
+not relax that deployment boundary.
+
+## Local photo-promotion boundary
+
+`src/promotion-worker.js` is a fourth, service-only Worker entry point. It
+accepts exactly one Access service identity and one fixed `POST` route for an
+opaque draft ID. Its JSON body contains only the expected state version and an
+idempotency key. It rejects caller-supplied site, destination, race, athlete,
+role, key, URL, editorial, manifest, or GitHub values. Its exact runtime
+environment is `DB`, `DERIVATIVE_STAGING`, `APPROVED_MEDIA`, and three scalar
+identity/origin values. It cannot read a private original or edit a manifest.
+
+Migrations `0007_photo_promotion.sql` and
+`0008_photo_promotion_cleanup.sql` record one immutable promotion claim,
+exactly two role objects, durable provider admission, storage-only cleanup, and
+hash-only terminal replay. The service revalidates the draft's single inherited
+area, active consent and guardian approval, item/catalog/suppression revisions,
+tagged-athlete exclusion state, staged run, and exact verified WebP outputs. It
+persists one unique hashed D1 admission token before asking R2 to create a
+multipart upload. Only the winning admission may call R2. The exact provider ID
+is then handed to the still-open promotion or its already-closing cleanup before
+uploading the one final part. Both staging and approved reads verify version,
+ETag, byte count, SHA-256,
+static WebP dimensions, content type, and exact safe metadata. Lost part,
+completion, or D1 responses reconcile only the same persisted operation.
+
+Only one final transactional batch can attach both approved keys, mark the
+promotion complete, move `processing -> candidate-public`, insert its immutable
+transition receipt, and append the audit event. `pr-open` and `published` remain
+unavailable. Replacement and direct verified insertion remain blocked.
+Candidate responses independently reread both approved objects and match their
+recorded version/ETag and bytes before returning public-safe data.
+
+The cleanup route accepts only an opaque promotion ID, expected draft version,
+and idempotency key. It derives the exact keys and valid reason from D1, closes
+admission, resolves every known multipart handle, verifies and deletes only an
+exact complete-wins object, and proves exact-object plus fully paginated prefix
+absence before removing operational promotion rows. A still-unresolved
+admission cannot be called absent or terminal. The surviving receipt contains
+hashes and outcome evidence, not raw keys. Consent withdrawal is a one-way
+highest-priority intent. Storage cleanup deliberately does not set public-host
+or private-original deletion evidence.
+
+`wrangler.promotion.example.jsonc` is intentionally non-deployable. An ignored
+copy would require the confirmed D1/staging/approved resource identifiers plus:
+
+- `PROMOTER_IDENTITIES`: exactly one
+  `subject:<Cloudflare-Access-service-Client-ID>` entry;
+- `PROMOTION_ORIGIN`: the exact HTTPS promotion Worker origin; and
+- `APPROVED_MEDIA_ORIGIN`: the exact HTTPS read-only media Worker origin.
+
+Do not deploy migrations `0007`–`0008` or this Worker yet. A separate
+fixed-origin, generation-bound public-host absence verifier and receipt remain
+required; R2 bucket absence is not host-absence proof. The tracked one-day
+`media/v1/` incomplete-multipart lifecycle requirement is orphan containment
+only, cannot authorize a tombstone or purge, and has not been applied remotely.
+Protected live candidate retrieval/orchestration is also missing. No Access
+policy/identity, remote migration, lifecycle change, Worker deployment,
+approved object, manifest edit, GitHub App, or Pull Request was created by this
+local slice.
 
 ## Configuration boundary
 
-The three example Wrangler files contain resource names and unmistakable invalid
+The four example Wrangler files contain resource names and unmistakable invalid
 replacement markers only. They are not deployable as committed. This is
 deliberate: current Wrangler can automatically provision a D1 database when an
 identifier is omitted. Make ignored local configuration only after the exact
@@ -188,8 +251,9 @@ provisioned bucket names are:
 - `family-running-gallery-approved-dev`
 
 The public media Worker binds only the last bucket. Phase C binds only the first.
-The processing Worker binds D1 plus only the first two buckets. Neither
-administration, processing, nor delivery can reach all three buckets.
+The processing Worker binds D1 plus only the first two buckets. The undeployed
+promotion Worker binds D1 plus only staging and approved storage. No component
+can reach originals, staging, approved storage, and GitHub together.
 
 Set these admin values outside Git:
 
@@ -302,6 +366,25 @@ the append-only no-replace trigger to both idempotency-key and state-version
 collisions. That prevents a different `INSERT OR REPLACE` key from evicting the
 winner and makes competing failed-run retries single-winner without relying on
 connection-local statement metadata.
+
+The unapplied `migrations/0007_photo_promotion.sql` replaces only the absolute
+`candidate-public` stop with exact photo-promotion evidence. It adds immutable
+promotion/object rows, preserves unique ownership of every approved key,
+permits only the two verified photo roles, and allows approved derivative keys
+to move only from `NULL` to the exact reserved keys in the same final
+transaction. It keeps review, publication, approved deletion, processing
+cleanup after promotion, and draft purge hard-blocked until their own forward
+evidence migrations exist. It must be applied only together with the reviewed
+promotion Worker and migration `0008`.
+
+The unapplied `migrations/0008_photo_promotion_cleanup.sql` adds the narrow
+storage-cleanup exceptions. It records one immutable cleanup and exact object
+snapshot, closes admission, supports the exact provider-ID handoff from a
+concurrent create, permits terminal abort/complete-wins deletion only through
+the evidence state machine, and requires strictly ordered final R2 absence. It
+then permits operational promotion evidence to be removed only while inserting
+a hash-only replay tombstone. It adds no host verifier, private-original
+deletion, manifest writer, GitHub capability, merge, or deployment authority.
 
 Private consent, derivative, publication, and transition rows cascade when an
 eligible draft is explicitly purged. Original, staging, and approved object

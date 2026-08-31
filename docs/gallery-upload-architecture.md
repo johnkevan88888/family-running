@@ -21,9 +21,14 @@
 - **Implementation state:** provider-independent Phase A, infrastructure and
   authentication Phase B, synthetic private-upload Phase C, and the private
   synthetic photo-processing and cleanup-race rehearsal in Phase D are
-  complete. Video processing, approved-media promotion, candidate manifests,
-  GitHub App/Pull Request automation, DNS changes, real-media transfer, merge,
-  and publication remain outside this decision.
+  complete. The local-only photo-promotion, approved-storage cleanup,
+  candidate-manifest, and review-only GitHub client slices are implemented but
+  deliberately undeployable until generation-bound public-host absence proof
+  and protected candidate retrieval/orchestration exist. The approved-prefix
+  orphan-multipart lifecycle requirement is tracked but has not been applied
+  remotely. The protected workflow, GitHub App and remote branch-rule proof,
+  video processing, DNS changes, real-media transfer, merge, and publication
+  remain future work.
 
 This document selects the storage, authentication, and access model needed to
 continue the owner-curated Gallery after Phase 1. It does not turn the Gallery
@@ -55,14 +60,19 @@ public championship site on GitHub Pages:
   default-branch workflow and behind a protected `gallery-processing`
   environment, downloads one approved draft through a narrowly scoped Access
   service endpoint. Pinned image/video tools create and verify the derivatives,
-  stage the complete set privately, and atomically promote it to the approved
-  bucket. The job must not upload the original or a consent record as an
-  artifact, print them to logs, or retain them after the job.
-- **Publication:** the processor writes the existing `1.0` item shape into a
-  branch and opens a normal Pull Request. Existing Gallery validation, the full
-  test suite, the Netlify preview, responsive review, and explicit merge
-  approval remain mandatory. The admin service never writes to `main` and never
-  changes a production manifest directly.
+  and returns the complete set to private staging. The job must not upload the
+  original or a consent record as an artifact, print them to logs, or retain
+  them after the job.
+- **Promotion and publication:** a separately bound service verifies and copies
+  the exact staged set to approved storage. Visibility of the two R2 objects is
+  not physically atomic; D1 keeps publication logically closed until both are
+  independently verified. A read-only candidate retrieval step then feeds the
+  repository generator and narrow GitHub review client, which may create one
+  existing-`1.0` manifest change on a candidate branch and open a normal Pull
+  Request. Existing Gallery validation, the full test suite, the Netlify
+  preview, responsive review, and explicit merge approval remain mandatory.
+  Neither administration nor promotion writes to `main` or changes a production
+  manifest directly.
 - **Initial hostnames:** use Cloudflare-managed `workers.dev` hostnames. Do not
   move `aceofrace.com` DNS as part of this work. A first-party
   `media.aceofrace.com` hostname remains a later, separately approved DNS
@@ -86,10 +96,13 @@ flowchart LR
     Admin --> Dispatch[GitHub workflow dispatch]
     Dispatch --> Approval{Owner approves<br/>gallery-processing environment}
     Approval --> Processor[Trusted derivative processor]
-    Processor --> AdminAPI[Service-authenticated admin API]
-    AdminAPI --> Staging[(Private derivative staging R2)]
-    Staging --> Derivatives[(Approved derivative R2)]
-    Processor --> PR[Manifest Pull Request]
+    Processor --> ProcessingAPI[Service-authenticated processing API]
+    ProcessingAPI --> Staging[(Private derivative staging R2)]
+    Staging --> Promotion[Service-authenticated promotion API]
+    Promotion --> Derivatives[(Approved derivative R2)]
+    Promotion --> Candidate[Read-only candidate retrieval]
+    Candidate --> ReviewClient[Repository manifest generator and review client]
+    ReviewClient --> PR[Manifest Pull Request]
     PR --> Preview[Tests and Netlify preview]
     Preview --> Merge{Explicit merge approval}
     Merge --> Pages[GitHub Pages]
@@ -204,13 +217,17 @@ owner-local runner or private paid container before Phase D.
   this fallback path. The token used to prove this boundary in Phase B was
   revoked and deleted; a new dedicated credential is created only with the
   protected Phase D environment.
-- A GitHub App installed only on this repository triggers the one fixed
-  workflow and supplies a short-lived installation token for its candidate
-  branch and Pull Request. Give it only `Actions: write`, `Contents: write`,
-  `Pull requests: write`, and required metadata read permission. It has no
-  administration, environments, secrets, Pages, or merge permission. Using an
-  App token rather than the workflow's `GITHUB_TOKEN` also allows the resulting
-  Pull Request events to run the normal repository checks.
+- A protected default-branch workflow obtains a short-lived installation token
+  from a GitHub App installed only on this repository. Give the App only
+  `Contents: write`, `Pull requests: write`, and required metadata read
+  permission; it needs no Actions, administration, environments, secrets, or
+  Pages permission. The local client exposes no merge or default-branch write
+  operation, but those API permissions do not alone make merge cryptographically
+  impossible. Before installation, remote `main` rules must exclude the App
+  from update and bypass actors, and an installation-token rehearsal must prove
+  both direct `main` update and Pull Request merge are denied. Using an App token
+  rather than the workflow's `GITHUB_TOKEN` also allows the resulting Pull
+  Request events to run the normal repository checks.
 - Workflow dispatch carries only an opaque random draft ID. Filenames, captions,
   consent notes, identity claims, signed URLs, and tokens are forbidden as
   workflow inputs.
@@ -341,9 +358,11 @@ verified. Applying the migration did not authorize real uploads.
 9. Request processing. Revalidate the current race/roster data, suppression
    list, consent, hash, and draft version. Then dispatch the protected workflow.
 10. Explicitly approve the `gallery-processing` environment. The job creates
-    and verifies sanitized derivatives, returns them to the derivative store,
-    writes the current manifest shape, runs validation, and opens a normal Pull
-    Request.
+    and verifies sanitized derivatives and returns them to private staging. The
+    promotion service independently verifies the exact pair in staging and
+    approved storage. Read-only candidate retrieval then lets the repository
+    generator prove one inherited-area manifest addition before the narrow
+    GitHub client opens a normal Pull Request.
 11. Review the exact manifest diff, both site modes, the media itself, and the
     responsive Netlify preview. Merge only after the existing explicit approval.
 
@@ -704,15 +723,112 @@ future remote request therefore needs a new separately approved service identity
 and policy. The two staged derivatives are not approved or public, and no DNS,
 GitHub App, Pull Request, merge, or publication change occurred.
 
+**Local promotion, approved-storage cleanup, and review-foundation slice — 30
+August 2026:** A fourth, service-only Worker and two forward migrations now
+implement the first photo
+staging-to-approved boundary locally. Its exact environment is D1, private
+derivative staging, approved media, one exact service identity, and fixed
+Worker/media origins. It has no private-original, browser, manifest, GitHub,
+merge, deployment, or suppression-edit route. The request supplies only a draft
+ID in the fixed route plus expected state version and idempotency key; D1 derives
+the one inherited site, exact two roles, storage keys, race, athlete tags,
+consent, and revision evidence. The fixed `APPROVED_MEDIA_ORIGIN`, not D1,
+supplies the public host used with those approved keys.
+
+The service reserves both approved content-addressed keys in D1. Before an R2
+create it moves the role to `admitting` with one unique hashed admission token;
+only that winner may call the provider. It then hands the exact one-part
+multipart provider ID to the still-open promotion or an already-closing cleanup
+in one D1 batch before sending its media part. A permanently lost create
+response leaves an unresolved `admitting` row instead of inventing provider
+state. A lost part, completion, or following D1 response is reconciled only from
+the same persisted operation and exact R2 evidence. Current consent, guardian,
+export/source/suppression revisions,
+and pending athlete exclusions are rechecked throughout. Two verified approved
+objects plus one final D1 transaction are required for `processing ->
+candidate-public`; `pr-open`, `published`, evidence deletion, and draft purge
+remain blocked. Every candidate response re-reads the approved objects and
+matches their version, ETag, metadata, byte count, SHA-256, and dimensions, so
+D1 alone cannot produce a manifest candidate.
+
+Physical R2 visibility of two separate objects is not atomic. Logical
+publication remains fail closed because the unguessable objects are not
+referenced by either public manifest, and D1 cannot expose a candidate until
+both are verified. The multipart choice is deliberate: a later cancellation
+service can close and abort each persisted handle before resolving any
+complete-wins object. A head-then-multipart-create sequence is not a provider
+conditional write, so the approved bucket must have one reviewed code writer,
+D1 keeps each key uniquely owned while present, and any observed pre-existing
+object fails instead of being overwritten or adopted.
+
+Migration `0008_photo_promotion_cleanup.sql` and a second fixed service route
+add storage-only cancellation. The caller supplies only an opaque promotion ID,
+expected draft version, and idempotency key. D1 derives the reason, one-way
+withdrawal intent, promotion generation, and exact display and thumbnail keys.
+Cleanup closes admission, snapshots known provider state, aborts an exact
+handle, verifies and deletes an exact complete-wins object, and requires both
+exact `head()` absence and an empty fully paginated server-built prefix. A final
+transaction with a completion time strictly after all absence evidence may then
+remove operational promotion rows and retain a hash-only, no-foreign-key
+tombstone. That receipt supports exact promotion and cleanup replay even after
+draft purge. A still-unresolved `admitting` row cannot be declared absent,
+tombstoned, or purged.
+
+The service rechecks closure before sending a part and before completion, and
+an exact provider-ID handoff lets a concurrently closing cleanup take ownership
+of the handle. D1 and an R2 provider call are not one atomic transaction,
+however. The safety statement is therefore recovery containment—abort, exact
+delete, and final absence—not an absolute claim that no provider operation can
+race after a D1 read.
+
+The tracked `media/v1/` one-day incomplete-multipart lifecycle requirement is
+only eventual containment for a create whose response was permanently lost. It
+cannot satisfy synchronous cleanup, permit a tombstone, or permit purge, and it
+has not been applied or verified remotely. No remote promotion is allowed until
+that lifecycle boundary and the remaining host-proof boundary below are both
+implemented and rehearsed.
+
+R2 absence is not public-host absence. This cleanup deliberately does not set
+`draft_publication_references.host_deletion_confirmed`, does not set
+`draft_derivatives.host_deleted_at`, and does not delete or claim deletion of a
+private original. A separate fixed-origin verifier must check every historical
+owned URL without redirects, require the delivery contract rather than an
+arbitrary `404`, and append evidence bound to the exact promotion/object
+generation and current withdrawal cycle. A new promotion must invalidate an
+older host-absence cycle. Until that forward receipt and verifier exist, the
+existing withdrawal and purge path remains closed.
+
+The local manifest generator accepts the service's public-safe candidate
+package, derives only `gallery-data/family.json` or
+`gallery-data/everyone.json` from the draft's single inherited site, reuses the
+current consent/revision/suppression/race/roster/derivative publication gates,
+and writes only the existing public `1.0` fields. It supports append or safe
+zero-based insertion, preserves existing order, rejects cross-mode ID reuse in
+automation, and reconciles an exact operation receipt. A separate GitHub client
+fixes this repository, `main`, the candidate-branch namespace, and those two
+paths; it can create or reconcile one one-file review Pull Request and then
+re-proves its parent, bytes, and diff. Before any mutation it also reads the
+target manifest at the exact expected `main` commit and proves the candidate is
+one new item while every existing item and its order remain unchanged. It has
+no merge, default-branch update, force-update, deployment, Pages, secret, or
+environment operation. No workflow, App, branch-rule change, candidate branch,
+or Pull Request was created by this local slice.
+
 The remaining Phase D plan is:
 
-1. Add the separately approved photo staging-to-approved promotion step and its
-   approved-side cleanup, then verify public delivery, byte ranges, headers,
-   and deletion.
-2. Generate a candidate photo manifest edit through a repository-scoped GitHub
-   App and protected environment, run Gallery validation and the complete
-   repository suite, and only with explicit approval open a standard synthetic
-   Pull Request without merge authority.
+1. Add the fixed-origin, generation-bound public-host absence verifier and
+   append-only receipt. Test delivery, byte ranges, headers, wrong bindings,
+   redirects, cache behaviour, new-promotion invalidation, exact deletion, and
+   final absence. Apply and verify the approved-prefix orphan-multipart
+   lifecycle rule only with separate approval. Only after both proofs may
+   migrations `0007`–`0008` or the promotion Worker be considered for
+   non-production deployment.
+2. Add read-only candidate retrieval and a protected default-branch workflow
+   accepting only an opaque `draft_id`. Create/install the repository-scoped
+   GitHub App and protected environment only with separate approval, prove the
+   App token cannot update `main` or merge, run Gallery validation and the
+   complete suite, and only with explicit approval open a standard synthetic
+   review Pull Request.
 3. Cover single-area publication, the existing duplicate-ID equality safeguard,
    editorial insertion order, retry/idempotency, closed-PR cleanup, and rollback.
 4. Separately select and pin immutable FFmpeg/ffprobe tooling, implement the

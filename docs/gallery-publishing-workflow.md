@@ -21,16 +21,24 @@ policies, so it is deliberately parked fail closed until a separately approved
 service identity and policy are created for future work. The owner application
 and owner policy remain unchanged.
 Verified derivatives may become reachable for Pull Request review only through
-a later, separately approved promotion and candidate-manifest workflow. The
-committed manifests and normal reviewed Pull Request remain the only public
-publication path. See
+the separately gated promotion and candidate-manifest workflow. Its first
+photo-only implementation slice now exists locally: it can verify an exact
+staged pair, construct one public-safe candidate for the inherited area, and
+prepare one review-only GitHub operation. A second local slice now closes
+approved-media admission, resolves every known multipart handle, deletes only
+the exact verified owned objects, proves R2 absence, and retains hash-only
+replay evidence. It is deliberately not deployed because R2 absence is not yet
+bound to a fixed-origin public-host check, the required incomplete-multipart
+lifecycle rule has not been applied remotely, and protected candidate retrieval
+and orchestration do not exist. The committed manifests and normal reviewed Pull
+Request remain the only public publication path. See
 [Owner-Authenticated Gallery Upload Architecture](gallery-upload-architecture.md).
 
-Approved-media promotion, candidate-manifest generation, the repository-scoped
-GitHub App and protected environment, and the full synthetic Pull Request
+The repository-scoped GitHub App, protected workflow/environment, fixed-origin
+host-absence verifier, remote promotion/cleanup, and full synthetic Pull Request
 rehearsal remain future work. Video processing and real family media remain
-forbidden. The completed private rehearsal does not authorize a public media
-URL, manifest change, DNS change, Pull Request, merge, or publication.
+forbidden. The local implementation does not authorize a public media URL,
+manifest change, DNS change, Pull Request, merge, or publication.
 
 ## Public And Private Boundaries
 
@@ -48,21 +56,33 @@ URL, manifest change, DNS change, Pull Request, merge, or publication.
 ## Before Adding A Moment
 
 This checklist describes the future explicitly approved end-to-end publication
-workflow. The current private service cannot yet promote media or create a
-candidate manifest or Pull Request.
+workflow. Local promotion, manifest-generation, and GitHub-client code now
+exists together with storage-only approved-side cleanup, but no fixed-origin
+public-host verifier or protected orchestration exists. The current deployed
+private service therefore still cannot promote media or create a candidate
+manifest or Pull Request.
 
 1. Confirm that the people shown have approved public use of the photograph or
    video. Take particular care with children.
 2. Keep the private original, including any useful geotag or device metadata,
-   only in the access-controlled media repository. Never copy that metadata
-   into a public manifest.
-3. Create a separate public derivative with embedded location and device
-   metadata removed. Keep both the private original and the public derivative
-   outside this repository.
-4. Upload web-ready versions to the approved media host:
-   - photographs: a compact thumbnail and a larger display image;
-   - videos: a web-compatible video and a separate poster image.
-5. Use the approved public media Worker hostname. The first pilot uses its
+   only through the Access-protected owner application and private media
+   repository. Never copy that metadata into a public manifest.
+3. Let the pinned processor create the required web-ready files outside Git:
+   photographs have a compact thumbnail and larger display image; videos will
+   have a web-compatible video and separate poster only after their later
+   processing contract is implemented. Processing must strip location/device
+   metadata and independently verify the finalized bytes before private staging.
+4. Let the promotion service—not a browser-supplied path—derive the approved
+   keys, recheck current consent, suppression, exclusions, and revisions, and
+   verify the exact staged and approved bytes. Its storage-cleanup companion,
+   orphan-multipart lifecycle containment, and separate generation-bound
+   public-host deletion verifier must all be operational before this step is
+   enabled remotely. Bucket absence alone is not host-absence evidence.
+5. Generate the candidate from a fresh service-authenticated read using only
+   the inherited Family or Everyone area, then prove the proposed manifest is
+   the exact current document plus one reviewed item before opening a Pull
+   Request.
+6. Use the approved public media Worker hostname. The first pilot uses its
    Cloudflare-managed `workers.dev` address without changing production DNS; a
    first-party hostname remains preferred as a separately approved follow-up.
    Do not put API keys, upload credentials, signed management URLs, or private
@@ -71,11 +91,12 @@ candidate manifest or Pull Request.
 ## Manifest Entry
 
 Each manifest uses schema version `1.0` and an `items` array. Order in the array
-is display order. The authenticated uploader writes only to the manifest for
-the area from which it was opened; it cannot create a shared Family-and-
-Everyone upload. The repository retains its defensive rule that, if a future
-manual edit places the same `id` in both manifests, the item must be byte-for-
-byte identical in both.
+is display order. The uploader creates one area-bound private draft; the later
+candidate generator and GitHub review client may add it only to the manifest for
+that inherited area. They cannot create a shared Family-and-Everyone upload.
+The repository retains its defensive rule that, if a future manual edit places
+the same `id` in both manifests, the item must be byte-for-byte identical in
+both.
 
 The authenticated uploader follows the same constrained sequence the manifest
 validator enforces:
@@ -94,15 +115,16 @@ No free-text athlete names or race names are stored. This keeps gallery links
 stable and ensures removed or mode-ineligible athletes fail validation rather
 than appearing as stale tags.
 
-The uploader must re-read the shared suppression list before it approves a
-candidate. It blocks a new item carrying a hidden athlete ID. One hidden tag
-suppresses the whole item everywhere, for both photographs and videos; it does
-not merely remove the person's label. The owner remains responsible for tagging
-every identifiable public-roster person who needs this protection because the
-system does not use face recognition. An authenticated athlete-wide exclusion
-prepares the existing public ID-only suppression change and identifies all
-tagged host objects that need takedown; private names, reasons, and request
-notes never enter the public suppression file.
+The promotion service and fresh candidate-retrieval path must re-read the shared
+suppression and pending-exclusion state before returning or using a candidate.
+They block a new item carrying a hidden athlete ID. One hidden tag suppresses
+the whole item everywhere, for both photographs and videos; it does not merely
+remove the person's label. The owner remains responsible for tagging every
+identifiable public-roster person who needs this protection because the system
+does not use face recognition. An authenticated athlete-wide exclusion prepares
+the existing public ID-only suppression change and identifies all tagged host
+objects that need takedown; private names, reasons, and request notes never
+enter the public suppression file.
 
 ## Hide Every Moment Tagged With A Person
 
