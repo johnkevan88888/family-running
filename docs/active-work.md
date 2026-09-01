@@ -2,7 +2,7 @@
 
 ## Current task: fixed-origin public-host verification for Gallery takedown
 
-### Status — 30 August 2026
+### Status — 31 August 2026
 
 Pull Request #84 merged the photo-promotion and approved-storage-cleanup
 foundation to `main` at exact commit
@@ -10,9 +10,9 @@ foundation to `main` at exact commit
 site were then verified against that exact commit: all 114 published files,
 including the 72 manifest-listed CSVs, byte-matched; Family and Everyone both
 rendered; and both public Gallery manifests remained empty. This proves the
-static release only. Migrations `0007` and `0008`, the promotion service, the
-approved-media lifecycle rule, and all public-media operations remain
-undeployed.
+static release only. At that checkpoint, migrations `0007` and `0008`, the
+promotion service, the approved-media lifecycle rule, and all public-media
+operations remained undeployed.
 
 The next safety slice is implemented and fully locally validated in this source
 change, based exactly on that verified `main`.
@@ -41,8 +41,8 @@ The compatibility scalar `host_deletion_confirmed` is reset by migration `0009`
 and may become true again only in the same transaction that appends a complete
 receipt for the current generation set and current epoch.
 
-The locally modified read-only media Worker still has only `APPROVED_MEDIA`,
-plus Cloudflare version metadata. Recognized delivery responses carry the exact
+The non-production read-only media Worker has only `APPROVED_MEDIA`, plus
+Cloudflare version metadata. Recognized delivery responses carry the exact
 contract and Worker-version headers. A fixed 28-byte synthetic WebP at its
 content-addressed witness key is the proof that the public front door reaches
 the intended Worker version and approved bucket. Witness responses and all
@@ -111,29 +111,446 @@ path because `package.json` is conservatively treated as a publishing-control
 file. Its initial no-visual classification was rejected before tests ran, then
 corrected without weakening the release gate.
 
+### Non-production D1 migration deployment — 31 August 2026
+
+With separate owner approval for this database step only, forward migrations
+`0007_photo_promotion.sql`, `0008_photo_promotion_cleanup.sql`, and
+`0009_public_host_verification.sql` were applied in order to the existing
+non-production Gallery D1 database from exact merged source commit
+`693383ba03380b6e8d846e26fcd79b1cad5059f6`. Before mutation, Wrangler reported
+exactly those three files pending after `0001`–`0006`; the database had zero
+foreign-key violations and zero legacy true `host_deletion_confirmed` values.
+Cloudflare Time Travel recovery bookmarks were captured before and after the
+operation without adding them to the repository.
+
+Wrangler reported all three migrations successful and now reports no pending
+migrations. Independent remote checks found all 15 expected new tables, six
+named indexes, two views, and all 93 distinct migration safety triggers. Every
+new promotion, cleanup, delivery-epoch, generation, retirement, proof, and
+receipt table remains empty; both receipt views return zero rows; the legacy
+host-confirmation scalar remains zero; `PRAGMA foreign_key_check` returns no
+rows; and `PRAGMA quick_check` returns `ok`. The database now has 34 tables.
+Focused local public-host-migration, full processing-bridge, and promotion-
+Worker boundary tests also passed immediately before the remote application.
+
+This approval and deployment changed D1 schema only. It did not deploy or
+replace a Worker, upload the synthetic witness, register or activate a delivery
+epoch, create Access resources, apply an R2 lifecycle rule, create approved
+media, edit a manifest, open a Pull Request, or publish anything. The new
+database boundary therefore remains deliberately fail closed: there is no
+current delivery epoch and no current public-host-absence receipt.
+
+### Non-production media Worker deployment — 31 August 2026
+
+With separate owner approval for the second rolling gate only, the reviewed
+read-only media Worker was deployed from the exact merged Worker source at
+`693383ba03380b6e8d846e26fcd79b1cad5059f6` to
+`https://family-running-gallery-media-dev.family-running.workers.dev`.
+Wrangler's strict deployment check succeeded. The active deployment routes
+100% of traffic to exact Worker version
+`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`; the previous exact rollback version
+`37180326-c31d-4872-9ab6-2c601abd41ad` remains available.
+
+Before deployment, the ignored local configuration was reconciled to the
+reviewed example by adding only `MEDIA_VERSION`. Generated binding types and
+the dry-run bundle proved exactly two runtime bindings:
+`APPROVED_MEDIA` for the existing approved derivative bucket and
+`MEDIA_VERSION` for Cloudflare Worker version metadata. The 9.18 KiB bundle
+passed the focused media-delivery contract and promotion-configuration tests;
+its local startup profile recorded zero active CPU time. Cloudflare's version
+record independently confirms only the `fetch` handler, compatibility date
+`2026-08-25`, and those exact two bindings. The deployed script ETag is
+`b544ea5adbd555852399065627fed86cc3055d116de6ee437a1e6824c57b4d79`.
+Using the reviewed newline-delimited epoch formula over exact origin, contract,
+version, witness key, witness digest, byte count, and content type gives fixed
+configuration hash
+`01dd06bfa9f40cc82b0989bec1d7a30cc92c3462dea4e041cf287b7d4fcace08`.
+
+Credential-free public-front-door `HEAD` and `GET` probes against both a
+canonical absent media key and the fixed absent witness key returned empty
+`404` responses with `Cache-Control: no-store`, contract
+`approved-media-v1`, and the exact new Worker version header. Root and
+query-bearing paths returned generic `404` responses without proof headers;
+`POST` to a canonical key returned `405`, `Allow: GET, HEAD`, and the same
+version-bound proof headers. No redirect or response body appeared.
+
+The complete post-deployment documentation `pnpm test` passes, including
+repository safety, both Gallery modes, upload/tagging/consent/exclusion
+contracts, media delivery, promotion and public-host verification, exact
+artifact isolation, and responsive desktop/mobile browser smoke tests.
+
+This step deployed code and version metadata only. It did not upload the
+synthetic witness, register or activate a delivery epoch, create Access
+resources, deploy the verifier, apply the approved-media lifecycle rule, deploy
+the promotion Worker, create approved media, edit a manifest, open a Pull
+Request, or publish a Gallery item, manifest, or static-site change. The next
+separately approved rolling gate is the fixed 28-byte witness upload and
+independent byte/hash verification.
+
+### Non-production synthetic delivery witness — 31 August 2026
+
+With separate owner approval for the third rolling gate only, exactly one fixed
+synthetic object was uploaded to the existing non-production approved-media R2
+bucket. Before mutation, the bucket-level counter reported zero objects and zero
+bytes, a direct remote read proved the exact key absent, credential-free
+`HEAD` and `GET` returned the expected proof-marked empty `404`, the active
+deployment still routed 100% to media Worker version
+`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`, and D1 had zero delivery epochs,
+activations, current epochs, or public-host-absence receipts.
+
+The witness was generated from the repository's pinned Sharp `0.35.2` and
+libvips `8.18.3` contract: a one-pixel transparent lossless WebP of exactly 28
+bytes. Its SHA-256 is
+`54bdb34ea423475fe0544cacbf32ab4f7e75846b5f25f1296e9bb2d157cd9f77`, and
+the only uploaded key is
+`media/v1/54bdb34ea423475fe0544cacbf32ab4f7e75846b5f25f1296e9bb2d157cd9f77/display.webp`.
+The R2 upload supplied `Content-Type: image/webp` and `Cache-Control: no-store`.
+
+An independent direct R2 download and a separate credential-free public Worker
+download were each 28 bytes, matched the source byte-for-byte, and produced the
+same SHA-256. Public `HEAD` and `GET` returned `200`, `Content-Type:
+image/webp`, `Content-Length: 28`, `Cache-Control: no-store`, contract
+`approved-media-v1`, exact Worker version
+`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`, and no redirect. A separate canonical
+absent key still returned the proof-marked empty `404` for both methods. The
+bucket-level aggregate counter still reported its earlier zero values
+immediately after the successful exact-object reads, so that lagging aggregate
+was not used as object-presence or absence evidence.
+
+The post-upload D1 check still found zero delivery epochs, activations, current
+epochs, and receipts, and the Worker deployment remained unchanged. This gate
+did not register or activate an epoch, create Access resources, deploy the
+verifier or promotion Worker, apply a lifecycle rule, create a real or approved
+Gallery derivative, edit a manifest, open a Pull Request, or publish a Gallery
+item, manifest, or static-site change. The next separately approved rolling
+gate is registration and activation of the exact matching delivery epoch.
+
+### Non-production delivery epoch 1 — 31 August 2026
+
+With separate owner approval for the fourth rolling gate only, delivery epoch
+`media_delivery_epoch_dev_0001` was registered and activated in the existing
+non-production Gallery D1 database. A fresh read-only preflight first
+reconfirmed that the exact media Worker deployment still routed 100% to version
+`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`; the witness and canonical absent
+control still passed credential-free public `HEAD` and `GET` checks; all epoch,
+activation, current-epoch, generation, proof, and receipt counts remained zero;
+there were no pending migrations or foreign-key violations; and
+`PRAGMA quick_check` returned `ok`. A Time Travel recovery bookmark was captured
+immediately before the write and kept out of the repository.
+
+The exact epoch values were independently recomputed from the reviewed bridge
+formulas. Sequence `1` has epoch hash
+`6b26d6226b5f78a4e8da0e478b3708accc6e1163b0a1952ace23110e112a05e3` and
+configuration hash
+`01dd06bfa9f40cc82b0989bec1d7a30cc92c3462dea4e041cf287b7d4fcace08`.
+That configuration binds only the fixed HTTPS media origin, contract
+`approved-media-v1`, exact Worker version, fixed content-addressed witness key,
+its 28-byte SHA-256, and `image/webp` type. The actor hash derives from the
+non-personal operational label `media-delivery-epoch-dev-actor-0001`; no owner
+email, account identifier, credential, or private media fact was stored.
+
+The registration, activation, and singleton current-epoch pointer were first
+rehearsed against all nine real migrations. They were then sent as one
+all-or-nothing D1 SQL-file ingestion. The registration committed at
+`2026-08-31T14:17:17.510Z`; activation receipt
+`5cf9b591ee484d80f89b995bb74a035cb2bd077dabae5ddf010ba494a34351ef`
+committed exactly one millisecond later, with no previous epoch. The current
+pointer matches that activation byte-for-byte. Independent primary-database
+postflight reads found exactly one epoch, one activation, and one current
+pointer; zero public generations, host-absence receipts, or true legacy host-
+deletion confirmations; no foreign-key violations; and `quick_check: ok`.
+The ingestion's final recovery bookmark matched the separately retrieved
+post-write bookmark.
+
+After activation, credential-free public `HEAD` and `GET` checks again returned
+the exact no-redirect Worker version and contract. The witness remained a
+28-byte `image/webp` whose downloaded bytes matched SHA-256
+`54bdb34ea423475fe0544cacbf32ab4f7e75846b5f25f1296e9bb2d157cd9f77`;
+the canonical absent control remained a proof-marked empty `404`. This gate
+changed only append-only D1 delivery-proof state. It did not create Access
+resources, deploy the verifier or promotion Worker, apply a lifecycle rule,
+create real or approved Gallery media, edit a manifest, open a Pull Request, or
+publish anything. The next separately approved rolling gate is the narrow
+verifier Access service identity and policy.
+
+After the status and protocol documents were reconciled, the complete
+`pnpm test` suite passed: repository safety checked 255 tracked files; all
+Gallery upload, tagging, consent, suppression/exclusion, processing, promotion,
+delivery-witness, public-host-verifier, lifecycle, manifest, and administration
+contracts passed; the exact 114-file public artifact remained isolated; and
+Family and Everyone responsive browser smoke tests passed. The generated local
+witness and verification downloads, plus the ignored epoch-rehearsal SQL,
+database, and logs, were removed after validation. At that checkpoint, the four
+witness/epoch documentation changes remained local and uncommitted; nothing was
+pushed or opened as a Pull Request by this gate.
+
+### Non-production verifier Access boundary — 31 August 2026
+
+With separate owner approval for the fifth rolling gate only, one dedicated
+Cloudflare Access service identity and one exact-host application/policy pair
+were created for the still-undeployed public-host verifier. A complete read-only
+preflight first proved that the account had exactly the retained owner and
+parked processing applications, zero service tokens, no public-hostname,
+wildcard, or account-wide Access application, and no Worker or Access resource
+matching the planned verifier name or hostname.
+
+The first generated token was never attached to a policy, but its one-time
+secret appeared in browser diagnostic output. Work stopped before application
+creation. After fresh explicit approval, that credential was deleted and an
+independent Access API list proved both its ID and name absent and the account
+back at zero service tokens. A replacement was then generated without rendering
+credential-bearing controls or values. At gate completion, its secret existed
+only in the protected task-local browser session; it was not written to Git,
+D1, Wrangler variables, the filesystem, command history, or task output.
+
+The retained application is named
+`family-running-gallery-public-host-verifier-dev - exact host` and protects only
+`family-running-gallery-public-host-verifier-dev.family-running.workers.dev` as
+one public-hostname destination. It is hidden from the App Launcher, is
+configured to return `401` for failed Service Auth, and has a 15-minute
+application session. At that provisioning checkpoint, its one policy,
+`family-running-gallery-public-host-verifier-service-auth-dev`, is
+Service Auth (`non_identity`) at precedence `1` and includes only the exact
+replacement service-token resource, with no Require or Exclude rules. Although
+Cloudflare's dashboard created that policy as reusable, independent API reads
+proved it is attached only to the verifier application. At creation, the
+dashboard dialog's shortest displayed token duration was one year (`8760h`), so
+the token was temporary by operational intent and scheduled for deletion after
+the separately approved rehearsal. The API then reported it enabled. At this
+pre-use provisioning checkpoint, a GraphQL Access-login query covering the
+interval from its exact creation time through postflight found zero account
+events and zero verifier events.
+
+Postflight Access reads found exactly three applications, one service token, and
+two reusable policies. The owner application still has only its original owner
+policy, while the processing application still has zero policies. The verifier
+Worker itself remains absent. An immediate credential-free request observed
+Cloudflare's public "nothing here yet" fallback for an undeployed Worker; that
+literal response is neither a stable contract nor an Access-enforcement proof.
+Immediately after a separately approved verifier deployment, no-credential,
+wrong-credential, exact-credential, browser-identity, route, binding, and
+audience checks must pass before any D1-mutating rehearsal is authorized.
+
+This gate did not deploy a Worker, invoke the replacement credential, mutate D1
+or R2, apply a lifecycle rule, create or promote media, edit a manifest, create
+a GitHub resource, open a Pull Request, merge, or publish anything.
+
+After the Access documentation was reconciled, the complete `pnpm test` suite
+passed again: repository safety checked 255 tracked files, the exact 114-file
+public artifact remained isolated, and responsive Family and Everyone browser
+smoke tests passed. The five documentation changes remain local and uncommitted.
+
+### Non-production verifier deployment and Access proof — 31 August 2026
+
+With separate owner approval for the sixth rolling gate only, the fixed
+public-host verifier was deployed and its effective Service Auth boundary was
+proved without invoking the `POST` route or mutating D1. A read-only preflight
+first reconfirmed that the verifier Worker was absent, its exact Access
+application/policy/token were intact and unused, the other three Workers were
+unchanged, no custom Worker domain or route existed, and D1 still had one active
+delivery epoch with zero generations, verification attempts, proofs, receipts,
+or true legacy host-deletion confirmations.
+
+The first live deployment command used an isolated Wrangler profile that did
+not carry a non-interactive API token. It failed before upload; an immediate
+Workers API read confirmed that the verifier was still absent and the account
+still had three Workers. The successful retry used the existing authenticated
+Wrangler profile with disk logging and telemetry disabled. It deployed version
+`6ba9af24-6123-480b-8e6f-980a742348dc`. An independent API read found that the
+active deployment referenced only that version and assigned it 100% of traffic.
+The deployed settings have compatibility date `2026-08-30`, flag
+`global_fetch_strictly_public`, and exactly ten bindings: one D1 binding plus
+nine reviewed plain-text verifier/media contract variables. There is no R2,
+service, secret, or unexpected binding. The `workers.dev`
+hostname is enabled, preview URLs are disabled, and the verifier has zero custom
+domains and zero zone routes.
+
+The Access proof used three independent, stateless, cookie-free `GET` requests
+to the exact service draft route. No credentials returned `401`; the exact
+Client ID with a deliberately wrong secret also returned `401`; and the exact
+credential pair passed Access and reached the fixed Worker, which returned its
+expected `405` with `Allow: POST`, `Cache-Control: no-store`, JSON content type,
+and exactly `{"error":"method-not-allowed"}`. All three responses stayed on
+the exact URL with no redirect and no `Location` header. A separate navigation
+in the current signed-in browser, without service credentials, stayed on the
+exact route and rendered Cloudflare Access's `Forbidden` page with status
+`401`, rather than reaching the Worker-owned `405`; a normal browser identity
+therefore cannot bypass the service-token policy. The retained service token's
+API `last_seen_at` advanced to `2026-08-31T17:17:35Z` during the controlled test
+window, consistent with token use. The distinctive Worker-owned `405` is the
+positive authentication proof. No replacement credential or Access assertion
+value was printed during this deployment/proof gate. No credential, generated
+Client ID, application audience, or Access resource identifier was written to
+the repository.
+
+The safe `GET` method exits before request-body parsing, the service operation,
+or any D1 call. A post-proof primary-database audit found exactly one epoch, one
+activation, and one current-epoch pointer; zero generations, targets,
+verification attempts, retirement reservations, target proofs, witness proofs,
+receipts, or true legacy host-deletion confirmations; zero foreign-key
+violations; and `quick_check: ok`. Every query reported zero rows written. A
+final Cloudflare API read reconfirmed four Workers, an active deployment that
+assigned 100% of traffic to the exact verifier version, preview URLs off, no
+custom domains or routes, and the unchanged exact-host Service Auth
+application/policy/token relationship.
+
+After the deployment evidence and protocol documents were reconciled, the
+focused public-host-verifier suite and complete `pnpm test` suite passed.
+Repository safety checked 255 tracked files; the Gallery upload, tagging,
+consent, whole-item exclusion/suppression, metadata-stripping, processing,
+promotion, delivery, verifier, lifecycle, manifest, and administration
+contracts all passed; the exact 114-file public artifact remained isolated; and
+responsive Family and Everyone browser smoke tests passed. The exact one-use
+deployment directory was then removed after a validated-path check. A redacted
+diff scan found no credential, generated Client ID, Access audience/resource
+identifier, account/database identifier, or email value. Only these five
+documentation files remain modified; nothing is staged or untracked.
+
+This gate did not run a credentialed `POST`, create any D1 rehearsal record,
+change R2 or its lifecycle rules, deploy the promotion Worker, create or promote
+media, edit a public manifest, create a GitHub resource, open or merge a Pull
+Request, deploy the static site, or publish a Gallery item, manifest, or
+static-site change. The next separately approved gate is the synthetic
+D1-mutating public-front-door, canonical zero-generation editorial-removal
+withdrawal, and guarded purge of that withdrawn fixture after its approved
+retention-expiry tombstone. The approved-prefix lifecycle rule and the promotion
+Worker remain later, separate gates.
+
+### Public-host rehearsal preflight and scope reconciliation — 31 August 2026
+
+A fresh read-only preflight for that rehearsal passed. It reconfirmed the exact
+media and verifier deployments, exact-host Service Auth boundary, fixed witness
+and canonical absent control, active sequence-`1` delivery epoch, and unchanged
+zero-generation D1 baseline. The approved-media bucket still contains only the
+fixed witness. No credentialed `POST`, D1 write, R2 mutation, Worker deployment,
+or epoch activation occurred during this preflight. A narrow, one-use remote
+driver is being implemented and reviewed before the first mutating request.
+
+The first live driver preflight then failed closed before mutation with D1 error
+`7500: too many columns in result set`: its single snapshot returned 104
+columns. The driver now sends one atomic two-statement D1 batch instead, with
+two disjoint 52-column result sets. It requires exactly two successful one-row
+results, validates each part against its exact key set, rejects collisions, and
+only then validates the exact merged snapshot. The focused driver, migrations,
+real verifier-service/SQLite lifecycle, JavaScript syntax, and diff checks pass.
+No D1, R2, Worker, Access, epoch, or manifest state was changed while diagnosing
+or correcting this read-only provider-limit failure.
+
+The current live deployment is sufficient to prove the Access boundary, the
+fixed witness/front door, the canonical zero-generation editorial-removal
+withdrawal, and guarded purge of that withdrawn fixture using an approved
+retention-expiry tombstone. This remains a withdrawal-purpose verifier receipt;
+it is not a remote retention-expiry-purpose proof. Reaching a genuine rejected
+or processing-failed retention-purpose fixture safely requires real synthetic
+private upload/processing evidence, and must not be fabricated directly in D1.
+That retention-purpose path remains locally tested. The rehearsal also cannot
+turn the existing redirect, cache, wrong-binding, or historical-target fault tests
+into remote evidence: those cases currently use injected local test doubles,
+and a zero-generation draft has no historical media target to probe.
+
+Any live fault exercise therefore needs its own reviewed fault/rotation harness
+and separate explicit approval to deploy changed media/verifier configuration.
+Restoring media code after such a deployment would produce a new deployed media
+version, which must be bound by a new sequential delivery epoch before the
+verifier can trust it. Epoch activation is an irreversible forward ledger
+change even when Worker code is restored; the current schema does not delete or
+roll the ledger back to epoch `1`. No epoch rotation is part of the present
+zero-generation rehearsal.
+
+### Completed zero-generation public-host withdrawal rehearsal and Access cleanup — 31 August 2026
+
+After separate owner approval, the one-use driver completed the synthetic
+zero-generation editorial-withdrawal rehearsal against the unchanged deployed
+media and verifier Workers. The original one-time Access secret was no longer
+available, so the exact temporary service token was rotated before use; that
+immediately invalidated its old secret. The replacement credential was used only
+for this rehearsal. It was not written to Git, a configuration file, D1, or R2.
+Because the replacement secret was visible once in protected browser-automation
+output, the token was treated as spent and deleted during the same approved
+cleanup.
+
+The live sequence failed closed at every early boundary. A stale request
+returned `409 state-or-generation-drift` without a D1 change. The exact current
+request created one withdrawal-purpose, canonical-empty-set public-host receipt,
+and an exact retry replayed that same receipt rather than creating another.
+Before that receipt, the compatibility scalar, withdrawal, and purge were all
+blocked. After it, withdrawal could proceed, but purge remained blocked first
+without the permanent tombstone and then without the private-original deletion
+proof. Only after those two later facts existed did the guarded purge succeed.
+No media object or historical public target was created for this zero-generation
+fixture.
+
+The final primary-D1 snapshot contains zero operational rehearsal drafts,
+publications, verifications, witness proofs, generations, targets, reservations,
+or current receipts. It deliberately retains one permanent hash-only absence
+receipt and one permanent hash-only tombstone, with the delivery epoch still at
+sequence `1`; fixture identity fields are null. `PRAGMA foreign_key_check`
+returned no rows and `PRAGMA quick_check` returned `ok`. Recovery bookmarks were
+captured before and after the rehearsal and kept out of Git; their values are not
+recorded here.
+
+Independent postflight checks found the media and verifier Worker versions and
+bindings unchanged. The approved-media bucket still contains exactly the fixed
+28-byte witness at its original key, version, ETag, timestamp, and byte count.
+Credential-free witness `HEAD`/`GET` still returned the exact proof-marked `200`,
+and the canonical absent control still returned the proof-marked empty `404`.
+Both public Gallery manifests remain empty.
+
+The temporary Service Auth policy was then detached from the exact-host verifier
+application and saved before the reusable policy and service token were deleted.
+Cloudflare dashboard confirmations and independent Access API reads found all
+three pre-existing applications still present: the verifier and processing
+applications each have zero policies, while the owner application retains its
+one unchanged owner policy. The rehearsal policy and token are absent, the
+account has no service tokens, and the verifier application is deliberately
+parked fail closed for a later separately approved use.
+
+This live proof covers the fixed witness/front door and the canonical
+zero-generation withdrawal path only. It does not turn the injected redirect,
+wrong-binding, or historical-target tests into live evidence, and it is not a
+retention-expiry-purpose proof. The latter still requires a real synthetic
+private upload/processing lineage rather than direct D1 fabrication. No Worker
+was deployed, no R2 object or lifecycle rule was changed, no promotion service
+was enabled, and no manifest, GitHub, Pull Request, merge, Pages, or production
+publication state changed during this rehearsal or cleanup.
+
 ### Deliberate deployment blockers and handoff
 
-This slice must not be deployed yet. Migration `0009`, the modified media
-Worker, its synthetic witness, the verifier Worker, and the delivery-epoch
-records are implemented in source but unapplied and undeployed. The current
-Cloudflare D1 schema
-still ends at `0006`; the deployed media Worker has not been replaced or proved
-with the new version binding; the witness object does not exist remotely; and
-no verifier Access application, service identity, policy, or Worker has been
-created.
+The approved non-production D1 schema step is complete through migration
+`0009`, and the modified media Worker is deployed and proved at exact version
+`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`. Its fixed synthetic witness is now
+uploaded and independently byte-verified. Matching delivery epoch
+`media_delivery_epoch_dev_0001` is registered and active as sequence `1`. The
+narrow verifier Access application, replacement service identity, and exact
+Service Auth policy were created and read back through the Access API for the
+approved rehearsal. The verifier is deployed at exact version
+`6ba9af24-6123-480b-8e6f-980a742348dc`; the no/wrong/exact credential matrix was
+proved without a D1 write. The synthetic zero-generation withdrawal rehearsal
+then passed, and its temporary policy and token were removed. The verifier
+application remains installed with zero policies.
 
 Remote work requires separate approval for each mutation and must use a
-reviewed rolling order: apply forward D1 migrations `0007`–`0009`; deploy the
-exact media Worker with version metadata; place and byte-verify only the fixed synthetic
-witness in approved R2; register and activate the matching delivery epoch;
-create the narrow Access service identity and policy; deploy the fixed verifier;
-then run the synthetic fixed-origin absence, wrong-binding, redirect, cache,
-credential, epoch-rotation, zero-generation-withdrawal, and purge rehearsal.
-The exact live media Worker version ID must be confirmed before its epoch is
-activated. Failure at any step remains closed and does not authorize a scalar,
-withdrawal, tombstone, purge, promotion, Pull Request, or publication.
-Applying the approved-prefix lifecycle rule and deploying or granting Access to
-the promotion Worker remain later, separately approved gates after that proof.
+reviewed rolling order. The completed steps were applying forward
+D1 migrations `0007`–`0009`, deploying the exact media Worker with version
+metadata, uploading plus byte-verifying only the fixed synthetic witness, and
+registering plus activating the exact matching delivery epoch, followed by the
+narrow verifier Access boundary, fixed verifier deployment, and non-mutating
+Access proof. The current-deployment synthetic fixed-origin witness, canonical
+zero-generation editorial-removal withdrawal, and guarded purge of that
+withdrawn fixture have also passed, followed by exact Access cleanup.
+A genuine retention-expiry verifier-purpose rehearsal remains local until a
+synthetic private upload/processing path creates the required terminal evidence;
+D1-only fabrication is forbidden. Redirect, cache, wrong-binding, historical-
+target, and real epoch-
+rotation faults remain locally injected tests until a separate fault/rotation
+harness, deployments, and append-only epoch change are reviewed and explicitly
+approved. The exact live media Worker version ID must be confirmed before any
+future epoch is activated. Failure at any future step remains closed and does not
+authorize a scalar, withdrawal, tombstone, purge, promotion, Pull Request, or
+publication.
+The next separately approved gate is applying and independently verifying the
+one-day `media/v1/` incomplete-multipart lifecycle rule. Deploying or granting
+Access to the promotion Worker remains a later, separate gate.
 
 The tracked one-day, `media/v1/` incomplete-multipart lifecycle requirement is
 only crash containment for an R2 create whose response was permanently lost.
@@ -142,8 +559,8 @@ That rule has not been applied or verified remotely. A lost create response
 therefore remains in D1 `admitting`, and cleanup continues to fail closed even
 after a later provider lifecycle pass.
 
-After the public-host proof is independently validated and remotely rehearsed,
-the remaining review-path work is a read-only candidate
+With the public-host proof independently validated and remotely rehearsed, the
+remaining review-path work is a read-only candidate
 retrieval/orchestration boundary and a protected
 default-branch workflow accepting only one opaque `draft_id`. It must retrieve
 a fresh candidate immediately before repository mutation, recheck the service
@@ -154,10 +571,10 @@ or changing `main` rules remains a separate external approval. Before any App
 installation, the remote rules must prove an App token is denied both a direct
 `main` update and a Pull Request merge; local absence of a merge API is not by
 itself a cryptographic permission boundary. The first remote checkpoint remains
-one synthetic photo and an unmerged rehearsal Pull Request. Applying any
-Cloudflare migration, changing or deploying a Worker, uploading the witness,
-creating Access credentials/policies, or running the remote rehearsal requires
-fresh explicit approval. Real family media, video, merge, production
+one synthetic photo and an unmerged rehearsal Pull Request. Applying the
+lifecycle rule, changing or deploying a Worker, creating new Access
+credentials/policies, or repeating a remote rehearsal requires fresh explicit
+approval. Real family media, video, merge, production
 publication, and DNS changes remain out of scope.
 
 ## Current task: keep routine data refreshes independent of Gallery changes
@@ -278,7 +695,9 @@ originals and private D1 records. During that Phase C deployment, the public
 media Worker, production site, three public Gallery JSON files, DNS, staging
 bucket, and approved-derivative bucket did not change. The later Phase D
 rehearsal described below deliberately left two synthetic photo derivatives in
-private staging; approved storage and all public surfaces remain unchanged.
+private staging; approved storage and all public surfaces were still unchanged
+at that rehearsal checkpoint. The later delivery-proof steps recorded above
+added only the fixed synthetic witness to approved storage.
 
 The selected first implementation keeps the championship site static and uses
 a separate Cloudflare Access-protected Worker for the one owner. Private R2
@@ -420,8 +839,9 @@ remained denied and the owner route still worked. The media Worker returned
 `404` for its root, queries, and nonexistent immutable objects, and returned
 `405` for writes. All buckets were private and empty at that checkpoint. Later
 Phase C and Phase D rehearsals added only the private originals and private-
-staging derivatives recorded below; approved storage and public manifests
-remain empty.
+staging derivatives recorded below; approved storage and public manifests were
+still empty at that checkpoint. The later delivery-proof steps recorded above
+added only the fixed synthetic witness to approved storage.
 
 The service-token rehearsal exposed one current Worker-level Access detail:
 `ctx.access.getIdentity()` resolves to `undefined` for Service Auth while Access

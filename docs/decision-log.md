@@ -680,13 +680,15 @@ Unknown historical details are labelled rather than inferred.
   Phase C is deployed and remotely verified; the private Phase D photo-
   processing and staging-cleanup boundary has passed its non-production A–F
   rehearsal. Pull Request #84 merged the photo-only promotion,
-  candidate-manifest, and review-client foundation to the repository, but no
-  Cloudflare part of that foundation is deployed. The generation-bound
-  public-host verifier, migration `0009`, modified media delivery proof, and
-  witness are implemented and fully locally validated in source; all remote
-  steps remain blocked. Remote approved-media
-  promotion and public publication remain disabled.
-- **Date:** 25–30 August 2026
+  candidate-manifest, and review-client foundation to the repository. The
+  non-production D1 database now ends at `0009`; the exact media Worker, fixed
+  witness, sequence-`1` delivery epoch, fixed-origin verifier, Service Auth
+  proof, and synthetic zero-generation withdrawal/purge rehearsal have passed
+  their separately approved gates. The temporary verifier policy and token were
+  then deleted, leaving its Access application parked with zero policies. The
+  approved-prefix lifecycle rule, remote approved-media promotion, and public
+  publication remain disabled.
+- **Date:** 25–31 August 2026
 - **Decision:** Keep the public championship site static and add no public
   upload page. A separate Cloudflare Worker administration application is
   protected in full by Cloudflare Access for one MFA-enabled owner identity and
@@ -758,10 +760,11 @@ Unknown historical details are labelled rather than inferred.
   and D1 write; it did not grant Pages, DNS, AI, email, queue, or unrelated
   product access. The empty non-production D1 database and reviewed schema are
   provisioned in Cloudflare's automatic ENAM region. Zero Trust Free and account
-  MFA are active, the $5 account-email budget alert is configured, and the
-  three empty R2 Standard buckets have no public development URL or custom
-  domain. The D1-only administration Worker and approved-R2-only media Worker
-  are deployed on isolated `workers.dev` hostnames. The exact owner policy
+  MFA are active, the $5 account-email budget alert is configured, and at that
+  Phase B checkpoint the three R2 Standard buckets were empty and had no public
+  development URL or custom domain. The D1-only administration Worker and
+  approved-R2-only media Worker are deployed on isolated `workers.dev`
+  hostnames. The exact owner policy
   protects all administration production and preview traffic; its 30-minute
   reusable-policy duration overrides the longer application-level duration.
 - **Phase B remote proof and cleanup:** Anonymous administration access fails
@@ -774,8 +777,10 @@ Unknown historical details are labelled rather than inferred.
   objects, and writes. At that Phase B checkpoint, D1 was empty and all three
   R2 buckets were private and empty. Later approved Phase C and Phase D
   rehearsals added only synthetic private D1 records, private originals, and
-  private-staging derivatives; the approved bucket and public manifests remain
-  empty. No real media, public derivative, manifest change, DNS change, GitHub
+  private-staging derivatives; the approved bucket remained empty at those
+  rehearsal checkpoints. The later delivery-proof gate added only the fixed
+  synthetic witness to that bucket, while public manifests remain empty. No
+  real media, public derivative, manifest change, DNS change, GitHub
   App, Pull Request, merge, or production publication was created by Phase B.
 - **Local Phase B boundary:** The admin Worker consumes Cloudflare's validated
   `ctx.access` identity, repeats an exact single-owner check, uses a signed
@@ -1116,21 +1121,55 @@ Unknown historical details are labelled rather than inferred.
   the resumable verification and permanent reservations. An exact retry then
   commits once. This closes the gap between the isolated service substitute and
   the actual migration triggers used by the repository integration.
-- **Promotion and public-host proof remain deployment-gated:** Migration `0009`,
-  the modified media Worker and witness, and the fixed verifier are implemented
-  in source but unapplied and undeployed. Focused verifier/migration/bridge
-  validation, two independent final security reviews, and the final complete
-  post-documentation `pnpm test` all pass, including the exact artifact build
-  and responsive Family and Everyone browser checks.
-  Remote D1 still ends at `0006`. Separate approval is required to apply migrations
-  `0007`–`0009`, deploy and identify the exact media Worker version, upload and
-  byte-verify the fixed witness, register and activate the matching epoch,
-  create the narrow verifier Access identity/policy, deploy the verifier, and
-  run the public-front-door/withdrawal/purge rehearsal. The approved-prefix
-  lifecycle rule, promotion Worker deployment/Access, and protected candidate
-  retrieval/orchestration remain separate gates. These constraints preserve
-  host-first withdrawal and athlete-exclusion takedown rather than weakening
-  them for publication work.
+- **Zero-generation withdrawal is remotely proved; fault rotation and real-media
+  retention remain separate:** The approved synthetic editorial-withdrawal
+  rehearsal completed against the fixed public front door. Stale state failed
+  without mutation, exact replay was idempotent, and purge remained blocked
+  until withdrawal, the approved permanent tombstone, and private-original
+  deletion proof existed. Final operational fixture state was zero, while one
+  permanent hash-only receipt and one permanent hash-only tombstone survived.
+  This is withdrawal-purpose evidence only; a genuine retention-expiry-purpose
+  proof still requires real synthetic private-upload and processing lineage and
+  may not be fabricated directly in D1. A zero-generation draft has no
+  historical target. Injected redirect, bad-cache, wrong-binding, and historical-
+  target failures remain local until separately approved fault deployments and a
+  forward-only epoch activation. Restoring normal media code would create a new
+  deployed version and require another sequential epoch; that append-only ledger
+  advance is not a rollback to epoch `1`.
+- **Public-host rehearsal is complete; lifecycle and promotion remain gated:**
+  Migration `0009`, the exact media Worker, fixed witness, active delivery epoch,
+  and fixed verifier each passed their separately approved rolling gate. The
+  approved live zero-generation withdrawal and guarded-purge rehearsal then
+  passed without changing either Worker deployment or R2 inventory. Final D1
+  operational fixture rows were zero, the one permanent receipt and one
+  permanent tombstone remained, recovery bookmarks were captured without their
+  values, and integrity checks passed. No real or approved Gallery media,
+  manifest change, GitHub resource, or publication was created. The next separate
+  infrastructure gate is application and verification of the one-day
+  `media/v1/` incomplete-multipart lifecycle rule. It remains orphan containment
+  and is never cleanup, tombstone, purge, or public-host-absence evidence.
+  Promotion Worker deployment/Access and protected candidate retrieval/
+  orchestration are later independent gates. These constraints preserve host-
+  first withdrawal and athlete-exclusion takedown rather than weakening them for
+  publication work.
+- **Verifier Access is exact-host, service-only, and parked fail closed after
+  use:** The non-production verifier Access application protects only
+  `family-running-gallery-public-host-verifier-dev.family-running.workers.dev` as
+  one public-hostname destination. Preview URLs are disabled and no custom
+  domain or route exists, so that exact hostname is the verifier's only
+  configured public HTTP endpoint; any later endpoint requires a new Access
+  decision. The application is absent from the App Launcher, is configured to
+  return `401` for failed Service Auth, and uses a 15-minute application session.
+  During the approved proof it had one reusable Service Auth policy attached
+  only there and one exact temporary token. Because the original one-time secret
+  was unavailable, that token was rotated, immediately invalidating its old
+  secret. The replacement secret appeared once in protected browser-automation
+  output and was therefore treated as spent. After the run, the policy was
+  detached and the application saved before the reusable policy and token were
+  deleted. Independent API reads prove the application remains with zero
+  policies, the owner and processing application policy counts are unchanged,
+  and the account has no service tokens. No credential value, generated Client
+  ID, application AUD, or Access resource UUID is stored in this repository.
 - **Service identity compatibility:** During the configured rehearsal,
   Worker-level Service Auth supplied a validated `ctx.access` context and an
   injected signed application assertion, but the runtime resolved
