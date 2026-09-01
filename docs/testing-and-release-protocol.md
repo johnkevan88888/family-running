@@ -91,6 +91,8 @@ pnpm run test:gallery-processing-rehearsal-worker
 pnpm run test:gallery-phase-d-migration-configs
 pnpm run test:gallery-phase-d-processing-configs
 pnpm run test:gallery-phase-d-remote-rehearsal
+pnpm run test:gallery-public-host-remote-rehearsal
+pnpm run test:gallery-public-host-remote-sqlite-integration
 ```
 
 These commands use generated synthetic bytes, in-memory substitutes, and fake
@@ -821,6 +823,27 @@ latter and must still require private-original deletion and the approved
 retention tombstone. Parent-draft purge must retain the permanent hash-only
 receipt and any permanent retired-key commitments.
 
+These injected local verifier tests establish the fault contract, not remote
+fault evidence. The approved live run has now proved Access, the fixed
+witness/front door, canonical zero-generation editorial-removal withdrawal, and
+guarded purge of that withdrawn fixture after an approved retention-expiry
+tombstone. Its stale request failed without mutation, exact replay was
+idempotent, purge remained blocked until the tombstone and private-original
+proof existed, and final operational fixture state returned to zero while one
+permanent hash-only receipt and one permanent tombstone survived. That receipt
+remains withdrawal-purpose. A genuine
+retention-expiry-purpose fixture must reach rejected or processing-failed
+through real synthetic private upload/processing evidence; direct D1 fabrication
+is forbidden, so retention-purpose verification remains local. A zero-
+generation fixture cannot exercise a historical target. The live witness and
+absent controls confirmed no redirects and `no-store` responses, but injected
+redirect, bad-cache, wrong-binding, historical-target, or
+epoch-rotation proof requires a separately reviewed fault/rotation harness and
+explicit approval for each changed media/verifier deployment and sequential
+epoch activation. Because epoch activations are append-only, a real rotation is
+an irreversible forward ledger change even if normal Worker code is restored;
+it was not part of the completed zero-generation rehearsal.
+
 The local candidate-manifest tests must prove that exactly one inherited
 `family.json` or `everyone.json` document is derived from the current public
 catalogue and suppression list; that the result contains only the public `1.0`
@@ -846,18 +869,69 @@ manifest, create a GitHub App, open a remote Pull Request, merge, deploy, or
 publish. Migrations `0007`–`0009` were subsequently applied to the
 non-production D1 database on 31 August 2026. The modified media Worker and
 witness were then separated into distinct approval gates: the Worker was
-deployed at exact version `cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`, while the
-witness remains absent. The promotion Worker and fixed-origin verifier remain
-undeployed. Their final combined migration/bridge and diff checks pass. The
+deployed at exact version `cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`, then the
+fixed witness was separately uploaded and independently byte-verified. The
+matching delivery epoch was then separately registered and activated as
+sequence `1`, after an all-or-nothing
+local rehearsal and remote preflight. Exact postflight reads found one epoch,
+one activation, one matching current pointer, zero generations/receipts/legacy
+host confirmations, no foreign-key violations, and `quick_check: ok`; the live
+witness and canonical absent control still matched the current epoch. The
+promotion Worker remains undeployed; the fixed-origin verifier's final
+migration/bridge and diff checks pass. The
 complete post-documentation `pnpm test` also passes, including the exact
 114-file artifact and responsive
-Family and Everyone browser checks. Non-production deployment requires separate
-approval and an ordered migration/media-version/witness/epoch/Access/verifier
-rollout plus a synthetic public-front-door rehearsal. The approved-prefix
-lifecycle rule is a separate approval and verification gate, and protected
-candidate retrieval/orchestration is still required. Promotion Worker
-deployment and its Access identity/policy are later separate gates. R2 storage
-absence alone is not public-host absence.
+Family and Everyone browser checks. The remaining non-production rollout then
+completed the separately approved exact-host Access, verifier deployment,
+non-mutating proof, live zero-generation withdrawal, and cleanup gates. Before
+the mutating rehearsal, live API reads proved one exact-host application with a
+15-minute session, one Service Auth policy attached only there, and one enabled
+temporary token. The application was hidden from the App Launcher and configured
+to return `401` for failed Service Auth. Independent stateless `GET` requests
+proved no credentials and an exact Client ID with the wrong secret returned
+`401`, while the exact pair reached the Worker's pre-D1 method stop and returned
+`405`, `Allow: POST`, no-store JSON, no redirect, and no `Location` header.
+
+The original one-time secret was unavailable at action time, so the exact
+temporary token was rotated; Cloudflare immediately invalidated the old secret.
+The replacement credential was held only for the run and was not written to Git,
+configuration, D1, or R2. It appeared once in protected browser-automation
+output, so the credential was treated as spent and removed during cleanup.
+
+The approved live rehearsal passed. A stale request returned `409` without a D1
+change; the current request created one withdrawal-purpose canonical-empty-set
+receipt; and exact replay returned the same receipt. The compatibility scalar,
+withdrawal, and purge failed closed before that receipt. Withdrawal then
+succeeded, but purge remained blocked until the approved tombstone and later
+private-original deletion proof existed. Final purge removed all operational
+fixture rows while deliberately retaining one permanent hash-only receipt and
+one permanent hash-only tombstone. Delivery epoch sequence `1` remained current,
+fixture identity fields were null, foreign-key checking was clean, and
+`quick_check` returned `ok`. Before-and-after recovery bookmarks were captured
+without recording their values.
+
+Postflight reads proved both Worker deployments and bindings unchanged. Approved
+R2 still contains only the fixed 28-byte witness with unchanged object metadata
+and digest; public witness and canonical absent probes still matched the current
+delivery contract. No Worker deployment, R2 mutation, lifecycle change,
+promotion, manifest edit, GitHub operation, or publication occurred.
+
+The Service Auth policy was then detached and the verifier application saved
+before the reusable policy and token were deleted. Dashboard confirmations and
+independent Access API list reads proved the exact-host verifier application
+remains with zero policies, the owner application retains its one unchanged
+policy, the processing application retains zero policies, and the rehearsal
+policy and token are absent. The account has no service tokens.
+
+This does not include retention-expiry-purpose verification, which remains
+locally tested until real synthetic private upload/processing evidence exists;
+D1-only fabrication is forbidden. Injected redirect, bad-cache, wrong-binding,
+historical-target, and real epoch-rotation faults remain a separately reviewed
+and approved fault-harness/deployment/append-only-epoch gate. The approved-prefix
+lifecycle rule is the next separate approval and verification gate, and protected
+candidate retrieval/orchestration is still required. Promotion Worker deployment
+and its Access identity/policy are later separate gates. R2 storage absence alone
+is not public-host absence.
 
 The remote-driver contract must expect exactly six passed scenarios, five
 completed cleanups, four acknowledged derivative puts, five deliberately
@@ -1086,10 +1160,20 @@ Before approving a Pull Request:
   narrow verifier Access identity/policy, no-redirect/no-cache/no-credential
   front-door evidence, and current-generation receipt. Check the canonical
   zero-generation case and the private-original/retention gates on purge. For a
+  completed one-use rehearsal, also prove the temporary token and reusable
+  policy are absent and the retained verifier application reports zero policies;
+  confirm the owner and processing applications kept their previous policy
+  counts. Record permanent hash-only receipt/tombstone survivors separately from
+  operational rows rather than calling the database empty. For a
   candidate manifest, inspect the one-file structural diff and confirm it adds
   only the intended item while preserving every existing item and order in the
   upload's inherited Family or Everyone area; there must be no destination
   selector or cross-mode edit.
+- Do not report a local injected redirect, cache, wrong-binding, or historical-
+  target fault as remote proof. A live fault run needs a reviewed harness,
+  explicit Worker-deployment approvals, restoration evidence, and a separately
+  approved next epoch. Record that the append-only epoch advance cannot be
+  rolled back to an earlier ledger state.
 - Review desktop and mobile screenshots.
 - Manually check Hall of Fame, All-Time Official Crown Progression, Official
   Results News when it is part of the change, Records, the Calculator's grouped

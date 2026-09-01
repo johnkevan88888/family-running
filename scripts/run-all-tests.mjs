@@ -20,6 +20,8 @@ const checks = [
     ['Gallery approved-media delivery-contract tests', ['tests/gallery-media-delivery-contract.mjs']],
     ['Gallery public-host verification migration tests', ['tests/gallery-public-host-migration.mjs']],
     ['Gallery public-host verifier tests', ['tests/gallery-public-host-verifier.mjs']],
+    ['Gallery public-host remote rehearsal driver tests', ['tests/gallery-public-host-remote-rehearsal.mjs']],
+    ['Gallery public-host remote SQLite/service integration tests', ['tests/gallery-public-host-remote-sqlite-integration.mjs']],
     ['Gallery approved-media lifecycle requirement tests', ['tests/gallery-approved-media-lifecycle.mjs']],
     ['Gallery manifest candidate tests', ['tests/gallery-manifest-candidate.mjs']],
     ['Gallery GitHub review client tests', ['tests/gallery-github-review-client.mjs']],

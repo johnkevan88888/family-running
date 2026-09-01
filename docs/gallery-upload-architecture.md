@@ -16,8 +16,9 @@
 - **Media state:** exactly one built-in synthetic Family photo and one built-in
   synthetic Everyone video remain protected private originals with D1 records.
   The final Phase D photo run leaves exactly two verified synthetic derivatives
-  in private staging. Approved storage and both public manifests remain empty;
-  no real original or public derivative exists.
+  in private staging. Approved storage contains only the fixed 28-byte delivery
+  witness, and both public manifests remain empty; no real original or approved
+  Gallery derivative exists.
 - **Implementation state:** provider-independent Phase A, infrastructure and
   authentication Phase B, synthetic private-upload Phase C, and the private
   synthetic photo-processing and cleanup-race rehearsal in Phase D are
@@ -31,10 +32,18 @@
   deployment. Migrations `0007`–`0009` were applied to the non-production D1
   database on 31 August 2026 after separate approval. The delivery-proof media
   Worker was then separately approved and deployed at exact version
-  `cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`; the promotion Worker, synthetic
-  witness, and fixed-origin verifier remain undeployed. The
-  approved-prefix orphan-multipart lifecycle requirement is
-  tracked but has not been applied remotely. Protected candidate
+  `cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`; its fixed synthetic witness was then
+  separately uploaded and independently byte-verified. Matching delivery epoch
+  `media_delivery_epoch_dev_0001` was then separately registered and activated
+  as sequence `1`. The fixed-origin verifier was then separately deployed at
+  exact version `6ba9af24-6123-480b-8e6f-980a742348dc`, and its non-mutating
+  no/wrong/exact Service Auth proof passed. The approved synthetic
+  zero-generation editorial-withdrawal, guarded purge, D1-integrity, and
+  unchanged Worker/R2 postflight then passed. Its temporary Service Auth policy
+  and token were deleted, leaving the exact-host verifier application parked
+  with zero policies. The promotion Worker remains undeployed. The approved-
+  prefix orphan-multipart lifecycle requirement is tracked but has not been
+  applied remotely. Protected candidate
   retrieval/orchestration, the protected workflow, GitHub App and remote
   branch-rule proof, video processing, DNS changes, real-media transfer, merge,
   and publication remain future work.
@@ -871,10 +880,75 @@ The final permanent receipt is hash-only and survives the parent-draft purge.
 Migration `0009` is applied to the non-production D1 database, and the modified
 media Worker is deployed at exact version
 `cf327eb6-6ba6-46e4-a5da-8e3f541afb8e` with only approved R2 and version-
-metadata bindings. Its witness and the verifier remain undeployed. The remote
-schema ends at `0009`, but no delivery epoch, verifier Access identity/policy,
-or verifier Worker exists remotely. Schema and Worker presence do not authorize
-withdrawal, purge, promotion, publication, or a compatibility scalar remotely.
+metadata bindings. Its fixed 28-byte witness is uploaded and independently
+byte-verified. Delivery epoch `media_delivery_epoch_dev_0001` is registered and
+active as sequence `1`, exactly binding that origin, contract, Worker version,
+configuration, and witness. The remote schema ends at `0009`. The verifier
+Worker is deployed at exact version
+`6ba9af24-6123-480b-8e6f-980a742348dc`: preview URLs are disabled, it has no
+custom domain or zone route, and its only bindings are one D1 binding plus nine
+reviewed plain-text variables. Its exact-host Access application is configured
+for failed-auth `401`, no App Launcher entry, and a 15-minute application
+session.
+
+Before the mutating rehearsal, stateless requests proved no credentials and an
+exact Client ID with a wrong secret returned `401`, while the exact pair reached
+the Worker's non-mutating `GET` stop and returned `405`, `Allow: POST`, no-store
+JSON, no redirect, and no `Location` header. The original one-time secret later
+became unavailable, so the same temporary token was rotated; Cloudflare
+invalidated its old secret immediately. The replacement secret remained
+ephemeral and was never written to Git, a configuration file, D1, or R2. It was
+visible once in protected browser-automation output, so the token was treated as
+spent and deleted after use.
+
+The separately approved live one-use driver then passed the canonical synthetic
+zero-generation editorial-withdrawal path. A stale state request failed with
+`409` and no mutation; the exact request created one withdrawal-purpose,
+canonical-empty-set receipt; and exact replay returned the same receipt. The
+compatibility scalar, withdrawal, and purge were all blocked before that
+receipt. Withdrawal then succeeded, while purge remained blocked until both the
+permanent tombstone and the later private-original deletion proof existed. Only
+then did guarded purge succeed. No media object or historical target was created.
+
+The final D1 state retains exactly one permanent hash-only absence receipt and
+one permanent hash-only tombstone while every operational fixture, verification,
+witness-proof, generation, target, reservation, and current-receipt row is gone.
+The delivery epoch remains sequence `1`, fixture identity fields are null,
+foreign-key checking is clean, and `quick_check` is `ok`. Before/after recovery
+bookmarks were captured and kept out of Git. Postflight reads proved the exact
+media and verifier Worker deployments and bindings unchanged. Approved R2 still
+holds only the same fixed witness, whose key, version, ETag, timestamp, byte
+count, public `HEAD`/`GET`, and digest remained unchanged; the canonical absent
+control still returned the exact proof-marked empty `404`.
+
+After that proof, the temporary Service Auth policy was detached from the
+verifier application and saved before the reusable policy and service token were
+deleted. Dashboard confirmations and independent Access API reads proved the
+verifier application remains present with zero policies, the owner application
+still has its one owner policy, the processing application still has zero
+policies, and the deleted rehearsal policy and token are absent. The account has
+no service tokens. The verifier application is intentionally parked fail closed
+until another separately approved use.
+
+This live exercise proves the fixed witness/front door and zero-generation
+withdrawal path. The receipt remains withdrawal-purpose; it is not remote
+retention-expiry-purpose proof. A genuine rejected or processing-failed fixture
+still requires real synthetic private upload/processing evidence and cannot be
+fabricated directly in D1, so that path remains locally tested. The zero-
+generation fixture cannot prove historical-target handling. Redirect,
+wrong-binding, and historical-target failures remain injected local tests until
+a separate fault/rotation harness and its changed Worker deployments are
+reviewed and explicitly approved. The live witness and absent responses did
+confirm `no-store` behavior without redirects, but they did not inject a bad
+cache response.
+
+That separate harness must treat delivery-epoch rotation as a durable forward
+change. Restoring normal media code after a fault deployment produces a new
+deployed version, and the verifier may trust it only after a new sequential
+epoch activation. The append-only D1 ledger cannot delete that activation or
+return the current pointer to epoch `1`; restoration is another forward state,
+not rollback. The present zero-generation rehearsal therefore does not deploy a
+fault Worker or activate another epoch.
 
 The repository manifest generator accepts the service's public-safe candidate
 package, derives only `gallery-data/family.json` or
@@ -897,14 +971,20 @@ The remaining Phase D plan is:
 1. Repeat the complete local suite after the final documentation reconciliation,
    then finish diff and responsive validation. With separate approval for each
    remote mutation, use the reviewed
-   rolling order. Migrations `0007`–`0009` and the exact modified media Worker
-   deployment are complete. The next separately approved step is to upload and
-   byte-verify only the fixed synthetic witness; then register and activate its
-   matching delivery epoch; create
-   the narrow verifier Access service identity and policy; deploy the fixed
-   verifier; then rehearse the public-front-door, wrong-binding, redirect,
-   cache, credential, epoch-rotation, zero-generation-withdrawal, and guarded
-   purge cases. Separately apply and verify the approved-prefix
+   rolling order. Migrations `0007`–`0009`, the exact modified media Worker
+   deployment, the fixed witness upload and byte verification, and the exact
+   delivery-epoch registration and activation are complete. The narrow verifier
+   Access provisioning, fixed verifier deployment, and non-mutating Access
+   proof gates are also complete. The current-deployment fixed-front-door,
+   canonical zero-generation editorial-removal withdrawal, guarded purge, and
+   temporary Access cleanup are complete. Retention-expiry-purpose verification
+   remains local until a real
+   synthetic private upload/processing path supplies the required terminal
+   evidence; direct D1 fixture fabrication is forbidden. Redirect, cache, wrong-
+   binding, historical-target, and
+   real epoch-rotation faults remain a later, separately reviewed and approved
+   harness/deployment/append-only-epoch gate. The next separately approved
+   remote step is to apply and independently verify the one-day, approved-prefix
    orphan-multipart lifecycle rule. Deploying or granting Access to the
    promotion Worker is a later separate gate after those proofs. No step may
    infer approval for the next.

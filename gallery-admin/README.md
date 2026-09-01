@@ -22,8 +22,17 @@ host verifier and the delivery-proof media changes are implemented and fully
 locally validated in source. Migrations `0007`–`0009` were applied to the
 non-production D1 database on 31 August 2026, and the delivery-proof media
 Worker was separately deployed at exact version
-`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`. The witness and verifier remain
-undeployed.
+`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`. The fixed witness was then separately
+uploaded and byte-verified; matching delivery epoch
+`media_delivery_epoch_dev_0001` was then separately registered and activated as
+  sequence `1`. The verifier was then separately deployed at exact version
+  `6ba9af24-6123-480b-8e6f-980a742348dc`, and its non-mutating no/wrong/exact
+  Service Auth proof passed. The separately approved live synthetic zero-
+  generation editorial-withdrawal, guarded purge, and integrity postflight also
+  passed. Its temporary Service Auth policy and token were then deleted, leaving
+  the exact-host verifier application parked with zero policies. Both Worker
+  deployments, approved R2's witness-only inventory, both public manifests, and
+  the public site remained unchanged.
 
 ## Historical Phase B boundary
 
@@ -104,8 +113,9 @@ Its bytes must hash to the path digest. Witness and all failure responses are
 `public, max-age=60, must-revalidate`. A missing binding, extra environment
 binding, malformed version, wrong witness, or changed object fails closed. This
 modified Worker is deployed at exact non-production version
-`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`; the witness is not present in remote
-approved R2.
+`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`; the exact witness is present in remote
+approved R2 and has been verified through both a direct R2 download and the
+credential-free public Worker.
 
 A ranged read also requires one nonempty raw R2 ETag. The Worker passes that
 ETag as an `onlyIf.etagMatches` condition and accepts the response only when its
@@ -260,14 +270,14 @@ copy would require the confirmed D1/staging/approved resource identifiers plus:
 
 Migrations `0007`–`0009` are now applied to the non-production D1 database.
 Do not deploy this Worker without separate approval. R2 bucket absence is not
-host-absence proof, and the local verifier below has not completed remote
-rehearsal. The tracked one-day
+host-absence proof; the deployed verifier below has completed only the approved
+synthetic zero-generation withdrawal-purpose rehearsal. The tracked one-day
 `media/v1/` incomplete-multipart lifecycle requirement is orphan containment
 only, cannot authorize a tombstone or purge, and has not been applied remotely.
 Protected live candidate retrieval/orchestration is also missing. No Access
-policy/identity, remote migration, lifecycle change, Worker deployment,
-approved object, manifest edit, GitHub App, or candidate-media Pull Request was
-created by this repository slice.
+policy/identity for the promotion Worker, lifecycle change, promotion Worker
+deployment, approved Gallery derivative, manifest edit, GitHub App, or
+candidate-media Pull Request was created by this promotion slice.
 
 ## Local public-host verifier boundary
 
@@ -338,16 +348,65 @@ only an in-memory service simulation.
 `wrangler.public-host-verifier.example.jsonc` is intentionally non-deployable.
 Migration `0009` is applied to the non-production D1 database, and the media
 Worker is deployed at exact version
-`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`. The witness, this verifier Worker,
-delivery epochs, and any verifier Access service identity/policy remain
-undeployed. Remote work needs separately approved rolling steps. The migration
-and media-Worker steps are complete; next upload and byte-verify only the
-witness, then register and activate the
-matching epoch; create the narrow Access identity/policy; deploy the verifier;
-and run the synthetic public-front-door and guarded-withdrawal/purge rehearsal.
-The one-day approved-prefix lifecycle rule and promotion Worker deployment/
-Access are later, separate approval gates. No source or local test grants
-approval for any remote mutation.
+`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`. The fixed witness is uploaded and
+byte-verified; matching delivery epoch `media_delivery_epoch_dev_0001` is
+registered and active as sequence `1`. This verifier Worker is deployed at
+exact version `6ba9af24-6123-480b-8e6f-980a742348dc`, and its narrow Access
+boundary is retained remotely. One exact-host self-hosted application protects
+only `family-running-gallery-public-host-verifier-dev.family-running.workers.dev`,
+is hidden from the App Launcher, is configured to return `401` for failed
+Service Auth, and uses a 15-minute application session. The Worker has exactly
+one D1 binding plus nine reviewed plain-text variables, with preview URLs off and
+no custom domain or route.
+
+Before the rehearsal, no credentials and an exact Client ID with a wrong secret
+each returned `401`; the exact pair reached the Worker's safe `GET` stop and
+returned `405`, `Allow: POST`, no-store JSON, no redirect, and no `Location`
+header. The original one-time secret was unavailable for the approved mutating
+run, so the exact temporary token was rotated and its old secret was immediately
+invalidated. The replacement credential was never written to Git,
+configuration, D1, or R2. It appeared once in protected browser-automation
+output, so the token was treated as spent and deleted after the run.
+
+The approved live synthetic zero-generation editorial-withdrawal rehearsal
+passed. A stale request failed with `409` and no D1 mutation; the exact request
+created one withdrawal-purpose canonical-empty-set receipt; and exact replay
+returned the same receipt. The scalar, withdrawal, and purge gates failed closed
+before the receipt. Purge then remained blocked until both the permanent
+tombstone and private-original deletion proof existed. Final purge removed all
+operational fixture rows while retaining one permanent hash-only receipt and one
+permanent hash-only tombstone. Delivery epoch sequence `1` stayed current,
+fixture identity fields were null, foreign-key checking was clean, and
+`quick_check` was `ok`. Before/after recovery bookmarks were captured without
+recording their values.
+
+Postflight checks found the media and verifier deployments and bindings
+unchanged. Approved R2 still contains exactly the same fixed 28-byte witness,
+whose object metadata and digest were unchanged; its public proof and the
+canonical absent control still matched the current delivery contract. The
+temporary policy was then detached from the verifier application and the
+application saved before the reusable policy and token were deleted. Dashboard
+and API checks proved the verifier application remains with zero policies, the
+owner application retains its one policy, the processing application retains
+zero policies, and the rehearsal policy and token are absent. The account has no
+service tokens.
+
+The verifier receipt remains withdrawal-purpose; this is not a remote retention-
+expiry-purpose proof. A genuine rejected or processing-failed retention-purpose
+fixture requires real synthetic private upload/processing evidence and cannot be
+fabricated directly in D1, so that path remains locally tested.
+
+The redirect, cache, wrong-binding, and historical-target failures covered by
+the test suite are currently injected local evidence, not remote proof. A live
+version needs a separate reviewed fault/rotation harness and explicit approvals
+for changed media/verifier deployments and another sequential epoch activation.
+That epoch activation is an irreversible append-only D1 ledger advance even if
+normal Worker code is restored; it cannot roll the current pointer back to
+epoch `1`. Fault deployment and epoch rotation are not part of the present
+zero-generation rehearsal.
+The next separately approved remote gate is the one-day approved-prefix
+lifecycle rule. Promotion Worker deployment/Access remains a later, separate
+gate. No source or local test grants approval for any remote mutation.
 
 ## Configuration boundary
 
@@ -369,8 +428,8 @@ provisioned bucket names are:
 
 The public media Worker binds only the last bucket. Phase C binds only the first.
 The processing Worker binds D1 plus only the first two buckets. The undeployed
-promotion Worker binds D1 plus only staging and approved storage. The
-undeployed verifier binds D1 only; its fixed public checks use outbound fetch,
+promotion Worker binds D1 plus only staging and approved storage. The deployed
+verifier binds D1 only; its fixed public checks use outbound fetch,
 not an R2 binding. No component
 can reach originals, staging, approved storage, and GitHub together.
 
@@ -544,10 +603,15 @@ proof, and synthetic Phase D photo-processing and cleanup-race proof. Remote D1
 and private R2 retain one built-in Family photo original and one built-in
 Everyone video original. The Everyone draft remains in `private-review`; the
 Family draft is in `processing` at state version 19 with the final photo run's
-display and thumbnail derivatives in private staging. Approved storage and both
-public manifests remain empty. The normal processing Worker is restored with
+display and thumbnail derivatives in private staging. Approved storage contains
+only the fixed synthetic delivery witness, and both public manifests remain
+empty. The normal processing Worker is restored with
 only D1, private originals, and private staging; its Access application has zero
-policies after the temporary rehearsal identity and policy were deleted. Use synthetic
-records and media only. Real family media and real consent or editorial records
+policies after the temporary rehearsal identity and policy were deleted. The
+separate verifier application is also parked with zero policies after its own
+temporary token and policy were deleted. Its completed zero-generation fixture
+left no operational rows and intentionally retained one permanent hash-only
+absence receipt plus one permanent hash-only tombstone. Use synthetic records
+and media only. Real family media and real consent or editorial records
 remain prohibited until the later video, promotion, manifest, deletion, and
 takedown gates have passed.

@@ -28,6 +28,8 @@
     "test:gallery-media-delivery-contract": "node tests/gallery-media-delivery-contract.mjs",
     "test:gallery-public-host-migration": "node tests/gallery-public-host-migration.mjs",
     "test:gallery-public-host-verifier": "node tests/gallery-public-host-verifier.mjs",
+    "test:gallery-public-host-remote-rehearsal": "node tests/gallery-public-host-remote-rehearsal.mjs",
+    "test:gallery-public-host-remote-sqlite-integration": "node tests/gallery-public-host-remote-sqlite-integration.mjs",
     "test:gallery-approved-media-lifecycle": "node tests/gallery-approved-media-lifecycle.mjs",
     "test:gallery-manifest-candidate": "node tests/gallery-manifest-candidate.mjs",
     "test:gallery-github-review-client": "node tests/gallery-github-review-client.mjs",
