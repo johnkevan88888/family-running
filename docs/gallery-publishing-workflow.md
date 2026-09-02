@@ -9,8 +9,9 @@ Pages artifact.
 The current local slice adds durable photo-review receipts, owner withdrawal
 controls, proactive athlete-wide exclusion, and a separate draft-only
 invalidation workflow. It is based on exact `origin/main` commit
-`fcdc80ebb3b99c1dbe6fa2b7e8bfc588e1f95c6d`. None of these local changes has
-been committed, pushed, deployed, migrated, dispatched, merged, or published.
+`fcdc80ebb3b99c1dbe6fa2b7e8bfc588e1f95c6d`. The reviewed implementation is
+commit `3078c59` and is open as Pull Request #89. It has not been deployed,
+migrated, dispatched, merged, or published.
 
 The review workflow and invalidation workflow each accept only one opaque
 `draft_id`. D1 derives the inherited Family/Everyone area, the race date,

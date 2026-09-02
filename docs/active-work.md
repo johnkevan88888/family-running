@@ -2,14 +2,15 @@
 
 ## Current task: durable photo-review and owner-takedown controls
 
-### Status — local implementation review-ready 2 September 2026
+### Status — Pull Request #89 open; remote activation pending 2 September 2026
 
 This isolated branch is based on exact current `origin/main` commit
 `fcdc80ebb3b99c1dbe6fa2b7e8bfc588e1f95c6d`, which includes merged Pull
-Request #88. The work is local only. No commit, push, Pull Request, workflow
+Request #88. The reviewed implementation is commit `3078c59` on branch
+`codex/gallery-nonprod-rehearsal` and is open as Pull Request #89. No workflow
 dispatch, D1 migration, Worker deployment, Access change, R2 mutation, real
-media transfer, manifest edit, merge, or publication is authorized or has
-occurred in this task.
+media transfer, manifest edit, merge, or publication has occurred at this
+point.
 
 The local change adds the missing durable boundary around a photo review Pull
 Request. Migration `0011_photo_review_invalidation.sql` records immutable
@@ -84,11 +85,12 @@ public manifests and the shared suppression file are empty. Independent final
 reviews found no remaining code, security, public-data, owner-control, or
 review-recovery blocker.
 
-Every remote step remains separate: review and approval to commit/push/open a
-Pull Request; explicit merge approval; then explicit non-production approval
-for migrations `0011`–`0012`, updated admin/processing and new promotion
-deployment/Access, and a synthetic workflow rehearsal. None of those steps
-authorizes real media or go-live publication.
+Pull Request #89 must complete the standard required checks and Deploy Preview
+before its explicitly approved merge. The user has also explicitly approved the
+separate post-merge non-production migrations `0011`–`0012`, updated
+admin/processing and new promotion deployment/Access, and a synthetic workflow
+rehearsal. That later approval does not authorize real media or go-live
+publication.
 
 ## Current task: photo-only Gallery go-live implementation bridge
 

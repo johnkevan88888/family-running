@@ -42,9 +42,9 @@ The 2 September 2026 local slice adds migrations `0011` and `0012`, protected
 review and invalidation routes on the promotion Worker, and owner-only
 withdrawal/exclusion routes on the admin Worker. The migrations are not applied,
 the changed Workers are not deployed, and neither workflow has been dispatched.
-The promotion Worker remains absent. No R2 object, public manifest, suppression
-file, GitHub branch or Pull Request, Access resource, deployment, merge, or
-publication is changed by the source implementation.
+The promotion Worker remains absent. The reviewed source is commit `3078c59`
+and Pull Request #89; opening that review branch changed no R2 object, public
+manifest, suppression file, Access resource, deployment, merge, or publication.
 
 The protected review workflow accepts only `draft_id`. It reserves one
 immutable receipt before GitHub, then records exact open and terminal Pull
