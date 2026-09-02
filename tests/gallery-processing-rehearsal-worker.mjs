@@ -701,6 +701,8 @@ function createCompleteLossIntegrationBoundary() {
         originalObjectVersion: 'private-original-version',
         originalEtag: 'private-original-etag',
         uploadSha256: originalSha256,
+        uploadDeclaredSha256: originalSha256,
+        realPhotoIntakeConfirmed: 1,
         syntheticOnlyConfirmed: 1,
         uploadedAt,
         existingDerivativeCount: 0

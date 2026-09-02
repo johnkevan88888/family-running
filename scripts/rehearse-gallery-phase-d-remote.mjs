@@ -2746,7 +2746,7 @@ async function startRun(dependencies, draftId, expectedStateVersion, key) {
             'replayed'
         ]) ||
         body.schemaVersion !== '1.0' ||
-        body.scope !== 'synthetic-local-phase-d' ||
+        body.scope !== 'photo-processing-v1' ||
         !runIdPattern.test(body.processingRunId || '') ||
         body.site !== 'family' ||
         body.mediaType !== 'photo' ||
@@ -2761,7 +2761,7 @@ async function startRun(dependencies, draftId, expectedStateVersion, key) {
             'byteLength',
             'detectedFormat',
             'declaredMimeType',
-            'syntheticFileName'
+            'fileExtension'
         ]) ||
         body.source.downloadPath !==
             `/api/service/processing-runs/${body.processingRunId}/original` ||
@@ -2772,10 +2772,8 @@ async function startRun(dependencies, draftId, expectedStateVersion, key) {
         !['image/jpeg', 'image/png'].includes(body.source.declaredMimeType) ||
         body.source.declaredMimeType !==
             (body.source.detectedFormat === 'jpeg' ? 'image/jpeg' : 'image/png') ||
-        body.source.syntheticFileName !==
-            (body.source.detectedFormat === 'jpeg'
-                ? 'synthetic-source.jpg'
-                : 'synthetic-source.png') ||
+        body.source.fileExtension !==
+            (body.source.detectedFormat === 'jpeg' ? 'jpg' : 'png') ||
         !Array.isArray(body.requiredRoles) ||
         body.requiredRoles.length !== 2 ||
         body.requiredRoles[0] !== 'photo-display' ||
@@ -2803,7 +2801,7 @@ async function processRunPhoto(dependencies, draftId, run) {
     const processed = await dependencies.processPhoto({
         syntheticOnly: true,
         sourceBytes: bytes,
-        fileName: run.source.syntheticFileName,
+        fileName: `synthetic-source.${run.source.fileExtension}`,
         declaredMimeType: run.source.declaredMimeType,
         draftBinding: {
             site: run.site,

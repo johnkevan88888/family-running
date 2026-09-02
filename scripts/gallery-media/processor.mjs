@@ -12,7 +12,7 @@ import {
 import { processingError, sanitizeProcessingError } from './errors.mjs';
 import {
     insideResizeDimensionsAreConformant,
-    inspectSyntheticPhotoInput,
+    inspectPhotoInput,
     transformPhotoDerivative
 } from './photo.mjs';
 import { requiredPolicyRolesForMediaType, storageRoleForPolicyRole } from './roles.mjs';
@@ -25,10 +25,14 @@ import {
     createPinnedExifTool
 } from './toolchain.mjs';
 
-const syntheticFileNamePattern = /^synthetic-[A-Za-z0-9][A-Za-z0-9._-]{0,199}\.(?:jpe?g|png)$/;
-const syntheticMimeTypes = new Set(['image/jpeg', 'image/png']);
+const photoMimeByExtension = Object.freeze({
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png'
+});
+const sha256Pattern = /^[a-f0-9]{64}$/;
 
-export async function processSyntheticGalleryPhoto(request, dependencies = {}) {
+export async function processGalleryPhoto(request, dependencies = {}) {
     validateRequest(request);
 
     const policy = dependencies.policy || await loadMediaPolicy();
@@ -53,10 +57,13 @@ export async function processSyntheticGalleryPhoto(request, dependencies = {}) {
         configurePinnedSharp(sharpImplementation);
         const sharpEvidence = assertPinnedSharp(sharpImplementation);
         const sourceBytes = Buffer.from(request.sourceBytes);
-        const input = await inspectSyntheticPhotoInput({
+        if (sha256Hex(sourceBytes) !== request.expectedSha256) {
+            throw processingError('source-rejected');
+        }
+        const input = await inspectPhotoInput({
             bytes: sourceBytes,
             policy,
-            fileName: request.fileName,
+            fileName: `owner-photo.${request.fileExtension}`,
             declaredMimeType: request.declaredMimeType,
             sharpImplementation
         });
@@ -124,7 +131,7 @@ export async function processSyntheticGalleryPhoto(request, dependencies = {}) {
         assertCompleteDerivativeSet(derivatives, 'photo');
         result = {
             schemaVersion: '1.0',
-            scope: 'synthetic-local-phase-d',
+            scope: 'photo-processing-v1',
             mediaType: 'photo',
             inheritedSite: request.draftBinding.site,
             draftId: request.draftBinding.draftId,
@@ -320,10 +327,10 @@ function validateRequest(request) {
     const binding = request?.draftBinding;
     if (
         !request ||
-        request.syntheticOnly !== true ||
         !Buffer.isBuffer(request.sourceBytes) ||
-        !syntheticFileNamePattern.test(request.fileName || '') ||
-        !syntheticMimeTypes.has(request.declaredMimeType) ||
+        !Object.hasOwn(photoMimeByExtension, request.fileExtension) ||
+        request.declaredMimeType !== photoMimeByExtension[request.fileExtension] ||
+        !sha256Pattern.test(request.expectedSha256 || '') ||
         !binding ||
         !['family', 'everyone'].includes(binding.site) ||
         typeof binding.draftId !== 'string' ||
@@ -333,10 +340,10 @@ function validateRequest(request) {
     }
 
     const allowedKeys = new Set([
-        'syntheticOnly',
         'sourceBytes',
-        'fileName',
+        'fileExtension',
         'declaredMimeType',
+        'expectedSha256',
         'draftBinding'
     ]);
     const allowedBindingKeys = new Set(['site', 'draftId', 'processingRunId']);
@@ -360,6 +367,35 @@ function validateRequest(request) {
     } catch {
         throw processingError('invalid-request');
     }
+}
+
+// Keep the already-merged synthetic rehearsal callable while its historical
+// tests and remote rehearsal evidence remain in the repository. The go-live
+// bridge uses processGalleryPhoto directly.
+export async function processSyntheticGalleryPhoto(request, dependencies = {}) {
+    const allowedKeys = new Set([
+        'syntheticOnly',
+        'sourceBytes',
+        'fileName',
+        'declaredMimeType',
+        'draftBinding'
+    ]);
+    if (
+        request?.syntheticOnly !== true ||
+        Object.keys(request || {}).some(key => !allowedKeys.has(key))
+    ) {
+        throw processingError('invalid-request');
+    }
+    const extension = /\.([A-Za-z0-9]+)$/.exec(request?.fileName || '')?.[1]?.toLowerCase();
+    return await processGalleryPhoto({
+        sourceBytes: request?.sourceBytes,
+        fileExtension: extension,
+        declaredMimeType: request?.declaredMimeType,
+        expectedSha256: Buffer.isBuffer(request?.sourceBytes)
+            ? sha256Hex(request.sourceBytes)
+            : '',
+        draftBinding: request?.draftBinding
+    }, dependencies);
 }
 
 function assertCompleteDerivativeSet(derivatives, mediaType) {

@@ -21,11 +21,12 @@ const ADMIN_DOCUMENT = String.raw`<!doctype html>
     </header>
 
     <main id="main-content" class="admin-main">
-        <aside class="synthetic-warning" aria-labelledby="synthetic-warning-title">
-            <strong id="synthetic-warning-title">Synthetic test mode</strong>
+        <aside class="pilot-warning" aria-labelledby="pilot-warning-title">
+            <strong id="pilot-warning-title">Photo-only pilot</strong>
             <p>
-                This phase accepts only the built-in synthetic test photo or video.
-                Do not select or upload a real photograph or video.
+                Select one approved JPEG or PNG photograph. Video remains disabled.
+                The private original stays behind owner authentication; reviewed public
+                derivatives are rebuilt without source metadata.
             </p>
         </aside>
 
@@ -43,7 +44,7 @@ const ADMIN_DOCUMENT = String.raw`<!doctype html>
                     </div>
                     <button id="refresh-drafts" class="button button-secondary" type="button">Refresh</button>
                 </div>
-                <p class="panel-help">Open an unfinished draft to resume its synthetic upload or review.</p>
+                <p class="panel-help">Open an unfinished draft to resume its private photo upload or review.</p>
                 <div id="draft-list" class="draft-list" aria-live="polite"></div>
             </section>
 
@@ -101,15 +102,14 @@ const ADMIN_DOCUMENT = String.raw`<!doctype html>
                                 <input id="item-id" name="item-id" type="text" required maxlength="120"
                                     pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
                                     aria-describedby="item-id-help" autocomplete="off">
-                                <small id="item-id-help">Lowercase words joined with hyphens, such as synthetic-finish-line.</small>
+                                <small id="item-id-help">Lowercase words joined with hyphens, such as summer-5k-finish-line.</small>
                             </label>
-                            <label class="form-field" for="media-type">
-                                <span>Synthetic media type</span>
-                                <select id="media-type" name="media-type" required>
-                                    <option value="photo">Built-in synthetic photo</option>
-                                    <option value="video">Built-in synthetic video</option>
-                                </select>
-                            </label>
+                            <div class="form-field">
+                                <span>Media type</span>
+                                <strong>Photo</strong>
+                                <small>Video is not enabled in this pilot.</small>
+                                <input id="media-type" name="media-type" type="hidden" value="photo">
+                            </div>
                         </div>
 
                         <label class="form-field" for="item-title">
@@ -189,7 +189,7 @@ const ADMIN_DOCUMENT = String.raw`<!doctype html>
                 <div class="panel-heading">
                     <div>
                         <p class="section-kicker">Private moderation</p>
-                        <h2 id="review-title">Synthetic upload and review</h2>
+                        <h2 id="review-title">Private photo upload and review</h2>
                         <p id="review-summary">Open or create a draft to continue.</p>
                     </div>
                     <span class="step-marker" aria-hidden="true">02</span>
@@ -198,12 +198,19 @@ const ADMIN_DOCUMENT = String.raw`<!doctype html>
                 <dl id="draft-facts" class="draft-facts"></dl>
 
                 <div class="upload-box">
-                    <h3>Synthetic upload</h3>
+                    <h3>Private photo upload</h3>
                     <p id="upload-instructions">
-                        The tool creates the selected synthetic fixture in this browser. There is no file picker.
+                        Choose the exact same file again if you resume an interrupted upload.
+                        The original filename is never sent to the server or stored in the object key.
                     </p>
+                    <label class="form-field" for="photo-file">
+                        <span>JPEG or PNG photograph</span>
+                        <input id="photo-file" name="photo-file" type="file"
+                            accept=".jpg,.jpeg,.png,image/jpeg,image/png">
+                        <small>Maximum 25 MiB and 50 megapixels. The server verifies type, size, and the complete SHA-256.</small>
+                    </label>
                     <button id="start-upload" class="button button-primary" type="button">
-                        Start synthetic upload
+                        Start private photo upload
                     </button>
                     <div id="upload-progress-wrap" class="upload-progress" hidden>
                         <label for="upload-progress">Upload progress</label>
@@ -370,7 +377,7 @@ textarea:disabled {
     padding: 28px 20px 60px;
 }
 
-.synthetic-warning {
+.pilot-warning {
     background: #fff9d8;
     border: 1px solid #dfc44a;
     border-left: 7px solid var(--gold);
@@ -379,12 +386,12 @@ textarea:disabled {
     padding: 15px 18px;
 }
 
-.synthetic-warning strong {
+.pilot-warning strong {
     display: block;
     font-size: 1.06rem;
 }
 
-.synthetic-warning p {
+.pilot-warning p {
     margin: 4px 0 0;
 }
 
@@ -973,7 +980,7 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         drafts: [],
         activeDraft: null,
         upload: null,
-        syntheticFile: null,
+        selectedFile: null,
         busy: false
     };
 
@@ -1003,7 +1010,7 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
             renderDraftList();
             elements.workspace.hidden = false;
             setStatus(
-                'The private ' + siteModeLabel(state.siteMode) + ' synthetic-test workspace is ready.',
+                'The private ' + siteModeLabel(state.siteMode) + ' photo workspace is ready.',
                 'success'
             );
         } catch (error) {
@@ -1057,6 +1064,7 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         elements.draftWorkspace = byId('draft-workspace');
         elements.reviewSummary = byId('review-summary');
         elements.draftFacts = byId('draft-facts');
+        elements.photoFile = byId('photo-file');
         elements.startUpload = byId('start-upload');
         elements.uploadProgressWrap = byId('upload-progress-wrap');
         elements.uploadProgress = byId('upload-progress');
@@ -1076,6 +1084,7 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         elements.form.addEventListener('submit', createDraft);
         elements.raceDate.addEventListener('change', onDateChanged);
         elements.raceChoice.addEventListener('change', renderAthleteChoices);
+        elements.photoFile.addEventListener('change', onPhotoSelected);
         elements.startUpload.addEventListener('click', startOrResumeUpload);
         elements.approveDraft.addEventListener('click', function () {
             transitionActiveDraft('approved-for-processing');
@@ -1176,7 +1185,7 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         if (status === 409) {
             message = 'This draft changed in another request. Reload it before trying again.';
         } else if (status === 413) {
-            message = 'The synthetic upload part was larger than the server accepts.';
+            message = 'The photo upload part was larger than the server accepts.';
         } else if (status === 403) {
             message = 'The protected session was not accepted. Sign in again and retry.';
         } else if (body && Array.isArray(body.problems) && body.problems.length) {
@@ -1486,7 +1495,8 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
             if (!state.activeDraft) {
                 throw new Error('The selected draft could not be read.');
             }
-            state.syntheticFile = null;
+            state.selectedFile = null;
+            elements.photoFile.value = '';
             state.upload = null;
             renderActiveDraft();
             if (state.activeDraft.state === 'uploading') {
@@ -1513,11 +1523,12 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         renderChecksum(draft);
         renderPreview(draft);
 
-        var canUpload = draft.state === 'draft' || draft.state === 'uploading';
+        var canUpload = mediaTypeOf(draft) === 'photo' &&
+            (draft.state === 'draft' || draft.state === 'uploading');
         elements.startUpload.hidden = !canUpload;
         elements.startUpload.textContent = draft.state === 'uploading'
-            ? 'Resume synthetic upload'
-            : 'Start synthetic upload';
+            ? 'Resume private photo upload'
+            : 'Start private photo upload';
         elements.uploadProgressWrap.hidden = !canUpload && draft.state !== 'private-review';
     }
 
@@ -1526,7 +1537,7 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         appendFact('Status', stateLabel(draft.state));
         appendFact('Area', siteModeLabel(state.siteMode) + ' Gallery');
         appendFact('Race', draftRaceLabel(draft));
-        appendFact('Media', mediaTypeOf(draft) === 'video' ? 'Synthetic video' : 'Synthetic photo');
+        appendFact('Media', 'Photo');
         appendFact('People tagged', String(athleteIdsOf(draft).length));
         appendFact('Version', String(numberOrZero(draft.stateVersion)));
     }
@@ -1586,10 +1597,10 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
             media = document.createElement('video');
             media.controls = true;
             media.preload = 'metadata';
-            media.setAttribute('aria-label', altTextOf(draft) || 'Protected synthetic video preview');
+            media.setAttribute('aria-label', altTextOf(draft) || 'Protected video preview');
         } else {
             media = document.createElement('img');
-            media.alt = altTextOf(draft) || 'Protected synthetic photo preview';
+            media.alt = altTextOf(draft) || 'Protected private photo preview';
         }
         media.src = source;
         elements.previewMedia.appendChild(media);
@@ -1599,27 +1610,30 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
     async function startOrResumeUpload() {
         var draft = state.activeDraft;
         if (!draft || !['draft', 'uploading'].includes(draft.state)) {
-            showError(new Error('This draft is not ready for a synthetic upload.'));
+            showError(new Error('This draft is not ready for a private photo upload.'));
             return;
         }
 
         clearError();
         await withBusy(elements.startUpload, 'Preparing…', async function () {
-            if (!state.syntheticFile) {
-                setUploadProgress(0, 'Creating the built-in synthetic fixture…');
-                state.syntheticFile = await createSyntheticFile(mediaTypeOf(draft));
+            if (!state.selectedFile) {
+                throw new Error('Choose the JPEG or PNG photograph to upload.');
             }
+
+            var file = validateSelectedPhoto(state.selectedFile);
+            setUploadProgress(0, 'Hashing the complete photo before upload…');
+            var declaredSha256 = await sha256Hex(await file.arrayBuffer());
 
             if (draft.state === 'draft') {
                 var initiation = await api(draftPath(draft) + '/upload', {
                     method: 'POST',
                     body: {
                         expectedStateVersion: numberOrZero(draft.stateVersion),
-                        fileName: state.syntheticFile.name,
-                        declaredMimeType: state.syntheticFile.type,
-                        byteLength: state.syntheticFile.size,
-                        idempotencyKey: randomToken('upload') ,
-                        syntheticOnlyConfirmed: true
+                        fileExtension: photoExtension(file.name),
+                        declaredMimeType: file.type,
+                        byteLength: file.size,
+                        declaredSha256: declaredSha256,
+                        idempotencyKey: randomToken('upload')
                     }
                 });
                 applyDraftResponse(initiation);
@@ -1670,7 +1684,7 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
 
     async function uploadMissingParts() {
         var upload = state.upload;
-        var file = state.syntheticFile;
+        var file = state.selectedFile;
         if (!upload || !file) {
             throw new Error('The resumable upload information is incomplete.');
         }
@@ -1686,12 +1700,12 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
             var end = Math.min(start + upload.partSize, file.size);
             var chunk = file.slice(start, end, 'application/octet-stream');
             if (chunk.size <= 0) {
-                throw new Error('The server requested an invalid synthetic upload part.');
+                throw new Error('The server requested an invalid private photo upload part.');
             }
             var chunkHash = await sha256Hex(await chunk.arrayBuffer());
             setUploadProgress(
                 Math.floor((start / file.size) * 100),
-                'Uploading synthetic part ' + partNumber + ' of ' + upload.partCount + '…'
+                'Uploading photo part ' + partNumber + ' of ' + upload.partCount + '…'
             );
 
             var partResponse = await api(
@@ -1717,7 +1731,7 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
 
     function updateUploadedProgress(uploaded) {
         var upload = state.upload;
-        var file = state.syntheticFile;
+        var file = state.selectedFile;
         var uploadedBytes = 0;
         uploaded.forEach(function (partNumber) {
             var start = (partNumber - 1) * upload.partSize;
@@ -1726,7 +1740,7 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         var percentage = file.size ? Math.min(100, Math.round((uploadedBytes / file.size) * 100)) : 0;
         setUploadProgress(
             percentage,
-            uploaded.size + ' of ' + upload.partCount + ' synthetic parts uploaded (' + percentage + '%).'
+            uploaded.size + ' of ' + upload.partCount + ' photo parts uploaded (' + percentage + '%).'
         );
     }
 
@@ -1739,12 +1753,12 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         var percentage = Math.round((uploaded.size / state.upload.partCount) * 100);
         setUploadProgress(
             percentage,
-            uploaded.size + ' of ' + state.upload.partCount + ' synthetic parts are safely stored.'
+            uploaded.size + ' of ' + state.upload.partCount + ' photo parts are safely stored.'
         );
     }
 
     async function completeUpload() {
-        setUploadProgress(100, 'Verifying the complete synthetic file and its checksum…');
+        setUploadProgress(100, 'Verifying the complete photo, type, and checksum…');
         var response = await api(draftPath(state.activeDraft) + '/upload-completion', {
             method: 'POST',
             body: {
@@ -1758,8 +1772,8 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         }
         renderActiveDraft();
         await refreshDrafts(false);
-        setUploadProgress(100, 'Synthetic upload complete and verified.');
-        setStatus('The synthetic original is ready for private review.', 'success');
+        setUploadProgress(100, 'Private photo upload complete and verified.');
+        setStatus('The private original is ready for review.', 'success');
     }
 
     async function transitionActiveDraft(toState) {
@@ -1835,118 +1849,40 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         return null;
     }
 
-    async function createSyntheticFile(mediaType) {
-        if (mediaType === 'video') {
-            return createSyntheticVideoFile();
+    function onPhotoSelected() {
+        clearError();
+        try {
+            state.selectedFile = validateSelectedPhoto(elements.photoFile.files[0]);
+            setStatus('The photo is selected locally. It has not been uploaded.', 'success');
+        } catch (error) {
+            state.selectedFile = null;
+            elements.photoFile.value = '';
+            showError(error);
         }
-        return createSyntheticPhotoFile();
     }
 
-    async function createSyntheticPhotoFile() {
-        var canvas = document.createElement('canvas');
-        canvas.width = 800;
-        canvas.height = 450;
-        var context = canvas.getContext('2d');
-        if (!context) {
-            throw new Error('This browser cannot create the synthetic photo fixture.');
+    function validateSelectedPhoto(file) {
+        if (!(file instanceof File)) {
+            throw new Error('Choose one JPEG or PNG photograph.');
         }
-        drawSyntheticFrame(context, canvas.width, canvas.height, 0);
-        var blob = await canvasBlob(canvas, 'image/png');
-        return new File([blob], 'synthetic-gallery-photo.png', {
-            type: 'image/png',
-            lastModified: 0
-        });
+        var extension = photoExtension(file.name);
+        var expectedType = extension === 'png' ? 'image/png' : 'image/jpeg';
+        if (file.type !== expectedType) {
+            throw new Error('The selected photo extension and browser media type do not agree.');
+        }
+        if (!Number.isSafeInteger(file.size) || file.size <= 0 || file.size > 25 * 1024 * 1024) {
+            throw new Error('The selected photo must be between 1 byte and 25 MiB.');
+        }
+        return file;
     }
 
-    async function createSyntheticVideoFile() {
-        if (
-            typeof MediaRecorder !== 'function' ||
-            typeof HTMLCanvasElement.prototype.captureStream !== 'function'
-        ) {
-            throw new Error('This browser cannot create the synthetic video fixture.');
+    function photoExtension(fileName) {
+        var match = /\.([A-Za-z0-9]+)$/.exec(String(fileName || ''));
+        var extension = match ? match[1].toLowerCase() : '';
+        if (!['jpg', 'jpeg', 'png'].includes(extension)) {
+            throw new Error('Choose a .jpg, .jpeg, or .png photograph.');
         }
-
-        var canvas = document.createElement('canvas');
-        canvas.width = 640;
-        canvas.height = 360;
-        var context = canvas.getContext('2d');
-        if (!context) {
-            throw new Error('This browser cannot create the synthetic video fixture.');
-        }
-
-        var mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
-            ? 'video/webm;codecs=vp8'
-            : 'video/webm';
-        var stream = canvas.captureStream(8);
-        var recorder = new MediaRecorder(stream, { mimeType: mimeType });
-        var chunks = [];
-        recorder.addEventListener('dataavailable', function (event) {
-            if (event.data && event.data.size) {
-                chunks.push(event.data);
-            }
-        });
-
-        var stopped = new Promise(function (resolve, reject) {
-            recorder.addEventListener('stop', resolve, { once: true });
-            recorder.addEventListener('error', function () {
-                reject(new Error('The synthetic video fixture could not be created.'));
-            }, { once: true });
-        });
-
-        recorder.start(100);
-        for (var frame = 0; frame < 12; frame += 1) {
-            drawSyntheticFrame(context, canvas.width, canvas.height, frame);
-            await delay(90);
-        }
-        recorder.stop();
-        await stopped;
-        stream.getTracks().forEach(function (track) {
-            track.stop();
-        });
-
-        var blob = new Blob(chunks, { type: 'video/webm' });
-        if (!blob.size) {
-            throw new Error('The synthetic video fixture was empty.');
-        }
-        return new File([blob], 'synthetic-gallery-video.webm', {
-            type: 'video/webm',
-            lastModified: 0
-        });
-    }
-
-    function drawSyntheticFrame(context, width, height, frame) {
-        context.fillStyle = '#102a43';
-        context.fillRect(0, 0, width, height);
-        context.fillStyle = '#1e3a5f';
-        context.fillRect(0, Math.floor(height * 0.58), width, Math.ceil(height * 0.42));
-        context.fillStyle = '#ffd700';
-        context.beginPath();
-        context.arc(
-            Math.floor(width * (0.18 + ((frame % 10) * 0.065))),
-            Math.floor(height * 0.48),
-            Math.max(16, Math.floor(height * 0.07)),
-            0,
-            Math.PI * 2
-        );
-        context.fill();
-        context.fillStyle = '#ffffff';
-        context.font = '900 ' + Math.max(24, Math.floor(width * 0.055)) + 'px Segoe UI, Arial, sans-serif';
-        context.textAlign = 'center';
-        context.fillText('SYNTHETIC TEST', width / 2, Math.floor(height * 0.25));
-        context.font = '700 ' + Math.max(16, Math.floor(width * 0.027)) + 'px Segoe UI, Arial, sans-serif';
-        context.fillText('No real person or race media', width / 2, Math.floor(height * 0.36));
-    }
-
-    function canvasBlob(canvas, type) {
-        return new Promise(function (resolve, reject) {
-            canvas.toBlob(function (blob) {
-                if (blob) {
-                    resolve(blob);
-                } else {
-                    reject(new Error('The synthetic photo fixture could not be created.'));
-                }
-            }, type);
-        });
+        return extension;
     }
 
     function setUploadProgress(value, message) {

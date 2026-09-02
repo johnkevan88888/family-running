@@ -9,6 +9,7 @@ const approvedMediaOrigin = 'https://synthetic-gallery-media.example';
 const promoterSubject = '0123456789abcdef0123456789abcdef.access';
 const draftId = 'draft_11111111-1111-4111-8111-111111111111';
 const promotionPath = `/api/service/drafts/${draftId}/photo-promotions`;
+const candidatePath = `/api/service/drafts/${draftId}/photo-candidate`;
 const promotionId = 'promotion_11111111111141118111111111111111';
 const cleanupPath = `/api/service/photo-promotions/${promotionId}/cleanup`;
 const validInput = {
@@ -46,6 +47,7 @@ assert.equal(missingAccessContextResponse.status, 403);
 
 const serviceCalls = [];
 const cleanupCalls = [];
+const candidateCalls = [];
 const validDependencies = {
     verifyAccessIdentity: async () => ({
         type: 'service',
@@ -77,6 +79,17 @@ const validDependencies = {
             approvedObjectKey: 'media/v1/must-not-cross-worker-boundary',
             evidenceHash: 'a'.repeat(64)
         };
+    },
+    async readPhotoCandidate(...args) {
+        candidateCalls.push(args);
+        return {
+            ok: true,
+            status: 200,
+            candidate: {
+                schemaVersion: '1.0',
+                operationId: 'promotion_11111111111141118111111111111111'
+            }
+        };
     }
 };
 
@@ -101,6 +114,30 @@ assert.equal(serviceCalls[0][2], draftId);
 assert.deepEqual(serviceCalls[0][3], validInput);
 assert.equal(serviceCalls[0][4], approvedMediaOrigin);
 assert.equal(serviceCalls[0][5], fixedNow);
+
+const candidateResponse = await requestPromotion({
+    method: 'GET',
+    url: `${promotionOrigin}${candidatePath}`,
+    body: undefined
+}, environment, validDependencies);
+assert.equal(candidateResponse.status, 200);
+assert.deepEqual(await candidateResponse.json(), {
+    candidate: {
+        schemaVersion: '1.0',
+        operationId: 'promotion_11111111111141118111111111111111'
+    }
+});
+assert.equal(candidateCalls.length, 1);
+assert.equal(candidateCalls[0][0], environment);
+assert.deepEqual(candidateCalls[0][1], {
+    type: 'service',
+    subject: promoterSubject
+});
+assert.equal(candidateCalls[0][2], draftId);
+assert.equal((await requestPromotion({
+    method: 'POST',
+    url: `${promotionOrigin}${candidatePath}`
+}, environment, validDependencies)).status, 405);
 
 const validCleanupResponse = await requestPromotion({
     url: `${promotionOrigin}${cleanupPath}`

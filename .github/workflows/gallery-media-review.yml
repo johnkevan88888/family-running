@@ -1,0 +1,65 @@
+name: Gallery photo review candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      draft_id:
+        description: Opaque approved Gallery photo draft ID
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gallery-photo-${{ inputs.draft_id }}
+  cancel-in-progress: false
+
+jobs:
+  photo-review:
+    if: github.repository == 'johnkevan88888/family-running' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: gallery-processing
+    timeout-minutes: 20
+    steps:
+      - name: Create short-lived review token
+        id: review-token
+        uses: actions/create-github-app-token@v3.2.0
+        with:
+          app-id: ${{ secrets.GALLERY_REVIEW_APP_ID }}
+          private-key: ${{ secrets.GALLERY_REVIEW_APP_PRIVATE_KEY }}
+          owner: johnkevan88888
+          repositories: family-running
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Check out the exact default-branch revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install pinned dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Process, promote, and open one review-only manifest PR
+        env:
+          GALLERY_DRAFT_ID: ${{ inputs.draft_id }}
+          GALLERY_BASE_SHA: ${{ github.sha }}
+          GALLERY_GITHUB_APP_TOKEN: ${{ steps.review-token.outputs.token }}
+          GALLERY_PROCESSING_ORIGIN: ${{ secrets.GALLERY_PROCESSING_ORIGIN }}
+          GALLERY_PROCESSING_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_PROCESSING_ACCESS_CLIENT_ID }}
+          GALLERY_PROCESSING_ACCESS_CLIENT_SECRET: ${{ secrets.GALLERY_PROCESSING_ACCESS_CLIENT_SECRET }}
+          GALLERY_PROMOTION_ORIGIN: ${{ secrets.GALLERY_PROMOTION_ORIGIN }}
+          GALLERY_PROMOTION_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_PROMOTION_ACCESS_CLIENT_ID }}
+          GALLERY_PROMOTION_ACCESS_CLIENT_SECRET: ${{ secrets.GALLERY_PROMOTION_ACCESS_CLIENT_SECRET }}
+        run: node scripts/run-gallery-photo-review.mjs

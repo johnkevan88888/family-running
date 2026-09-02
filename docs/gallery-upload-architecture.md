@@ -6,10 +6,11 @@
 - **Approved pilot boundaries:** Cloudflare-managed `workers.dev` hostnames and
   temporary processing of each private original on an ephemeral GitHub-hosted
   runner
-- **Infrastructure state:** Synthetic-only Phases C and D are complete on
-  isolated non-production `workers.dev` resources. D1 carries migrations
-  `0001`–`0009`; the owner administration Worker can reach only D1 and private
-  originals; the media Worker can reach only approved derivatives; and the
+- **Infrastructure state:** Synthetic rehearsal Phases C and D are complete on
+  isolated non-production `workers.dev` resources. D1 carries independently
+  verified migrations `0001`–`0010`; the owner administration Worker can reach
+  only D1 and private originals; the media Worker can reach only approved
+  derivatives; and the
   restored normal processing Worker can reach only D1, private originals, and
   private derivative staging. Its Access application is parked fail closed with
   zero policies after deletion of the temporary rehearsal identity and policy.
@@ -42,11 +43,21 @@
   unchanged Worker/R2 postflight then passed. Its temporary Service Auth policy
   and token were deleted, leaving the exact-host verifier application parked
   with zero policies. The promotion Worker remains undeployed. The approved-
-  prefix orphan-multipart lifecycle requirement is tracked but has not been
-  applied remotely. Protected candidate
-  retrieval/orchestration, the protected workflow, GitHub App and remote
-  branch-rule proof, video processing, DNS changes, real-media transfer, merge,
-  and publication remain future work.
+  prefix orphan-multipart lifecycle requirement is now applied to the exact
+  approved-media bucket and independently verified through the lifecycle API
+  and bucket Settings page. The repository now contains the local photo-only
+  real-file
+  intake, migration `0010`, protected processing-eligibility and candidate-read
+  routes, orchestration runner, and default-branch review workflow. These are
+  locally tested except for the separately deployed admin intake. Migration
+  `0010` is applied and independently verified on non-production D1, and the
+  updated admin Worker has exact version/binding readback. Anonymous browser and
+  service health requests still stop at Access, while the exact authenticated
+  owner browser health route returned
+  `{"ok":true,"scope":"owner-browser"}`. Updated processing/promotion Worker
+  deployment, Access credentials, the protected environment, GitHub App and remote branch-rule
+  proof, workflow dispatch, real-media transfer, video processing, DNS changes,
+  merge, and publication remain future separately approved work.
 
 This document selects the storage, authentication, and access model needed to
 continue the owner-curated Gallery after Phase 1. It does not turn the Gallery
@@ -394,7 +405,11 @@ unless the owner deliberately changes its editorial position.
 Initial input limits are intentionally conservative and are administration
 policy rather than public manifest fields:
 
-- photo: JPEG, PNG, WebP, or HEIC/HEIF; maximum 25 MiB and 50 megapixels;
+- photo architecture ceiling: JPEG, PNG, WebP, or HEIC/HEIF; maximum 25 MiB
+  and 50 megapixels. The implemented first real-photo bridge is deliberately
+  narrower: JPEG and opaque PNG only. WebP, HEIC/HEIF, and transparent PNG stay
+  disabled until their exact decoder, orientation, transparency, and metadata
+  behaviour has separate conformance evidence;
 - video: MP4, MOV, or WebM; maximum 500 MiB and 10 minutes;
 - reject SVG, HTML, archives, executable formats, mismatched extensions and
   magic bytes, and media the pinned decoder cannot safely parse.
@@ -802,10 +817,12 @@ race after a D1 read.
 
 The tracked `media/v1/` one-day incomplete-multipart lifecycle requirement is
 only eventual containment for a create whose response was permanently lost. It
-cannot satisfy synchronous cleanup, permit a tombstone, or permit purge, and it
-has not been applied or verified remotely. No remote promotion is allowed until
-that lifecycle boundary and the host-proof boundary below are independently
-validated, approved, deployed, and rehearsed.
+cannot satisfy synchronous cleanup, permit a tombstone, or permit purge. It is
+now applied to the exact approved-media bucket and independently verified as one
+enabled `media/v1/` rule with an `86400`-second abort transition, alongside the
+unchanged provider default rule. No remote promotion is allowed until its own
+migration, Worker, Access, and host-proof boundaries are separately validated,
+approved, deployed, and rehearsed.
 
 R2 absence is not public-host absence. This cleanup deliberately does not set
 `draft_publication_references.host_deletion_confirmed`, does not set
@@ -959,9 +976,16 @@ zero-based insertion, preserves existing order, rejects cross-mode ID reuse in
 automation, and reconciles an exact operation receipt. A separate GitHub client
 fixes this repository, `main`, the candidate-branch namespace, and those two
 paths; it can create or reconcile one one-file review Pull Request and then
-re-proves its parent, bytes, and diff. Before any mutation it also reads the
-target manifest at the exact expected `main` commit and proves the candidate is
-one new item while every existing item and its order remain unchanged. It has
+re-proves its parent, bytes, and diff. A post-PR candidate reread is mandatory.
+If that read fails or current consent, suppression, exclusion, revision, or
+approved-byte evidence changes, the client closes and reads back the exact
+operation-marked PR, retains the deterministic candidate branch for separately
+reviewed cleanup, and returns failure. It exposes no ref deletion because
+GitHub cannot condition that deletion on the previously observed SHA; a
+pre-read would leave a time-of-check/time-of-use race. Before any mutation it
+also reads the target manifest at the exact expected `main` commit and proves
+the candidate is one new item while every existing item and its order remain
+unchanged. It has
 no merge, default-branch update, force-update, deployment, Pages, secret, or
 environment operation. No workflow, App, branch-rule change, candidate branch,
 or candidate-media Pull Request was created by this repository slice.
@@ -983,17 +1007,25 @@ The remaining Phase D plan is:
    evidence; direct D1 fixture fabrication is forbidden. Redirect, cache, wrong-
    binding, historical-target, and
    real epoch-rotation faults remain a later, separately reviewed and approved
-   harness/deployment/append-only-epoch gate. The next separately approved
-   remote step is to apply and independently verify the one-day, approved-prefix
-   orphan-multipart lifecycle rule. Deploying or granting Access to the
-   promotion Worker is a later separate gate after those proofs. No step may
-   infer approval for the next.
-2. Add read-only candidate retrieval and a protected default-branch workflow
-   accepting only an opaque `draft_id`. Create/install the repository-scoped
+   harness/deployment/append-only-epoch gate. The one-day, approved-prefix
+   orphan-multipart lifecycle rule is now applied and independently verified.
+   Migration `0010` is now applied and independently verified. The updated
+   admin Worker is deployed as exact version
+   `c411bead-edb5-441b-aa0b-36594ff8a9b8` at 100%, with only D1, private
+   originals, and the three pre-existing secret-text bindings; its hourly cron
+   and owner Access application/policy are unchanged. Anonymous browser and
+   service health requests still redirect to Access. A normal owner Access
+   session returned exact `{"ok":true,"scope":"owner-browser"}` from the
+   browser health route, confirmed by both the supplied screenshot and an
+   independent live-tab readback. The admin gate is complete, but real-photo
+   upload remains blocked. Separately review any processing/promotion Worker
+   deployment or new service Access; no step may infer approval for the next.
+2. The local read-only candidate retrieval and protected default-branch workflow
+   accepting only an opaque `draft_id` are implemented. Create/install the repository-scoped
    GitHub App and protected environment only with separate approval, prove the
    App token cannot update `main` or merge, run Gallery validation and the
-   complete suite, and only with explicit approval open a standard synthetic
-   review Pull Request.
+   complete suite, and only with explicit approval dispatch the workflow and
+   open a standard synthetic review Pull Request.
 3. Cover single-area publication, the existing duplicate-ID equality safeguard,
    editorial insertion order, retry/idempotency, closed-PR cleanup, and rollback.
 4. Separately select and pin immutable FFmpeg/ffprobe tooling, implement the

@@ -1,15 +1,21 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import fs from 'node:fs/promises';
 
 import * as reviewClientModule from '../scripts/gallery-media/github-review-client.mjs';
 
 assert.deepEqual(
     Object.keys(reviewClientModule),
-    ['createOrReconcileGalleryReview'],
-    'The module must expose only the review-PR operation, with no merge or administration client.'
+    ['createOrReconcileGalleryReview', 'invalidateGalleryReview'],
+    'The module must expose only review creation and exact stale-review invalidation.'
 );
 
-const { createOrReconcileGalleryReview } = reviewClientModule;
+const { createOrReconcileGalleryReview, invalidateGalleryReview } = reviewClientModule;
+const reviewClientSource = await fs.readFile(
+    new URL('../scripts/gallery-media/github-review-client.mjs', import.meta.url),
+    'utf8'
+);
+assert.doesNotMatch(reviewClientSource, /['"]DELETE['"]|requestNoContent|expectNoContent/);
 const baseSha = 'a'.repeat(40);
 const token = 'ghs_synthetic_installation_token_123456789';
 const operationId = 'promotion_01k3h8xb6pg0t9m2q7vr4c5n1z';
@@ -109,6 +115,139 @@ assert.equal(freshGitHub.state.createdTree.tree.length, 1);
 assert.equal(freshGitHub.state.createdTree.tree[0].path, candidate.targetRelativePath);
 assert.deepEqual(freshGitHub.state.createdCommit.parents, [baseSha]);
 assert.equal(freshGitHub.state.pullRequests.length, 1);
+
+const invalidationGitHub = createMockGitHub();
+const reviewToInvalidate = await createOrReconcileGalleryReview(candidate, {
+    expectedBaseSha: baseSha,
+    token,
+    fetchImpl: invalidationGitHub.fetch
+});
+const invalidated = await invalidateGalleryReview(candidate, reviewToInvalidate, {
+    expectedBaseSha: baseSha,
+    token,
+    fetchImpl: invalidationGitHub.fetch
+});
+assert.deepEqual(invalidated, {
+    schemaVersion: '1.0',
+    repository: 'johnkevan88888/family-running',
+    branchRef: reviewToInvalidate.branchRef,
+    branchState: 'retained-for-reviewed-cleanup',
+    pullRequest: {
+        number: 1,
+        url: 'https://github.com/johnkevan88888/family-running/pull/1',
+        state: 'closed'
+    }
+});
+assert.equal(invalidationGitHub.state.pullRequests[0].state, 'closed');
+assert.equal(invalidationGitHub.state.branchSha, reviewToInvalidate.headSha);
+assert.deepEqual(
+    invalidationGitHub.state.requests
+        .filter(request => ['PATCH', 'DELETE'].includes(request.method))
+        .map(request => [request.method, request.path, request.body]),
+    [['PATCH', '/pulls/1', { state: 'closed' }]]
+);
+assert.equal(
+    invalidationGitHub.state.requests.some(request =>
+        ['PATCH', 'DELETE'].includes(request.method) &&
+        /(?:merge|heads\/main|deploy|pages|environment|secret)/i.test(
+            `${request.path}\n${JSON.stringify(request.body)}`
+        )
+    ),
+    false,
+    'Invalidation must not merge, mutate main, deploy, or administer the repository.'
+);
+
+const patchCountBeforeReplay = invalidationGitHub.state.requests.filter(
+    request => request.method === 'PATCH'
+).length;
+const replayedInvalidation = await invalidateGalleryReview(candidate, reviewToInvalidate, {
+    expectedBaseSha: baseSha,
+    token,
+    fetchImpl: invalidationGitHub.fetch
+});
+assert.equal(replayedInvalidation.pullRequest.state, 'closed');
+assert.equal(
+    invalidationGitHub.state.requests.filter(request => request.method === 'PATCH').length,
+    patchCountBeforeReplay,
+    'An already-closed exact review must be read back without another mutation.'
+);
+assert.equal(invalidationGitHub.state.branchSha, reviewToInvalidate.headSha);
+
+const failedCloseGitHub = createMockGitHub({ failCloseWithoutMutation: true });
+const failedCloseReview = await createOrReconcileGalleryReview(candidate, {
+    expectedBaseSha: baseSha,
+    token,
+    fetchImpl: failedCloseGitHub.fetch
+});
+await assert.rejects(
+    invalidateGalleryReview(candidate, failedCloseReview, {
+        expectedBaseSha: baseSha,
+        token,
+        fetchImpl: failedCloseGitHub.fetch
+    }),
+    /GitHub PATCH request failed with status 503/
+);
+assert.equal(failedCloseGitHub.state.pullRequests[0].state, 'open');
+assert.equal(
+    failedCloseGitHub.state.requests.some(request => request.method === 'DELETE'),
+    false,
+    'A failed close must never trigger automatic branch deletion.'
+);
+
+const failedReadbackGitHub = createMockGitHub({ failClosedReadback: true });
+const failedReadbackReview = await createOrReconcileGalleryReview(candidate, {
+    expectedBaseSha: baseSha,
+    token,
+    fetchImpl: failedReadbackGitHub.fetch
+});
+await assert.rejects(
+    invalidateGalleryReview(candidate, failedReadbackReview, {
+        expectedBaseSha: baseSha,
+        token,
+        fetchImpl: failedReadbackGitHub.fetch
+    }),
+    /GitHub GET request failed with status 503/
+);
+assert.equal(failedReadbackGitHub.state.pullRequests[0].state, 'closed');
+assert.equal(failedReadbackGitHub.state.branchSha, failedReadbackReview.headSha);
+
+const changedBranchGitHub = createMockGitHub();
+const changedBranchReview = await createOrReconcileGalleryReview(candidate, {
+    expectedBaseSha: baseSha,
+    token,
+    fetchImpl: changedBranchGitHub.fetch
+});
+changedBranchGitHub.state.branchSha = '9'.repeat(40);
+changedBranchGitHub.state.pullRequests[0].head.sha = changedBranchGitHub.state.branchSha;
+const changedBranchInvalidation = await invalidateGalleryReview(candidate, changedBranchReview, {
+    expectedBaseSha: baseSha,
+    token,
+    fetchImpl: changedBranchGitHub.fetch
+});
+assert.equal(changedBranchInvalidation.branchState, 'retained-for-reviewed-cleanup');
+assert.equal(changedBranchGitHub.state.pullRequests[0].state, 'closed');
+assert.equal(changedBranchGitHub.state.branchSha, '9'.repeat(40));
+assert.equal(
+    changedBranchGitHub.state.requests.some(request => request.method === 'DELETE'),
+    false,
+    'A changed ref must be retained while its exact marked PR is closed.'
+);
+
+const changedBaseGitHub = createMockGitHub();
+const changedBaseReview = await createOrReconcileGalleryReview(candidate, {
+    expectedBaseSha: baseSha,
+    token,
+    fetchImpl: changedBaseGitHub.fetch
+});
+changedBaseGitHub.state.pullRequests[0].base.sha = '8'.repeat(40);
+const changedBaseInvalidation = await invalidateGalleryReview(candidate, changedBaseReview, {
+    expectedBaseSha: baseSha,
+    token,
+    fetchImpl: changedBaseGitHub.fetch
+});
+assert.equal(changedBaseInvalidation.pullRequest.state, 'closed');
+assert.equal(changedBaseGitHub.state.pullRequests[0].state, 'closed');
+assert.equal(changedBaseGitHub.state.branchSha, changedBaseReview.headSha);
 
 const beforeReplayMutations = mutationRequests.length;
 const replayed = await createOrReconcileGalleryReview(candidate, {
@@ -470,6 +609,8 @@ function createMockGitHub(options = {}) {
         extraComparisonFile: null,
         loseRefResponseOnce: options.loseRefResponseOnce === true,
         losePullResponseOnce: options.losePullResponseOnce === true,
+        failCloseWithoutMutation: options.failCloseWithoutMutation === true,
+        failClosedReadback: options.failClosedReadback === true,
         advanceMainAfterRefCreate: options.advanceMainAfterRefCreate === true
     };
 
@@ -562,6 +703,16 @@ function createMockGitHub(options = {}) {
             );
             return response(200, deepClone(state.pullRequests));
         }
+        if (method === 'GET' && /^\/pulls\/[1-9][0-9]*$/.test(path)) {
+            const number = Number(path.split('/').at(-1));
+            const pullRequest = state.pullRequests.find(value => value.number === number);
+            if (state.failClosedReadback && pullRequest?.state === 'closed') {
+                return response(503, { message: 'Synthetic closed-state readback failure' });
+            }
+            return pullRequest
+                ? response(200, deepClone(pullRequest))
+                : response(404, { message: 'Not Found' });
+        }
         if (method === 'POST' && path === '/git/blobs') {
             state.createdBlob = deepClone(body);
             state.branchManifestText = Buffer.from(body.content, 'base64').toString('utf8');
@@ -598,7 +749,17 @@ function createMockGitHub(options = {}) {
             }
             return response(201, deepClone(pullRequest));
         }
-
+        if (method === 'PATCH' && /^\/pulls\/[1-9][0-9]*$/.test(path)) {
+            assert.deepEqual(body, { state: 'closed' });
+            if (state.failCloseWithoutMutation) {
+                return response(503, { message: 'Synthetic close failure' });
+            }
+            const number = Number(path.split('/').at(-1));
+            const pullRequest = state.pullRequests.find(value => value.number === number);
+            if (!pullRequest) return response(404, { message: 'Not Found' });
+            pullRequest.state = 'closed';
+            return response(200, deepClone(pullRequest));
+        }
         return response(404, { message: `Unexpected mock route: ${method} ${path}` });
     }
 

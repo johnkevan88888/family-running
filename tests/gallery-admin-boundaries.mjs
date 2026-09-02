@@ -167,8 +167,11 @@ const expectedAdminCsp = "default-src 'none'; script-src 'self'; style-src 'self
 assert.equal(ownerShell.headers.get('Content-Security-Policy'), expectedAdminCsp);
 assert.equal(ownerShell.headers.get('Cache-Control'), 'no-store');
 const ownerShellBody = await ownerShell.clone().text();
-assert.match(ownerShellBody, /Synthetic test mode/i);
-assert.match(ownerShellBody, /Do not select or upload a real photograph or video/i);
+assert.match(ownerShellBody, /Photo-only pilot/i);
+assert.match(ownerShellBody, /Select one approved JPEG or PNG photograph/i);
+assert.match(ownerShellBody, /Video remains disabled/i);
+assert.match(ownerShellBody, /id="photo-file"[^>]+type="file"/i);
+assert.doesNotMatch(ownerShellBody, /name="(?:site|destination)"/i);
 assert.match(ownerShellBody, /<link rel="stylesheet" href="\/admin\.css">/i);
 assert.match(ownerShellBody, /<script src="\/admin\.js" defer><\/script>/i);
 assert.doesNotMatch(ownerShellBody, /<style\b/i);
@@ -177,7 +180,7 @@ assert.doesNotMatch(ownerShellBody, /https?:\/\//i);
 await assertResponseOmits(ownerShell.clone(), privateValues);
 
 for (const [path, contentType, bodyPattern] of [
-    ['/admin.css', /^text\/css\b/, /\.synthetic-warning\b/],
+    ['/admin.css', /^text\/css\b/, /\.pilot-warning\b/],
     ['/admin.js', /^text\/javascript\b/, /\/api\/browser\/session/]
 ]) {
     const asset = await adminRequest(path, { identity: 'owner' });

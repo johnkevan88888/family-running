@@ -23,14 +23,14 @@ const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const SAFE_PROVIDER_VALUE_PATTERN = /^[^\u0000-\u001f\u007f]{1,1024}$/;
 const MAX_PROVIDER_UPLOAD_ID_LENGTH = 1024;
 const MAX_PROVIDER_OBJECT_VALUE_LENGTH = 256;
-const SYNTHETIC_FILE_PATTERN = /^synthetic-[A-Za-z0-9][A-Za-z0-9._-]{0,220}\.(jpg|jpeg|png|webp|heic|heif|mp4|mov|webm)$/;
+const PHOTO_EXTENSION_PATTERN = /^(?:jpg|jpeg|png)$/;
 const BEGIN_UPLOAD_KEYS = new Set([
     'expectedStateVersion',
-    'fileName',
+    'fileExtension',
     'declaredMimeType',
     'byteLength',
-    'idempotencyKey',
-    'syntheticOnlyConfirmed'
+    'declaredSha256',
+    'idempotencyKey'
 ]);
 const COMPLETE_UPLOAD_KEYS = new Set([
     'expectedStateVersion',
@@ -96,7 +96,7 @@ export async function beginPrivateUpload(
         return failure(404, 'not-found');
     }
 
-    const fileExtension = normalizeOriginalExtension(input.fileName);
+    const fileExtension = normalizeOriginalExtension(`original.${input.fileExtension}`);
     const format = formatForUploadInput(input, draftRow.mediaType);
     if (!format || !fileExtension) {
         return failure(415, 'unsupported-media-type');
@@ -113,7 +113,7 @@ export async function beginPrivateUpload(
         fileExtension,
         declaredMimeType: input.declaredMimeType,
         byteLength: input.byteLength,
-        syntheticOnlyConfirmed: input.syntheticOnlyConfirmed
+        declaredSha256: input.declaredSha256
     });
     const replay = await readUploadByIdempotency(
         env.DB,
@@ -237,10 +237,11 @@ export async function beginPrivateUpload(
             'upload_session_id, draft_id, item_revision, consent_revision, ' +
             'export_bundle_id, source_revision, suppression_revision, ' +
             'provider_upload_id, object_key, file_extension, declared_content_type, ' +
-            'declared_byte_count, part_size, part_count, synthetic_only_confirmed, ' +
+            'declared_byte_count, declared_sha256, part_size, part_count, ' +
+            'synthetic_only_confirmed, real_photo_intake_confirmed, ' +
             'verified_owner_identity_hash, initiation_idempotency_key, ' +
             'initiation_payload_fingerprint, created_at, updated_at, expires_at' +
-            ') VALUES (' + placeholders(21) + ')'
+            ') VALUES (' + placeholders(23) + ')'
         ).bind(
             uploadSessionId,
             draftId,
@@ -254,8 +255,10 @@ export async function beginPrivateUpload(
             fileExtension,
             input.declaredMimeType,
             input.byteLength,
+            input.declaredSha256,
             PART_SIZE,
             partCount,
+            1,
             1,
             actorHash,
             input.idempotencyKey,
@@ -788,7 +791,8 @@ export async function completePrivateUpload(
     );
     if (
         verified.byteCount !== upload.declaredByteCount ||
-        detectedFormat !== expectedFormat(upload.fileExtension)
+        detectedFormat !== expectedFormat(upload.fileExtension) ||
+        verified.sha256 !== upload.declaredSha256
     ) {
         const recorded = await failUpload(
             env,
@@ -796,7 +800,9 @@ export async function completePrivateUpload(
             ownerHash,
             verified.byteCount !== upload.declaredByteCount
                 ? 'size-mismatch'
-                : 'signature-mismatch',
+                : detectedFormat !== expectedFormat(upload.fileExtension)
+                    ? 'signature-mismatch'
+                    : 'checksum-mismatch',
             nowMilliseconds,
             { deleteObject: true }
         );
@@ -1003,6 +1009,8 @@ export async function cleanupExpiredPrivateUploads(
             'SELECT upload_session_id AS uploadSessionId, draft_id AS draftId, ' +
             'provider_upload_id AS providerUploadId, object_key AS objectKey, ' +
             'file_extension AS fileExtension, created_at AS createdAt, status, ' +
+            'declared_sha256 AS declaredSha256, ' +
+            'real_photo_intake_confirmed AS realPhotoIntakeConfirmed, ' +
             '(SELECT draft.site_modes_json FROM gallery_drafts AS draft ' +
             'WHERE draft.draft_id = draft_upload_sessions.draft_id) AS siteModesJson ' +
             'FROM draft_upload_sessions WHERE status IN (\'active\', \'completing\') ' +
@@ -1127,11 +1135,10 @@ function validateBeginUploadInput(input) {
         problems.push('expectedStateVersion must be a non-negative integer.');
     }
     if (
-        typeof input.fileName !== 'string' ||
-        input.fileName.length > 255 ||
-        !SYNTHETIC_FILE_PATTERN.test(input.fileName)
+        typeof input.fileExtension !== 'string' ||
+        !PHOTO_EXTENSION_PATTERN.test(input.fileExtension)
     ) {
-        problems.push('Phase C accepts only a synthetic-* test filename in an approved media format.');
+        problems.push('fileExtension must be jpg, jpeg, or png for the photo-only intake.');
     }
     if (
         typeof input.declaredMimeType !== 'string' ||
@@ -1143,11 +1150,11 @@ function validateBeginUploadInput(input) {
     if (!Number.isSafeInteger(input.byteLength) || input.byteLength <= 0) {
         problems.push('byteLength must be a positive integer.');
     }
+    if (!SHA256_PATTERN.test(String(input.declaredSha256 || ''))) {
+        problems.push('declaredSha256 must be a lowercase SHA-256 digest.');
+    }
     if (!IDEMPOTENCY_KEY_PATTERN.test(String(input.idempotencyKey || ''))) {
         problems.push('idempotencyKey is invalid.');
-    }
-    if (input.syntheticOnlyConfirmed !== true) {
-        problems.push('Synthetic-only confirmation is required in Phase C.');
     }
     return problems;
 }
@@ -1183,7 +1190,7 @@ function exactObjectProblems(value, expectedKeys) {
 }
 
 function formatForUploadInput(input, mediaType) {
-    const extension = normalizeOriginalExtension(input.fileName) || '';
+    const extension = normalizeOriginalExtension(`original.${input.fileExtension}`) || '';
     const formatName = expectedFormat(extension);
     const format = mediaPolicy.inputFormats?.[formatName];
     return format &&
@@ -1336,6 +1343,8 @@ function uploadSelectSql(whereClause) {
         'session.file_extension AS fileExtension, ' +
         'session.declared_content_type AS declaredContentType, ' +
         'session.declared_byte_count AS declaredByteCount, ' +
+        'session.declared_sha256 AS declaredSha256, ' +
+        'session.real_photo_intake_confirmed AS realPhotoIntakeConfirmed, ' +
         'session.part_size AS partSize, session.part_count AS partCount, ' +
         'session.next_part_number AS nextPartNumber, ' +
         'session.uploaded_byte_count AS uploadedByteCount, ' +
@@ -1387,6 +1396,8 @@ async function readPreviewRecord(database, draftId, ownerHash, siteMode) {
         'SELECT draft.draft_id AS draftId, draft.state, session.object_key AS objectKey, ' +
         'session.upload_session_id AS uploadSessionId, ' +
         'session.file_extension AS fileExtension, session.created_at AS createdAt, ' +
+        'session.declared_sha256 AS declaredSha256, ' +
+        'session.real_photo_intake_confirmed AS realPhotoIntakeConfirmed, ' +
         'draft.site_modes_json AS siteModesJson, ' +
         'session.detected_format AS detectedFormat, ' +
         'session.declared_byte_count AS byteCount, ' +
@@ -1808,7 +1819,9 @@ function validPrivateStorageRecord(record) {
     } catch {
         return false;
     }
-    return privateOriginalKeyMatchesRecord(record.objectKey, {
+    return record.realPhotoIntakeConfirmed === 1 &&
+        SHA256_PATTERN.test(record.declaredSha256 || '') &&
+        privateOriginalKeyMatchesRecord(record.objectKey, {
         site,
         uploadedAt: record.createdAt,
         draftId: record.draftId,

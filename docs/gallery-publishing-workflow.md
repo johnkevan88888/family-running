@@ -5,9 +5,11 @@ visitor uploads and does not put photographs or videos into Git or the GitHub
 Pages artifact.
 
 The owner-only upload architecture, provider-independent contract, Phase B
-authentication boundary, and synthetic-only Phase C owner workflow are
-complete. Phase C is remotely verified behind Cloudflare Access with private
-originals and D1 evidence only. The private Phase D photo-processing and
+authentication boundary, and synthetic Phase C rehearsal are complete. Phase C
+is remotely verified behind Cloudflare Access with private originals and D1
+evidence only. The non-production real-photo JPEG/PNG admin intake now replaces the
+built-in generator for the next photo pilot while preserving the same private
+storage, area, catalog, consent, suppression, and exclusion boundaries. The private Phase D photo-processing and
 staging-cleanup boundary has also passed its approved non-production A–F
 rehearsal. Its final display and thumbnail remain private Scenario F staging
 evidence; they are not approved or public media.
@@ -27,17 +29,30 @@ staged pair, construct one public-safe candidate for the inherited area, and
 prepare one review-only GitHub operation. A second local slice now closes
 approved-media admission, resolves every known multipart handle, deletes only
 the exact verified owned objects, proves R2 absence, and retains hash-only
-replay evidence. It is deliberately not deployed because R2 absence is not yet
-bound to a fixed-origin public-host check, the required incomplete-multipart
-lifecycle rule has not been applied remotely, and protected candidate retrieval
-and orchestration do not exist. The committed manifests and normal reviewed Pull
+replay evidence. It is deliberately not deployed: R2 absence still is not
+fixed-origin public-host proof, and the promotion Worker, its Access identity,
+and the updated processing routes remain gated. Migration `0010` is applied
+and independently verified. The updated admin Worker is deployed as exact
+version `c411bead-edb5-441b-aa0b-36594ff8a9b8` with its intended narrow
+bindings and unchanged owner Access app/policy; anonymous health requests still
+redirect to Access. A normal owner Access session returned exact
+`{"ok":true,"scope":"owner-browser"}` from the browser health route, confirmed
+by both the supplied screenshot and an independent live-tab readback. The admin
+health gate is complete, but a real-photo upload is still prohibited. The required
+`media/v1/` one-day incomplete-multipart rule is now applied and independently
+verified, but remains orphan containment only. Protected candidate retrieval,
+the photo-only orchestration runner, and the default-branch workflow now exist
+locally but have not been deployed, provisioned, or dispatched. The committed
+manifests and normal reviewed Pull
 Request remain the only public publication path. See
 [Owner-Authenticated Gallery Upload Architecture](gallery-upload-architecture.md).
 
-The repository-scoped GitHub App, protected workflow/environment, fixed-origin
-host-absence verifier, remote promotion/cleanup, and full synthetic Pull Request
-rehearsal remain future work. Video processing and real family media remain
-forbidden. The local implementation does not authorize a public media URL,
+The repository-scoped GitHub App and protected environment, remote
+promotion/cleanup, and full synthetic Pull Request rehearsal remain future
+work. The fixed-origin host-absence verifier exists remotely only for its
+completed approved synthetic proof and is not a shortcut around
+generation-bound withdrawal verification. Video processing and real family
+media use remain forbidden until separately approved. The local implementation does not authorize a public media URL,
 manifest change, DNS change, Pull Request, merge, or publication.
 
 ## Public And Private Boundaries
@@ -56,9 +71,10 @@ manifest change, DNS change, Pull Request, merge, or publication.
 ## Before Adding A Moment
 
 This checklist describes the future explicitly approved end-to-end publication
-workflow. Local promotion, manifest-generation, and GitHub-client code now
-exists together with storage-only approved-side cleanup, but no fixed-origin
-public-host verifier or protected orchestration exists. The current deployed
+workflow. Local promotion, fresh candidate retrieval, in-memory manifest
+generation, orchestration, the protected workflow file, and GitHub review
+client now exist together with storage-only approved-side cleanup. They are not
+remote infrastructure and have never been dispatched. The current deployed
 private service therefore still cannot promote media or create a candidate
 manifest or Pull Request.
 

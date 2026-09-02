@@ -2,6 +2,7 @@ import { verifyWorkerAccessIdentity } from './access.js';
 import {
     cleanupProcessingRun,
     processingOriginalResponse,
+    readPhotoProcessingEligibility,
     recordProcessingResult,
     retryProcessingRun,
     startProcessingRun,
@@ -13,6 +14,9 @@ const DRAFT_ID_FRAGMENT = '(draft_[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-
 const RUN_ID_FRAGMENT = '(run_[a-f0-9]{12}4[a-f0-9]{3}[89ab][a-f0-9]{15})';
 const START_PATH_PATTERN = new RegExp(
     `^/api/service/drafts/${DRAFT_ID_FRAGMENT}/processing-runs$`
+);
+const ELIGIBILITY_PATH_PATTERN = new RegExp(
+    `^/api/service/drafts/${DRAFT_ID_FRAGMENT}/photo-processing-eligibility$`
 );
 const ORIGINAL_PATH_PATTERN = new RegExp(
     `^/api/service/processing-runs/${RUN_ID_FRAGMENT}/original$`
@@ -109,6 +113,20 @@ export async function handleProcessingRequest(request, env, dependencies = {}) {
     }
 
     const now = readNow(dependencies.now);
+    if (route.kind === 'eligibility') {
+        if (request.method !== 'GET') {
+            return adminFailure(405, { Allow: 'GET' });
+        }
+        if (!isBodylessRead(request)) {
+            return adminFailure(400);
+        }
+        return processingResultResponse(await readPhotoProcessingEligibility(
+            env,
+            identity,
+            route.draftId
+        ));
+    }
+
     if (route.kind === 'start') {
         if (request.method !== 'POST') {
             return adminFailure(405, { Allow: 'POST' });
@@ -186,7 +204,11 @@ export async function handleProcessingRequest(request, env, dependencies = {}) {
 }
 
 function matchRoute(pathname) {
-    let match = START_PATH_PATTERN.exec(pathname);
+    let match = ELIGIBILITY_PATH_PATTERN.exec(pathname);
+    if (match) {
+        return { kind: 'eligibility', draftId: match[1] };
+    }
+    match = START_PATH_PATTERN.exec(pathname);
     if (match) {
         return { kind: 'start', draftId: match[1] };
     }

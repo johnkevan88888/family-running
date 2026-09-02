@@ -1,7 +1,8 @@
 # Gallery Administration Workers
 
 This directory contains the deployed authentication baseline, the remotely
-verified synthetic-only Phase C owner workflow, and the Phase D private photo-
+verified synthetic Phase C rehearsal, the deployed real-photo admin intake,
+and the Phase D private photo-
 processing boundary. It is not part of the GitHub Pages runtime and does not
 provide a public-site upload control. The deployed administration Worker
 remains owner-only and can reach only D1 and private originals; the separate
@@ -57,12 +58,22 @@ therefore could not accept a family, consent, or editorial record.
 
 The same Worker now has implemented, tested, and non-production-deployed routes
 for the owner selector catalog, private drafts, consent and guardian
-attestations, resumable synthetic uploads, protected original preview, and
-moderation. The interface uses only
-same-origin HTML, CSS, and JavaScript returned by the authenticated Worker. It
-has no file picker: Phase C creates a built-in synthetic photo or video, and the
-server also requires a `synthetic-*` filename plus an explicit synthetic-only
-flag.
+attestations, resumable uploads, protected original preview, and moderation.
+The interface uses only same-origin HTML, CSS, and JavaScript returned by the
+authenticated Worker. Its local next-pilot path accepts one JPEG or PNG file,
+computes the complete SHA-256 in the browser, and sends extension, MIME type,
+byte length, and digest only. It never sends or stores the original filename.
+Video is disabled. Migration `0010_photo_intake_review_bridge.sql` makes the
+declared digest and real-photo-intake marker immutable. Its two columns, two
+triggers, and migration ID `10` are applied and independently verified on
+non-production D1. The updated admin Worker is now deployed as exact version
+`c411bead-edb5-441b-aa0b-36594ff8a9b8`, with only D1, private originals, and
+the three existing secret-text bindings. Anonymous health requests still stop
+at Access. A normal owner Access session then returned exact
+`{"ok":true,"scope":"owner-browser"}` from `/api/browser/health`, confirmed by
+the supplied screenshot and an independent live-tab readback. This closes the
+admin health gate, but real-photo upload remains prohibited until the separate
+processing and promotion gates are approved and completed.
 
 The deterministic selector snapshot is built from the exact public export.
 The owner opens the page with exactly `?site=family` or `?site=everyone`; that
@@ -198,23 +209,29 @@ ignored local copy must have exactly `DB`, `PRIVATE_ORIGINALS`, and
   `subject:<Cloudflare-Access-service-Client-ID>` entry; and
 - `PROCESSING_ORIGIN`: the exact HTTPS processing Worker origin.
 
-This component remains synthetic-only. Migrations `0003`–`0006` and the normal
-processing Worker were applied and remotely rehearsed after separate approval;
+The deployed component remains the synthetic-rehearsal build. The repository
+now has a local photo-only JPEG/opaque-PNG entry point plus a current-eligibility
+read that rechecks server-derived area, race, public tags, consent, suppression,
+exclusions, revisions, upload evidence, and checksum before a run begins.
+Migrations `0003`–`0006` and the normal processing Worker were applied and
+remotely rehearsed after separate approval;
 the A–F photo and cleanup-race proof passed. The fault-enabled entry point was
 then replaced by the normal entry point, and the temporary Access service token
 and rehearsal policy were deleted. Do not create a new service identity,
 reattach a policy, or deploy the rehearsal entry point without fresh explicit
-approval. Remote approved-media promotion, protected manifest orchestration,
-video, publication, and all real media remain separate blocked scopes. The
+approval. Remote approved-media promotion, protected workflow dispatch, video,
+publication, and all real-media use remain separate blocked scopes. The
 repository-only photo promotion and candidate-generation modules described
 below do not relax that deployment boundary.
 
 ## Local photo-promotion boundary
 
 `src/promotion-worker.js` is a fourth, service-only Worker entry point. It
-accepts exactly one Access service identity and one fixed `POST` route for an
-opaque draft ID. Its JSON body contains only the expected state version and an
-idempotency key. It rejects caller-supplied site, destination, race, athlete,
+accepts exactly one Access service identity, one fixed `POST` promotion route,
+and one bodyless `GET` candidate route for an opaque draft ID. The mutation body
+contains only the expected state version and an idempotency key. Candidate
+retrieval re-runs complete D1, generation, consent/exclusion, and approved-R2
+verification. Both routes reject caller-supplied site, destination, race, athlete,
 role, key, URL, editorial, manifest, or GitHub values. Its exact runtime
 environment is `DB`, `DERIVATIVE_STAGING`, `APPROVED_MEDIA`, and three scalar
 identity/origin values. It cannot read a private original or edit a manifest.
@@ -273,8 +290,11 @@ Do not deploy this Worker without separate approval. R2 bucket absence is not
 host-absence proof; the deployed verifier below has completed only the approved
 synthetic zero-generation withdrawal-purpose rehearsal. The tracked one-day
 `media/v1/` incomplete-multipart lifecycle requirement is orphan containment
-only, cannot authorize a tombstone or purge, and has not been applied remotely.
-Protected live candidate retrieval/orchestration is also missing. No Access
+only and cannot authorize a tombstone or purge. It is now applied to the exact
+approved-media bucket and independently verified through the lifecycle API and
+bucket Settings page.
+Protected candidate retrieval, orchestration, and the default-branch workflow
+are implemented locally but are not deployed, provisioned, or dispatched. No Access
 policy/identity for the promotion Worker, lifecycle change, promotion Worker
 deployment, approved Gallery derivative, manifest edit, GitHub App, or
 candidate-media Pull Request was created by this promotion slice.
@@ -404,9 +424,18 @@ That epoch activation is an irreversible append-only D1 ledger advance even if
 normal Worker code is restored; it cannot roll the current pointer back to
 epoch `1`. Fault deployment and epoch rotation are not part of the present
 zero-generation rehearsal.
-The next separately approved remote gate is the one-day approved-prefix
-lifecycle rule. Promotion Worker deployment/Access remains a later, separate
-gate. No source or local test grants approval for any remote mutation.
+The one-day approved-prefix lifecycle rule and migration `0010` are now
+independently verified. The updated admin Worker was separately deployed and
+independent API readback proves version
+`c411bead-edb5-441b-aa0b-36594ff8a9b8` serves 100% of traffic with exactly D1,
+private originals, and secret names `ADMIN_ORIGIN`, `OWNER_IDENTITIES`, and
+`SESSION_SECRET`; the existing hourly cron and owner Access app/policy are
+unchanged. Anonymous browser and service health requests both redirect to
+Access. A normal owner session then returned exact
+`{"ok":true,"scope":"owner-browser"}` from the browser health route, with both
+screenshot and live-tab confirmation. Processing/promotion Worker deployment
+and new service Access remain later, separate gates. No source, local test, or
+admin health result grants approval for either or for a real-media transfer.
 
 ## Configuration boundary
 
@@ -433,12 +462,16 @@ verifier binds D1 only; its fixed public checks use outbound fetch,
 not an R2 binding. No component
 can reach originals, staging, approved storage, and GitHub together.
 
-Set these admin values outside Git:
+Set these values outside Git for the current owner-only admin deployment:
 
 - `OWNER_IDENTITIES`
-- `AUTOMATION_IDENTITIES`
 - `ADMIN_ORIGIN`
 - `SESSION_SECRET`
+
+`AUTOMATION_IDENTITIES` is a separately gated optional binding for a future
+admin service route. It is deliberately absent from the current deployed admin
+Worker and must not be added merely because the source retains a fail-closed
+service boundary.
 
 Identity allowlists are newline-delimited and accept only explicit
 `subject:<immutable-identity>` or `email:<normalized-identity>` entries. The

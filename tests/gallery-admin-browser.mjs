@@ -172,6 +172,21 @@ async function checkViewport(browserInstance, adminOrigin, viewport, area) {
             hasText: 'The private draft was saved.'
         }).waitFor();
 
+        const testPhoto = Buffer.from(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC' +
+            'AAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+            'base64'
+        );
+        await page.locator('#photo-file').setInputFiles({
+            name: `private-${area.siteMode}-owner-photo.png`,
+            mimeType: 'image/png',
+            buffer: testPhoto
+        });
+        await page.locator('#start-upload').click();
+        await page.locator('#app-status').filter({
+            hasText: 'The private original is ready for review.'
+        }).waitFor();
+
         const dimensions = await page.evaluate(() => ({
             clientWidth: document.documentElement.clientWidth,
             scrollWidth: document.documentElement.scrollWidth,
@@ -193,6 +208,19 @@ async function checkViewport(browserInstance, adminOrigin, viewport, area) {
         assert.ok(createRequest, `${area.siteMode} did not send a draft-create request.`);
         assert.ok(createRequest.body && typeof createRequest.body === 'object');
         assert.equal(Object.hasOwn(createRequest.body, 'siteModes'), false);
+        const uploadRequest = requests.find(request => (
+            request.method === 'POST' && request.pathname.endsWith('/upload')
+        ));
+        assert.ok(uploadRequest?.body, `${area.siteMode} did not initiate its private photo upload.`);
+        assert.equal(uploadRequest.body.fileExtension, 'png');
+        assert.equal(uploadRequest.body.declaredMimeType, 'image/png');
+        assert.match(uploadRequest.body.declaredSha256, /^[a-f0-9]{64}$/);
+        for (const forbiddenKey of [
+            'fileName', 'site', 'siteMode', 'siteModes', 'destination',
+            'raceDate', 'raceEvent', 'raceDistance', 'athleteIds'
+        ]) {
+            assert.equal(Object.hasOwn(uploadRequest.body, forbiddenKey), false);
+        }
         assert.ok(
             requests.every(request => request.search === `?site=${area.siteMode}`),
             `${area.siteMode} emitted an API or preview request without its exact area context.`
@@ -226,8 +254,8 @@ async function assertPageBasics(page, area) {
         { exact: true }
     ).waitFor());
     assert.match(
-        await page.locator('.synthetic-warning').innerText(),
-        /only the built-in synthetic test photo or video/i
+        await page.locator('.pilot-warning').innerText(),
+        /select one approved JPEG or PNG photograph/i
     );
     assert.equal(await page.locator('#site-area-label').innerText(), area.label);
     assert.match(
@@ -238,7 +266,8 @@ async function assertPageBasics(page, area) {
     assert.equal(await page.locator('select[name="site-mode"]').count(), 0);
     assert.equal(await page.locator('button[name="site-mode"]').count(), 0);
     assert.equal(await page.getByText('Where should it appear?', { exact: true }).count(), 0);
-    assert.equal(await page.locator('input[type="file"]').count(), 0);
+    assert.equal(await page.locator('input[type="file"]').count(), 1);
+    assert.equal(await page.locator('#photo-file').getAttribute('accept'), '.jpg,.jpeg,.png,image/jpeg,image/png');
     assert.equal(await page.locator('script:not([src])').count(), 0);
     assert.equal(await page.locator('style').count(), 0);
 }
@@ -267,6 +296,7 @@ async function checkInvalidContext(browserInstance, adminOrigin, query, label) {
 }
 
 function createAdminServer(requestLog) {
+    const createdDrafts = new Map();
     return http.createServer(async (request, response) => {
         try {
             const url = new URL(request.url, 'http://127.0.0.1');
@@ -323,15 +353,67 @@ function createAdminServer(requestLog) {
             }
             if (request.method === 'POST' && url.pathname === '/api/browser/drafts') {
                 logEntry.body = await readJsonBody(request);
+                const createdDraft = {
+                    ...draftFixture(siteMode),
+                    draftId: `created-${siteMode}-draft`,
+                    state: 'draft',
+                    stateVersion: 1,
+                    itemInput: logEntry.body.itemInput
+                };
+                createdDrafts.set(createdDraft.draftId, createdDraft);
                 writeJson(response, 201, {
-                    draft: {
-                        ...draftFixture(siteMode),
-                        draftId: `created-${siteMode}-draft`,
-                        state: 'draft',
-                        stateVersion: 1,
-                        itemInput: logEntry.body.itemInput
+                    draft: createdDraft
+                });
+                return;
+            }
+
+            const uploadMatch = url.pathname.match(
+                /^\/api\/browser\/drafts\/([^/]+)\/upload$/
+            );
+            if (request.method === 'POST' && uploadMatch) {
+                logEntry.body = await readJsonBody(request);
+                const draft = createdDrafts.get(uploadMatch[1]);
+                const uploading = { ...draft, state: 'uploading', stateVersion: 2 };
+                createdDrafts.set(uploadMatch[1], uploading);
+                writeJson(response, 201, {
+                    draft: uploading,
+                    upload: {
+                        partSize: 5 * 1024 * 1024,
+                        partCount: 1,
+                        uploadedParts: []
                     }
                 });
+                return;
+            }
+            const partMatch = url.pathname.match(
+                /^\/api\/browser\/drafts\/([^/]+)\/upload-parts\/(\d+)$/
+            );
+            if (request.method === 'PUT' && partMatch) {
+                const bytes = await readBody(request);
+                logEntry.body = { byteLength: bytes.byteLength };
+                writeJson(response, 201, {
+                    part: {
+                        partNumber: Number(partMatch[2]),
+                        byteCount: bytes.byteLength,
+                        sha256: request.headers['x-chunk-sha256']
+                    }
+                });
+                return;
+            }
+            const completionMatch = url.pathname.match(
+                /^\/api\/browser\/drafts\/([^/]+)\/upload-completion$/
+            );
+            if (request.method === 'POST' && completionMatch) {
+                logEntry.body = await readJsonBody(request);
+                const draft = createdDrafts.get(completionMatch[1]);
+                const completed = {
+                    ...draft,
+                    state: 'private-review',
+                    stateVersion: 3,
+                    uploadComplete: true
+                };
+                createdDrafts.set(completionMatch[1], completed);
+                writeJson(response, 201, { draft: completed, replayed: false });
                 return;
             }
 
@@ -354,7 +436,9 @@ function createAdminServer(requestLog) {
 
             const draftMatch = url.pathname.match(/^\/api\/browser\/drafts\/([^/]+)$/);
             if (request.method === 'GET' && draftMatch) {
-                writeJson(response, 200, { draft: draftFixture(siteMode) });
+                writeJson(response, 200, {
+                    draft: createdDrafts.get(draftMatch[1]) || draftFixture(siteMode)
+                });
                 return;
             }
 
@@ -398,6 +482,15 @@ function readJsonBody(request) {
                 reject(error);
             }
         });
+    });
+}
+
+function readBody(request) {
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        request.on('data', chunk => chunks.push(chunk));
+        request.once('error', reject);
+        request.once('end', () => resolve(Buffer.concat(chunks)));
     });
 }
 
