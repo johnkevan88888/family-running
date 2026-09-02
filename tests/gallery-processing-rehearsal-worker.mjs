@@ -63,6 +63,71 @@ const directProductionResponse = await handleProcessingRequest(
 );
 assert.equal(directProductionResponse.status, 403);
 
+// JSON service routes have one total body-read deadline. A client that never
+// supplies its first byte is cancelled and rejected before any D1 or R2 call,
+// even when the stream's cancellation promise never settles.
+const stalledReadBoundary = createBoundary();
+let stalledReadCancelCalls = 0;
+const stalledReadBody = new ReadableStream({
+    start() {},
+    cancel() {
+        stalledReadCancelCalls += 1;
+        return new Promise(() => {});
+    }
+});
+const stalledReadStartedAt = Date.now();
+const stalledReadResponse = await handleProcessingRequest(
+    streamedJsonRequest(cleanupPath, stalledReadBody),
+    stalledReadBoundary.env,
+    {
+        verifyAccessIdentity: async () => ({
+            type: 'service',
+            subject: serviceClientId
+        }),
+        bodyTimeoutMilliseconds: 20
+    }
+);
+assert.equal(stalledReadResponse.status, 400);
+assert.deepEqual(await stalledReadResponse.json(), { error: 'invalid-request' });
+assert.ok(Date.now() - stalledReadStartedAt < 1_000);
+assert.equal(stalledReadCancelCalls, 1);
+assert.equal(stalledReadBoundary.database.calls.length, 0);
+assert.equal(stalledReadBoundary.bucket.calls.length, 0);
+
+// An over-limit stream is still a 413, and a provider-controlled cancellation
+// cannot hold the response until the otherwise-valid two-second body deadline.
+const stalledCancelBoundary = createBoundary();
+let stalledCancelCalls = 0;
+const overLimitBody = new ReadableStream({
+    start(controller) {
+        controller.enqueue(new Uint8Array((32 * 1024) + 1));
+    },
+    cancel() {
+        stalledCancelCalls += 1;
+        return new Promise(() => {});
+    }
+});
+const stalledCancelStartedAt = Date.now();
+const stalledCancelResponse = await handleProcessingRequest(
+    streamedJsonRequest(cleanupPath, overLimitBody),
+    stalledCancelBoundary.env,
+    {
+        verifyAccessIdentity: async () => ({
+            type: 'service',
+            subject: serviceClientId
+        }),
+        bodyTimeoutMilliseconds: 2_000
+    }
+);
+assert.equal(stalledCancelResponse.status, 413);
+assert.deepEqual(await stalledCancelResponse.json(), {
+    error: 'request-too-large'
+});
+assert.ok(Date.now() - stalledCancelStartedAt < 1_000);
+assert.equal(stalledCancelCalls, 1);
+assert.equal(stalledCancelBoundary.database.calls.length, 0);
+assert.equal(stalledCancelBoundary.bucket.calls.length, 0);
+
 // Without the special header, the rehearsal entrypoint is the ordinary Worker.
 const noFaultBoundary = createBoundary();
 const noFaultResponse = await processingRehearsalWorker.fetch(
@@ -472,6 +537,18 @@ function cleanupRequest(mode) {
             [PROCESSING_REHEARSAL_HEADER]: mode
         },
         body
+    });
+}
+
+function streamedJsonRequest(path, body) {
+    return new Request(`${processingOrigin}${path}`, {
+        method: 'POST',
+        headers: {
+            'Content-Length': '1',
+            'Content-Type': 'application/json'
+        },
+        body,
+        duplex: 'half'
     });
 }
 

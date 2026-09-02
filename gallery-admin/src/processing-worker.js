@@ -35,6 +35,9 @@ const RETRY_PATH_PATTERN = new RegExp(
 );
 const PROCESSOR_IDENTITY_PATTERN = /^subject:([0-9a-f]{32}\.access)$/;
 const JSON_BODY_LIMIT = 32 * 1024;
+const DEFAULT_BODY_TIMEOUT_MILLISECONDS = 5_000;
+const MAX_BODY_TIMEOUT_MILLISECONDS = 30_000;
+const MAX_CANCEL_WAIT_MILLISECONDS = 100;
 export const PROCESSING_REHEARSAL_HEADER = 'X-Gallery-Rehearsal-Fault';
 const EXACT_ENVIRONMENT_KEYS = Object.freeze([
     'DB',
@@ -131,7 +134,10 @@ export async function handleProcessingRequest(request, env, dependencies = {}) {
         if (request.method !== 'POST') {
             return adminFailure(405, { Allow: 'POST' });
         }
-        const parsed = await readBoundedJson(request);
+        const parsed = await readBoundedJson(
+            request,
+            dependencies.bodyTimeoutMilliseconds
+        );
         if (!parsed.ok) {
             return adminFailure(parsed.status);
         }
@@ -172,7 +178,10 @@ export async function handleProcessingRequest(request, env, dependencies = {}) {
     if (request.method !== 'POST') {
         return adminFailure(405, { Allow: 'POST' });
     }
-    const parsed = await readBoundedJson(request);
+    const parsed = await readBoundedJson(
+        request,
+        dependencies.bodyTimeoutMilliseconds
+    );
     if (!parsed.ok) {
         return adminFailure(parsed.status);
     }
@@ -376,7 +385,7 @@ function isBodylessRead(request) {
         (contentLength === null || contentLength === '0');
 }
 
-async function readBoundedJson(request) {
+async function readBoundedJson(request, requestedTimeoutMilliseconds) {
     if (
         request.headers.get('Content-Type') !== 'application/json' ||
         request.headers.has('Content-Encoding') ||
@@ -394,20 +403,26 @@ async function readBoundedJson(request) {
     }
 
     const reader = request.body.getReader();
+    const deadline = Date.now() + normalizeBodyTimeout(
+        requestedTimeoutMilliseconds
+    );
     const chunks = [];
     let length = 0;
     try {
         while (true) {
-            const { done, value } = await reader.read();
+            const { done, value } = await readBeforeDeadline(reader, deadline);
             if (done) {
                 break;
             }
             length += value.byteLength;
             if (length > JSON_BODY_LIMIT) {
-                await reader.cancel();
+                await cancelBeforeDeadline(reader, deadline);
                 return { ok: false, status: 413 };
             }
             chunks.push(value);
+        }
+        if (Date.now() >= deadline) {
+            return { ok: false, status: 400 };
         }
         if (length !== Number(declaredLength)) {
             return { ok: false, status: 400 };
@@ -421,10 +436,64 @@ async function readBoundedJson(request) {
         const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
         return { ok: true, value: JSON.parse(text) };
     } catch {
+        await cancelBeforeDeadline(reader, deadline);
         return { ok: false, status: 400 };
     } finally {
-        reader.releaseLock();
+        try {
+            reader.releaseLock();
+        } catch {
+            // A timed-out read is already rejected and cannot reach D1.
+        }
     }
+}
+
+function normalizeBodyTimeout(value) {
+    return Number.isSafeInteger(value) &&
+        value >= 1 &&
+        value <= MAX_BODY_TIMEOUT_MILLISECONDS
+        ? value
+        : DEFAULT_BODY_TIMEOUT_MILLISECONDS;
+}
+
+function readBeforeDeadline(reader, deadline) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+        return Promise.reject(new Error('Request body timed out.'));
+    }
+    let timeoutId;
+    return Promise.race([
+        Promise.resolve().then(() => reader.read()),
+        new Promise((resolve, reject) => {
+            timeoutId = setTimeout(
+                () => reject(new Error('Request body timed out.')),
+                remaining
+            );
+        })
+    ]).finally(() => clearTimeout(timeoutId));
+}
+
+async function cancelBeforeDeadline(reader, deadline) {
+    let cancellation;
+    try {
+        cancellation = Promise.resolve(reader.cancel()).catch(() => {});
+    } catch {
+        return;
+    }
+    const remaining = Math.min(
+        MAX_CANCEL_WAIT_MILLISECONDS,
+        Math.max(0, deadline - Date.now())
+    );
+    if (remaining === 0) {
+        void cancellation;
+        return;
+    }
+    let timeoutId;
+    await Promise.race([
+        cancellation,
+        new Promise(resolve => {
+            timeoutId = setTimeout(resolve, remaining);
+        })
+    ]).finally(() => clearTimeout(timeoutId));
 }
 
 function processingResultResponse(result) {

@@ -48,6 +48,35 @@ const ADMIN_DOCUMENT = String.raw`<!doctype html>
                 <div id="draft-list" class="draft-list" aria-live="polite"></div>
             </section>
 
+            <section class="admin-panel exclusion-panel" aria-labelledby="athlete-exclusion-title">
+                <div class="panel-heading">
+                    <div>
+                        <p class="section-kicker">Proactive privacy control</p>
+                        <h2 id="athlete-exclusion-title">Athlete-wide Gallery exclusion</h2>
+                        <p>
+                            Start an exclusion for any current public athlete, even when
+                            no saved Gallery item is currently tagged with that ID.
+                        </p>
+                    </div>
+                </div>
+                <div id="athlete-exclusion-controls" class="athlete-exclusion-controls">
+                    <label class="form-field" for="athlete-exclusion-choice">
+                        <span>Current public athlete</span>
+                        <select id="athlete-exclusion-choice">
+                            <option value="">Choose a current public athlete</option>
+                        </select>
+                        <small>
+                            Any current or future Gallery item carrying this athlete tag is
+                            blocked as a whole. Names and reasons are not stored in the
+                            exclusion record.
+                        </small>
+                    </label>
+                    <button id="athlete-exclusion" class="button button-danger" type="button">
+                        Start athlete-wide exclusion
+                    </button>
+                </div>
+            </section>
+
             <section class="admin-panel form-panel" aria-labelledby="new-draft-title">
                 <div class="panel-heading">
                     <div>
@@ -242,6 +271,23 @@ const ADMIN_DOCUMENT = String.raw`<!doctype html>
                     <button id="reject-draft" class="button button-danger" type="button" hidden>
                         Reject this draft
                     </button>
+                </div>
+
+                <div id="withdrawal-controls" class="withdrawal-box" hidden>
+                    <h3>Remove or exclude Gallery media</h3>
+                    <p>
+                        These controls start the protected removal process. They do not
+                        mark deletion complete; the media stays withdrawal pending until
+                        the public host and required private storage checks are proved.
+                    </p>
+                    <div class="withdrawal-actions">
+                        <button id="editorial-withdrawal" class="button button-danger" type="button">
+                            Remove this item from the Gallery
+                        </button>
+                        <button id="consent-withdrawal" class="button button-danger" type="button">
+                            Withdraw consent and remove this item
+                        </button>
+                    </div>
                 </div>
             </section>
         </div>
@@ -447,7 +493,8 @@ textarea:disabled {
 }
 
 .form-panel,
-.review-panel {
+.review-panel,
+.exclusion-panel {
     grid-column: 2;
 }
 
@@ -817,7 +864,8 @@ textarea:focus-visible,
 }
 
 .upload-box,
-.protected-preview {
+.protected-preview,
+.withdrawal-box {
     background: #f8fafc;
     border: 1px solid var(--blue-200);
     border-radius: 13px;
@@ -826,15 +874,34 @@ textarea:focus-visible,
 }
 
 .upload-box h3,
-.protected-preview h3 {
+.protected-preview h3,
+.withdrawal-box h3 {
     color: var(--navy-800);
     margin: 0;
 }
 
 .upload-box > p,
-.protected-preview > p {
+.protected-preview > p,
+.withdrawal-box > p {
     color: var(--muted);
     margin: 6px 0 14px;
+}
+
+.withdrawal-box {
+    background: var(--danger-bg);
+    border-color: #d9afaf;
+}
+
+.withdrawal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 11px;
+}
+
+.athlete-exclusion-controls {
+    border-top: 1px solid #d9afaf;
+    margin-top: 18px;
+    padding-top: 2px;
 }
 
 .upload-progress {
@@ -904,7 +971,8 @@ textarea:focus-visible,
 
     .drafts-panel,
     .form-panel,
-    .review-panel {
+    .review-panel,
+    .exclusion-panel {
         grid-column: 1;
         grid-row: auto;
         position: static;
@@ -916,6 +984,10 @@ textarea:focus-visible,
 
     .form-panel {
         order: 1;
+    }
+
+    .exclusion-panel {
+        order: 2;
     }
 
     .review-panel {
@@ -1007,6 +1079,7 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
             state.catalog = normalizeCatalog(initial[0]);
             state.drafts = normalizeDraftList(initial[1]);
             populateDateChoices();
+            populateAthleteExclusionChoices();
             renderDraftList();
             elements.workspace.hidden = false;
             setStatus(
@@ -1077,6 +1150,11 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         elements.returnDraft = byId('return-draft');
         elements.reopenDraft = byId('reopen-draft');
         elements.rejectDraft = byId('reject-draft');
+        elements.withdrawalControls = byId('withdrawal-controls');
+        elements.editorialWithdrawal = byId('editorial-withdrawal');
+        elements.consentWithdrawal = byId('consent-withdrawal');
+        elements.athleteExclusionChoice = byId('athlete-exclusion-choice');
+        elements.athleteExclusion = byId('athlete-exclusion');
     }
 
     function bindEvents() {
@@ -1098,6 +1176,13 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         elements.rejectDraft.addEventListener('click', function () {
             transitionActiveDraft('rejected');
         });
+        elements.editorialWithdrawal.addEventListener('click', function () {
+            initiateActiveDraftWithdrawal('editorial-withdrawal');
+        });
+        elements.consentWithdrawal.addEventListener('click', function () {
+            initiateActiveDraftWithdrawal('consent-withdrawal');
+        });
+        elements.athleteExclusion.addEventListener('click', initiateSelectedAthleteExclusion);
 
         document.querySelectorAll('input[name="contains-minors"]').forEach(function (input) {
             input.addEventListener('change', updateGuardianRequirement);
@@ -1520,6 +1605,7 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         elements.reviewSummary.textContent = draftTitle(draft) + ' — ' + stateLabel(draft.state) + '.';
         renderDraftFacts(draft);
         renderModerationActions(draft.state);
+        renderWithdrawalControls(draft);
         renderChecksum(draft);
         renderPreview(draft);
 
@@ -1559,6 +1645,37 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         elements.rejectDraft.hidden = draftState !== 'private-review';
         elements.returnDraft.hidden = draftState !== 'approved-for-processing';
         elements.reopenDraft.hidden = draftState !== 'rejected';
+    }
+
+    function renderWithdrawalControls(draft) {
+        var withdrawn = draft.state === 'withdrawn';
+        var pending = draft.state === 'withdrawal-pending';
+        elements.withdrawalControls.hidden = withdrawn;
+        elements.editorialWithdrawal.hidden = pending || withdrawn;
+        elements.consentWithdrawal.hidden = withdrawn;
+    }
+
+    function populateAthleteExclusionChoices() {
+        clearSelect(elements.athleteExclusionChoice, 'Choose a current public athlete');
+        var blocked = new Set(state.catalog ? state.catalog.blockedAthleteIds : []);
+        var eligible = selectionRoster(selectedSiteModes()).filter(function (entry) {
+            return !blocked.has(entry.athleteId);
+        });
+        eligible.forEach(function (entry) {
+            appendOption(
+                elements.athleteExclusionChoice,
+                entry.athleteId,
+                entry.participant + ' — ' + entry.athleteId
+            );
+        });
+        if (!eligible.length) {
+            replaceFirstOption(
+                elements.athleteExclusionChoice,
+                'No current public athletes are available'
+            );
+        }
+        elements.athleteExclusionChoice.disabled = !eligible.length;
+        elements.athleteExclusion.disabled = !eligible.length;
     }
 
     function renderChecksum(draft) {
@@ -1798,6 +1915,88 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
             renderActiveDraft();
             await refreshDrafts(false);
             setStatus('Draft status changed to ' + stateLabel(toState) + '.', 'success');
+        });
+    }
+
+    async function initiateActiveDraftWithdrawal(kind) {
+        if (!state.activeDraft) {
+            return;
+        }
+        var consentWithdrawal = kind === 'consent-withdrawal';
+        var confirmed = window.confirm(consentWithdrawal
+            ? 'Record that consent has been withdrawn and start removal of this item? ' +
+                'This is one-way. Final deletion still requires the protected verification steps.'
+            : 'Start removal of this item from the Gallery? ' +
+                'It will stay withdrawal pending until the protected verification steps finish.');
+        if (!confirmed) {
+            return;
+        }
+
+        clearError();
+        var button = consentWithdrawal
+            ? elements.consentWithdrawal
+            : elements.editorialWithdrawal;
+        await withBusy(button, 'Starting removal…', async function () {
+            await api(draftPath(state.activeDraft) + '/' + kind, {
+                method: 'POST',
+                body: {
+                    expectedStateVersion: numberOrZero(state.activeDraft.stateVersion),
+                    idempotencyKey: randomToken('withdrawal')
+                }
+            });
+            await reloadActiveDraft();
+            renderActiveDraft();
+            await refreshDrafts(false);
+            setStatus(
+                consentWithdrawal
+                    ? 'Consent-withdrawal intent is recorded and protected removal is pending.'
+                    : 'Protected Gallery removal has started and is pending verification.',
+                'success'
+            );
+        });
+    }
+
+    async function initiateSelectedAthleteExclusion() {
+        var athleteId = elements.athleteExclusionChoice.value;
+        var currentPublicIds = new Set(selectionRoster(selectedSiteModes()).map(function (entry) {
+            return entry.athleteId;
+        }));
+        if (!athleteId || !currentPublicIds.has(athleteId)) {
+            showError(new Error('Choose one current public athlete.'));
+            return;
+        }
+        var selectedOption = elements.athleteExclusionChoice.selectedOptions[0];
+        var label = selectedOption ? selectedOption.textContent : athleteId;
+        if (!window.confirm(
+            'Start athlete-wide exclusion for ' + label + '? ' +
+            'Every Gallery item carrying this tag will be removed as a whole. ' +
+            'Final deletion still requires the protected verification steps.'
+        )) {
+            return;
+        }
+
+        clearError();
+        await withBusy(elements.athleteExclusion, 'Starting exclusion…', async function () {
+            await api('/api/browser/athlete-exclusions', {
+                method: 'POST',
+                body: {
+                    athleteId: athleteId,
+                    idempotencyKey: randomToken('exclusion')
+                }
+            });
+            state.catalog.blockedAthleteIds = unique(
+                state.catalog.blockedAthleteIds.concat([athleteId])
+            );
+            populateAthleteExclusionChoices();
+            if (state.activeDraft) {
+                await reloadActiveDraft();
+                renderActiveDraft();
+            }
+            await refreshDrafts(false);
+            setStatus(
+                'The athlete-wide exclusion is pending. Every matching tagged item is blocked.',
+                'success'
+            );
         });
     }
 

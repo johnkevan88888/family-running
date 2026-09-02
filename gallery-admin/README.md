@@ -9,8 +9,9 @@ remains owner-only and can reach only D1 and private originals; the separate
 media Worker can reach only approved derivatives. The normal Phase D processing
 Worker is a third, service-only component that can read private originals and
 write private staging, but cannot reach approved media or either public
-manifest. Its non-production Access application is currently parked fail closed
-with zero policies and no retained rehearsal service identity. A fourth
+manifest. It is currently deployed at exact version
+`f58e0a1f-3ca4-4b66-a81f-9435d9af4f15` behind its active narrow Service Auth
+policy; the local changes in this branch are not deployed. A fourth
 repository-only promotion Worker now covers D1 plus staging-read and approved-
 write access;
 it is not deployed and cannot reach originals, manifests, or GitHub. Pull
@@ -34,6 +35,78 @@ uploaded and byte-verified; matching delivery epoch
   the exact-host verifier application parked with zero policies. Both Worker
   deployments, approved R2's witness-only inventory, both public manifests, and
   the public site remained unchanged.
+
+## Local review, withdrawal, and exclusion safety slice
+
+The 2 September 2026 local slice adds migrations `0011` and `0012`, protected
+review and invalidation routes on the promotion Worker, and owner-only
+withdrawal/exclusion routes on the admin Worker. The migrations are not applied,
+the changed Workers are not deployed, and neither workflow has been dispatched.
+The promotion Worker remains absent. The reviewed source is commit `3078c59`
+and Pull Request #89; opening that review branch changed no R2 object, public
+manifest, suppression file, Access resource, deployment, merge, or publication.
+
+The protected review workflow accepts only `draft_id`. It reserves one
+immutable receipt before GitHub, then records exact open and terminal Pull
+Request evidence. Its companion invalidation workflow also accepts only
+`draft_id` and reads a strict receipt union: either a review receipt or a
+pre-reservation abandonment receipt. This lets a later run resume after an HTTP
+response is lost without trusting mutable draft state or caller-supplied
+metadata.
+
+The reserved-to-open SQL write rechecks the exact current candidate, generation,
+consent/guardian, publication-intent, revision, exclusion, and cleanup facts. A
+withdrawal that wins after the earlier read leaves the receipt reserved and
+creates no false opened audit.
+
+Post-reservation failure uses exact
+`POST /api/service/photo-reviews/{review_id}/invalidation-start` with only
+`expectedStateVersion` and `idempotencyKey`. D1 derives and preserves the
+strongest current withdrawal kind, atomically moves the exact candidate to
+`withdrawal-pending`, and returns server-built approved-media and private-
+staging cleanup packages. The runner deletes approved media first, then closes
+and reads back only its operation-marked Pull Request, and cleans private
+staging last. If GitHub is unavailable, media remains removed while Pull
+Request closure stays pending. Neither route completes fixed-origin host proof,
+private-original deletion, final withdrawal, or purge.
+Review cleanup packages remain fixed at `candidateStateVersion + 1` and
+abandonment packages at their immutable result version. Final `withdrawn` is
+blocked until both exact approved-media and receipt-bound private-staging cleanup
+rows are complete and their matching hash-only tombstones exist.
+
+The owner browser routes are:
+
+- `POST /api/browser/drafts/{draft_id}/editorial-withdrawal?site={site}`;
+- `POST /api/browser/drafts/{draft_id}/consent-withdrawal?site={site}`; and
+- `POST /api/browser/athlete-exclusions?site={site}`.
+
+The two item routes accept exactly `expectedStateVersion` and `idempotencyKey`.
+The athlete route accepts exactly a current public `athleteId` and an
+`idempotencyKey`; it may record a proactive exclusion when zero current drafts
+use that ID. The signed browser session still fixes `{site}` to Family or
+Everyone, and the server supplies the roster and every affected item. The
+response contains only `replayed` and canonical opaque `affectedDraftIds`.
+Names, reasons, notes, and private identity data are neither accepted nor
+returned.
+
+Migration `0012_owner_withdrawal_exclusion_receipts.sql` stores the original
+public suppression revision and canonical sorted opaque affected-draft set.
+Receipt-first replay remains identical after suppression revision changes,
+athlete hiding, pending-row resolution/deletion, item withdrawal, and draft
+purge; a surviving contradictory pending row fails closed. Exclusion remains
+whole-item on every surface. It does not edit the public suppression file: that
+existing public-ID-only change still follows normal reviewed publication.
+
+Both Worker JSON readers apply one total bounded body deadline. Both workflows
+use immutable Action commit pins and the protected `gallery-processing`
+environment, and have no merge, `main` update, branch deletion, deployment,
+Pages, or settings operation. The inherited Family/Everyone area,
+race/date/event/distance, public athlete tags, consent/guardian gates,
+metadata-stripping, external-media storage, server-derived naming, and
+fail-closed suppression contracts are unchanged.
+The invalidation runner writes only one fixed completion status to logs and does
+not expose receipt IDs, withdrawal categories, consent or athlete facts, or
+branch data.
 
 ## Historical Phase B boundary
 
@@ -227,12 +300,15 @@ below do not relax that deployment boundary.
 ## Local photo-promotion boundary
 
 `src/promotion-worker.js` is a fourth, service-only Worker entry point. It
-accepts exactly one Access service identity, one fixed `POST` promotion route,
-and one bodyless `GET` candidate route for an opaque draft ID. The mutation body
-contains only the expected state version and an idempotency key. Candidate
-retrieval re-runs complete D1, generation, consent/exclusion, and approved-R2
-verification. Both routes reject caller-supplied site, destination, race, athlete,
-role, key, URL, editorial, manifest, or GitHub values. Its exact runtime
+accepts exactly one Access service identity. Its original fixed promotion and
+bodyless candidate routes are joined locally by exact review reservation,
+abandonment, open, invalidation-start, terminal, and bodyless receipt-read
+routes. Mutation bodies use only server-issued opaque IDs, expected state
+versions, hashes bound to the candidate or GitHub readback, and idempotency
+keys. Candidate retrieval re-runs complete D1, generation,
+consent/exclusion, and approved-R2 verification. Every route rejects
+caller-supplied site, destination, race, athlete, role, key, URL, editorial,
+manifest, or arbitrary GitHub values. Its exact runtime
 environment is `DB`, `DERIVATIVE_STAGING`, `APPROVED_MEDIA`, and three scalar
 identity/origin values. It cannot read a private original or edit a manifest.
 
@@ -293,11 +369,12 @@ synthetic zero-generation withdrawal-purpose rehearsal. The tracked one-day
 only and cannot authorize a tombstone or purge. It is now applied to the exact
 approved-media bucket and independently verified through the lifecycle API and
 bucket Settings page.
-Protected candidate retrieval, orchestration, and the default-branch workflow
-are implemented locally but are not deployed, provisioned, or dispatched. No Access
-policy/identity for the promotion Worker, lifecycle change, promotion Worker
-deployment, approved Gallery derivative, manifest edit, GitHub App, or
-candidate-media Pull Request was created by this promotion slice.
+Protected candidate retrieval, orchestration, and both default-branch workflows
+are implemented locally but have not been dispatched. The protected
+`gallery-processing` environment exists; the promotion Worker remains absent.
+No Access policy/identity for the promotion Worker, lifecycle change, promotion
+Worker deployment, approved Gallery derivative, manifest edit, GitHub branch,
+or candidate-media Pull Request was created by this promotion slice.
 
 ## Local public-host verifier boundary
 
@@ -407,9 +484,10 @@ canonical absent control still matched the current delivery contract. The
 temporary policy was then detached from the verifier application and the
 application saved before the reusable policy and token were deleted. Dashboard
 and API checks proved the verifier application remains with zero policies, the
-owner application retains its one policy, the processing application retains
-zero policies, and the rehearsal policy and token are absent. The account has no
-service tokens.
+owner application retains its one policy, and the rehearsal policy and token
+are absent. The processing application was later given its separately approved
+narrow current Service Auth policy. The account had no service tokens when the
+rehearsal cleanup closed.
 
 The verifier receipt remains withdrawal-purpose; this is not a remote retention-
 expiry-purpose proof. A genuine rejected or processing-failed retention-purpose
@@ -613,6 +691,31 @@ canonical zero-generation withdrawal case and narrows the purge exception to
 consume the same current receipt without weakening private-original deletion or
 retention-tombstone requirements. It adds no network capability by itself.
 
+Migration `migrations/0010_photo_intake_review_bridge.sql`, applied to
+non-production on 1 September 2026, adds the immutable declared whole-file
+SHA-256 and real-photo-intake marker. Its D1 guards allow only exact JPEG or PNG
+intake with both pieces of evidence and prevent either fact from changing.
+Historical synthetic uploads keep the default false marker and cannot enter the
+real-photo processing path.
+
+Migration `migrations/0011_photo_review_invalidation.sql` is local and not
+applied. It adds immutable photo-review reservation/open/terminal receipts and
+an immutable pre-reservation abandonment receipt. It keeps the processing run,
+candidate and generation facts, inherited-area manifest path, workflow run,
+deterministic branch, and exact Pull Request evidence together. Review and
+abandonment are mutually exclusive for one draft. A final withdrawn transition
+cannot pass while a review remains reserved or open, and no migration makes
+`pr-open` or `published` reachable.
+
+Migration `migrations/0012_owner_withdrawal_exclusion_receipts.sql` is local and
+not applied. It adds one immutable athlete-exclusion request receipt with the
+public athlete ID, request and suppression hashes, original suppression
+revision, canonical sorted opaque affected-draft JSON/hash/count, and audit
+timestamps. It contains no draft foreign keys so the retry authority survives
+an approved purge. SQL enforces exact lowercase `draft_<UUID-v4>` values,
+strict ordering and uniqueness, exact set hashing, and append-only/no-replace
+behavior. It stores no names, reasons, request notes, or private identities.
+
 Private consent, derivative, publication, and transition rows cascade when an
 eligible draft is explicitly purged. Original, staging, and approved object
 keys are unique while present, so cleanup cannot delete another draft's
@@ -639,8 +742,10 @@ Family draft is in `processing` at state version 19 with the final photo run's
 display and thumbnail derivatives in private staging. Approved storage contains
 only the fixed synthetic delivery witness, and both public manifests remain
 empty. The normal processing Worker is restored with
-only D1, private originals, and private staging; its Access application has zero
-policies after the temporary rehearsal identity and policy were deleted. The
+only D1, private originals, and private staging. Its Access application was
+parked after the temporary rehearsal identity and policy were deleted, then a
+later separately approved gate restored narrow Service Auth and deployed exact
+current version `f58e0a1f-3ca4-4b66-a81f-9435d9af4f15`. The
 separate verifier application is also parked with zero policies after its own
 temporary token and policy were deleted. Its completed zero-generation fixture
 left no operational rows and intentionally retained one permanent hash-only

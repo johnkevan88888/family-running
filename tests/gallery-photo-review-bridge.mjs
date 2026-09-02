@@ -10,10 +10,14 @@ import { runPhotoReviewBridge } from '../scripts/gallery-media/photo-review-brid
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const draftId = 'draft_12345678-1234-4123-8123-1234567890ab';
 const runId = `run_${'1'.repeat(12)}4${'2'.repeat(3)}8${'3'.repeat(15)}`;
+const reviewId = `review_${'4'.repeat(32)}`;
+const promotionId = `promotion_${'5'.repeat(32)}`;
 const sourceBytes = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
 const sourceSha256 = sha256(sourceBytes);
 const processingOrigin = 'https://gallery-processing.example';
 const promotionOrigin = 'https://gallery-promotion.example';
+const workflowRunReference =
+    'https://github.com/johnkevan88888/family-running/actions/runs/12345/attempts/1';
 const access = {
     clientId: 'photo-bridge-client-id.access',
     clientSecret: 'photo-bridge-client-secret'
@@ -42,7 +46,7 @@ const itemInput = {
 };
 const candidate = {
     schemaVersion: '1.0',
-    operationId: 'promotion_photo_bridge_test_0001',
+    operationId: promotionId,
     draft: {
         schemaVersion: '1.0',
         draftId,
@@ -86,64 +90,259 @@ const candidate = {
     },
     editorialPosition: null
 };
-
+const branchRef = deriveReviewBranch(promotionId);
+const operationMarkerHash = createHash('sha256')
+    .update('family-running-gallery-review-operation-v1\0', 'utf8')
+    .update(promotionId, 'utf8')
+    .digest('hex');
+const pullRequestNumber = 999;
+const pullRequestUrl =
+    `https://github.com/johnkevan88888/family-running/pull/${pullRequestNumber}`;
+const headSha = '6'.repeat(40);
+const cleanup = {
+    promotionId,
+    expectedStateVersion: 4,
+    idempotencyKey: `photo-review-cleanup-${'7'.repeat(32)}`
+};
+const processingCleanup = {
+    processingRunId: runId,
+    expectedStateVersion: 4,
+    idempotencyKey: `photo-review-staging-${'8'.repeat(32)}`
+};
 const publicManifestPaths = [
     path.join(root, 'gallery-data', 'family.json'),
     path.join(root, 'gallery-data', 'everyone.json')
 ];
 const manifestsBefore = await Promise.all(publicManifestPaths.map(file => fs.readFile(file)));
-const requests = [];
-let candidateReadCount = 0;
-let reviewCandidate;
+
+const successServer = bridgeServer({
+    promotionFirstFailure: true,
+    reservationFirstFailure: true
+});
+let successReviewCandidate;
 const result = await runPhotoReviewBridge({
-    draftId,
-    expectedBaseSha: '1'.repeat(40),
-    githubToken: 'short-lived-test-token',
-    processing: { origin: processingOrigin, ...access },
-    promotion: { origin: promotionOrigin, ...access },
-    root,
-    fetchImpl: async (url, init) => {
+    ...bridgeOptions(successServer.fetchImpl),
+    createReview: async (candidateResult, options) => {
+        successReviewCandidate = candidateResult;
+        assert.equal(options.expectedBaseSha, '1'.repeat(40));
+        assert.equal(options.token, 'short-lived-test-token');
+        return reviewResult(candidateResult);
+    }
+});
+
+assert.equal(result.draftId, draftId);
+assert.equal(result.targetRelativePath, 'gallery-data/family.json');
+assert.equal(result.itemId, itemInput.id);
+assert.equal(successServer.candidateReadCount(), 2);
+assert.equal(
+    successServer.promotionCount(),
+    2,
+    'One exact idempotent promotion retry must recover a lost response.'
+);
+assert.equal(
+    successServer.reservationCount(),
+    2,
+    'One exact idempotent reservation retry must recover a lost response.'
+);
+assert.equal(successReviewCandidate.changed, true);
+assert.deepEqual(
+    JSON.parse(successReviewCandidate.manifestText).items,
+    [candidate.draft.manifestItem]
+);
+assert.ok(successServer.requests.every(entry =>
+    !JSON.stringify(entry.body).includes('destination') &&
+    !JSON.stringify(entry.body).includes('fileName')
+));
+const openRequest = successServer.requests.find(entry =>
+    entry.pathname === `/api/service/photo-reviews/${reviewId}/open`
+);
+assert.deepEqual(Object.keys(openRequest.body).sort(), [
+    'expectedStateVersion', 'headSha', 'idempotencyKey', 'openEvidenceHash',
+    'pullRequestNumber', 'pullRequestUrl'
+]);
+
+const lostReservationServer = bridgeServer({
+    reservationResponsesLostAfterCommit: true
+});
+const lostReservationResult = await runPhotoReviewBridge({
+    ...bridgeOptions(lostReservationServer.fetchImpl),
+    createReview: async candidateResult => reviewResult(candidateResult)
+});
+assert.equal(lostReservationResult.draftId, draftId);
+assert.equal(lostReservationServer.reservationCount(), 2);
+assert.ok(lostReservationServer.requests.some(entry =>
+    entry.method === 'GET' && entry.pathname.endsWith('/photo-review-invalidation')
+), 'A bodyless immutable receipt read must recover two lost reservation responses.');
+assert.ok(!lostReservationServer.requests.some(entry =>
+    entry.pathname.endsWith('/photo-review-abandonment')
+), 'A committed reservation must resume review instead of being abandoned.');
+
+const abandonmentServer = bridgeServer({ reservationAlwaysFails: true });
+await assert.rejects(
+    runPhotoReviewBridge({
+        ...bridgeOptions(abandonmentServer.fetchImpl),
+        createReview: async () => {
+            throw new Error('GitHub must not be reached without a reservation.');
+        }
+    }),
+    /could not reach review; approved media and staging cleanup were confirmed/
+);
+assert.equal(abandonmentServer.reservationCount(), 2);
+assert.ok(abandonmentServer.requests.some(entry =>
+    entry.pathname.endsWith('/photo-review-abandonment')
+));
+assertCleanupBodies(abandonmentServer.requests);
+
+for (const secondReadMode of ['changed', 'ineligible']) {
+    const staleServer = bridgeServer({ secondReadMode });
+    let reconciliation;
+    await assert.rejects(
+        runPhotoReviewBridge({
+            ...bridgeOptions(staleServer.fetchImpl),
+            createReview: async candidateResult => reviewResult(candidateResult),
+            reconcileReview: async (storedReview, options) => {
+                reconciliation = { storedReview, options };
+                return terminalResult();
+            }
+        }),
+        /review failed; its exact PR operation was reconciled/
+    );
+    assert.equal(staleServer.candidateReadCount(), 2);
+    assert.equal(reconciliation.storedReview.promotionId, promotionId);
+    assert.equal(reconciliation.storedReview.branchRef, branchRef);
+    assert.deepEqual(Object.keys(reconciliation.options).sort(), ['fetchImpl', 'token']);
+    assert.ok(staleServer.requests.some(entry =>
+        entry.pathname === `/api/service/photo-reviews/${reviewId}/terminal`
+    ));
+    assertPrivacyFirstOrder(staleServer.requests);
+    assertCleanupBodies(staleServer.requests);
+}
+
+const githubOutageServer = bridgeServer({ secondReadMode: 'changed' });
+await assert.rejects(
+    runPhotoReviewBridge({
+        ...bridgeOptions(githubOutageServer.fetchImpl),
+        createReview: async candidateResult => reviewResult(candidateResult),
+        reconcileReview: async () => {
+            const approvedIndex = requestIndex(
+                githubOutageServer.requests,
+                `/api/service/photo-promotions/${promotionId}/cleanup`
+            );
+            assert.ok(approvedIndex >= 0, 'Approved media must be removed before GitHub.');
+            assert.equal(
+                requestIndex(
+                    githubOutageServer.requests,
+                    `/api/service/processing-runs/${runId}/cleanup`
+                ),
+                -1,
+                'Private staging cleanup must remain after GitHub reconciliation.'
+            );
+            throw new Error('simulated GitHub outage');
+        }
+    }),
+    /terminal cleanup could not be completed/
+);
+assert.ok(requestIndex(
+    githubOutageServer.requests,
+    `/api/service/photo-promotions/${promotionId}/cleanup`
+) >= 0);
+assert.equal(requestIndex(
+    githubOutageServer.requests,
+    `/api/service/processing-runs/${runId}/cleanup`
+), -1);
+
+const workflowText = await fs.readFile(
+    path.join(root, '.github', 'workflows', 'gallery-media-review.yml'),
+    'utf8'
+);
+assert.match(workflowText, /environment:\s*gallery-processing/);
+assert.match(workflowText, /github\.ref == 'refs\/heads\/main'/);
+assert.match(
+    workflowText,
+    /actions\/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3\.2\.0/
+);
+assert.match(
+    workflowText,
+    /actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\.0\.1/
+);
+assert.match(
+    workflowText,
+    /pnpm\/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6\.0\.10/
+);
+assert.match(
+    workflowText,
+    /actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7\.0\.0/
+);
+assert.doesNotMatch(workflowText, /uses:\s+[^\s]+@v\d/);
+assert.match(workflowText, /persist-credentials:\s*false/);
+assert.match(workflowText, /inputs:\s*\n\s+draft_id:/);
+assert.match(workflowText, /GALLERY_WORKFLOW_RUN_REFERENCE:/);
+assert.doesNotMatch(
+    workflowText,
+    /\n\s{6}(?:site|destination|filename|caption|athlete|consent|reason):/i
+);
+assert.doesNotMatch(workflowText, /git\s+push|merge|deploy|wrangler/i);
+
+assert.deepEqual(
+    await Promise.all(publicManifestPaths.map(file => fs.readFile(file))),
+    manifestsBefore,
+    'Review generation and compensation must not edit either public manifest locally.'
+);
+
+console.log(
+    'Gallery photo-only review bridge: immutable reservation, lost-response replay, ' +
+    'pre-review abandonment, privacy-first post-PR compensation, GitHub-outage safety, ' +
+    'and workflow boundary passed.'
+);
+
+function bridgeOptions(fetchImpl) {
+    return {
+        draftId,
+        expectedBaseSha: '1'.repeat(40),
+        workflowRunReference,
+        githubToken: 'short-lived-test-token',
+        processing: { origin: processingOrigin, ...access },
+        promotion: { origin: promotionOrigin, ...access },
+        root,
+        fetchImpl,
+        processPhoto: async input => {
+            assert.equal(input.draftBinding.site, 'family');
+            assert.equal(input.draftBinding.draftId, draftId);
+            assert.equal(input.expectedSha256, sourceSha256);
+            return processedPhoto();
+        }
+    };
+}
+
+function bridgeServer(options = {}) {
+    const requests = [];
+    let candidateReads = 0;
+    let promotions = 0;
+    let reservations = 0;
+    let reservationBody;
+    let invalidationStarted = false;
+    const fetchImpl = async (url, init) => {
         const parsed = new URL(url);
+        const headers = new Headers(init.headers);
         const body = typeof init.body === 'string' ? JSON.parse(init.body) : null;
         requests.push({
             origin: parsed.origin,
             pathname: parsed.pathname,
             method: init.method,
             body,
-            headers: new Headers(init.headers)
+            headers
         });
-        assert.equal(new Headers(init.headers).get('CF-Access-Client-Id'), access.clientId);
-        assert.equal(new Headers(init.headers).get('CF-Access-Client-Secret'), access.clientSecret);
+        assert.equal(headers.get('CF-Access-Client-Id'), access.clientId);
+        assert.equal(headers.get('CF-Access-Client-Secret'), access.clientSecret);
 
         if (parsed.pathname.endsWith('/photo-processing-eligibility')) {
             return jsonResponse(200, {
-                schemaVersion: '1.0',
-                draftId,
-                state: 'approved-for-processing',
-                stateVersion: 1
+                schemaVersion: '1.0', draftId,
+                state: 'approved-for-processing', stateVersion: 1
             });
         }
         if (parsed.pathname.endsWith('/processing-runs')) {
-            return jsonResponse(201, {
-                schemaVersion: '1.0',
-                scope: 'photo-processing-v1',
-                processingRunId: runId,
-                site: 'family',
-                mediaType: 'photo',
-                state: 'processing',
-                stateVersion: 2,
-                source: {
-                    downloadPath: `/api/service/processing-runs/${runId}/original`,
-                    sha256: sourceSha256,
-                    byteLength: sourceBytes.byteLength,
-                    detectedFormat: 'jpeg',
-                    declaredMimeType: 'image/jpeg',
-                    fileExtension: 'jpg'
-                },
-                requiredRoles: ['photo-display', 'photo-thumbnail'],
-                runStatus: 'active',
-                replayed: false
-            });
+            return jsonResponse(201, processingRun());
         }
         if (parsed.pathname.endsWith('/original')) {
             return new Response(sourceBytes, {
@@ -161,191 +360,275 @@ const result = await runPhotoReviewBridge({
         }
         if (parsed.pathname.endsWith('/result')) {
             return jsonResponse(200, {
-                status: 'staged',
-                state: 'processing',
-                stateVersion: 2
+                status: 'staged', state: 'processing', stateVersion: 2
             });
         }
         if (parsed.pathname.endsWith('/photo-promotions')) {
+            promotions += 1;
+            if (options.promotionFirstFailure && promotions === 1) {
+                return jsonResponse(503, { error: 'service-unavailable' });
+            }
             return jsonResponse(201, { candidate, replayed: false });
         }
         if (parsed.pathname.endsWith('/photo-candidate')) {
-            candidateReadCount += 1;
+            candidateReads += 1;
+            if (candidateReads === 2 && options.secondReadMode === 'ineligible') {
+                return jsonResponse(409, { error: 'candidate-ineligible' });
+            }
+            if (candidateReads === 2 && options.secondReadMode === 'changed') {
+                return jsonResponse(200, {
+                    candidate: {
+                        ...candidate,
+                        context: {
+                            ...candidate.context,
+                            pendingHiddenAthleteIds: [athleteId]
+                        }
+                    }
+                });
+            }
             return jsonResponse(200, { candidate });
         }
-        throw new Error(`Unexpected bridge request ${init.method} ${parsed.pathname}`);
-    },
-    processPhoto: async input => {
-        assert.deepEqual(Object.keys(input).sort(), [
-            'declaredMimeType', 'draftBinding', 'expectedSha256',
-            'fileExtension', 'sourceBytes'
-        ]);
-        assert.equal(input.draftBinding.site, 'family');
-        assert.equal(input.draftBinding.draftId, draftId);
-        assert.equal(input.expectedSha256, sourceSha256);
-        return {
-            scope: 'photo-processing-v1',
-            mediaType: 'photo',
-            inheritedSite: 'family',
-            draftId,
-            processingRunId: runId,
-            source: {
-                sha256: sourceSha256,
-                byteLength: sourceBytes.byteLength,
-                detectedFormat: 'jpeg'
-            },
-            toolchain: {
-                sharp: 'test', libvips: 'test', webp: 'test', png: 'test',
-                exiftool: 'test', videoEnabled: false
-            },
-            derivatives: [
-                derivative('photo-display', Buffer.from('display')),
-                derivative('photo-thumbnail', Buffer.from('thumbnail'))
-            ]
-        };
-    },
-    createReview: async (candidateResult, options) => {
-        reviewCandidate = candidateResult;
-        assert.equal(options.expectedBaseSha, '1'.repeat(40));
-        assert.equal(options.token, 'short-lived-test-token');
-        return {
-            pullRequest: {
-                number: 999,
-                url: 'https://github.com/johnkevan88888/family-running/pull/999',
-                state: 'open'
+        if (parsed.pathname.endsWith('/photo-review-reservations')) {
+            reservations += 1;
+            reservationBody = body;
+            if (options.reservationAlwaysFails) {
+                reservationBody = undefined;
+                return jsonResponse(409, { error: 'review-not-eligible' });
             }
-        };
-    }
-});
+            if (options.reservationResponsesLostAfterCommit) {
+                return jsonResponse(503, { error: 'service-unavailable' });
+            }
+            if (options.reservationFirstFailure && reservations === 1) {
+                return jsonResponse(503, { error: 'service-unavailable' });
+            }
+            return jsonResponse(200, {
+                review: reservedReview(body),
+                replayed: reservations > 1
+            });
+        }
+        if (parsed.pathname.endsWith('/photo-review-abandonment')) {
+            return jsonResponse(201, {
+                abandonment: {
+                    schemaVersion: '1.0',
+                    draftId,
+                    promotionId,
+                    processingRunId: runId,
+                    expectedStateVersion: 3,
+                    resultStateVersion: 4,
+                    failureEvidenceHash: body.failureEvidenceHash,
+                    status: 'withdrawal-pending'
+                },
+                cleanup,
+                processingCleanup,
+                replayed: false
+            });
+        }
+        if (parsed.pathname === `/api/service/photo-reviews/${reviewId}/invalidation-start`) {
+            invalidationStarted = true;
+            return jsonResponse(201, {
+                review: reservedReview(reservationBody),
+                invalidationStart: {
+                    withdrawalKind: 'editorial-removal',
+                    expectedStateVersion: 3,
+                    resultStateVersion: 4,
+                    cleanup,
+                    processingCleanup
+                },
+                replayed: false
+            });
+        }
+        if (parsed.pathname === `/api/service/photo-reviews/${reviewId}/open`) {
+            return jsonResponse(201, {
+                review: {
+                    ...reservedReview(reservationBody),
+                    status: 'open',
+                    headSha: body.headSha,
+                    pullRequestNumber: body.pullRequestNumber,
+                    pullRequestUrl: body.pullRequestUrl,
+                    openEvidenceHash: body.openEvidenceHash
+                },
+                replayed: false
+            });
+        }
+        if (parsed.pathname === `/api/service/photo-reviews/${reviewId}/terminal`) {
+            return jsonResponse(201, {
+                review: terminalReview(reservationBody, body),
+                cleanup,
+                processingCleanup,
+                replayed: false
+            });
+        }
+        if (parsed.pathname.endsWith('/photo-review-invalidation')) {
+            if (!reservationBody) {
+                return jsonResponse(409, { error: 'review-invalidation-not-required' });
+            }
+            if (!invalidationStarted) {
+                return jsonResponse(200, {
+                    receiptKind: 'review',
+                    review: reservedReview(reservationBody),
+                    invalidation: null,
+                    replayed: true
+                });
+            }
+            return jsonResponse(200, {
+                receiptKind: 'review',
+                review: reservedReview(reservationBody),
+                invalidation: {
+                    withdrawalKind: 'editorial-removal',
+                    terminalKind: 'no-pr-created',
+                    cleanup,
+                    processingCleanup
+                },
+                replayed: true
+            });
+        }
+        if (parsed.pathname === `/api/service/photo-promotions/${promotionId}/cleanup`) {
+            return jsonResponse(200, {
+                promotionId,
+                cleanupReason: 'editorial-removal',
+                promotionStatus: 'cleaned',
+                replayed: false
+            });
+        }
+        if (parsed.pathname === `/api/service/processing-runs/${runId}/cleanup`) {
+            return jsonResponse(200, {
+                processingRunId: runId,
+                cleanupReason: 'editorial-removal',
+                status: 'cleaned',
+                replayed: false
+            });
+        }
+        throw new Error(`Unexpected bridge request ${init.method} ${parsed.pathname}`);
+    };
+    return {
+        fetchImpl,
+        requests,
+        candidateReadCount: () => candidateReads,
+        promotionCount: () => promotions,
+        reservationCount: () => reservations
+    };
+}
 
-assert.equal(result.draftId, draftId);
-assert.equal(result.targetRelativePath, 'gallery-data/family.json');
-assert.equal(result.itemId, itemInput.id);
-assert.equal(candidateReadCount, 2, 'Candidate evidence must be re-read before and after PR creation.');
-assert.equal(reviewCandidate.changed, true);
-assert.deepEqual(JSON.parse(reviewCandidate.manifestText).items, [candidate.draft.manifestItem]);
-assert.equal(requests[0].method, 'GET');
-assert.match(requests[0].pathname, /photo-processing-eligibility$/);
-assert.deepEqual(requests.find(entry => entry.pathname.endsWith('/processing-runs')).body &&
-    Object.keys(requests.find(entry => entry.pathname.endsWith('/processing-runs')).body).sort(),
-['expectedStateVersion', 'idempotencyKey']);
-assert.ok(requests.every(entry => !JSON.stringify(entry.body).includes('destination')));
-assert.ok(requests.every(entry => !JSON.stringify(entry.body).includes('fileName')));
-assert.deepEqual(
-    await Promise.all(publicManifestPaths.map(file => fs.readFile(file))),
-    manifestsBefore,
-    'The bridge must not edit either live manifest locally.'
-);
-
-const workflowText = await fs.readFile(
-    path.join(root, '.github', 'workflows', 'gallery-media-review.yml'),
-    'utf8'
-);
-assert.match(workflowText, /environment:\s*gallery-processing/);
-assert.match(workflowText, /github\.ref == 'refs\/heads\/main'/);
-assert.match(workflowText, /actions\/create-github-app-token@v3\.2\.0/);
-assert.match(workflowText, /persist-credentials:\s*false/);
-assert.match(workflowText, /inputs:\s*\n\s+draft_id:/);
-assert.doesNotMatch(workflowText, /\n\s{6}(?:site|destination|filename|caption|athlete|consent):/i);
-assert.doesNotMatch(workflowText, /GITHUB_TOKEN|git\s+push|merge|deploy|wrangler/i);
-
-for (const secondReadMode of ['changed', 'ineligible']) {
-    let currentReadCount = 0;
-    let invalidationCall = null;
-    const exactReview = {
+function reservedReview(body) {
+    return {
         schemaVersion: '1.0',
+        reviewId,
+        draftId,
+        promotionId,
+        processingRunId: runId,
+        candidateStateVersion: 3,
+        candidatePayloadHash: '9'.repeat(64),
+        generationFingerprint: 'a'.repeat(64),
+        repository: 'johnkevan88888/family-running',
+        baseRef: 'main',
+        baseSha: '1'.repeat(40),
+        branchRef,
+        targetRelativePath: 'gallery-data/family.json',
+        itemId: itemInput.id,
+        manifestSha256: body.manifestSha256,
+        operationMarkerHash,
+        workflowRunReference,
+        status: 'reserved',
+        pullRequestNumber: null,
+        pullRequestUrl: null,
+        headSha: null,
+        openEvidenceHash: null,
+        terminalKind: null,
+        terminalEvidenceHash: null,
+        closeEvidenceHash: null,
+        readbackEvidenceHash: null
+    };
+}
+
+function reviewResult(candidateResult) {
+    return {
+        schemaVersion: '1.0',
+        replayed: false,
+        repository: 'johnkevan88888/family-running',
+        baseRef: 'main',
+        baseSha: '1'.repeat(40),
+        branchRef,
+        headSha,
+        targetRelativePath: candidateResult.targetRelativePath,
+        itemId: candidateResult.itemId,
+        manifestSha256: candidateResult.manifestSha256,
         pullRequest: {
-            number: 321,
-            url: 'https://github.com/johnkevan88888/family-running/pull/321',
+            number: pullRequestNumber,
+            url: pullRequestUrl,
             state: 'open'
         }
     };
-    await assert.rejects(
-        runPhotoReviewBridge({
-            draftId,
-            expectedBaseSha: '1'.repeat(40),
-            githubToken: 'short-lived-test-token',
-            processing: { origin: processingOrigin, ...access },
-            promotion: { origin: promotionOrigin, ...access },
-            root,
-            fetchImpl: async (url, init) => {
-                const pathname = new URL(url).pathname;
-                if (pathname.endsWith('/photo-processing-eligibility')) {
-                    return jsonResponse(200, {
-                        schemaVersion: '1.0', draftId,
-                        state: 'approved-for-processing', stateVersion: 1
-                    });
-                }
-                if (pathname.endsWith('/processing-runs')) {
-                    return jsonResponse(201, processingRun());
-                }
-                if (pathname.endsWith('/original')) {
-                    return new Response(sourceBytes, {
-                        status: 200,
-                        headers: {
-                            'Cache-Control': 'no-store',
-                            'Content-Length': String(sourceBytes.byteLength),
-                            'Content-Type': 'image/jpeg',
-                            'X-Gallery-Content-SHA256': sourceSha256
-                        }
-                    });
-                }
-                if (pathname.includes('/derivatives/')) {
-                    return jsonResponse(201, { stored: true });
-                }
-                if (pathname.endsWith('/result')) {
-                    return jsonResponse(200, {
-                        status: 'staged', state: 'processing', stateVersion: 2
-                    });
-                }
-                if (pathname.endsWith('/photo-promotions')) {
-                    return jsonResponse(201, { candidate, replayed: false });
-                }
-                if (pathname.endsWith('/photo-candidate')) {
-                    currentReadCount += 1;
-                    if (currentReadCount === 1) return jsonResponse(200, { candidate });
-                    if (secondReadMode === 'ineligible') {
-                        return jsonResponse(409, { error: 'candidate-ineligible' });
-                    }
-                    return jsonResponse(200, {
-                        candidate: {
-                            ...candidate,
-                            context: {
-                                ...candidate.context,
-                                pendingHiddenAthleteIds: [athleteId]
-                            }
-                        }
-                    });
-                }
-                throw new Error(`Unexpected stale-review request ${init.method} ${pathname}`);
-            },
-            processPhoto: async () => processedPhoto(),
-            createReview: async () => exactReview,
-            invalidateReview: async (candidateResult, reviewResult, options) => {
-                invalidationCall = { candidateResult, reviewResult, options };
-                return {
-                    branchState: 'retained-for-reviewed-cleanup',
-                    pullRequest: { state: 'closed' }
-                };
-            }
-        }),
-        /review PR was closed and branch retained for reviewed cleanup/
-    );
-    assert.equal(currentReadCount, 2);
-    assert.equal(invalidationCall.candidateResult.changed, true);
-    assert.equal(invalidationCall.reviewResult, exactReview);
-    assert.deepEqual(Object.keys(invalidationCall.options).sort(), [
-        'expectedBaseSha', 'fetchImpl', 'token'
-    ]);
 }
 
-assert.deepEqual(
-    await Promise.all(publicManifestPaths.map(file => fs.readFile(file))),
-    manifestsBefore,
-    'Stale-review invalidation must not edit either live manifest locally.'
-);
+function terminalResult() {
+    return {
+        terminalKind: 'closed-unmerged',
+        terminalEvidenceHash: 'b'.repeat(64),
+        closeEvidenceHash: 'c'.repeat(64),
+        readbackEvidenceHash: 'd'.repeat(64),
+        headSha,
+        pullRequest: {
+            number: pullRequestNumber,
+            url: pullRequestUrl,
+            state: 'closed'
+        }
+    };
+}
 
-console.log('Gallery photo-only review bridge tests passed.');
+function terminalReview(reservationBody, terminalBody) {
+    return {
+        ...reservedReview(reservationBody),
+        status: 'terminal',
+        headSha: terminalBody.headSha,
+        pullRequestNumber: terminalBody.pullRequestNumber ?? terminalBody.pullRequest?.number,
+        pullRequestUrl: terminalBody.pullRequestUrl ?? terminalBody.pullRequest?.url,
+        terminalKind: terminalBody.terminalKind,
+        terminalEvidenceHash: terminalBody.terminalEvidenceHash,
+        closeEvidenceHash: terminalBody.closeEvidenceHash,
+        readbackEvidenceHash: terminalBody.readbackEvidenceHash
+    };
+}
+
+function assertCleanupBodies(requests) {
+    const approved = requests.find(entry =>
+        entry.pathname === `/api/service/photo-promotions/${promotionId}/cleanup`
+    );
+    const staging = requests.find(entry =>
+        entry.pathname === `/api/service/processing-runs/${runId}/cleanup`
+    );
+    assert.deepEqual(approved.body, {
+        expectedStateVersion: cleanup.expectedStateVersion,
+        idempotencyKey: cleanup.idempotencyKey
+    });
+    assert.deepEqual(staging.body, {
+        expectedStateVersion: processingCleanup.expectedStateVersion,
+        idempotencyKey: processingCleanup.idempotencyKey
+    });
+}
+
+function assertPrivacyFirstOrder(requests) {
+    const start = requestIndex(
+        requests,
+        `/api/service/photo-reviews/${reviewId}/invalidation-start`
+    );
+    const approved = requestIndex(
+        requests,
+        `/api/service/photo-promotions/${promotionId}/cleanup`
+    );
+    const terminal = requestIndex(
+        requests,
+        `/api/service/photo-reviews/${reviewId}/terminal`
+    );
+    const staging = requestIndex(
+        requests,
+        `/api/service/processing-runs/${runId}/cleanup`
+    );
+    assert.ok(start >= 0 && approved > start && terminal > approved && staging > terminal);
+}
+
+function requestIndex(requests, pathname) {
+    return requests.findIndex(entry => entry.pathname === pathname);
+}
 
 function derivative(role, bytes) {
     return {
@@ -403,6 +686,14 @@ function processedPhoto() {
             derivative('photo-thumbnail', Buffer.from('thumbnail'))
         ]
     };
+}
+
+function deriveReviewBranch(value) {
+    return `gallery-media/candidate-${createHash('sha256')
+        .update('family-running-gallery-review-branch-v1\0', 'utf8')
+        .update(value, 'utf8')
+        .digest('hex')
+        .slice(0, 32)}`;
 }
 
 function sha256(bytes) {

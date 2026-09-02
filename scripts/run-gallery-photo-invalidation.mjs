@@ -1,4 +1,7 @@
-import { runPhotoReviewBridge } from './gallery-media/photo-review-bridge.mjs';
+import {
+    photoInvalidationCompletionSummary,
+    runPhotoReviewInvalidationBridge
+} from './gallery-media/photo-review-invalidation-bridge.mjs';
 
 function requiredEnvironment(name) {
     const value = process.env[name];
@@ -13,10 +16,8 @@ if (process.argv.length !== 2) {
 }
 
 try {
-    const result = await runPhotoReviewBridge({
+    await runPhotoReviewInvalidationBridge({
         draftId: requiredEnvironment('GALLERY_DRAFT_ID'),
-        expectedBaseSha: requiredEnvironment('GALLERY_BASE_SHA'),
-        workflowRunReference: requiredEnvironment('GALLERY_WORKFLOW_RUN_REFERENCE'),
         githubToken: requiredEnvironment('GALLERY_GITHUB_APP_TOKEN'),
         processing: {
             origin: requiredEnvironment('GALLERY_PROCESSING_ORIGIN'),
@@ -29,8 +30,8 @@ try {
             clientSecret: requiredEnvironment('GALLERY_PROMOTION_ACCESS_CLIENT_SECRET')
         }
     });
-    process.stdout.write(`${JSON.stringify(result)}\n`);
+    process.stdout.write(`${JSON.stringify(photoInvalidationCompletionSummary())}\n`);
 } catch (error) {
-    process.stderr.write(`Gallery photo review generation failed: ${error.message}\n`);
+    process.stderr.write(`Gallery photo invalidation failed: ${error.message}\n`);
     process.exitCode = 1;
 }

@@ -1,10 +1,10 @@
-name: Gallery photo review candidate
+name: Gallery photo review invalidation
 
 on:
   workflow_dispatch:
     inputs:
       draft_id:
-        description: Opaque approved Gallery photo draft ID
+        description: Opaque Gallery photo draft ID already marked for withdrawal
         required: true
         type: string
 
@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  photo-review:
+  photo-invalidation:
     if: github.repository == 'johnkevan88888/family-running' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: gallery-processing
@@ -30,7 +30,7 @@ jobs:
           private-key: ${{ secrets.GALLERY_REVIEW_APP_PRIVATE_KEY }}
           owner: johnkevan88888
           repositories: family-running
-          permission-contents: write
+          permission-contents: read
           permission-pull-requests: write
 
       - name: Check out the exact default-branch revision
@@ -51,11 +51,9 @@ jobs:
       - name: Install pinned dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Process, promote, and open one review-only manifest PR
+      - name: Remove approved media and close only the exact review operation
         env:
           GALLERY_DRAFT_ID: ${{ inputs.draft_id }}
-          GALLERY_BASE_SHA: ${{ github.sha }}
-          GALLERY_WORKFLOW_RUN_REFERENCE: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
           GALLERY_GITHUB_APP_TOKEN: ${{ steps.review-token.outputs.token }}
           GALLERY_PROCESSING_ORIGIN: ${{ secrets.GALLERY_PROCESSING_ORIGIN }}
           GALLERY_PROCESSING_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_PROCESSING_ACCESS_CLIENT_ID }}
@@ -63,4 +61,4 @@ jobs:
           GALLERY_PROMOTION_ORIGIN: ${{ secrets.GALLERY_PROMOTION_ORIGIN }}
           GALLERY_PROMOTION_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_PROMOTION_ACCESS_CLIENT_ID }}
           GALLERY_PROMOTION_ACCESS_CLIENT_SECRET: ${{ secrets.GALLERY_PROMOTION_ACCESS_CLIENT_SECRET }}
-        run: node scripts/run-gallery-photo-review.mjs
+        run: node scripts/run-gallery-photo-invalidation.mjs

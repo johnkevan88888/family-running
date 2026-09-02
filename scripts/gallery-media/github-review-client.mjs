@@ -42,6 +42,20 @@ const reviewResultKeys = Object.freeze([
     'pullRequest'
 ]);
 const reviewPullRequestKeys = Object.freeze(['number', 'url', 'state']);
+const storedReviewKeys = Object.freeze([
+    'schemaVersion',
+    'promotionId',
+    'repository',
+    'baseRef',
+    'baseSha',
+    'branchRef',
+    'headSha',
+    'targetRelativePath',
+    'itemId',
+    'manifestSha256',
+    'operationMarkerHash',
+    'pullRequest'
+]);
 const itemIdPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const operationIdPattern = /^promotion_[A-Za-z0-9_-]{16,119}$/;
 const sha256RevisionPattern = /^sha256:[a-f0-9]{64}$/;
@@ -219,6 +233,106 @@ export async function invalidateGalleryReview(candidateResult, reviewResult, opt
             url: review.pullRequest.url,
             state: 'closed'
         }
+    });
+}
+
+/**
+ * Recover and close a review from its immutable D1 receipt after the original
+ * workflow has ended. Unlike the immediate invalidator above, this path does
+ * not need the candidate manifest bytes to still be eligible in D1. It proves
+ * the deterministic branch, exact manifest hash, operation marker, and
+ * unmerged Pull Request directly from GitHub before returning terminal proof.
+ */
+export async function reconcileStoredGalleryReview(storedReview, options = {}) {
+    const review = validateStoredReview(storedReview);
+    requireExactKeys(
+        options,
+        ['token', 'fetchImpl'],
+        'Stored Gallery review reconciliation options'
+    );
+    const token = validateToken(options.token);
+    const fetchImpl = validateFetch(options.fetchImpl);
+    const github = createFixedGitHubClient(fetchImpl, token);
+
+    const branchSha = await readOptionalRef(github, `heads/${review.branchRef}`);
+    if (branchSha === null) {
+        if (review.pullRequest !== null) {
+            throw new Error('Stored Gallery review has a Pull Request but its owned branch is missing.');
+        }
+        const pulls = await listOperationPullRequests(github, review.branchRef);
+        if (pulls.length !== 0) {
+            throw new Error('Stored Gallery review has a Pull Request without its owned branch.');
+        }
+        return storedTerminalResult(review, 'no-pr-created', null, null);
+    }
+    if (review.headSha !== null && review.headSha !== branchSha) {
+        throw new Error('Stored Gallery review branch changed after its open receipt.');
+    }
+
+    await verifyStoredCandidateBranch(github, review, branchSha);
+    const pulls = await listOperationPullRequests(github, review.branchRef);
+    if (pulls.length > 1) {
+        throw new Error('Stored Gallery review operation has more than one Pull Request.');
+    }
+    if (pulls.length === 0) {
+        if (review.pullRequest !== null) {
+            throw new Error('Stored Gallery review Pull Request is missing.');
+        }
+        return storedTerminalResult(review, 'no-pr-created', branchSha, null);
+    }
+
+    const pullBefore = validateStoredPullRequest(pulls[0], review, branchSha, [
+        'open',
+        'closed'
+    ]);
+    let closeRequestError = null;
+    if (pullBefore.state === 'open') {
+        try {
+            await github.request('PATCH', `/pulls/${pullBefore.number}`, {
+                state: 'closed'
+            });
+        } catch (error) {
+            closeRequestError = error;
+        }
+    }
+
+    let pullAfter;
+    try {
+        pullAfter = validateStoredPullRequest(
+            await github.request('GET', `/pulls/${pullBefore.number}`),
+            review,
+            branchSha,
+            ['closed']
+        );
+    } catch (verificationError) {
+        throw closeRequestError || verificationError;
+    }
+    return storedTerminalResult(review, 'closed-unmerged', branchSha, pullAfter);
+}
+
+export function createGalleryReviewOpenEvidenceHash(reviewResult) {
+    if (
+        !isPlainObject(reviewResult) ||
+        reviewResult.repository !== repositoryFullName ||
+        reviewResult.baseRef !== baseRef ||
+        !commitShaPattern.test(stringValue(reviewResult.headSha)) ||
+        !/^gallery-media\/candidate-[a-f0-9]{32}$/.test(
+            stringValue(reviewResult.branchRef)
+        ) ||
+        !isPlainObject(reviewResult.pullRequest) ||
+        !Number.isSafeInteger(reviewResult.pullRequest.number) ||
+        reviewResult.pullRequest.number < 1 ||
+        reviewResult.pullRequest.url !==
+            `https://github.com/${repositoryFullName}/pull/${reviewResult.pullRequest.number}`
+    ) {
+        throw new Error('Gallery review open evidence is invalid.');
+    }
+    return hashOpenPullIdentity({
+        number: reviewResult.pullRequest.number,
+        url: reviewResult.pullRequest.url,
+        branchRef: reviewResult.branchRef,
+        headSha: reviewResult.headSha,
+        baseRef: reviewResult.baseRef
     });
 }
 
@@ -426,6 +540,138 @@ async function verifyOwnedCandidateBranch(github, {
     }
 }
 
+async function verifyStoredCandidateBranch(github, review, branchSha) {
+    const commit = await github.request('GET', `/git/commits/${branchSha}`);
+    const parents = Array.isArray(commit?.parents) ? commit.parents : [];
+    if (
+        commit?.message !== `Add approved Gallery photo ${review.itemId}` ||
+        parents.length !== 1 ||
+        parents[0]?.sha !== review.baseSha
+    ) {
+        throw new Error('Stored Gallery review branch has an unknown commit or parent.');
+    }
+
+    const comparison = await github.request(
+        'GET',
+        `/compare/${review.baseSha}...${branchSha}`
+    );
+    const files = Array.isArray(comparison?.files) ? comparison.files : [];
+    if (
+        comparison?.status !== 'ahead' ||
+        comparison?.ahead_by !== 1 ||
+        comparison?.total_commits !== 1 ||
+        files.length !== 1 ||
+        files[0]?.filename !== review.targetRelativePath ||
+        files[0]?.status !== 'modified' ||
+        files[0]?.previous_filename !== undefined
+    ) {
+        throw new Error(
+            'Stored Gallery review branch must differ from its base by exactly one inherited manifest.'
+        );
+    }
+
+    const contents = await github.request(
+        'GET',
+        `/contents/${review.targetRelativePath}?ref=${encodeURIComponent(review.branchRef)}`
+    );
+    const manifestText = decodeRepositoryFile(
+        contents,
+        review.targetRelativePath,
+        'stored candidate manifest'
+    );
+    if (sha256Revision(manifestText) !== review.manifestSha256) {
+        throw new Error('Stored Gallery review branch contains different manifest bytes.');
+    }
+    let documentValue;
+    try {
+        documentValue = JSON.parse(manifestText);
+    } catch {
+        throw new Error('Stored Gallery review manifest is not valid JSON.');
+    }
+    const manifestProblems = typeof galleryContract?.validateGalleryDocument === 'function'
+        ? galleryContract.validateGalleryDocument(documentValue)
+        : ['The public Gallery contract is unavailable.'];
+    if (
+        manifestProblems.length !== 0 ||
+        documentValue.items.filter(item => item?.id === review.itemId).length !== 1
+    ) {
+        throw new Error('Stored Gallery review manifest does not contain its exact valid item.');
+    }
+}
+
+function storedTerminalResult(review, terminalKind, branchSha, pullRequest) {
+    const pullEvidence = pullRequest === null ? null : {
+        number: pullRequest.number,
+        url: pullRequest.html_url,
+        state: pullRequest.state,
+        mergedAt: pullRequest.merged_at,
+        branchRef: pullRequest.head.ref,
+        headSha: pullRequest.head.sha,
+        baseRef: pullRequest.base.ref
+    };
+    const openEvidenceHash = pullEvidence === null
+        ? null
+        : hashOpenPullIdentity(pullEvidence);
+    const closeEvidenceHash = pullEvidence === null
+        ? null
+        : sha256Hex(JSON.stringify({
+            operation: 'gallery-review-close-observation',
+            promotionId: review.promotionId,
+            pullRequest: pullEvidence
+        }));
+    const readbackEvidenceHash = pullEvidence === null
+        ? null
+        : sha256Hex(JSON.stringify({
+            operation: 'gallery-review-closed-readback',
+            promotionId: review.promotionId,
+            pullRequest: pullEvidence
+        }));
+    const terminalEvidenceHash = sha256Hex(JSON.stringify({
+        operation: 'gallery-review-terminal-v1',
+        promotionId: review.promotionId,
+        repository: repositoryFullName,
+        baseSha: review.baseSha,
+        branchRef: review.branchRef,
+        branchSha,
+        manifestSha256: review.manifestSha256,
+        terminalKind,
+        pullRequest: pullEvidence
+    }));
+    return deepFreeze({
+        schemaVersion: '1.0',
+        repository: repositoryFullName,
+        branchRef: review.branchRef,
+        branchState: branchSha === null ? 'absent' : 'retained-for-reviewed-cleanup',
+        headSha: branchSha,
+        terminalKind,
+        terminalEvidenceHash,
+        openEvidenceHash,
+        closeEvidenceHash,
+        readbackEvidenceHash,
+        pullRequest: pullEvidence === null ? null : {
+            number: pullEvidence.number,
+            url: pullEvidence.url,
+            state: 'closed'
+        }
+    });
+}
+
+function hashOpenPullIdentity(value) {
+    return sha256Hex(JSON.stringify({
+        operation: 'gallery-review-open-identity-v1',
+        repository: repositoryFullName,
+        pullRequestNumber: value.number,
+        pullRequestUrl: value.url,
+        branchRef: value.branchRef,
+        headSha: value.headSha,
+        baseRef: value.baseRef
+    }));
+}
+
+function sha256Hex(value) {
+    return createHash('sha256').update(value, 'utf8').digest('hex');
+}
+
 function decodeRepositoryFile(contents, expectedPath, label) {
     if (
         contents?.type !== 'file' ||
@@ -517,6 +763,98 @@ function validateReviewResult(value, candidate, expectedBaseSha) {
         throw new Error('Gallery review invalidation requires the exact created review result.');
     }
     return deepFreeze(cloneJson(value));
+}
+
+function validateStoredReview(value) {
+    requireExactKeys(value, storedReviewKeys, 'Stored Gallery review');
+    const promotionId = stringValue(value.promotionId);
+    const branchRef = deriveOwnedBranch(promotionId);
+    const operationMarkerHash = deriveOperationMarkerHash(promotionId);
+    if (
+        value.schemaVersion !== '1.0' ||
+        !operationIdPattern.test(promotionId) ||
+        value.repository !== repositoryFullName ||
+        value.baseRef !== baseRef ||
+        !commitShaPattern.test(stringValue(value.baseSha)) ||
+        value.branchRef !== branchRef ||
+        !(value.headSha === null || commitShaPattern.test(stringValue(value.headSha))) ||
+        !allowedManifestPaths.has(value.targetRelativePath) ||
+        !itemIdPattern.test(stringValue(value.itemId)) ||
+        !sha256RevisionPattern.test(stringValue(value.manifestSha256)) ||
+        value.operationMarkerHash !== operationMarkerHash
+    ) {
+        throw new Error('Stored Gallery review evidence is invalid.');
+    }
+    if (value.pullRequest !== null) {
+        requireExactKeys(
+            value.pullRequest,
+            reviewPullRequestKeys,
+            'Stored Gallery review Pull Request'
+        );
+        const number = value.pullRequest.number;
+        if (
+            value.headSha === null ||
+            !Number.isSafeInteger(number) ||
+            number < 1 ||
+            value.pullRequest.url !==
+                `https://github.com/${repositoryFullName}/pull/${number}` ||
+            value.pullRequest.state !== 'open'
+        ) {
+            throw new Error('Stored Gallery review Pull Request evidence is invalid.');
+        }
+    } else if (value.headSha !== null) {
+        throw new Error('A reserved Gallery review cannot supply an unbound head SHA.');
+    }
+    return deepFreeze(cloneJson(value));
+}
+
+function validateStoredPullRequest(value, review, branchSha, allowedStates) {
+    const candidate = storedCandidate(review);
+    const expectedBody = pullRequestBody(candidate, review.branchRef);
+    const expectedTitle = `Add approved Gallery photo: ${review.itemId}`;
+    const number = value?.number;
+    const expectedUrl = `https://github.com/${repositoryFullName}/pull/${number}`;
+    if (
+        !allowedStates.includes(value?.state) ||
+        !Number.isSafeInteger(number) ||
+        number < 1 ||
+        value?.merged_at !== null ||
+        value?.draft !== false ||
+        value?.title !== expectedTitle ||
+        value?.body !== expectedBody ||
+        value?.html_url !== expectedUrl ||
+        value?.base?.ref !== baseRef ||
+        value?.base?.repo?.full_name !== repositoryFullName ||
+        value?.head?.ref !== review.branchRef ||
+        value?.head?.sha !== branchSha ||
+        value?.head?.repo?.full_name !== repositoryFullName ||
+        review.pullRequest !== null &&
+            (
+                number !== review.pullRequest.number ||
+                expectedUrl !== review.pullRequest.url
+            )
+    ) {
+        throw new Error(
+            'Stored Gallery review reconciliation refused a merged, changed, or unowned Pull Request.'
+        );
+    }
+    return value;
+}
+
+function storedCandidate(review) {
+    return {
+        targetRelativePath: review.targetRelativePath,
+        itemId: review.itemId,
+        manifestSha256: review.manifestSha256,
+        receipt: { operationId: review.promotionId }
+    };
+}
+
+function deriveOperationMarkerHash(operationId) {
+    return createHash('sha256')
+        .update('family-running-gallery-review-operation-v1\0', 'utf8')
+        .update(operationId, 'utf8')
+        .digest('hex');
 }
 
 function validateOwnedPullRequestForInvalidation(value, candidate, review, allowedStates) {
@@ -797,10 +1135,7 @@ function deriveOwnedBranch(operationId) {
 }
 
 function pullRequestBody(candidate, branchRef) {
-    const operationDigest = createHash('sha256')
-        .update('family-running-gallery-review-operation-v1\0', 'utf8')
-        .update(candidate.receipt.operationId, 'utf8')
-        .digest('hex');
+    const operationDigest = deriveOperationMarkerHash(candidate.receipt.operationId);
     return [
         `${pullRequestMarkerPrefix}${operationDigest} -->`,
         '## Approved Gallery candidate',

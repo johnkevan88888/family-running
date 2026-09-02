@@ -67,6 +67,8 @@ const areas = [
         raceEvent: 'Family Synthetic Parkrun',
         runner: 'Family Synthetic Runner',
         spectator: 'Family Synthetic Spectator',
+        runnerId: 'family-runner',
+        spectatorId: 'family-spectator',
         excludedRaceEvent: 'Everyone Synthetic Road Race'
     },
     {
@@ -76,6 +78,8 @@ const areas = [
         raceEvent: 'Everyone Synthetic Road Race',
         runner: 'Everyone Synthetic Runner',
         spectator: 'Everyone Synthetic Spectator',
+        runnerId: 'everyone-runner',
+        spectatorId: 'everyone-spectator',
         excludedRaceEvent: 'Family Synthetic Parkrun'
     }
 ];
@@ -154,6 +158,25 @@ async function checkViewport(browserInstance, adminOrigin, viewport, area) {
             area.siteMode === 'family' ? 'Everyone Synthetic' : 'Family Synthetic'
         )));
 
+        // Athlete-wide exclusion is proactive and available before any draft
+        // is opened. The untagged spectator remains a valid current public ID.
+        await page.locator('.exclusion-panel').waitFor({ state: 'visible' });
+        assert.equal(await page.locator('#athlete-exclusion-choice option').count(), 3);
+        assert.equal(
+            await page.locator(
+                `#athlete-exclusion-choice option[value="${area.spectatorId}"]`
+            ).count(),
+            1
+        );
+        await page.locator('#athlete-exclusion-choice').selectOption(area.spectatorId);
+        let exclusionConfirmationText = '';
+        page.once('dialog', dialog => {
+            exclusionConfirmationText = dialog.message();
+            dialog.dismiss();
+        });
+        await page.locator('#athlete-exclusion').click();
+        assert.match(exclusionConfirmationText, /every Gallery item|protected verification/i);
+
         const previewRequest = page.waitForRequest(request => {
             const url = new URL(request.url());
             return url.pathname.endsWith('/original');
@@ -161,6 +184,17 @@ async function checkViewport(browserInstance, adminOrigin, viewport, area) {
         await page.locator('.draft-card .button').click();
         await previewRequest;
         await page.locator('#protected-preview').waitFor({ state: 'visible' });
+        await page.locator('#withdrawal-controls').waitFor({ state: 'visible' });
+        assert.equal(await page.locator('#editorial-withdrawal').isVisible(), true);
+        assert.equal(await page.locator('#consent-withdrawal').isVisible(), true);
+
+        let confirmationText = '';
+        page.once('dialog', dialog => {
+            confirmationText = dialog.message();
+            dialog.dismiss();
+        });
+        await page.locator('#editorial-withdrawal').click();
+        assert.match(confirmationText, /stay withdrawal pending|protected verification/i);
 
         await page.locator('#item-id').fill(`synthetic-${area.siteMode}-${viewport.name}`);
         await page.locator('#item-title').fill(`${area.label} synthetic test`);
@@ -270,6 +304,10 @@ async function assertPageBasics(page, area) {
     assert.equal(await page.locator('#photo-file').getAttribute('accept'), '.jpg,.jpeg,.png,image/jpeg,image/png');
     assert.equal(await page.locator('script:not([src])').count(), 0);
     assert.equal(await page.locator('style').count(), 0);
+    assert.equal(await page.locator('#editorial-withdrawal').count(), 1);
+    assert.equal(await page.locator('#consent-withdrawal').count(), 1);
+    assert.equal(await page.locator('#athlete-exclusion').count(), 1);
+    assert.equal(await page.locator('.exclusion-panel').count(), 1);
 }
 
 async function checkInvalidContext(browserInstance, adminOrigin, query, label) {
@@ -465,7 +503,7 @@ function draftFixture(siteMode) {
             raceDate: area.raceDate,
             raceEvent: area.raceEvent,
             raceDistance: siteMode === 'family' ? '5 km' : '10 km',
-            athleteIds: []
+            athleteIds: [siteMode === 'family' ? 'family-runner' : 'everyone-runner']
         }
     };
 }

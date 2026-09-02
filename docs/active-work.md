@@ -1,5 +1,97 @@
 # Active Work
 
+## Current task: durable photo-review and owner-takedown controls
+
+### Status — Pull Request #89 open; remote activation pending 2 September 2026
+
+This isolated branch is based on exact current `origin/main` commit
+`fcdc80ebb3b99c1dbe6fa2b7e8bfc588e1f95c6d`, which includes merged Pull
+Request #88. The reviewed implementation is commit `3078c59` on branch
+`codex/gallery-nonprod-rehearsal` and is open as Pull Request #89. No workflow
+dispatch, D1 migration, Worker deployment, Access change, R2 mutation, real
+media transfer, manifest edit, merge, or publication has occurred at this
+point.
+
+The local change adds the missing durable boundary around a photo review Pull
+Request. Migration `0011_photo_review_invalidation.sql` records immutable
+reservation, open, terminal, and pre-reservation abandonment evidence. The
+protected workflow still accepts only one opaque `draft_id`; D1 remains the
+source of the inherited Family/Everyone area, race/date/event/distance,
+athlete tags, consent, guardian approval, suppression state, storage keys, and
+candidate metadata. A candidate stays `candidate-public` while its ordinary
+review Pull Request is open. Neither `pr-open` nor `published` becomes a new
+reachable application state in this slice.
+
+The reserved-to-open write repeats every mutable candidate, generation,
+consent, guardian, suppression, exclusion, publication-intent, revision, and
+cleanup check at the SQL write boundary. If withdrawal wins after the service's
+fresh read, the review remains reserved, no false `photo-review-opened` audit is
+written, and the durable invalidation path remains available.
+
+The recovery order is privacy-first. The service first records an immutable
+editorial-removal intent and moves the exact candidate to
+`withdrawal-pending`; approved media is then deleted and proved absent before
+the runner depends on GitHub. The runner may close and read back only its exact
+operation-marked Pull Request. A GitHub outage may therefore leave Pull Request
+closure pending, but cannot be used as a reason to keep approved media
+reachable. Private staging cleanup remains last. Final `withdrawn` and purge
+still require the existing fixed-origin host-absence proof, and consent
+withdrawal additionally requires verified private-original deletion. Review
+cleanup requests are fixed to the immutable candidate-to-withdrawal result
+version; abandonment cleanup uses its immutable result version. Final
+`withdrawn` is additionally blocked until both the exact approved-media cleanup
+and the receipt-bound private-staging cleanup have completed rows and matching
+hash-only tombstones, so a lost response cannot strand staged bytes.
+
+The owner page also gains exact editorial-removal, consent-withdrawal, and
+proactive athlete-wide exclusion controls. The athlete control is independent
+of the active draft and accepts any current public athlete in the inherited
+area, including one with no tagged media yet. Migration
+`0012_owner_withdrawal_exclusion_receipts.sql` preserves the original sorted
+opaque affected-draft set for exact retries even after drafts are withdrawn or
+purged, the public suppression revision changes, or a completed pending row is
+removed. D1 stores only public athlete IDs, opaque draft IDs, hashes, and audit
+evidence—never names, reasons, or private notes.
+
+The review and invalidation workflows use immutable Action commit pins and the
+existing protected `gallery-processing` environment. Worker JSON bodies have
+one total bounded read deadline rather than a fresh timeout per stream chunk.
+Both new workflows remain undispatched and have no merge, deployment, Pages,
+default-branch update, branch deletion, manifest publication, or GitHub
+settings capability.
+
+Current provider state must stay separate from this local implementation. The
+processing Worker already exists at version
+`f58e0a1f-3ca4-4b66-a81f-9435d9af4f15` with its active narrow Service Auth
+policy; it was not redeployed here. The `gallery-processing` GitHub environment
+exists and has no workflow run for this feature. The promotion Worker is still
+absent. Non-production D1 currently ends at migration `0010`; local migrations
+`0011` and `0012` are not applied. The existing admin Worker, public media
+Worker, verifier, Access resources, R2 buckets, lifecycle rules, delivery
+epoch, and GitHub configuration are unchanged by this task.
+
+The focused completion gate passed after the final race and log-safety
+hardening. Focused real-SQLite migration, review service,
+promotion Worker, immediate and delayed bridge, GitHub client, owner
+withdrawal/exclusion, admin/browser, processing, public-host, and remote-driver
+tests all passed. The protected invalidation runner now emits only one fixed
+completion status, never draft/review IDs, withdrawal category, consent facts,
+athlete facts, branch data, or receipt content. The complete `pnpm test` passed
+after that hardening: repository, vendored-library, both-mode CSV/Gallery,
+release/export, migration/service, exact 114-file artifact, and responsive
+Family/Everyone browser checks all passed. Repository safety and `git diff
+--check` passed, with line-ending warnings only. Exact branch diffs for both
+public manifests and the shared suppression file are empty. Independent final
+reviews found no remaining code, security, public-data, owner-control, or
+review-recovery blocker.
+
+Pull Request #89 must complete the standard required checks and Deploy Preview
+before its explicitly approved merge. The user has also explicitly approved the
+separate post-merge non-production migrations `0011`–`0012`, updated
+admin/processing and new promotion deployment/Access, and a synthetic workflow
+rehearsal. That later approval does not authorize real media or go-live
+publication.
+
 ## Current task: photo-only Gallery go-live implementation bridge
 
 ### Status — local implementation finalized 1 September 2026

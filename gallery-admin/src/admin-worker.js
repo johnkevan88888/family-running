@@ -33,6 +33,10 @@ import {
     readPrivateUploadStatus,
     storePrivateUploadPart
 } from './upload-service.js';
+import {
+    initiateAthleteExclusion,
+    initiateDraftWithdrawal
+} from './withdrawal-service.js';
 
 const ADMIN_SHELL_PATH = '/';
 const ADMIN_STYLES_PATH = '/admin.css';
@@ -41,6 +45,7 @@ const BROWSER_HEALTH_PATH = '/api/browser/health';
 const BROWSER_SESSION_PATH = '/api/browser/session';
 const BROWSER_CATALOG_PATH = '/api/browser/catalog';
 const BROWSER_DRAFTS_PATH = '/api/browser/drafts';
+const BROWSER_ATHLETE_EXCLUSIONS_PATH = '/api/browser/athlete-exclusions';
 const SYNTHETIC_RECORDS_PATH = '/api/browser/synthetic-records';
 const SERVICE_HEALTH_PATH = '/api/service/health';
 const IDENTITY_VALUE_PATTERN = /^[^\u0000-\u001f\u007f]{1,512}$/;
@@ -60,6 +65,12 @@ const ORIGINAL_PATH_PATTERN = new RegExp(
 );
 const TRANSITIONS_PATH_PATTERN = new RegExp(
     `^${BROWSER_DRAFTS_PATH}/${DRAFT_ID_FRAGMENT}/transitions$`
+);
+const EDITORIAL_WITHDRAWAL_PATH_PATTERN = new RegExp(
+    `^${BROWSER_DRAFTS_PATH}/${DRAFT_ID_FRAGMENT}/editorial-withdrawal$`
+);
+const CONSENT_WITHDRAWAL_PATH_PATTERN = new RegExp(
+    `^${BROWSER_DRAFTS_PATH}/${DRAFT_ID_FRAGMENT}/consent-withdrawal$`
 );
 const JSON_BODY_LIMIT = 32 * 1024;
 const PHASE_B_CANARY_TEXT = 'synthetic:phase-b-auth-boundary-v1';
@@ -368,6 +379,45 @@ async function handleBrowserRoute(
         ));
     }
 
+    if (route.kind === 'editorial-withdrawal' || route.kind === 'consent-withdrawal') {
+        if (request.method !== 'POST') {
+            return adminFailure(405, { Allow: 'POST' });
+        }
+        const parsed = await readBoundedJson(request);
+        if (!parsed.ok) {
+            return adminFailure(parsed.status);
+        }
+        return serviceResultResponse(await initiateDraftWithdrawal(
+            env,
+            identity,
+            siteMode,
+            route.draftId,
+            route.kind === 'consent-withdrawal'
+                ? 'consent-withdrawal'
+                : 'editorial-removal',
+            parsed.value,
+            now
+        ));
+    }
+
+    if (route.kind === 'athlete-exclusions') {
+        if (request.method !== 'POST') {
+            return adminFailure(405, { Allow: 'POST' });
+        }
+        const parsed = await readBoundedJson(request);
+        if (!parsed.ok) {
+            return adminFailure(parsed.status);
+        }
+        return serviceResultResponse(await initiateAthleteExclusion(
+            env,
+            identity,
+            siteMode,
+            parsed.value,
+            catalogSnapshot,
+            now
+        ));
+    }
+
     return adminFailure(404);
 }
 
@@ -433,12 +483,25 @@ function matchPhaseCRoute(pathname) {
     if (pathname === BROWSER_DRAFTS_PATH) {
         return { kind: 'drafts' };
     }
+    if (pathname === BROWSER_ATHLETE_EXCLUSIONS_PATH) {
+        return { kind: 'athlete-exclusions' };
+    }
     return matchDraftRoute(pathname, DRAFT_PATH_PATTERN, 'draft') ||
         matchDraftRoute(pathname, UPLOAD_PATH_PATTERN, 'upload') ||
         matchUploadPartRoute(pathname) ||
         matchDraftRoute(pathname, UPLOAD_COMPLETION_PATH_PATTERN, 'upload-completion') ||
         matchDraftRoute(pathname, ORIGINAL_PATH_PATTERN, 'original') ||
-        matchDraftRoute(pathname, TRANSITIONS_PATH_PATTERN, 'transitions');
+        matchDraftRoute(pathname, TRANSITIONS_PATH_PATTERN, 'transitions') ||
+        matchDraftRoute(
+            pathname,
+            EDITORIAL_WITHDRAWAL_PATH_PATTERN,
+            'editorial-withdrawal'
+        ) ||
+        matchDraftRoute(
+            pathname,
+            CONSENT_WITHDRAWAL_PATH_PATTERN,
+            'consent-withdrawal'
+        );
 }
 
 function matchDraftRoute(pathname, pattern, kind) {

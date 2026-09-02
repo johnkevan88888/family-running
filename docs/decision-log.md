@@ -3,6 +3,63 @@
 This log records durable architectural decisions, not proposed features.
 Unknown historical details are labelled rather than inferred.
 
+## Gallery review and owner takedown evidence is durable and privacy-first
+
+- **Status:** Accepted and implemented locally; migrations and changed Workers
+  are not deployed
+- **Date:** 2 September 2026
+- **Decision:** A photo review is bound to one immutable D1 reservation before
+  GitHub is contacted. The receipt fixes the opaque draft, promotion and
+  processing run, candidate generation, inherited-area manifest, manifest hash,
+  deterministic branch, and workflow run. Exact later receipts record an open
+  Pull Request and its terminal closed-unmerged or no-PR result. A distinct
+  immutable abandonment receipt covers failure before reservation. A bodyless
+  draft-only service read returns a strict review-or-abandonment union so lost
+  responses can be resumed without accepting caller-selected publication facts.
+  `candidate-public` remains the review state; `pr-open` and `published` do not
+  become reachable in this slice. The reserved-to-open SQL write boundary
+  rechecks all mutable eligibility evidence and writes its audit only if the
+  exact receipt actually opens.
+- **Rationale:** GitHub and HTTP responses are not the authority for consent or
+  takedown. A response may be lost after D1 or GitHub commits, and GitHub may be
+  unavailable exactly when a candidate becomes ineligible. Durable server-
+  derived receipts distinguish safe replay from a new operation and prevent a
+  network outage from leaving approved media reachable.
+- **Consequences:** Post-reservation failure first records the strongest current
+  one-way withdrawal intent and atomically moves the exact candidate to
+  `withdrawal-pending`. Consent withdrawal outranks athlete exclusion, which
+  outranks editorial removal; a weaker operation cannot downgrade a stronger
+  intent. Approved media is deleted and proved absent before exact GitHub Pull
+  Request reconciliation, and private staging is cleaned last. If GitHub fails,
+  approved media remains removed while closure stays pending. Candidate
+  branches are retained because deletion lacks the required expected-SHA
+  compare-and-swap. Review cleanup is pinned to the immutable
+  candidate-to-withdrawal result version and abandonment cleanup to its immutable
+  result version. Final `withdrawn` also requires completed exact approved-media
+  and receipt-bound staging cleanup rows plus their hash-only tombstones. It
+  still requires fixed-origin public-host absence; consent withdrawal still also
+  requires private-original deletion, and purge remains separate.
+- **Decision:** Owner controls may initiate exact editorial removal or consent
+  withdrawal and may proactively exclude any current public athlete in the
+  signed session's inherited area, even before media is tagged with that ID.
+  Athlete exclusion affects the whole tagged item on every surface. Its
+  immutable receipt records the original suppression revision and canonical
+  sorted set of opaque affected draft IDs. Exact replay uses that receipt before
+  mutable catalog or lifecycle checks and therefore stays identical after
+  suppression revision changes, athlete hiding, pending-row resolution or
+  deletion, withdrawal, and draft purge. A surviving contradictory operational
+  row fails closed.
+- **Consequences:** The owner UI has no destination selector and the service
+  continues to derive area, race/date/event/distance, public athlete tags,
+  consent/guardian state, storage names, and cleanup targets. Exclusion records
+  and responses contain no names, reasons, private notes, or identity details.
+  The public suppression document remains public-athlete-ID-only and still
+  follows ordinary review. Both protected workflows accept only `draft_id`, use
+  immutable Action commit pins, and have no merge, default-branch update, branch
+  deletion, deployment, Pages, or settings operation. The invalidation runner's
+  log output is one fixed success status and contains no receipt identifiers or
+  withdrawal, consent, athlete, or branch data.
+
 ## Excel/VBA is the private source of truth
 
 - **Status:** Accepted
