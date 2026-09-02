@@ -4,6 +4,55 @@ Phase 1 is an owner-curated public gallery. It deliberately does not accept
 visitor uploads and does not put photographs or videos into Git or the GitHub
 Pages artifact.
 
+## Local review and takedown update — 2 September 2026
+
+The current local slice adds durable photo-review receipts, owner withdrawal
+controls, proactive athlete-wide exclusion, and a separate draft-only
+invalidation workflow. It is based on exact `origin/main` commit
+`fcdc80ebb3b99c1dbe6fa2b7e8bfc588e1f95c6d`. None of these local changes has
+been committed, pushed, deployed, migrated, dispatched, merged, or published.
+
+The review workflow and invalidation workflow each accept only one opaque
+`draft_id`. D1 derives the inherited Family/Everyone area, the race date,
+event, distance, public athlete IDs, consent and guardian evidence, suppression
+state, media names, manifest path, branch, Pull Request identity, and cleanup
+targets. There is still no destination selector and no caller-supplied race,
+athlete, media key, URL, or withdrawal reason.
+
+Before GitHub is contacted during failure recovery, the promotion service
+records a one-way invalidation intent and moves the exact candidate to
+`withdrawal-pending`. Approved media is removed and proved absent first. The
+runner then closes and reads back only its immutable operation-marked Pull
+Request, and cleans private staging last. If GitHub is unavailable, approved
+media stays removed while Pull Request closure remains pending for the separate
+invalidation workflow. A pre-reservation abandonment receipt is also readable
+by that later workflow, which cleans approved media and private staging without
+calling GitHub.
+
+The review-open write rechecks all mutable candidate and consent facts at the
+SQL boundary. If withdrawal or exclusion wins that race, the receipt stays
+reserved and no opened audit is emitted. Cleanup packages remain pinned to the
+immutable candidate-to-withdrawal or abandonment result version. Final
+`withdrawn` requires exact completed approved-media and receipt-bound staging
+cleanup evidence and matching hash-only tombstones.
+
+The owner can record editorial removal or consent withdrawal for an exact
+draft, and can proactively exclude any current public athlete in the inherited
+area even when no item is tagged yet. Athlete exclusion remains whole-item:
+every current or later item carrying the public ID is blocked or withdrawn.
+The durable retry record contains no names, reasons, or private notes and keeps
+the same canonical opaque affected-draft list even after withdrawal, suppression
+revision changes, operational-row cleanup, or draft purge.
+
+These controls do not complete withdrawal by themselves. Final withdrawal
+still requires the existing fixed-origin public-host absence proof. Consent
+withdrawal also requires verified deletion of the private original, and purge
+remains a later explicit operation. Neither workflow can merge, publish, deploy,
+delete a branch, edit `main`, or change GitHub or Cloudflare settings.
+The protected invalidation command reports only one fixed completion status; it
+does not log draft/review IDs, withdrawal category, consent or athlete facts,
+branch data, or receipt content.
+
 The owner-only upload architecture, provider-independent contract, Phase B
 authentication boundary, and synthetic Phase C rehearsal are complete. Phase C
 is remotely verified behind Cloudflare Access with private originals and D1
@@ -18,10 +67,11 @@ The normal processing Worker was restored after the fault-injection proof with
 exactly D1, private originals, and private derivative staging. It cannot reach
 approved media, a public manifest, GitHub, DNS, merge, or publication controls.
 The temporary rehearsal service token and its dedicated policy were deleted
-after the proof. The processing Access application remains installed with zero
-policies, so it is deliberately parked fail closed until a separately approved
-service identity and policy are created for future work. The owner application
-and owner policy remain unchanged.
+after the proof. A later separately approved step restored narrow processing
+access; the processing Worker is currently version
+`f58e0a1f-3ca4-4b66-a81f-9435d9af4f15` behind its active Service Auth policy.
+The local body-deadline and review-recovery changes are not deployed. The owner
+application and owner policy remain unchanged.
 Verified derivatives may become reachable for Pull Request review only through
 the separately gated promotion and candidate-manifest workflow. Its first
 photo-only implementation slice now exists locally: it can verify an exact
@@ -41,8 +91,10 @@ by both the supplied screenshot and an independent live-tab readback. The admin
 health gate is complete, but a real-photo upload is still prohibited. The required
 `media/v1/` one-day incomplete-multipart rule is now applied and independently
 verified, but remains orphan containment only. Protected candidate retrieval,
-the photo-only orchestration runner, and the default-branch workflow now exist
-locally but have not been deployed, provisioned, or dispatched. The committed
+the photo-only orchestration runner, and both default-branch workflows now
+exist locally but have not been dispatched. The protected
+`gallery-processing` environment exists, while the promotion Worker remains
+absent. The committed
 manifests and normal reviewed Pull
 Request remain the only public publication path. See
 [Owner-Authenticated Gallery Upload Architecture](gallery-upload-architecture.md).

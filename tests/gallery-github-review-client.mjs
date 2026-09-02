@@ -6,11 +6,21 @@ import * as reviewClientModule from '../scripts/gallery-media/github-review-clie
 
 assert.deepEqual(
     Object.keys(reviewClientModule),
-    ['createOrReconcileGalleryReview', 'invalidateGalleryReview'],
-    'The module must expose only review creation and exact stale-review invalidation.'
+    [
+        'createGalleryReviewOpenEvidenceHash',
+        'createOrReconcileGalleryReview',
+        'invalidateGalleryReview',
+        'reconcileStoredGalleryReview'
+    ],
+    'The module must expose only review creation and exact review invalidation/reconciliation.'
 );
 
-const { createOrReconcileGalleryReview, invalidateGalleryReview } = reviewClientModule;
+const {
+    createGalleryReviewOpenEvidenceHash,
+    createOrReconcileGalleryReview,
+    invalidateGalleryReview,
+    reconcileStoredGalleryReview
+} = reviewClientModule;
 const reviewClientSource = await fs.readFile(
     new URL('../scripts/gallery-media/github-review-client.mjs', import.meta.url),
     'utf8'
@@ -155,6 +165,80 @@ assert.equal(
     ),
     false,
     'Invalidation must not merge, mutate main, deploy, or administer the repository.'
+);
+
+const storedGitHub = createMockGitHub();
+const storedCreated = await createOrReconcileGalleryReview(candidate, {
+    expectedBaseSha: baseSha,
+    token,
+    fetchImpl: storedGitHub.fetch
+});
+const storedReview = storedReviewFrom(storedCreated);
+const storedOpenEvidenceHash = createGalleryReviewOpenEvidenceHash(storedCreated);
+assert.match(storedOpenEvidenceHash, /^[a-f0-9]{64}$/);
+const storedTerminal = await reconcileStoredGalleryReview(storedReview, {
+    token,
+    fetchImpl: storedGitHub.fetch
+});
+assert.equal(storedTerminal.terminalKind, 'closed-unmerged');
+assert.match(storedTerminal.terminalEvidenceHash, /^[a-f0-9]{64}$/);
+assert.equal(
+    storedTerminal.openEvidenceHash,
+    storedOpenEvidenceHash
+);
+assert.match(storedTerminal.closeEvidenceHash, /^[a-f0-9]{64}$/);
+assert.match(storedTerminal.readbackEvidenceHash, /^[a-f0-9]{64}$/);
+assert.equal(storedTerminal.pullRequest.state, 'closed');
+assert.equal(storedGitHub.state.pullRequests[0].state, 'closed');
+assert.equal(storedTerminal.branchState, 'retained-for-reviewed-cleanup');
+
+const noPullGitHub = createMockGitHub();
+const noPullCreated = await createOrReconcileGalleryReview(candidate, {
+    expectedBaseSha: baseSha,
+    token,
+    fetchImpl: noPullGitHub.fetch
+});
+noPullGitHub.state.pullRequests.length = 0;
+const noPullTerminal = await reconcileStoredGalleryReview(
+    storedReviewFrom(noPullCreated, { reserved: true }),
+    { token, fetchImpl: noPullGitHub.fetch }
+);
+assert.equal(noPullTerminal.terminalKind, 'no-pr-created');
+assert.equal(noPullTerminal.pullRequest, null);
+assert.equal(noPullTerminal.closeEvidenceHash, null);
+assert.equal(noPullTerminal.readbackEvidenceHash, null);
+assert.equal(noPullTerminal.branchState, 'retained-for-reviewed-cleanup');
+
+const mergedStoredGitHub = createMockGitHub();
+const mergedStoredCreated = await createOrReconcileGalleryReview(candidate, {
+    expectedBaseSha: baseSha,
+    token,
+    fetchImpl: mergedStoredGitHub.fetch
+});
+mergedStoredGitHub.state.pullRequests[0].state = 'closed';
+mergedStoredGitHub.state.pullRequests[0].merged_at = '2026-09-02T00:00:00.000Z';
+await assert.rejects(
+    reconcileStoredGalleryReview(storedReviewFrom(mergedStoredCreated), {
+        token,
+        fetchImpl: mergedStoredGitHub.fetch
+    }),
+    /merged, changed, or unowned/
+);
+
+const changedStoredGitHub = createMockGitHub();
+const changedStoredCreated = await createOrReconcileGalleryReview(candidate, {
+    expectedBaseSha: baseSha,
+    token,
+    fetchImpl: changedStoredGitHub.fetch
+});
+changedStoredGitHub.state.branchSha = '9'.repeat(40);
+changedStoredGitHub.state.pullRequests[0].head.sha = changedStoredGitHub.state.branchSha;
+await assert.rejects(
+    reconcileStoredGalleryReview(storedReviewFrom(changedStoredCreated), {
+        token,
+        fetchImpl: changedStoredGitHub.fetch
+    }),
+    /branch changed after its open receipt/
 );
 
 const patchCountBeforeReplay = invalidationGitHub.state.requests.filter(
@@ -589,6 +673,26 @@ await assert.rejects(
 );
 
 console.log('Gallery GitHub review client tests passed.');
+
+function storedReviewFrom(review, { reserved = false } = {}) {
+    return {
+        schemaVersion: '1.0',
+        promotionId: operationId,
+        repository: review.repository,
+        baseRef: review.baseRef,
+        baseSha: review.baseSha,
+        branchRef: review.branchRef,
+        headSha: reserved ? null : review.headSha,
+        targetRelativePath: review.targetRelativePath,
+        itemId: review.itemId,
+        manifestSha256: review.manifestSha256,
+        operationMarkerHash: createHash('sha256')
+            .update('family-running-gallery-review-operation-v1\0', 'utf8')
+            .update(operationId, 'utf8')
+            .digest('hex'),
+        pullRequest: reserved ? null : deepClone(review.pullRequest)
+    };
+}
 
 function createMockGitHub(options = {}) {
     const state = {

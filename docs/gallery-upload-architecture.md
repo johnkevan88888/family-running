@@ -8,12 +8,16 @@
   runner
 - **Infrastructure state:** Synthetic rehearsal Phases C and D are complete on
   isolated non-production `workers.dev` resources. D1 carries independently
-  verified migrations `0001`–`0010`; the owner administration Worker can reach
+  verified migrations `0001`–`0010`; local migrations `0011` and `0012` have
+  not been applied. The owner administration Worker can reach
   only D1 and private originals; the media Worker can reach only approved
   derivatives; and the
   restored normal processing Worker can reach only D1, private originals, and
-  private derivative staging. Its Access application is parked fail closed with
-  zero policies after deletion of the temporary rehearsal identity and policy.
+  private derivative staging. The processing Worker is currently deployed at
+  exact version `f58e0a1f-3ca4-4b66-a81f-9435d9af4f15` behind its active narrow
+  Service Auth policy. The promotion Worker is absent. Those are current-state
+  facts only; no Cloudflare resource is changed by the local `0011`–`0012`
+  implementation.
 - **Media state:** exactly one built-in synthetic Family photo and one built-in
   synthetic Everyone video remain protected private originals with D1 records.
   The final Phase D photo run leaves exactly two verified synthetic derivatives
@@ -54,10 +58,68 @@
   updated admin Worker has exact version/binding readback. Anonymous browser and
   service health requests still stop at Access, while the exact authenticated
   owner browser health route returned
-  `{"ok":true,"scope":"owner-browser"}`. Updated processing/promotion Worker
-  deployment, Access credentials, the protected environment, GitHub App and remote branch-rule
-  proof, workflow dispatch, real-media transfer, video processing, DNS changes,
-  merge, and publication remain future separately approved work.
+  `{"ok":true,"scope":"owner-browser"}`. The protected
+  `gallery-processing` environment exists but neither new review workflow has
+  run. The local review-receipt, privacy-first invalidation, owner-withdrawal,
+  and proactive-exclusion changes still require review and merge before any
+  separately approved D1, Worker, Access, or workflow-rehearsal gate. Real-media
+  transfer, video processing, DNS changes, merge, and publication remain future
+  separately approved work.
+
+### Local review and takedown safety slice — 2 September 2026
+
+Migration `0011_photo_review_invalidation.sql` makes the ordinary photo-review
+operation resumable without treating GitHub as the privacy authority. It binds
+one immutable reservation to the exact draft, promotion, processing run,
+candidate generation, manifest hash, deterministic candidate branch, workflow
+run, and inherited-area manifest path. Later receipts may record the exact open
+Pull Request and its terminal closed-unmerged or no-PR outcome. If candidate
+preparation fails before reservation, a separate immutable abandonment receipt
+preserves the approved-media and private-staging cleanup plan. A bodyless read
+by opaque draft ID returns a strict union of those two receipt kinds so a later
+protected run can resume after a lost response.
+
+Opening a review repeats the full current-candidate check inside the guarded SQL
+write. A withdrawal, consent/revision change, athlete exclusion, or cleanup that
+wins after the earlier service read leaves the receipt reserved and writes no
+false opened audit, so the same receipt can enter invalidation recovery.
+
+Review failure starts a server-derived one-way invalidation before any GitHub
+call. D1 preserves a stronger current consent-withdrawal or athlete-exclusion
+intent and otherwise records editorial removal, atomically moves the exact
+`candidate-public` draft to `withdrawal-pending`, and produces server-built
+cleanup requests. Approved media is removed first. Only then may the runner
+close and read back its exact operation-marked Pull Request; private staging is
+cleaned last. If GitHub is unavailable, the approved bytes remain removed while
+Pull Request closure and final staging cleanup stay explicitly pending. Final
+withdrawal cannot outrun cleanup: review packages remain fixed at the immutable
+candidate-to-withdrawal result version, abandonment packages remain fixed at
+their immutable result version, and both exact approved-media and receipt-bound
+staging cleanup rows plus matching tombstones are required. Fixed-origin
+public-host absence is still required, consent withdrawal still also depends on
+private-original deletion, and purge remains a later separate gate.
+
+Migration `0012_owner_withdrawal_exclusion_receipts.sql` supports the owner
+controls without making mutable operational rows the retry authority. An
+athlete-wide exclusion can be recorded for any current public athlete in the
+inherited area before any item uses that ID. Its immutable receipt carries only
+the public athlete ID, original public suppression revision, hashes, and the
+canonical sorted set of opaque affected draft IDs. An exact retry returns that
+same set after withdrawal, suppression revision change, pending-row resolution
+or deletion, and draft purge. A surviving contradictory pending row fails
+closed. Names, request reasons, and private notes are never stored in the
+receipt or public suppression file.
+
+Both protected workflows still accept only `draft_id`. They cannot select a
+site, destination, race, athlete, storage key, manifest, branch, or Pull
+Request; and they have no merge, default-branch update, branch deletion,
+deployment, Pages, or settings operation. `candidate-public` remains the draft
+state during review; this slice does not make `pr-open` or `published`
+reachable. The server remains authoritative for Family/Everyone area,
+race/date/event/distance, athlete tags, consent/guardian evidence, suppression,
+storage names, and all cleanup targets. Workflow success logs contain only a
+fixed completion status and do not copy receipt identifiers or withdrawal,
+consent, athlete, or branch data.
 
 This document selects the storage, authentication, and access model needed to
 continue the owner-curated Gallery after Phase 1. It does not turn the Gallery
@@ -751,9 +813,11 @@ competing retries cannot both commit or replace the winner.
 After the proof, the normal processing Worker was restored with only its three
 private bindings. Its normal entry point rejects the rehearsal fault header.
 The temporary service token and rehearsal policy were deleted; the retained
-processing Access application has zero policies and is parked fail closed. A
-future remote request therefore needs a new separately approved service identity
-and policy. The two staged derivatives are not approved or public, and no DNS,
+processing Access application was then parked with zero policies. A later
+separately approved gate restored narrow Service Auth and deployed current
+version `f58e0a1f-3ca4-4b66-a81f-9435d9af4f15`; the local changes described in
+this document are not part of that deployment. The two staged derivatives are
+not approved or public, and no DNS,
 GitHub App, Pull Request, merge, or publication change occurred.
 
 **Local promotion, approved-storage cleanup, public-host verification, and
@@ -942,8 +1006,9 @@ After that proof, the temporary Service Auth policy was detached from the
 verifier application and saved before the reusable policy and service token were
 deleted. Dashboard confirmations and independent Access API reads proved the
 verifier application remains present with zero policies, the owner application
-still has its one owner policy, the processing application still has zero
-policies, and the deleted rehearsal policy and token are absent. The account has
+still has its one owner policy, and the then-deleted rehearsal policy and token
+are absent. The processing application was later given its separately approved
+narrow current Service Auth policy. The account at the rehearsal close had
 no service tokens. The verifier application is intentionally parked fail closed
 until another separately approved use.
 

@@ -11,7 +11,19 @@ const draftId = 'draft_11111111-1111-4111-8111-111111111111';
 const promotionPath = `/api/service/drafts/${draftId}/photo-promotions`;
 const candidatePath = `/api/service/drafts/${draftId}/photo-candidate`;
 const promotionId = 'promotion_11111111111141118111111111111111';
+const processingRunId = 'run_11111111111141118111111111111111';
 const cleanupPath = `/api/service/photo-promotions/${promotionId}/cleanup`;
+const reviewId = 'review_11111111111141118111111111111111';
+const reviewReservationPath =
+    `/api/service/drafts/${draftId}/photo-review-reservations`;
+const reviewInvalidationPath =
+    `/api/service/drafts/${draftId}/photo-review-invalidation`;
+const reviewOpenPath = `/api/service/photo-reviews/${reviewId}/open`;
+const reviewTerminalPath = `/api/service/photo-reviews/${reviewId}/terminal`;
+const reviewInvalidationStartPath =
+    `/api/service/photo-reviews/${reviewId}/invalidation-start`;
+const reviewAbandonmentPath =
+    `/api/service/drafts/${draftId}/photo-review-abandonment`;
 const validInput = {
     expectedStateVersion: 19,
     idempotencyKey: 'photo-promotion-worker-0001'
@@ -48,6 +60,51 @@ assert.equal(missingAccessContextResponse.status, 403);
 const serviceCalls = [];
 const cleanupCalls = [];
 const candidateCalls = [];
+const reviewReservationCalls = [];
+const reviewOpenCalls = [];
+const reviewInvalidationCalls = [];
+const reviewInvalidationStartCalls = [];
+const reviewTerminalCalls = [];
+const reviewAbandonmentCalls = [];
+const review = {
+    schemaVersion: '1.0',
+    reviewId,
+    draftId,
+    promotionId,
+    processingRunId,
+    candidateStateVersion: 20,
+    candidatePayloadHash: '1'.repeat(64),
+    generationFingerprint: '2'.repeat(64),
+    repository: 'johnkevan88888/family-running',
+    baseRef: 'main',
+    baseSha: '3'.repeat(40),
+    branchRef: `gallery-media/candidate-${'4'.repeat(32)}`,
+    targetRelativePath: 'gallery-data/family.json',
+    itemId: 'synthetic-review-photo',
+    manifestSha256: `sha256:${'5'.repeat(64)}`,
+    operationMarkerHash: '6'.repeat(64),
+    workflowRunReference:
+        'https://github.com/johnkevan88888/family-running/actions/runs/123/attempts/1',
+    status: 'reserved',
+    pullRequestNumber: null,
+    pullRequestUrl: null,
+    headSha: null,
+    openEvidenceHash: null,
+    terminalKind: null,
+    terminalEvidenceHash: null,
+    closeEvidenceHash: null,
+    readbackEvidenceHash: null
+};
+const cleanupPackage = {
+    promotionId,
+    expectedStateVersion: 21,
+    idempotencyKey: `photo-review-cleanup-${'6'.repeat(32)}`
+};
+const processingCleanupPackage = {
+    processingRunId,
+    expectedStateVersion: 21,
+    idempotencyKey: `photo-review-staging-${'6'.repeat(32)}`
+};
 const validDependencies = {
     verifyAccessIdentity: async () => ({
         type: 'service',
@@ -89,6 +146,95 @@ const validDependencies = {
                 schemaVersion: '1.0',
                 operationId: 'promotion_11111111111141118111111111111111'
             }
+        };
+    },
+    async reservePhotoReview(...args) {
+        reviewReservationCalls.push(args);
+        return { ok: true, status: 201, review, replayed: false };
+    },
+    async recordPhotoReviewOpened(...args) {
+        reviewOpenCalls.push(args);
+        return {
+            ok: true,
+            status: 201,
+            review: {
+                ...review,
+                status: 'open',
+                pullRequestNumber: 123,
+                pullRequestUrl:
+                    'https://github.com/johnkevan88888/family-running/pull/123',
+                headSha: '7'.repeat(40),
+                openEvidenceHash: '8'.repeat(64)
+            },
+            replayed: false
+        };
+    },
+    async readPhotoReviewInvalidation(...args) {
+        reviewInvalidationCalls.push(args);
+        return {
+            ok: true,
+            status: 200,
+            receiptKind: 'review',
+            review,
+            invalidation: {
+                withdrawalKind: 'athlete-exclusion',
+                terminalKind: 'no-pr-created',
+                cleanup: cleanupPackage,
+                processingCleanup: processingCleanupPackage
+            },
+            replayed: true
+        };
+    },
+    async startPhotoReviewInvalidation(...args) {
+        reviewInvalidationStartCalls.push(args);
+        return {
+            ok: true,
+            status: 201,
+            review,
+            invalidationStart: {
+                withdrawalKind: 'editorial-removal',
+                expectedStateVersion: 20,
+                resultStateVersion: 21,
+                cleanup: cleanupPackage,
+                processingCleanup: processingCleanupPackage
+            },
+            replayed: false
+        };
+    },
+    async recordPhotoReviewTerminal(...args) {
+        reviewTerminalCalls.push(args);
+        return {
+            ok: true,
+            status: 201,
+            review: {
+                ...review,
+                status: 'terminal',
+                terminalKind: 'no-pr-created',
+                terminalEvidenceHash: '9'.repeat(64)
+            },
+            cleanup: cleanupPackage,
+            processingCleanup: processingCleanupPackage,
+            replayed: false
+        };
+    },
+    async abandonPhotoReviewCandidate(...args) {
+        reviewAbandonmentCalls.push(args);
+        return {
+            ok: true,
+            status: 201,
+            abandonment: {
+                schemaVersion: '1.0',
+                draftId,
+                promotionId,
+                processingRunId,
+                expectedStateVersion: 20,
+                resultStateVersion: 21,
+                failureEvidenceHash: 'a'.repeat(64),
+                status: 'withdrawal-pending'
+            },
+            cleanup: cleanupPackage,
+            processingCleanup: processingCleanupPackage,
+            replayed: false
         };
     }
 };
@@ -138,6 +284,253 @@ assert.equal((await requestPromotion({
     method: 'POST',
     url: `${promotionOrigin}${candidatePath}`
 }, environment, validDependencies)).status, 405);
+
+const reservationInput = {
+    expectedStateVersion: 20,
+    baseSha: review.baseSha,
+    manifestSha256: review.manifestSha256,
+    workflowRunReference: review.workflowRunReference,
+    idempotencyKey: 'photo-review-reserve-0001'
+};
+const reservationResponse = await requestPromotion({
+    url: `${promotionOrigin}${reviewReservationPath}`,
+    body: JSON.stringify(reservationInput)
+}, environment, validDependencies);
+assert.equal(reservationResponse.status, 201);
+assert.deepEqual(await reservationResponse.json(), { review, replayed: false });
+assert.equal(reviewReservationCalls.length, 1);
+assert.equal(reviewReservationCalls[0][2], draftId);
+assert.deepEqual(reviewReservationCalls[0][3], reservationInput);
+assert.equal(reviewReservationCalls[0][4], fixedNow);
+
+const reviewOpenInput = {
+    expectedStateVersion: 20,
+    headSha: '7'.repeat(40),
+    pullRequestNumber: 123,
+    pullRequestUrl: 'https://github.com/johnkevan88888/family-running/pull/123',
+    openEvidenceHash: '8'.repeat(64),
+    idempotencyKey: 'photo-review-open-0001'
+};
+const reviewOpenResponse = await requestPromotion({
+    url: `${promotionOrigin}${reviewOpenPath}`,
+    body: JSON.stringify(reviewOpenInput)
+}, environment, validDependencies);
+assert.equal(reviewOpenResponse.status, 201);
+assert.equal((await reviewOpenResponse.json()).review.status, 'open');
+assert.equal(reviewOpenCalls.length, 1);
+assert.equal(reviewOpenCalls[0][2], reviewId);
+assert.deepEqual(reviewOpenCalls[0][3], reviewOpenInput);
+
+const invalidationResponse = await requestPromotion({
+    method: 'GET',
+    url: `${promotionOrigin}${reviewInvalidationPath}`,
+    body: undefined
+}, environment, validDependencies);
+assert.equal(invalidationResponse.status, 200);
+assert.deepEqual(await invalidationResponse.json(), {
+    receiptKind: 'review',
+    review,
+    invalidation: {
+        withdrawalKind: 'athlete-exclusion',
+        terminalKind: 'no-pr-created',
+        cleanup: cleanupPackage,
+        processingCleanup: processingCleanupPackage
+    },
+    replayed: true
+});
+assert.equal(reviewInvalidationCalls.length, 1);
+assert.equal(reviewInvalidationCalls[0][2], draftId);
+
+const receiptOnlyResponse = await requestPromotion({
+    method: 'GET',
+    url: `${promotionOrigin}${reviewInvalidationPath}`,
+    body: undefined
+}, environment, {
+    ...validDependencies,
+    async readPhotoReviewInvalidation() {
+        return {
+            ok: true,
+            status: 200,
+            receiptKind: 'review',
+            review,
+            invalidation: null,
+            replayed: true
+        };
+    }
+});
+assert.equal(receiptOnlyResponse.status, 200);
+assert.deepEqual(await receiptOnlyResponse.json(), {
+    receiptKind: 'review',
+    review,
+    invalidation: null,
+    replayed: true
+});
+
+const abandonmentReceipt = {
+    schemaVersion: '1.0',
+    draftId,
+    promotionId,
+    processingRunId,
+    expectedStateVersion: 20,
+    resultStateVersion: 21,
+    failureEvidenceHash: 'a'.repeat(64),
+    status: 'withdrawal-pending'
+};
+const abandonmentReadbackResponse = await requestPromotion({
+    method: 'GET',
+    url: `${promotionOrigin}${reviewInvalidationPath}`,
+    body: undefined
+}, environment, {
+    ...validDependencies,
+    async readPhotoReviewInvalidation() {
+        return {
+            ok: true,
+            status: 200,
+            receiptKind: 'abandonment',
+            abandonment: abandonmentReceipt,
+            cleanup: cleanupPackage,
+            processingCleanup: processingCleanupPackage,
+            replayed: true
+        };
+    }
+});
+assert.equal(abandonmentReadbackResponse.status, 200);
+assert.deepEqual(await abandonmentReadbackResponse.json(), {
+    receiptKind: 'abandonment',
+    abandonment: abandonmentReceipt,
+    cleanup: cleanupPackage,
+    processingCleanup: processingCleanupPackage,
+    replayed: true
+});
+assert.equal((await requestPromotion({
+    method: 'GET',
+    url: `${promotionOrigin}${reviewInvalidationPath}`,
+    body: undefined
+}, environment, {
+    ...validDependencies,
+    async readPhotoReviewInvalidation() {
+        return {
+            ok: true,
+            status: 200,
+            receiptKind: 'review',
+            review,
+            invalidation: null,
+            abandonment: abandonmentReceipt,
+            replayed: true
+        };
+    }
+})).status, 503);
+
+const invalidationStartInput = {
+    expectedStateVersion: 20,
+    idempotencyKey: 'photo-review-invalidation-start-0001'
+};
+const invalidationStartResponse = await requestPromotion({
+    url: `${promotionOrigin}${reviewInvalidationStartPath}`,
+    body: JSON.stringify(invalidationStartInput)
+}, environment, validDependencies);
+assert.equal(invalidationStartResponse.status, 201);
+assert.deepEqual(await invalidationStartResponse.json(), {
+    review,
+    invalidationStart: {
+        withdrawalKind: 'editorial-removal',
+        expectedStateVersion: 20,
+        resultStateVersion: 21,
+        cleanup: cleanupPackage,
+        processingCleanup: processingCleanupPackage
+    },
+    replayed: false
+});
+assert.equal(reviewInvalidationStartCalls.length, 1);
+assert.equal(reviewInvalidationStartCalls[0][2], reviewId);
+assert.deepEqual(reviewInvalidationStartCalls[0][3], invalidationStartInput);
+assert.equal((await requestPromotion({
+    method: 'GET',
+    url: `${promotionOrigin}${reviewInvalidationStartPath}`,
+    body: undefined
+}, environment, validDependencies)).status, 405);
+const malformedInvalidationStart = await requestPromotion({
+    url: `${promotionOrigin}${reviewInvalidationStartPath}`,
+    body: JSON.stringify(invalidationStartInput)
+}, environment, {
+    ...validDependencies,
+    async startPhotoReviewInvalidation() {
+        return {
+            ok: true,
+            status: 201,
+            review,
+            invalidationStart: {
+                withdrawalKind: 'editorial-removal',
+                expectedStateVersion: 20,
+                resultStateVersion: 21,
+                cleanup: cleanupPackage,
+                processingCleanup: processingCleanupPackage,
+                terminalKind: 'no-pr-created'
+            },
+            replayed: false
+        };
+    }
+});
+assert.equal(malformedInvalidationStart.status, 503);
+
+const reviewTerminalInput = {
+    terminalKind: 'no-pr-created',
+    terminalEvidenceHash: '9'.repeat(64),
+    closeEvidenceHash: null,
+    readbackEvidenceHash: null,
+    headSha: null,
+    pullRequestNumber: null,
+    pullRequestUrl: null,
+    idempotencyKey: 'photo-review-terminal-0001'
+};
+const reviewTerminalResponse = await requestPromotion({
+    url: `${promotionOrigin}${reviewTerminalPath}`,
+    body: JSON.stringify(reviewTerminalInput)
+}, environment, validDependencies);
+assert.equal(reviewTerminalResponse.status, 201);
+assert.deepEqual(await reviewTerminalResponse.json(), {
+    review: {
+        ...review,
+        status: 'terminal',
+        terminalKind: 'no-pr-created',
+        terminalEvidenceHash: '9'.repeat(64)
+    },
+    cleanup: cleanupPackage,
+    processingCleanup: processingCleanupPackage,
+    replayed: false
+});
+assert.equal(reviewTerminalCalls.length, 1);
+assert.equal(reviewTerminalCalls[0][2], reviewId);
+assert.deepEqual(reviewTerminalCalls[0][3], reviewTerminalInput);
+
+const abandonmentInput = {
+    expectedStateVersion: 20,
+    failureEvidenceHash: 'a'.repeat(64),
+    idempotencyKey: 'photo-review-abandon-0001'
+};
+const abandonmentResponse = await requestPromotion({
+    url: `${promotionOrigin}${reviewAbandonmentPath}`,
+    body: JSON.stringify(abandonmentInput)
+}, environment, validDependencies);
+assert.equal(abandonmentResponse.status, 201);
+assert.deepEqual(await abandonmentResponse.json(), {
+    abandonment: {
+        schemaVersion: '1.0',
+        draftId,
+        promotionId,
+        processingRunId,
+        expectedStateVersion: 20,
+        resultStateVersion: 21,
+        failureEvidenceHash: 'a'.repeat(64),
+        status: 'withdrawal-pending'
+    },
+    cleanup: cleanupPackage,
+    processingCleanup: processingCleanupPackage,
+    replayed: false
+});
+assert.equal(reviewAbandonmentCalls.length, 1);
+assert.equal(reviewAbandonmentCalls[0][2], draftId);
+assert.deepEqual(reviewAbandonmentCalls[0][3], abandonmentInput);
 
 const validCleanupResponse = await requestPromotion({
     url: `${promotionOrigin}${cleanupPath}`
@@ -334,6 +727,52 @@ for (const testCase of [
     assert.equal(serviceCalls.length, before, `${testCase.label} reached the promotion service.`);
 }
 
+let stalledReadCancelCalls = 0;
+const stalledReadBody = new ReadableStream({
+    start() {},
+    cancel() {
+        stalledReadCancelCalls += 1;
+        return new Promise(() => {});
+    }
+});
+const callsBeforeStalledRead = serviceCalls.length;
+const stalledReadStartedAt = Date.now();
+const stalledReadResponse = await handlePromotionRequest(
+    streamedPromotionRequest(stalledReadBody),
+    environment,
+    { ...validDependencies, bodyTimeoutMilliseconds: 20 }
+);
+assert.equal(stalledReadResponse.status, 400);
+assert.deepEqual(await stalledReadResponse.json(), { error: 'invalid-request' });
+assert.ok(Date.now() - stalledReadStartedAt < 1_000);
+assert.equal(stalledReadCancelCalls, 1);
+assert.equal(serviceCalls.length, callsBeforeStalledRead);
+
+let stalledCancelCalls = 0;
+const overLimitBody = new ReadableStream({
+    start(controller) {
+        controller.enqueue(new Uint8Array((32 * 1024) + 1));
+    },
+    cancel() {
+        stalledCancelCalls += 1;
+        return new Promise(() => {});
+    }
+});
+const callsBeforeStalledCancel = serviceCalls.length;
+const stalledCancelStartedAt = Date.now();
+const stalledCancelResponse = await handlePromotionRequest(
+    streamedPromotionRequest(overLimitBody),
+    environment,
+    { ...validDependencies, bodyTimeoutMilliseconds: 2_000 }
+);
+assert.equal(stalledCancelResponse.status, 413);
+assert.deepEqual(await stalledCancelResponse.json(), {
+    error: 'request-too-large'
+});
+assert.ok(Date.now() - stalledCancelStartedAt < 1_000);
+assert.equal(stalledCancelCalls, 1);
+assert.equal(serviceCalls.length, callsBeforeStalledCancel);
+
 const oversizedBody = JSON.stringify({ value: 'x'.repeat(33 * 1024) });
 const oversizedResponse = await requestPromotion({ body: oversizedBody }, environment, validDependencies);
 assert.equal(oversizedResponse.status, 413);
@@ -435,4 +874,16 @@ async function requestPromotion(options = {}, env = environment, dependencies = 
         env,
         dependencies
     );
+}
+
+function streamedPromotionRequest(body) {
+    return new Request(`${promotionOrigin}${promotionPath}`, {
+        method: 'POST',
+        headers: {
+            'Content-Length': '1',
+            'Content-Type': 'application/json'
+        },
+        body,
+        duplex: 'half'
+    });
 }
