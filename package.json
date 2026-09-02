@@ -36,6 +36,7 @@
     "test:gallery-public-host-remote-sqlite-integration": "node tests/gallery-public-host-remote-sqlite-integration.mjs",
     "test:gallery-approved-media-lifecycle": "node tests/gallery-approved-media-lifecycle.mjs",
     "test:gallery-manifest-candidate": "node tests/gallery-manifest-candidate.mjs",
+    "test:gallery-github-review-boundary": "node tests/gallery-github-review-boundary.mjs",
     "test:gallery-github-review-client": "node tests/gallery-github-review-client.mjs",
     "test:gallery-processing-rehearsal-worker": "node tests/gallery-processing-rehearsal-worker.mjs",
     "test:gallery-phase-d-migration-configs": "node tests/gallery-phase-d-migration-configs.mjs",

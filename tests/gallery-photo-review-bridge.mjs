@@ -283,6 +283,17 @@ assert.doesNotMatch(
 );
 assert.doesNotMatch(workflowText, /git\s+push|merge|deploy|wrangler/i);
 
+const reviewRunnerText = await fs.readFile(
+    path.join(root, 'scripts', 'run-gallery-photo-review.mjs'),
+    'utf8'
+);
+assert.match(reviewRunnerText, /verifyGalleryReviewBoundary/);
+assert.ok(
+    reviewRunnerText.indexOf('await verifyGalleryReviewBoundary') <
+        reviewRunnerText.indexOf('await runPhotoReviewBridge'),
+    'The GitHub permission boundary must pass before any photo processing begins.'
+);
+
 assert.deepEqual(
     await Promise.all(publicManifestPaths.map(file => fs.readFile(file))),
     manifestsBefore,

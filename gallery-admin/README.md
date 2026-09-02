@@ -11,10 +11,12 @@ Worker is a third, service-only component that can read private originals and
 write private staging, but cannot reach approved media or either public
 manifest. It is currently deployed at exact version
 `f58e0a1f-3ca4-4b66-a81f-9435d9af4f15` behind its active narrow Service Auth
-policy; the local changes in this branch are not deployed. A fourth
+policy; the merged PR #89 processing changes are not deployed. A fourth
 repository-only promotion Worker now covers D1 plus staging-read and approved-
-write access;
-it is not deployed and cannot reach originals, manifests, or GitHub. Pull
+write access. Its earlier photo-only version is deployed at exact version
+`44109f3f-53ac-4714-977e-41176656ff40` behind a separate one-token Service
+Auth policy and cannot reach originals, manifests, or GitHub; the newer PR #89
+review/invalidation routes are not deployed. Pull
 Request #84 merged that promotion/cleanup and review foundation to `main` at
 exact commit `4b6c7be70d77ce389f7ee9a5b103858cd31ff55b`; the exact 114-file
 GitHub Pages artifact and production site were byte-verified, with both modes
@@ -38,11 +40,12 @@ uploaded and byte-verified; matching delivery epoch
 
 ## Local review, withdrawal, and exclusion safety slice
 
-The 2 September 2026 local slice adds migrations `0011` and `0012`, protected
+The 2 September 2026 merged slice adds migrations `0011` and `0012`, protected
 review and invalidation routes on the promotion Worker, and owner-only
 withdrawal/exclusion routes on the admin Worker. The migrations are not applied,
 the changed Workers are not deployed, and neither workflow has been dispatched.
-The promotion Worker remains absent. The reviewed source is commit `3078c59`
+The reviewed source merged through Pull Request #89 at exact `main` commit
+`9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`.
 and Pull Request #89; opening that review branch changed no R2 object, public
 manifest, suppression file, Access resource, deployment, merge, or publication.
 
@@ -370,11 +373,18 @@ only and cannot authorize a tombstone or purge. It is now applied to the exact
 approved-media bucket and independently verified through the lifecycle API and
 bucket Settings page.
 Protected candidate retrieval, orchestration, and both default-branch workflows
-are implemented locally but have not been dispatched. The protected
-`gallery-processing` environment exists; the promotion Worker remains absent.
-No Access policy/identity for the promotion Worker, lifecycle change, promotion
-Worker deployment, approved Gallery derivative, manifest edit, GitHub branch,
-or candidate-media Pull Request was created by this promotion slice.
+are merged but have not been dispatched. The protected `gallery-processing`
+environment is restricted to exact `main` and contains the six processing and
+promotion connection secrets plus the Gallery review App ID and single
+remaining private key. The App is installed only on this repository with
+Contents and Pull requests write plus required Metadata read. The downloaded
+PEM and two unusable remote keys were deleted after storage. The current safety
+branch adds a fail-closed proof before contacting the processing Worker: it
+requires the exact effective `main` rules, accepts only a rules-owned denial of
+a same-commit update, and re-reads unchanged `main`. It is not yet merged or
+remotely exercised. No promotion/cleanup route, approved Gallery derivative,
+manifest edit, candidate branch, or candidate-media Pull Request has been
+created.
 
 ## Local public-host verifier boundary
 

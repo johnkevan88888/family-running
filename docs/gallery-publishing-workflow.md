@@ -6,12 +6,12 @@ Pages artifact.
 
 ## Local review and takedown update — 2 September 2026
 
-The current local slice adds durable photo-review receipts, owner withdrawal
+Pull Request #89 merged durable photo-review receipts, owner withdrawal
 controls, proactive athlete-wide exclusion, and a separate draft-only
-invalidation workflow. It is based on exact `origin/main` commit
-`fcdc80ebb3b99c1dbe6fa2b7e8bfc588e1f95c6d`. The reviewed implementation is
-commit `3078c59` and is open as Pull Request #89. It has not been deployed,
-migrated, dispatched, merged, or published.
+invalidation workflow to `main` at exact merge commit
+`9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`. Its migrations `0011`–`0012`
+and updated Workers have not been applied or deployed, and neither protected
+workflow has been dispatched.
 
 The review workflow and invalidation workflow each accept only one opaque
 `draft_id`. D1 derives the inherited Family/Everyone area, the race date,
@@ -64,25 +64,26 @@ staging-cleanup boundary has also passed its approved non-production A–F
 rehearsal. Its final display and thumbnail remain private Scenario F staging
 evidence; they are not approved or public media.
 
-The normal processing Worker was restored after the fault-injection proof with
-exactly D1, private originals, and private derivative staging. It cannot reach
-approved media, a public manifest, GitHub, DNS, merge, or publication controls.
-The temporary rehearsal service token and its dedicated policy were deleted
-after the proof. A later separately approved step restored narrow processing
-access; the processing Worker is currently version
-`f58e0a1f-3ca4-4b66-a81f-9435d9af4f15` behind its active Service Auth policy.
-The local body-deadline and review-recovery changes are not deployed. The owner
+The normal processing Worker is deployed at exact version
+`f58e0a1f-3ca4-4b66-a81f-9435d9af4f15` with only D1, private originals,
+private derivative staging, fixed origin, and its one-token Service Auth
+identity. The photo-promotion Worker is deployed at exact version
+`44109f3f-53ac-4714-977e-41176656ff40` with only D1, staging-read,
+approved-media-write, fixed origins, and its separate one-token Service Auth
+identity. Neither Worker can reach a public manifest, GitHub, DNS, merge, or
+publication controls. The newer PR #89 body-deadline, review-receipt, and
+withdrawal-recovery code is merged source only and is not deployed. The owner
 application and owner policy remain unchanged.
 Verified derivatives may become reachable for Pull Request review only through
 the separately gated promotion and candidate-manifest workflow. Its first
 photo-only implementation slice now exists locally: it can verify an exact
 staged pair, construct one public-safe candidate for the inherited area, and
-prepare one review-only GitHub operation. A second local slice now closes
+prepare one review-only GitHub operation. A second slice now closes
 approved-media admission, resolves every known multipart handle, deletes only
 the exact verified owned objects, proves R2 absence, and retains hash-only
-replay evidence. It is deliberately not deployed: R2 absence still is not
-fixed-origin public-host proof, and the promotion Worker, its Access identity,
-and the updated processing routes remain gated. Migration `0010` is applied
+replay evidence. The promotion Worker and its Access identity are deployed,
+but no promotion or cleanup route has been exercised; R2 absence still is not
+fixed-origin public-host proof. Migration `0010` is applied
 and independently verified. The updated admin Worker is deployed as exact
 version `c411bead-edb5-441b-aa0b-36594ff8a9b8` with its intended narrow
 bindings and unchanged owner Access app/policy; anonymous health requests still
@@ -92,17 +93,23 @@ by both the supplied screenshot and an independent live-tab readback. The admin
 health gate is complete, but a real-photo upload is still prohibited. The required
 `media/v1/` one-day incomplete-multipart rule is now applied and independently
 verified, but remains orphan containment only. Protected candidate retrieval,
-the photo-only orchestration runner, and both default-branch workflows now
-exist locally but have not been dispatched. The protected
-`gallery-processing` environment exists, while the promotion Worker remains
-absent. The committed
+the photo-only orchestration runner, and both default-branch workflows are
+merged but have not been dispatched. The protected `gallery-processing`
+environment is restricted to exact `main` and stores the six service connection
+secrets plus the Gallery review App ID and private key. The committed
 manifests and normal reviewed Pull
 Request remain the only public publication path. See
 [Owner-Authenticated Gallery Upload Architecture](gallery-upload-architecture.md).
 
-The repository-scoped GitHub App and protected environment, remote
-promotion/cleanup, and full synthetic Pull Request rehearsal remain future
-work. The fixed-origin host-absence verifier exists remotely only for its
+The repository-scoped GitHub App is installed only on this repository with
+Contents and Pull requests write plus required Metadata read. Exactly one
+private key remains after protected storage and cleanup of the local PEM and two
+unusable remote keys. The active `main` rules do not yet make an App-authored
+merge impossible after checks pass. The current safety branch therefore adds a
+fail-closed pre-processing proof: it reads the exact effective rules, submits
+only a same-commit `main` ref update, accepts only a rules-owned denial, and
+re-reads unchanged `main`. That proof has not run remotely. The fixed-origin
+host-absence verifier exists remotely only for its
 completed approved synthetic proof and is not a shortcut around
 generation-bound withdrawal verification. Video processing and real family
 media use remain forbidden until separately approved. The local implementation does not authorize a public media URL,
@@ -124,11 +131,10 @@ manifest change, DNS change, Pull Request, merge, or publication.
 ## Before Adding A Moment
 
 This checklist describes the future explicitly approved end-to-end publication
-workflow. Local promotion, fresh candidate retrieval, in-memory manifest
-generation, orchestration, the protected workflow file, and GitHub review
-client now exist together with storage-only approved-side cleanup. They are not
-remote infrastructure and have never been dispatched. The current deployed
-private service therefore still cannot promote media or create a candidate
+workflow. Promotion, fresh candidate retrieval, in-memory manifest generation,
+orchestration, the protected workflow file, and GitHub review client now exist
+together with storage-only approved-side cleanup. The promotion service is
+deployed but has never been asked to promote or create a candidate
 manifest or Pull Request.
 
 1. Confirm that the people shown have approved public use of the photograph or

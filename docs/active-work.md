@@ -2,15 +2,13 @@
 
 ## Current task: durable photo-review and owner-takedown controls
 
-### Status — Pull Request #89 open; remote activation pending 2 September 2026
+### Status — Pull Request #89 merged; remote activation pending 2 September 2026
 
-This isolated branch is based on exact current `origin/main` commit
-`fcdc80ebb3b99c1dbe6fa2b7e8bfc588e1f95c6d`, which includes merged Pull
-Request #88. The reviewed implementation is commit `3078c59` on branch
-`codex/gallery-nonprod-rehearsal` and is open as Pull Request #89. No workflow
-dispatch, D1 migration, Worker deployment, Access change, R2 mutation, real
-media transfer, manifest edit, merge, or publication has occurred at this
-point.
+Pull Request #89 merged the reviewed implementation to `main` at exact commit
+`9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`. No review/invalidation workflow
+has been dispatched and migrations `0011`–`0012` plus the changed admin,
+processing, and promotion Workers remain unapplied or undeployed. No real media,
+Gallery manifest, candidate Pull Request, or Gallery publication was created.
 
 The local change adds the missing durable boundary around a photo review Pull
 Request. Migration `0011_photo_review_invalidation.sql` records immutable
@@ -64,8 +62,10 @@ Current provider state must stay separate from this local implementation. The
 processing Worker already exists at version
 `f58e0a1f-3ca4-4b66-a81f-9435d9af4f15` with its active narrow Service Auth
 policy; it was not redeployed here. The `gallery-processing` GitHub environment
-exists and has no workflow run for this feature. The promotion Worker is still
-absent. Non-production D1 currently ends at migration `0010`; local migrations
+exists and has no workflow run for this feature. The earlier promotion Worker
+is deployed at exact version `44109f3f-53ac-4714-977e-41176656ff40` behind its
+active narrow Service Auth policy, but the PR #89 review/invalidation routes are
+not deployed. Non-production D1 currently ends at migration `0010`; migrations
 `0011` and `0012` are not applied. The existing admin Worker, public media
 Worker, verifier, Access resources, R2 buckets, lifecycle rules, delivery
 epoch, and GitHub configuration are unchanged by this task.
@@ -85,12 +85,12 @@ public manifests and the shared suppression file are empty. Independent final
 reviews found no remaining code, security, public-data, owner-control, or
 review-recovery blocker.
 
-Pull Request #89 must complete the standard required checks and Deploy Preview
-before its explicitly approved merge. The user has also explicitly approved the
-separate post-merge non-production migrations `0011`–`0012`, updated
-admin/processing and new promotion deployment/Access, and a synthetic workflow
-rehearsal. That later approval does not authorize real media or go-live
-publication.
+Pull Request #89 completed its standard checks and merged. The current approval
+does not authorize migrations `0011`–`0012` or any Cloudflare Worker deployment.
+It authorizes only the repository safety PR and byte-identical Pages run,
+owner-only GitHub ruleset hardening, installation-token proof, and a generated
+synthetic-photo rehearsal if the already-deployed remote routes can support it.
+No real media or Gallery publication is authorized.
 
 ## Current task: photo-only Gallery go-live implementation bridge
 
@@ -253,8 +253,9 @@ session. Both the supplied screenshot and an independent live-tab readback
 showed exact JSON `{"ok":true,"scope":"owner-browser"}` at the protected
 Worker URL. The earlier `ERR_BLOCKED_BY_CLIENT` results were therefore local
 automation-client failures, not Worker-health failures. This closes the admin
-deployment and health gate. It does not authorize a real-photo upload while the
-processing and promotion boundaries below remain undeployed.
+deployment and health gate. At that checkpoint it did not authorize a real-
+photo upload while the processing and promotion boundaries below were still
+undeployed.
 
 Post-deploy readback reconfirmed migration `0010`, both intake triggers, three
 complete and zero active uploads, no foreign-key violations, and
@@ -269,63 +270,178 @@ followed by the complete `pnpm test`. The full run again passed all Gallery and
 release regressions, built the exact 114-file preview artifact, and passed the
 responsive Family and Everyone browser smoke tests.
 
-### Processing Worker gate preflight — stopped before mutation 1 September 2026
+### Non-production processing Worker gate — completed 2 September 2026
 
-The updated processing Worker was prepared locally against the exact
-non-production bindings and passed a Wrangler deployment dry run. Focused
-processing-bridge, processing-rehearsal, Phase D configuration, and remote
-rehearsal tests all passed. The generated bundle declared only D1 database
-`30e5dd7c-6033-410e-9452-85604d423e58`, private-originals bucket
-`family-running-gallery-originals-dev`, and private staging bucket
-`family-running-gallery-staging-dev`; its ignored local configuration and dry
-run output contain no credential.
+The protected GitHub environment `gallery-processing` now exists as exact
+environment ID `21053725166`. It requires reviewer `johnkevan88888`, permits
+deployments only from exact branch `main`, and initially contained exactly the
+three processing connection secrets. The later promotion gate added only the
+three equivalent promotion connection secrets described below. Readback found
+no environment variables and no deployment associated with this environment,
+so no workflow was dispatched.
 
-Read-only Cloudflare API inspection found the processing Access application at
-ID `ddd8d815-d4f7-4fe9-8b50-e2f6ab177817`, with audience
-`cb7fffac6eb0754ed55f702948e0c8d475fb67ad47d500bac76bdbdc87ed915d`, no
-Access policy, and no account service token. The still-deployed processing
-Worker remains deployment `3282c2f2-addd-4bca-b243-85b71eb33cc8`, version
-`bd830cfc-c18b-465e-8835-7232309b33e4`, at 100 percent. Its exact bindings are
-the same D1 database and two R2 buckets plus old secret-text names
-`PROCESSING_ORIGIN` and `PROCESSOR_IDENTITIES`.
+The processing Access application remains exact ID
+`ddd8d815-d4f7-4fe9-8b50-e2f6ab177817` and exact audience
+`cb7fffac6eb0754ed55f702948e0c8d475fb67ad47d500bac76bdbdc87ed915d`.
+It is hidden from the App Launcher, returns `401` rather than a browser redirect
+on failed service authentication, and has one 15-minute Service Auth policy,
+`family-running-gallery-processing-service-auth-dev`, exact policy ID
+`4a993023-9a6a-44f9-a459-0d80ee6f852e`. That policy has exactly one Include
+selector naming the retained processing service token and no Require or Exclude
+rule.
 
-The approved durable design requires the new Service Auth client ID and
-one-time client secret to be stored directly in the protected
-`gallery-processing` GitHub environment. That environment does not yet exist,
-and creating or configuring it was expressly outside this processing-only
-gate. Creating the service token now would therefore produce a one-time secret
-without its approved durable destination; deploying the Worker alone would
-complete only half of the reviewed boundary. The run stopped fail closed before
-either action. No Worker, Access resource, token, policy, R2 object/rule, D1,
-GitHub resource, media, manifest, Pull Request, merge, or publication was
-changed.
+Two generated credentials were treated as compromised after their one-time
+secret appeared in protected automation output. The first had never been used;
+the second had reached only the non-mutating verification route. Both exact
+token resources were deleted, neither remains in the Access policy or account
+token list, and their values were not written to Git, repository files, D1, or
+R2. The final replacement was created without rendering its value, stored
+directly in the protected GitHub environment, attached as the policy's only
+selector, and copied into the Worker's exact `PROCESSOR_IDENTITIES` secret.
+Temporary clipboard and in-memory copies were then cleared. Cloudflare's
+current token list contains exactly that one enabled replacement, named
+`family-running-gallery-processing-dev-rotated-20260902`, with exact resource
+ID `51b5e4b7-6a26-4f3b-8efd-5294be842bf0` and one-year expiry.
+
+Wrangler deployed only `family-running-gallery-processing-dev`. The reviewed
+photo-only code deployment created exact version
+`4aed8f85-69e1-4737-a29f-2fe5d9736f25`; the final newline-safe identity-secret
+update produced current exact version
+`f58e0a1f-3ca4-4b66-a81f-9435d9af4f15`, served at 100 percent by exact
+deployment `12b739e9-2409-4663-b01d-b716c3650ce2`. Readback confirms
+compatibility date `2026-08-28`, no preview version, and exactly these bindings:
+
+- D1 `DB` to `30e5dd7c-6033-410e-9452-85604d423e58`;
+- R2 `PRIVATE_ORIGINALS` to `family-running-gallery-originals-dev`;
+- R2 `DERIVATIVE_STAGING` to `family-running-gallery-staging-dev`; and
+- secret-text names `PROCESSING_ORIGIN` and `PROCESSOR_IDENTITIES`.
+
+There is no approved-media, public-manifest, GitHub, promotion, or owner-session
+binding. Anonymous and deliberately wrong-token requests to the exact
+eligibility route both returned Access-owned `401`, no redirect, no `Location`,
+and `no-store`. The exact replacement token reached the Worker; a deliberately
+wrong `POST` returned Worker-owned `405`, `Allow: GET`, no `Location`,
+`no-store`, and `{"error":"method-not-allowed"}`. That proves the Access,
+identity, origin, route, and exact-binding gates without reading a draft,
+querying D1, or touching either R2 bucket. No real media was used.
+
+Post-gate local validation passed the focused processing bridge, processing
+rehearsal Worker, Phase D processing configuration, and remote-rehearsal driver
+tests. Repository safety passed across 263 tracked files and `git diff --check`
+passed with only Windows line-ending notices. The complete `pnpm test` then
+passed every Gallery, upload, metadata-stripping, processing, promotion,
+fixed-origin, GitHub review-client, release/export, and publication-contract
+regression; rebuilt the exact 114-file preview artifact; and passed responsive
+desktop/mobile browser smoke checks for both Family and Everyone. Generated
+artifacts remain ignored and outside Git.
+
+### Non-production promotion Worker gate — completed 2 September 2026
+
+Wrangler deployed only `family-running-gallery-promotion-dev` at
+`https://family-running-gallery-promotion-dev.family-running.workers.dev`.
+The reviewed code upload created version
+`c83585f9-50d4-47d0-b1df-1859b6847373`; three newline-safe secret updates left
+exact current version `44109f3f-53ac-4714-977e-41176656ff40` serving 100 percent
+through deployment `8b75b430-d9bf-4f62-8667-a3519033fab1`. Readback confirms
+compatibility date `2026-08-29`, no preview, and only these bindings:
+
+- D1 `DB` to `30e5dd7c-6033-410e-9452-85604d423e58`;
+- R2 `DERIVATIVE_STAGING` to `family-running-gallery-staging-dev`;
+- R2 `APPROVED_MEDIA` to `family-running-gallery-approved-dev`; and
+- secret-text names `PROMOTION_ORIGIN`, `APPROVED_MEDIA_ORIGIN`, and
+  `PROMOTER_IDENTITIES`.
+
+There is no private-original, manifest, GitHub, owner-session, Pages, or DNS
+binding. The promotion Access application is exact ID
+`851a36fe-cf8c-4bb8-a663-9827ef2efade`. It is hidden from the App Launcher,
+returns `401` rather than redirecting failed service authentication, and has
+exactly one attached 15-minute Service Auth policy,
+`family-running-gallery-promotion-service-auth-dev`, exact policy ID
+`1ca57e85-9bef-40f3-b53d-070ba6c62816`. That policy has exactly one Include
+selector, the enabled one-year service token
+`family-running-gallery-promotion-dev`, exact resource ID
+`550265cb-b3de-4945-9c0d-3bf38c2cca1d`, and no broad identity, Require,
+Exclude, or bypass rule.
+
+The one-time credential was captured without rendering either value and stored
+directly in the protected environment as
+`GALLERY_PROMOTION_ACCESS_CLIENT_ID` and
+`GALLERY_PROMOTION_ACCESS_CLIENT_SECRET`; the exact origin was stored as
+`GALLERY_PROMOTION_ORIGIN`. The environment therefore now has exactly six
+secret names: the three processing names and the three promotion names. The
+client identity was also stored only in the Worker's `PROMOTER_IDENTITIES`
+secret. Browser and operating-system clipboards and temporary in-memory secret
+copies were cleared after verification.
+
+Anonymous and deliberately wrong-token `POST` requests to an impossible but
+grammar-valid photo-candidate route both returned Access-owned `401`, no
+redirect, no `Location`, and `no-store`. The exact token reached the Worker and
+returned Worker-owned `405`, `Allow: GET`, no `Location`, `no-store`, and exact
+`{"error":"method-not-allowed"}`. The method gate occurs before any D1 or R2
+operation, so this proves the Access, identity, origin, route, and binding
+boundary without selecting a draft, reading or writing storage, promoting an
+object, or generating a candidate. No real media was used.
 
 ### Remaining blockers and next explicit approval gate
 
-- Migration `0010` is applied and independently verified. The updated admin
-  Worker is deployed with exact version, binding, anonymous-denial, and positive
-  owner-session health readback. The updated processing and promotion Workers
-  are not deployed. Their dedicated Service Auth identities and policies do not
-  exist; the processing application remains parked fail closed.
-- The repository-scoped GitHub App, `gallery-processing` environment, required
-  secrets, and remote `main` rule proof do not exist. The App must be excluded
-  from direct `main` update and bypass, and its installation token must be
-  proved unable to update `main` or merge before any workflow dispatch.
+- Migration `0010` and the admin, photo-processing, and photo-promotion Workers
+  are applied or deployed and independently verified within their separate
+  gates. The promotion route has not processed a draft or touched D1/R2.
+- The protected `gallery-processing` environment now holds exactly eight secret
+  names: the six processing/promotion connection names plus
+  `GALLERY_REVIEW_APP_ID` and `GALLERY_REVIEW_APP_PRIVATE_KEY`. GitHub App
+  `family-running-gallery-review-jk`, exact App ID `4806546`, is installed as
+  exact installation `158539230` on only
+  `johnkevan88888/family-running`. Its repository permissions are exactly
+  Contents read/write, Pull requests read/write, and mandatory Metadata
+  read-only; it has no webhook, event subscription, OAuth, device-flow,
+  Actions, administration, environments, secrets, or Pages authority.
+- Exactly one GitHub App private key remains, fingerprint
+  `SHA256:Zeau8e8dR2fs1VHeMVlhaXdaalQ7hwgJ4kRrL4Og4fg=`. The protected
+  environment accepted that key before the downloaded PEM was deleted from
+  the owner's supplied OneDrive path. Two earlier remote keys whose downloads
+  were unusable were then deleted. No private-key bytes were printed or added
+  to the repository.
+- Readback of active `main` ruleset `18119142` confirms required Pull Request
+  and `Test static site` rules and no bypass actor. This blocks a direct App
+  update today, but it does not make an eventual App-authored Pull Request
+  merge impossible after checks pass. The current local branch now adds a
+  fail-closed preflight before the first processing request. It requires the
+  App token to see the exact `restrict_updates`, Pull Request, and status-check
+  rules, submits only a same-commit `main` ref probe, accepts only a rules-owned
+  denial, and re-reads the unchanged ref. This preflight is not on `main` and
+  has not run remotely. The promised installation-token proof therefore remains
+  open and must be completed before any photo workflow dispatch.
+- Local post-change validation passed the new GitHub permission-boundary suite,
+  the photo-only review bridge suite, repository safety across 263 tracked
+  files, and the complete `pnpm test` run. The full run again passed all Gallery,
+  upload, metadata-stripping, processing, promotion, fixed-origin, GitHub review,
+  CSV/export, release, artifact-isolation, and responsive Family/Everyone
+  browser checks; the preview artifact remained exactly 114 files. Generated
+  screenshots and artifacts remain ignored. `git diff --check` passes with only
+  Windows line-ending notices.
+- A fresh filesystem check confirms the supplied local PEM path remains absent.
+  A later repeat of the protected-secret-name list was unavailable because the
+  cached GitHub CLI token had expired and returned `401`; the earlier successful
+  eight-name storage/readback remains the credential evidence. The next remote
+  GitHub gate therefore needs the signed-in browser or one CLI reauthentication.
 - No real-media consent review, upload, promotion, candidate branch, Pull
   Request, preview, merge, or publication has occurred. R2 absence remains
   insufficient to prove public-host absence; the generation-bound fixed-origin
   verifier remains mandatory for withdrawal and purge.
 - Video remains intentionally outside this slice.
 
-The shortest durable next gate is explicit approval to create the protected
-`gallery-processing` GitHub environment, store the newly created processing
-Access client ID and one-time secret there, deploy only the updated processing
-Worker, and perform read-only denial and authenticated route proof. It still
-does not authorize promotion, the repository-scoped GitHub App, real media,
-workflow dispatch, PR creation, merge, or publication. A narrower alternative
-would be an explicitly approved temporary one-use processing identity for
-deployment proof followed by immediate identity and policy deletion; that
-would deliberately leave durable automation Access parked fail closed.
+The GitHub App creation, one-repository installation, protected credential
+storage, local-key deletion, and unusable-key cleanup gates are complete. The
+next explicit approval gate is one consolidated permission-and-synthetic-review
+gate: review and merge this preflight-only repository change; change the `main`
+ruleset to `restrict_updates` with only the owner permitted to merge through a
+Pull Request and the App excluded from bypass; use the short-lived installation
+token to prove the exact rule applies, the same-commit update is denied, and
+`main` is unchanged; only then run one fully reconciled synthetic photo through
+the existing pipeline to an unmerged one-file manifest-candidate Pull Request.
+That gate must still forbid real media, merging the generated candidate, Pages
+deployment, and publication.
 
 ## Current task: fixed-origin public-host verification for Gallery takedown
 

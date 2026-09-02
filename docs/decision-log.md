@@ -786,9 +786,14 @@ Unknown historical details are labelled rather than inferred.
   GitHub App client creates only a candidate branch and normal Pull Request; its
   code contains no merge or default-branch update operation. Because the needed
   GitHub permissions do not alone make those actions cryptographically
-  impossible, remote `main` rules must exclude the App from update and bypass
-  actors, and an installation-token rehearsal must prove direct `main` update
-  and Pull Request merge are both denied. Existing Gallery validation, standard
+  impossible, remote `main` rules must restrict updates to the owner's Pull
+  Request path and exclude the App from bypass actors. The permanent
+  pre-processing proof uses the short-lived installation token to read that
+  exact effective rule, submit only a same-commit `main` ref update, accept only
+  a rules-owned denial, and re-read the unchanged ref. The probe cannot change
+  branch contents even if unexpectedly accepted, while its actor-specific rule
+  denial proves the App cannot directly update or merge into that protected
+  ref. Existing Gallery validation, standard
   Netlify preview, responsive review, and explicit merge approval remain the
   only way a manifest reaches GitHub Pages.
 - **Approval boundary:** Approval of the protected processing environment is
