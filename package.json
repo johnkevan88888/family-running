@@ -23,6 +23,7 @@
     "test:gallery-media-policy": "node tests/gallery-media-policy.mjs",
     "test:gallery-media-processor": "node tests/gallery-media-processor.mjs",
     "test:gallery-processing-bridge": "node tests/gallery-processing-bridge.mjs",
+    "test:gallery-photo-review-bridge": "node tests/gallery-photo-review-bridge.mjs",
     "test:gallery-photo-promotion-worker": "node tests/gallery-photo-promotion-worker.mjs",
     "test:gallery-photo-promotion-config": "node tests/gallery-photo-promotion-config.mjs",
     "test:gallery-media-delivery-contract": "node tests/gallery-media-delivery-contract.mjs",

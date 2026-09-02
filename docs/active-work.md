@@ -1,5 +1,236 @@
 # Active Work
 
+## Current task: photo-only Gallery go-live implementation bridge
+
+### Status — local implementation finalized 1 September 2026
+
+This isolated branch originally started from exact `origin/main` commit
+`a4e9d00380b0b35a478d9988a808d85c2400e5da`, the merge of Pull Request #86.
+After Pull Request #87 refreshed the public data and generated private Gallery
+catalogue, the branch was safely fast-forwarded with zero overlapping paths to
+exact current `origin/main` commit
+`1ba7d53c53ab4d9de16ad128218ca887fb1f291a`.
+It implements the shortest repository-only photo path that was still missing.
+The implementation itself does not mutate remote resources; the separately
+approved non-production gates below record the limited Cloudflare state changes
+that followed local validation. No public Gallery manifest, merge, or
+publication occurred.
+
+The owner page now accepts one real JPEG or PNG photograph and no video. It
+hashes the complete file before initiating the upload and sends only extension,
+MIME type, byte length, and SHA-256. The original filename is neither sent nor
+stored. The page still inherits its exact `?site=family` or `?site=everyone`
+area and has no destination selector. Race date, event, distance, and public
+athlete IDs still come from the server-built current export catalog; consent,
+guardian approval, suppression, pending exclusion, and revision checks remain
+fail closed.
+
+Migration `0010_photo_intake_review_bridge.sql` adds the immutable declared
+whole-file checksum and explicit real-photo-intake evidence. Existing synthetic
+rehearsal rows remain historical and cannot enter the new processing path. The
+pinned Sharp/ExifTool processor now has a production photo entry point for JPEG
+and opaque PNG bytes. It applies orientation, creates display and thumbnail
+WebP derivatives, and scans the finalized output bytes under the existing exact
+metadata allowlist. Transparent PNG, other formats, metadata findings, wrong
+checksums, wrong dimensions, extra roles, and video all remain rejected.
+
+The processing Worker now exposes one bodyless, service-authenticated
+eligibility read. It returns only the opaque draft ID and current state version
+after rechecking the complete D1-derived area, race, tag, consent, suppression,
+exclusion, upload, checksum, and revision evidence. The promotion Worker now
+exposes one bodyless candidate read. It re-runs the existing complete D1 and
+approved-R2 proof before returning public-safe candidate data. It does not
+accept a site, race, athlete, key, URL, or manifest target from the caller.
+
+The new protected default-branch workflow accepts only `draft_id`. After the
+protected `gallery-processing` environment is approved, its local runner bridge
+performs the current eligibility read, downloads and independently verifies the
+private original, processes and stages the two derivatives, promotes them,
+fetches the fresh candidate, generates one inherited-area manifest addition in
+memory, and invokes the existing narrow GitHub review client with a short-lived
+repository-scoped GitHub App token. It re-reads candidate evidence after PR
+creation and reports no success if consent, suppression, exclusion, revision,
+generation, or approved bytes changed. The client still has no merge,
+default-branch update, deployment, Pages, environment, secret, or GitHub-settings
+operation. Neither public manifest is edited locally by this bridge.
+
+Focused photo intake, processor, processing, promotion, orchestration,
+review-client, admin boundary, and responsive browser checks pass with generated
+test bytes only. The complete `pnpm test` also passed during final validation:
+repository safety, vendored dependencies, both-mode CSV and Gallery validation,
+every focused Gallery service and migration suite, release/export regressions,
+the exact 114-file artifact build, and responsive Family and Everyone browser
+smoke tests all passed. A subsequent bounded source-length/path hardening change
+was followed by the focused photo-review bridge, photo processor, photo-intake,
+repository-safety, and diff checks, all passing. Both tracked Gallery manifests
+and the shared suppression file remain unchanged; no real media was read or
+uploaded.
+
+After the safe fast-forward to exact current `origin/main` above, the complete
+`pnpm test` passed again against the refreshed 72-file export bundle: repository
+safety checked 258 tracked files, the exact 114-file preview artifact built, and
+the responsive Family and Everyone browser smoke tests passed. `git diff
+--check` also passed, and the refreshed CSVs, generated catalogue, both public
+Gallery manifests, and the shared suppression list have no branch diff.
+
+### Remote lifecycle gate — independently verified 1 September 2026
+
+The remote preflight resolved exactly one approved-media bucket named
+`family-running-gallery-approved-dev`. Contrary to the earlier repository
+status, its required lifecycle rule was already present, so this run issued no
+add, set, remove, or other lifecycle mutation. The Cloudflare lifecycle API
+returned exactly two enabled rules: the provider's unchanged default
+seven-day multipart-abort rule and one
+`gallery-approved-v1-abort-incomplete-1d` rule scoped to exact prefix
+`media/v1/`, with only an incomplete-multipart abort after `86400` seconds.
+The bucket's dashboard Settings page independently displayed that same rule ID,
+prefix, one-day action, and enabled state. A second API read returned the same
+two-rule set and exactly one matching approved-prefix rule.
+
+This closes the reviewed lifecycle gate as a verified current-state fact. It is
+still delayed orphan-upload containment only: it is not synchronous cleanup,
+object deletion, a tombstone, purge permission, or public-host absence proof.
+No R2 object, Worker, D1 database, Access resource, GitHub resource, public
+manifest, Pull Request, deployment, or publication was changed in this gate.
+The focused lifecycle contract, repository-safety validation, diff check, and
+complete `pnpm test` all passed after the remote readback and documentation
+update; the full run again built the exact 114-file preview artifact and passed
+the responsive Family and Everyone browser smoke tests.
+
+### Non-production D1 migration gate — completed 1 September 2026
+
+The exact database `family-running-gallery-dev` was healthy before the gate:
+migration history ended at `0009_public_host_verification.sql`, all three
+upload sessions were complete, no upload was active, `foreign_key_check`
+returned no rows, and `quick_check` returned `ok`. A Time Travel bookmark was
+available before the attempted change.
+
+The signed-in D1 dashboard console first applied the two additive columns from
+migration `0010`: nullable `declared_sha256 TEXT` with its lower-case SHA-256
+check, and required `real_photo_intake_confirmed INTEGER DEFAULT 0` with its
+`0`/`1` check. Its one-line parser could not apply SQLite trigger bodies. After
+separate approval, Wrangler OAuth was created with only the required user-read
+and background scopes plus account-read and D1-write; all unrelated optional
+scopes were removed. An ignored temporary SQL file containing only the two
+reviewed triggers and standard migration-history insertion passed a local
+SQLite guard, immutability, and history proof, completed remotely in one
+successful three-query Wrangler operation, and was then removed.
+
+Independent API readback confirms migration ID `10` named
+`0010_photo_intake_review_bridge.sql`, both exact columns, both exact triggers
+and their guard/abort clauses, three complete and zero active upload sessions,
+no foreign-key violations, and `quick_check = ok`. A current Time Travel
+bookmark is available. At the close of this D1-only gate, the deployed admin
+Worker was still the older version
+`7afb4e75-babc-41b9-80ac-3a0d64150be5`; the separately approved deployment
+below subsequently replaced it. No Worker, Access, R2 object/rule, GitHub,
+media, manifest, Pull Request, deployment, or publication mutation occurred in
+the D1 gate itself.
+
+### Non-production admin Worker gate — deployed 1 September 2026
+
+After a successful local dry run, focused admin tests, and repository-safety
+validation, Wrangler deployed only `family-running-gallery-admin-dev`. The
+current deployment ID is `2a4f2545-3cca-4e75-b7b2-233b25ba3e6d`; exact version
+`c411bead-edb5-441b-aa0b-36594ff8a9b8` serves 100% of traffic with deployment
+message `Photo-only admin intake after migration 0010`. Independent Cloudflare
+API readback confirms compatibility date `2026-08-25`, the hourly
+`0 * * * *` cleanup trigger, and exactly these bindings:
+
+- secret text names `ADMIN_ORIGIN`, `OWNER_IDENTITIES`, and `SESSION_SECRET`;
+- D1 binding `DB` to exact database ID
+  `30e5dd7c-6033-410e-9452-85604d423e58`; and
+- R2 binding `PRIVATE_ORIGINALS` to
+  `family-running-gallery-originals-dev`.
+
+There is no automation-identity, private-staging, approved-media, public
+manifest, GitHub, or other binding. The Access application and owner policy
+also remained unchanged at IDs `a7dffe80-2021-4e8f-99e9-08eb01e20ebe` and
+`b23b59d1-9548-441c-9b0f-7565a0df3355`. The deploy token was deliberately
+limited to user read, background access, account read, Workers Scripts write,
+and D1 write.
+
+Both health routes returned `302` to Cloudflare Access without credentials,
+proving that anonymous requests still stop before the Worker. The owner then
+opened exact `GET /api/browser/health` in a normal Access-authenticated browser
+session. Both the supplied screenshot and an independent live-tab readback
+showed exact JSON `{"ok":true,"scope":"owner-browser"}` at the protected
+Worker URL. The earlier `ERR_BLOCKED_BY_CLIENT` results were therefore local
+automation-client failures, not Worker-health failures. This closes the admin
+deployment and health gate. It does not authorize a real-photo upload while the
+processing and promotion boundaries below remain undeployed.
+
+Post-deploy readback reconfirmed migration `0010`, both intake triggers, three
+complete and zero active uploads, no foreign-key violations, and
+`quick_check = ok`. The private-originals lifecycle still has the enabled exact
+`private-originals/v1/` one-day incomplete-multipart abort rule. No processing,
+promotion, media, verifier, Access, R2 object/rule, GitHub, manifest, Pull
+Request, merge, or publication mutation occurred.
+
+Final local validation passed after this gate: the focused photo-intake admin,
+admin-boundary, responsive admin-browser, repository-safety, and diff checks,
+followed by the complete `pnpm test`. The full run again passed all Gallery and
+release regressions, built the exact 114-file preview artifact, and passed the
+responsive Family and Everyone browser smoke tests.
+
+### Processing Worker gate preflight — stopped before mutation 1 September 2026
+
+The updated processing Worker was prepared locally against the exact
+non-production bindings and passed a Wrangler deployment dry run. Focused
+processing-bridge, processing-rehearsal, Phase D configuration, and remote
+rehearsal tests all passed. The generated bundle declared only D1 database
+`30e5dd7c-6033-410e-9452-85604d423e58`, private-originals bucket
+`family-running-gallery-originals-dev`, and private staging bucket
+`family-running-gallery-staging-dev`; its ignored local configuration and dry
+run output contain no credential.
+
+Read-only Cloudflare API inspection found the processing Access application at
+ID `ddd8d815-d4f7-4fe9-8b50-e2f6ab177817`, with audience
+`cb7fffac6eb0754ed55f702948e0c8d475fb67ad47d500bac76bdbdc87ed915d`, no
+Access policy, and no account service token. The still-deployed processing
+Worker remains deployment `3282c2f2-addd-4bca-b243-85b71eb33cc8`, version
+`bd830cfc-c18b-465e-8835-7232309b33e4`, at 100 percent. Its exact bindings are
+the same D1 database and two R2 buckets plus old secret-text names
+`PROCESSING_ORIGIN` and `PROCESSOR_IDENTITIES`.
+
+The approved durable design requires the new Service Auth client ID and
+one-time client secret to be stored directly in the protected
+`gallery-processing` GitHub environment. That environment does not yet exist,
+and creating or configuring it was expressly outside this processing-only
+gate. Creating the service token now would therefore produce a one-time secret
+without its approved durable destination; deploying the Worker alone would
+complete only half of the reviewed boundary. The run stopped fail closed before
+either action. No Worker, Access resource, token, policy, R2 object/rule, D1,
+GitHub resource, media, manifest, Pull Request, merge, or publication was
+changed.
+
+### Remaining blockers and next explicit approval gate
+
+- Migration `0010` is applied and independently verified. The updated admin
+  Worker is deployed with exact version, binding, anonymous-denial, and positive
+  owner-session health readback. The updated processing and promotion Workers
+  are not deployed. Their dedicated Service Auth identities and policies do not
+  exist; the processing application remains parked fail closed.
+- The repository-scoped GitHub App, `gallery-processing` environment, required
+  secrets, and remote `main` rule proof do not exist. The App must be excluded
+  from direct `main` update and bypass, and its installation token must be
+  proved unable to update `main` or merge before any workflow dispatch.
+- No real-media consent review, upload, promotion, candidate branch, Pull
+  Request, preview, merge, or publication has occurred. R2 absence remains
+  insufficient to prove public-host absence; the generation-bound fixed-origin
+  verifier remains mandatory for withdrawal and purge.
+- Video remains intentionally outside this slice.
+
+The shortest durable next gate is explicit approval to create the protected
+`gallery-processing` GitHub environment, store the newly created processing
+Access client ID and one-time secret there, deploy only the updated processing
+Worker, and perform read-only denial and authenticated route proof. It still
+does not authorize promotion, the repository-scoped GitHub App, real media,
+workflow dispatch, PR creation, merge, or publication. A narrower alternative
+would be an explicitly approved temporary one-use processing identity for
+deployment proof followed by immediate identity and policy deletion; that
+would deliberately leave durable automation Access parked fail closed.
+
 ## Current task: fixed-origin public-host verification for Gallery takedown
 
 ### Status — 31 August 2026

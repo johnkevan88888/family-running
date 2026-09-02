@@ -2027,7 +2027,7 @@ function createHarness({
             startIndex += 1;
             const startBody = {
                 schemaVersion: '1.0',
-                scope: 'synthetic-local-phase-d',
+                scope: 'photo-processing-v1',
                 processingRunId,
                 site: 'family',
                 mediaType: 'photo',
@@ -2039,7 +2039,7 @@ function createHarness({
                     byteLength: sourceBytes.byteLength,
                     detectedFormat: 'jpeg',
                     declaredMimeType: 'image/jpeg',
-                    syntheticFileName: 'synthetic-source.jpg'
+                    fileExtension: 'jpg'
                 },
                 requiredRoles: ['photo-display', 'photo-thumbnail'],
                 runStatus: 'active',
@@ -2052,7 +2052,7 @@ function createHarness({
             } else if (startResponseMutation === 'wrong-scope') {
                 startBody.scope = 'different-scope';
             } else if (startResponseMutation === 'wrong-filename') {
-                startBody.source.syntheticFileName = 'synthetic-source.png';
+                startBody.source.fileExtension = 'png';
             } else if (startResponseMutation === 'digest-mismatch') {
                 startBody.source.sha256 = 'f'.repeat(64);
             }
@@ -2349,7 +2349,7 @@ function createHarness({
         ];
         return {
             schemaVersion: '1.0',
-            scope: 'synthetic-local-phase-d',
+            scope: 'photo-processing-v1',
             mediaType: 'photo',
             inheritedSite: request.draftBinding.site,
             draftId: request.draftBinding.draftId,

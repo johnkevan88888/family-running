@@ -16,7 +16,10 @@ import {
     inspectSyntheticPhotoInput,
     transformPhotoDerivative
 } from '../scripts/gallery-media/photo.mjs';
-import { processSyntheticGalleryPhoto } from '../scripts/gallery-media/processor.mjs';
+import {
+    processGalleryPhoto,
+    processSyntheticGalleryPhoto
+} from '../scripts/gallery-media/processor.mjs';
 import {
     POLICY_TO_STORAGE_ROLE,
     REQUIRED_POLICY_ROLES,
@@ -238,13 +241,19 @@ try {
         declaredMimeType: 'image/jpeg',
         draftBinding
     };
-    const first = await processSyntheticGalleryPhoto(request, {
+    const first = await processGalleryPhoto({
+        sourceBytes: hostileBytes,
+        fileExtension: 'jpg',
+        declaredMimeType: 'image/jpeg',
+        expectedSha256: sha256Hex(hostileBytes),
+        draftBinding
+    }, {
         observeWorkDirectory: workDirectory => workDirectories.push(workDirectory)
     });
 
     assert.equal(workDirectories.length, 1);
     assert.equal(await pathExists(workDirectories[0]), false);
-    assert.equal(first.scope, 'synthetic-local-phase-d');
+    assert.equal(first.scope, 'photo-processing-v1');
     assert.equal(first.mediaType, 'photo');
     assert.equal(first.inheritedSite, 'family');
     assert.equal(first.draftId, draftBinding.draftId);
@@ -767,7 +776,7 @@ try {
     await fs.rm(fixtureDirectory, { recursive: true, force: true });
 }
 
-console.log('Gallery media synthetic photo processor tests passed.');
+console.log('Gallery photo processor and metadata-stripping tests passed.');
 
 function stripDerivativePayloads(result) {
     return {

@@ -1,11 +1,11 @@
 const publicMessages = Object.freeze({
-    'invalid-request': 'The synthetic Gallery processing request is invalid.',
-    'input-rejected': 'The synthetic source media did not pass the input contract.',
-    'decoder-rejected': 'The pinned image decoder rejected the synthetic source media.',
+    'invalid-request': 'The Gallery photo processing request is invalid.',
+    'input-rejected': 'The source photo did not pass the input contract.',
+    'decoder-rejected': 'The pinned image decoder rejected the source photo.',
     'toolchain-unavailable': 'The pinned Gallery media toolchain is unavailable.',
     'metadata-scan-failed': 'The metadata inspection did not complete safely.',
     'derivative-rejected': 'A generated derivative did not pass the publication contract.',
-    'processing-failed': 'Synthetic Gallery media processing failed.',
+    'processing-failed': 'Gallery photo processing failed.',
     'cleanup-failed': 'The isolated Gallery processing workspace could not be removed.'
 });
 

@@ -45,6 +45,10 @@ const migrationSources = await Promise.all([
     readFile(
         new URL('../gallery-admin/migrations/0003_private_original_v1_keys.sql', import.meta.url),
         'utf8'
+    ),
+    readFile(
+        new URL('../gallery-admin/migrations/0010_photo_intake_review_bridge.sql', import.meta.url),
+        'utf8'
     )
 ]);
 const sqlite = new DatabaseSync(':memory:');
@@ -321,11 +325,11 @@ const crossAreaBeginResponse = await areaRequest(
         session: true,
         json: {
             expectedStateVersion: everyoneDraft.stateVersion,
-            fileName: 'synthetic-cross-area-photo.jpg',
+            fileExtension: 'jpg',
             declaredMimeType: 'image/jpeg',
             byteLength: crossAreaBytes.byteLength,
+            declaredSha256: sha256(crossAreaBytes),
             idempotencyKey: 'cross-area-begin-0001',
-            syntheticOnlyConfirmed: true
         }
     }
 );
@@ -981,7 +985,7 @@ assert.ok(countRows(sqlite, 'draft_upload_sessions') >= 4);
 assert.ok(countRows(sqlite, 'gallery_audit_events') >= 1);
 sqlite.close();
 
-console.log('Gallery admin Phase C synthetic integration tests passed.');
+console.log('Gallery admin photo-intake integration tests passed.');
 
 async function createDraftRequest(itemInput, consent, siteMode = familySiteMode) {
     return areaRequest('/api/browser/drafts', {
@@ -1025,11 +1029,11 @@ async function beginUpload(draftId, expectedStateVersion, byteLength, idempotenc
         session: true,
         json: {
             expectedStateVersion,
-            fileName: 'synthetic-phase-c-photo.jpg',
+            fileExtension: 'jpg',
             declaredMimeType: 'image/jpeg',
             byteLength,
+            declaredSha256: sha256(syntheticJpeg(byteLength)),
             idempotencyKey,
-            syntheticOnlyConfirmed: true
         }
     });
 }

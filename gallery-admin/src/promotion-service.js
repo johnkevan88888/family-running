@@ -152,6 +152,31 @@ JOIN draft_processing_runs AS run
   ON run.draft_id = draft.draft_id
  AND run.status = 'staged'`;
 
+export async function readPhotoCandidate(env, identity, draftId) {
+    if (
+        !DRAFT_ID_PATTERN.test(draftId || '') ||
+        !validServiceIdentity(identity) ||
+        !env?.DB ||
+        typeof env.DB.prepare !== 'function' ||
+        !env?.APPROVED_MEDIA ||
+        typeof env.APPROVED_MEDIA.head !== 'function' ||
+        typeof env.APPROVED_MEDIA.get !== 'function'
+    ) {
+        return failure(400, 'invalid-request');
+    }
+
+    try {
+        const promotion = await readCandidatePromotionByDraft(env.DB, draftId);
+        if (!promotion) return failure(404, 'not-found');
+        const candidate = await buildCandidatePackage(env, promotion);
+        return candidate
+            ? success(200, { candidate })
+            : failure(409, 'promotion-not-eligible');
+    } catch {
+        return failure(503, 'service-unavailable');
+    }
+}
+
 export async function promotePhotoDraft(
     env,
     identity,
@@ -1172,6 +1197,14 @@ async function readEligibleOutputs(database, processingRunId) {
 
 async function readPromotion(database, promotionId) {
     return queryFirst(database, `${PROMOTION_SELECT} WHERE promotion.promotion_id = ?1`, promotionId);
+}
+
+async function readCandidatePromotionByDraft(database, draftId) {
+    return queryFirst(
+        database,
+        `${PROMOTION_SELECT} WHERE promotion.draft_id = ?1 AND promotion.status = 'candidate'`,
+        draftId
+    );
 }
 
 async function readCleanedPromotionReceipt(database, draftIdHash, idempotencyKeyHash) {

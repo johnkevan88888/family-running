@@ -17,7 +17,10 @@ import {
     MEDIA_DELIVERY_CONTRACT_VALUE,
     MEDIA_DELIVERY_VERSION_HEADER
 } from '../gallery-admin/src/media-delivery-contract.js';
-import { promotePhotoDraft } from '../gallery-admin/src/promotion-service.js';
+import {
+    promotePhotoDraft,
+    readPhotoCandidate
+} from '../gallery-admin/src/promotion-service.js';
 import { verifyPublicHostAbsence } from '../gallery-admin/src/public-host-verifier-service.js';
 import { buildV1StagingDerivativeKey } from '../gallery-admin/src/storage-keys.js';
 import { processSyntheticGalleryPhoto } from '../scripts/gallery-media/processor.mjs';
@@ -59,7 +62,8 @@ const migrationSources = await Promise.all([
     '0006_transition_receipt_state_version.sql',
     '0007_photo_promotion.sql',
     '0008_photo_promotion_cleanup.sql',
-    '0009_public_host_verification.sql'
+    '0009_public_host_verification.sql',
+    '0010_photo_intake_review_bridge.sql'
 ].map(fileName => readFile(
     new URL(`../gallery-admin/migrations/${fileName}`, import.meta.url),
     'utf8'
@@ -159,11 +163,11 @@ const uploadStart = await ownerRequest(`/api/browser/drafts/${draft.draftId}/upl
     session: true,
     json: {
         expectedStateVersion: draft.stateVersion,
-        fileName: 'synthetic-phase-d-bridge.jpg',
+        fileExtension: 'jpg',
         declaredMimeType: 'image/jpeg',
         byteLength: sourceBytes.byteLength,
+        declaredSha256: sha256(sourceBytes),
         idempotencyKey: 'phase-d-upload-start-0001',
-        syntheticOnlyConfirmed: true
     }
 });
 assert.equal(uploadStart.status, 201, await uploadStart.clone().text());
@@ -214,6 +218,23 @@ const approval = await ownerRequest(`/api/browser/drafts/${draft.draftId}/transi
 assert.equal(approval.status, 200, await approval.clone().text());
 draft = (await approval.json()).draft;
 assert.equal(draft.state, 'approved-for-processing');
+
+const eligibilityPath =
+    `/api/service/drafts/${draft.draftId}/photo-processing-eligibility`;
+assert.equal((await processorRequest(eligibilityPath)).status, 403);
+assert.equal((await processorRequest(eligibilityPath, {
+    method: 'POST', identity: processorIdentity(), json: {}
+})).status, 405);
+const eligibilityResponse = await processorRequest(eligibilityPath, {
+    identity: processorIdentity()
+});
+assert.equal(eligibilityResponse.status, 200);
+assert.deepEqual(await eligibilityResponse.json(), {
+    schemaVersion: '1.0',
+    draftId: draft.draftId,
+    state: 'approved-for-processing',
+    stateVersion: draft.stateVersion
+});
 
 // Authentication, route grammar, and binding failures happen before any
 // private storage call. Browser sessions have no standing on this Worker.
@@ -341,7 +362,7 @@ assert.deepEqual(new Uint8Array(await originalDownload.arrayBuffer()), sourceByt
 const processed = await processSyntheticGalleryPhoto({
     syntheticOnly: true,
     sourceBytes: Buffer.from(sourceBytes),
-    fileName: run.source.syntheticFileName,
+    fileName: `synthetic-source.${run.source.fileExtension}`,
     declaredMimeType: run.source.declaredMimeType,
     draftBinding: {
         site: run.site,
@@ -3000,6 +3021,14 @@ assert.match(
     /^https:\/\/synthetic-approved-media\.example\/media\/v1\/[a-f0-9]{64}\/thumbnail\.webp$/
 );
 assert.equal(promoted.candidate.context.pendingHiddenAthleteIds.length, 0);
+const freshlyReadCandidate = await readPhotoCandidate(
+    promotionEnv,
+    promotionIdentity,
+    promotionFixture.draft.draftId
+);
+assert.equal(freshlyReadCandidate.ok, true);
+assert.equal(freshlyReadCandidate.status, 200);
+assert.deepEqual(freshlyReadCandidate.candidate, promoted.candidate);
 assert.doesNotMatch(
     JSON.stringify(promoted.candidate),
     /private-originals|derivative-staging|provider-|synthetic-private-consent/i
@@ -6003,11 +6032,11 @@ async function createApprovedSyntheticPhotoDraft(publicItemId, keySuffix) {
         session: true,
         json: {
             expectedStateVersion: currentDraft.stateVersion,
-            fileName: `synthetic-${keySuffix}.jpg`,
+            fileExtension: 'jpg',
             declaredMimeType: 'image/jpeg',
             byteLength: sourceBytes.byteLength,
+            declaredSha256: sha256(sourceBytes),
             idempotencyKey: `phase-d-${keySuffix}-upload-start`,
-            syntheticOnlyConfirmed: true
         }
     });
     assert.equal(begun.status, 201, await begun.clone().text());

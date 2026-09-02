@@ -1,11 +1,14 @@
 import { verifyWorkerAccessIdentity } from './access.js';
 import { cleanupPhotoPromotion } from './promotion-cleanup-service.js';
-import { promotePhotoDraft } from './promotion-service.js';
+import { promotePhotoDraft, readPhotoCandidate } from './promotion-service.js';
 import { adminFailure, adminJson } from './responses.js';
 
 const DRAFT_ID_FRAGMENT = '(draft_[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})';
 const PROMOTION_PATH_PATTERN = new RegExp(
     `^/api/service/drafts/${DRAFT_ID_FRAGMENT}/photo-promotions$`
+);
+const CANDIDATE_PATH_PATTERN = new RegExp(
+    `^/api/service/drafts/${DRAFT_ID_FRAGMENT}/photo-candidate$`
 );
 const PROMOTION_ID_FRAGMENT = '(promotion_[a-f0-9]{32})';
 const CLEANUP_PATH_PATTERN = new RegExp(
@@ -53,6 +56,24 @@ export async function handlePromotionRequest(request, env, dependencies = {}) {
     if (!hasExactEnvironment(env)) {
         return adminFailure(503);
     }
+    if (route.kind === 'candidate') {
+        if (request.method !== 'GET') {
+            return adminFailure(405, { Allow: 'GET' });
+        }
+        if (!isBodylessRead(request)) {
+            return adminFailure(400);
+        }
+        const readCandidate = dependencies.readPhotoCandidate || readPhotoCandidate;
+        try {
+            return promotionResultResponse(
+                await readCandidate(env, identity, route.draftId),
+                route
+            );
+        } catch {
+            return adminFailure(503);
+        }
+    }
+
     if (request.method !== 'POST') {
         return adminFailure(405, { Allow: 'POST' });
     }
@@ -89,7 +110,9 @@ export async function handlePromotionRequest(request, env, dependencies = {}) {
 }
 
 function matchRoute(pathname) {
-    let match = PROMOTION_PATH_PATTERN.exec(pathname);
+    let match = CANDIDATE_PATH_PATTERN.exec(pathname);
+    if (match) return { kind: 'candidate', draftId: match[1] };
+    match = PROMOTION_PATH_PATTERN.exec(pathname);
     if (match) return { kind: 'promote', draftId: match[1] };
     match = CLEANUP_PATH_PATTERN.exec(pathname);
     return match ? { kind: 'cleanup', promotionId: match[1] } : null;
@@ -143,6 +166,15 @@ function requestUsesOnlyAccessAssertionCookie(request) {
     return typeof assertion === 'string' &&
         assertion.length > 0 &&
         cookie === `CF_Authorization=${assertion}`;
+}
+
+function isBodylessRead(request) {
+    const contentLength = request.headers.get('Content-Length');
+    return request.body === null &&
+        !request.headers.has('Content-Type') &&
+        !request.headers.has('Content-Encoding') &&
+        !request.headers.has('Transfer-Encoding') &&
+        (contentLength === null || contentLength === '0');
 }
 
 function normalizeConfiguredOrigin(value) {
@@ -247,6 +279,12 @@ function promotionResultResponse(result, route) {
         return adminFailure(503);
     }
     if (result.ok === true && [200, 201].includes(result.status)) {
+        if (route?.kind === 'candidate') {
+            if (!result.candidate || typeof result.candidate !== 'object' || Array.isArray(result.candidate)) {
+                return adminFailure(503);
+            }
+            return adminJson(200, { candidate: result.candidate });
+        }
         if (route?.kind === 'cleanup') {
             if (
                 result.promotionId !== route.promotionId ||

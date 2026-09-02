@@ -15,9 +15,9 @@ const webpOptions = Object.freeze({
     force: true
 });
 
-const enabledSyntheticPhotoFormats = new Set(['jpeg', 'png']);
+const enabledPhotoFormats = new Set(['jpeg', 'png']);
 
-export async function inspectSyntheticPhotoInput({
+export async function inspectPhotoInput({
     bytes,
     policy,
     fileName,
@@ -33,10 +33,10 @@ export async function inspectSyntheticPhotoInput({
     }
 
     const signatureFormat = policy.detectAllowedFileType(bytes);
-    if (!enabledSyntheticPhotoFormats.has(signatureFormat)) {
-        // The first Phase D byte-conformance slice proves JPEG and the built-in
-        // Phase C PNG fixture. Other Phase A formats remain disabled until their
-        // exact decoder and metadata behavior has its own real-byte proof.
+    if (!enabledPhotoFormats.has(signatureFormat)) {
+        // The reviewed photo-only path deliberately enables only JPEG and PNG.
+        // Other formats remain disabled until their decoder and metadata
+        // behaviour has its own byte-conformance proof.
         throw processingError('input-rejected');
     }
 
@@ -114,6 +114,10 @@ export async function inspectSyntheticPhotoInput({
         orientedHeight
     });
 }
+
+// Compatibility export for the earlier synthetic-only rehearsal. New code
+// must call inspectPhotoInput so the production path has no synthetic gate.
+export const inspectSyntheticPhotoInput = inspectPhotoInput;
 
 export async function transformPhotoDerivative({
     sourceBytes,

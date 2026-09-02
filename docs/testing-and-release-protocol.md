@@ -81,12 +81,13 @@ pnpm run test:gallery-admin-phase-c
 pnpm run test:gallery-admin-browser
 ```
 
-Run the synthetic-only Phase D processor, private-staging bridge, rehearsal
+Run the photo-only processor, private-staging bridge, local review bridge, rehearsal
 boundary, deployment-configuration, and remote-driver contract suites:
 
 ```bash
 pnpm run test:gallery-media-processor
 pnpm run test:gallery-processing-bridge
+pnpm run test:gallery-photo-review-bridge
 pnpm run test:gallery-processing-rehearsal-worker
 pnpm run test:gallery-phase-d-migration-configs
 pnpm run test:gallery-phase-d-processing-configs
@@ -101,19 +102,26 @@ remote rehearsal requires separate explicit approval and an Access credential
 passed only in memory, never through an argument, environment variable, file,
 report, or log.
 
-The Phase C integration suite drives the actual administration router through
-signed-session and CSRF controls, applies Phase C migrations `0001`–`0003`, and
+The administration integration suite drives the actual router through
+signed-session and CSRF controls, applies migrations `0001`–`0003` plus the
+local photo-intake migration `0010`, and
 uses a deterministic in-memory multipart store with synthetic bytes only. It
 covers draft and consent revisions, exact inherited Family/Everyone context, separate
 area-bound sessions, server-injected single-area drafts, cross-area denial,
-current public tags, pending exclusions, stale catalogs, interrupted and
+current public tags, pending exclusions, stale catalogs, real-photo extension,
+MIME and complete pre-upload checksum binding, interrupted and
 concurrent parts, whole-object checksums, signature and size failures,
 idempotent retries, protected preview ranges, moderation, 24-hour cleanup,
 response redaction, empty public manifests, and artifact exclusion. The
-responsive owner-page suite covers both exact entry URLs and proves there is no
-destination control and no protected request when the context is missing or
-malformed. The separate contract suite carries the exact checked-in suppression
-case while that public list is empty.
+responsive owner-page suite covers both exact entry URLs, responsive
+screenshots, a generated PNG through the real file-picker path, omission of the
+original filename, and proves there is no destination control or protected
+request when the context is missing or malformed. The review-bridge suite proves
+the workflow accepts only an opaque draft ID, re-reads candidate evidence before
+and after review creation, prepares one in-memory inherited-area manifest
+addition, does not edit either tracked manifest, and exposes no push, merge,
+deployment, or `GITHUB_TOKEN` path. The separate contract suite carries the exact
+checked-in suppression case while that public list is empty.
 
 This suite uses synthetic identities, text, and bytes only. It exercises the
 production `ctx.access` path, exact single-owner configuration, browser/service
@@ -928,10 +936,28 @@ locally tested until real synthetic private upload/processing evidence exists;
 D1-only fabrication is forbidden. Injected redirect, bad-cache, wrong-binding,
 historical-target, and real epoch-rotation faults remain a separately reviewed
 and approved fault-harness/deployment/append-only-epoch gate. The approved-prefix
-lifecycle rule is the next separate approval and verification gate, and protected
-candidate retrieval/orchestration is still required. Promotion Worker deployment
-and its Access identity/policy are later separate gates. R2 storage absence alone
-is not public-host absence.
+lifecycle rule is now independently verified remotely as one enabled
+`media/v1/`, one-day incomplete-multipart abort rule alongside the unchanged
+provider default. No mutation was needed because the exact rule already existed.
+Migration `0010` is applied and independently verified remotely: migration ID
+`10`, both exact columns and triggers, three historical complete uploads, zero
+active uploads, clean foreign keys, and `quick_check = ok`. The older admin
+Worker that remained unchanged during the D1 gate was then replaced under a
+separate approval. Independent API
+readback proves exact version `c411bead-edb5-441b-aa0b-36594ff8a9b8` serves
+100% of traffic, with compatibility date `2026-08-25`, the unchanged hourly
+cron, exact D1 and private-originals bindings, the three existing secret-text
+names, and no staging, approved-media, GitHub, or automation-identity binding.
+The existing owner Access app and policy IDs are unchanged. Anonymous browser
+and service health requests both return `302` to Access. A normal owner Access
+session then returned exact `{"ok":true,"scope":"owner-browser"}` from
+`GET /api/browser/health`; the supplied screenshot and an independent live-tab
+readback agreed. This closes the admin deployment/health gate but does not
+authorize a real-photo upload or prove the undeployed processing/promotion
+boundaries.
+Protected candidate retrieval/orchestration, other Worker deployments, and
+Access identities/policies remain later separate gates. R2 storage absence
+alone is not public-host absence.
 
 The remote-driver contract must expect exactly six passed scenarios, five
 completed cleanups, four acknowledged derivative puts, five deliberately

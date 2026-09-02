@@ -50,8 +50,7 @@ if (args.length === 1 && args[0] === '--check-photo-toolchain') {
     const helpRequested = args.length === 1 && args[0] === '--help';
     const output =
         'Usage: node scripts/process-gallery-media.mjs --check-photo-toolchain\n' +
-        'This first Phase D slice accepts synthetic media through its tested module only; ' +
-        'real-media and video processing remain disabled.\n';
+        'The reviewed module accepts bound JPEG and PNG photo bytes; video processing remains disabled.\n';
     if (helpRequested) {
         process.stdout.write(output);
     } else {

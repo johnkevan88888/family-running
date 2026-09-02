@@ -120,7 +120,8 @@ SELECT
     upload.completed_object_version AS originalObjectVersion,
     upload.completed_etag AS originalEtag,
     upload.completed_sha256 AS uploadSha256,
-    upload.synthetic_only_confirmed AS syntheticOnlyConfirmed,
+    upload.declared_sha256 AS uploadDeclaredSha256,
+    upload.real_photo_intake_confirmed AS realPhotoIntakeConfirmed,
     upload.created_at AS uploadedAt,
     (SELECT COUNT(*) FROM draft_derivatives AS derivative
         WHERE derivative.draft_id = draft.draft_id) AS existingDerivativeCount
@@ -166,6 +167,35 @@ SELECT
     evidence.*
 FROM draft_processing_runs AS run
 JOIN (${DRAFT_EVIDENCE_SELECT}) AS evidence ON evidence.draftId = run.draft_id`;
+
+export async function readPhotoProcessingEligibility(env, identity, draftId) {
+    if (
+        !hasProcessingBindings(env) ||
+        !validServiceIdentity(identity) ||
+        !DRAFT_ID_PATTERN.test(draftId || '')
+    ) {
+        return failure(400, 'invalid-request');
+    }
+
+    try {
+        const draft = await readDraftEvidence(env.DB, draftId);
+        const problems = await processingEligibilityProblems(draft, {
+            requiredState: 'approved-for-processing',
+            expectedStateVersion: draft?.stateVersion
+        }, env.DB);
+        if (problems.length > 0) {
+            return failure(409, 'processing-not-eligible');
+        }
+        return success(200, {
+            schemaVersion: '1.0',
+            draftId,
+            state: 'approved-for-processing',
+            stateVersion: draft.stateVersion
+        });
+    } catch {
+        return failure(503, 'service-unavailable');
+    }
+}
 
 export async function startProcessingRun(env, identity, draftId, input, nowMilliseconds) {
     if (
@@ -1100,7 +1130,7 @@ function startReplay(existing, fingerprintValue, input) {
 function startSuccess(run, replayed, status) {
     return success(status, {
         schemaVersion: '1.0',
-        scope: 'synthetic-local-phase-d',
+        scope: 'photo-processing-v1',
         processingRunId: run.processingRunId,
         site: run.runSiteMode,
         mediaType: run.runMediaType,
@@ -1112,7 +1142,7 @@ function startSuccess(run, replayed, status) {
             byteLength: run.runOriginalByteCount,
             detectedFormat: run.runOriginalDetectedType,
             declaredMimeType: run.runOriginalDeclaredContentType,
-            syntheticFileName: `synthetic-source.${run.runOriginalDetectedType === 'jpeg' ? 'jpg' : 'png'}`
+            fileExtension: run.runOriginalDetectedType === 'jpeg' ? 'jpg' : 'png'
         },
         requiredRoles: [...REQUIRED_ROLES],
         runStatus: run.runStatus,
@@ -1428,7 +1458,8 @@ function evidenceShapeIsCurrent(record) {
         record.uploadComplete !== 1 ||
         record.existingDerivativeCount !== 0 ||
         record.uploadStatus !== 'complete' ||
-        record.syntheticOnlyConfirmed !== 1 ||
+        record.realPhotoIntakeConfirmed !== 1 ||
+        record.uploadDeclaredSha256 !== record.originalSha256 ||
         record.consentRevision !== record.activeConsentRevision ||
         record.consentWithdrawnAt !== null ||
         record.publicUseConfirmed !== 1 ||
