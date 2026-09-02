@@ -28,6 +28,7 @@ const checks = [
     ['Gallery public-host remote SQLite/service integration tests', ['tests/gallery-public-host-remote-sqlite-integration.mjs']],
     ['Gallery approved-media lifecycle requirement tests', ['tests/gallery-approved-media-lifecycle.mjs']],
     ['Gallery manifest candidate tests', ['tests/gallery-manifest-candidate.mjs']],
+    ['Gallery GitHub review permission-boundary tests', ['tests/gallery-github-review-boundary.mjs']],
     ['Gallery GitHub review client tests', ['tests/gallery-github-review-client.mjs']],
     ['Gallery processing remote-rehearsal Worker tests', ['tests/gallery-processing-rehearsal-worker.mjs']],
     ['Gallery Phase D migration-config tests', ['tests/gallery-phase-d-migration-configs.mjs']],

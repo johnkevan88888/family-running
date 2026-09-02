@@ -885,7 +885,7 @@ local rehearsal and remote preflight. Exact postflight reads found one epoch,
 one activation, one matching current pointer, zero generations/receipts/legacy
 host confirmations, no foreign-key violations, and `quick_check: ok`; the live
 witness and canonical absent control still matched the current epoch. The
-promotion Worker remains undeployed; the fixed-origin verifier's final
+  At that checkpoint the promotion Worker remained undeployed; the fixed-origin verifier's final
 migration/bridge and diff checks pass. The
 complete post-documentation `pnpm test` also passes, including the exact
 114-file artifact and responsive
@@ -926,10 +926,12 @@ promotion, manifest edit, GitHub operation, or publication occurred.
 
 The Service Auth policy was then detached and the verifier application saved
 before the reusable policy and token were deleted. Dashboard confirmations and
-independent Access API list reads proved the exact-host verifier application
-remains with zero policies, the owner application retains its one unchanged
-policy, the processing application retains zero policies, and the rehearsal
-policy and token are absent. The account has no service tokens.
+independent Access API list reads proved that, at that checkpoint, the
+exact-host verifier application had zero policies, the owner application
+retained its one unchanged policy, the processing application had zero
+policies, and the rehearsal policy and token were absent. The account then had
+no service tokens. The later separately approved processing deployment gate is
+recorded below.
 
 This does not include retention-expiry-purpose verification, which remains
 locally tested until real synthetic private upload/processing evidence exists;
@@ -952,12 +954,56 @@ The existing owner Access app and policy IDs are unchanged. Anonymous browser
 and service health requests both return `302` to Access. A normal owner Access
 session then returned exact `{"ok":true,"scope":"owner-browser"}` from
 `GET /api/browser/health`; the supplied screenshot and an independent live-tab
-readback agreed. This closes the admin deployment/health gate but does not
-authorize a real-photo upload or prove the undeployed processing/promotion
+readback agreed. This closes the admin deployment/health gate but does not by
+itself authorize a real-photo upload or prove the processing/promotion
 boundaries.
-Protected candidate retrieval/orchestration, other Worker deployments, and
-Access identities/policies remain later separate gates. R2 storage absence
-alone is not public-host absence.
+
+The separately approved photo-only processing gate then created protected
+GitHub environment `gallery-processing`, restricted it to exact branch `main`
+with owner review, and stored exactly the processing origin, Access Client ID,
+and Access Client Secret. No workflow or environment deployment was created.
+The processing Access application now has one 15-minute Service Auth policy
+whose single Include selector is the one retained replacement token. Two
+credentials rendered in protected automation output during setup were treated
+as compromised and deleted; neither remains in the token list or policy. The
+final credential was captured without rendering its value, stored only through
+the protected secret destinations, and removed from temporary clipboard and
+in-memory handling after verification.
+
+Exact current processing Worker version
+`f58e0a1f-3ca4-4b66-a81f-9435d9af4f15` serves 100% of traffic with
+compatibility date `2026-08-28`, no preview, exact D1/private-originals/private-
+staging bindings, and only the fixed origin and processor-identity secret-text
+names. Anonymous and wrong-token requests to the eligibility path return
+Access-owned `401`, no redirect, and `no-store`; an exact-token wrong-method
+request returns Worker-owned `405`, `Allow: GET`, no `Location`, and `no-store`
+JSON. This is non-mutating boundary evidence only: it did not select a draft,
+query D1, touch R2, use real media, promote an object, generate a candidate,
+dispatch the workflow, or create a Pull Request.
+
+The later approved promotion deployment gate then deployed exact current
+Worker version `44109f3f-53ac-4714-977e-41176656ff40` with compatibility date
+`2026-08-29`, no preview, exact D1/private-staging/approved-media bindings, and
+only fixed promotion origin, approved-media origin, and promoter-identity
+secret-text names. Its exact one-token, 15-minute Service Auth policy is hidden
+from the App Launcher and returns `401` for anonymous or wrong-token requests.
+An exact-token wrong-method request returned Worker-owned `405`, `Allow: GET`,
+no `Location`, and `no-store` JSON before any storage operation. The protected
+environment now contains exactly the six processing/promotion connection secret
+names plus the two GitHub App secret names and still has no deployment history.
+
+The repository-scoped GitHub App is now installed on only this repository with
+Contents and Pull requests write plus mandatory Metadata read. The protected
+environment contains its App ID and single remaining private key; the verified
+local PEM and two unusable remote keys were deleted. No workflow was dispatched.
+The active `main` ruleset has no bypass actor and blocks direct update, but the
+existing Pull Request and status rules alone do not deny an App-authored merge
+after checks pass. The current local branch adds a fail-closed preflight before
+processing: read the exact effective rules, submit only a same-commit `main`
+ref update, accept only a rules-owned denial, then re-read the unchanged ref.
+Add an owner-only update restriction and pass that installation-token proof
+before any synthetic processing run. No promotion or cleanup route was exercised. R2
+storage absence alone is not public-host absence.
 
 The remote-driver contract must expect exactly six passed scenarios, five
 completed cleanups, four acknowledged derivative puts, five deliberately

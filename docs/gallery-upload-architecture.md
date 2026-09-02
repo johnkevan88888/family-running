@@ -13,11 +13,13 @@
   only D1 and private originals; the media Worker can reach only approved
   derivatives; and the
   restored normal processing Worker can reach only D1, private originals, and
-  private derivative staging. The processing Worker is currently deployed at
-  exact version `f58e0a1f-3ca4-4b66-a81f-9435d9af4f15` behind its active narrow
-  Service Auth policy. The promotion Worker is absent. Those are current-state
-  facts only; no Cloudflare resource is changed by the local `0011`–`0012`
-  implementation.
+  private derivative staging. It is deployed at exact version
+  `f58e0a1f-3ca4-4b66-a81f-9435d9af4f15` behind its active one-token Service
+  Auth policy. The photo-promotion Worker is deployed at exact version
+  `44109f3f-53ac-4714-977e-41176656ff40` with only D1, staging-read,
+  approved-media-write, fixed origins, and its separate one-token Service Auth
+  identity. Those are current-state facts only; the merged `0011`–`0012`
+  migrations and updated Worker code are not remotely applied or deployed.
 - **Media state:** exactly one built-in synthetic Family photo and one built-in
   synthetic Everyone video remain protected private originals with D1 records.
   The final Phase D photo run leaves exactly two verified synthetic derivatives
@@ -58,13 +60,21 @@
   updated admin Worker has exact version/binding readback. Anonymous browser and
   service health requests still stop at Access, while the exact authenticated
   owner browser health route returned
-  `{"ok":true,"scope":"owner-browser"}`. The protected
-  `gallery-processing` environment exists but neither new review workflow has
-  run. The local review-receipt, privacy-first invalidation, owner-withdrawal,
-  and proactive-exclusion changes still require review and merge before any
-  separately approved D1, Worker, Access, or workflow-rehearsal gate. Real-media
-  transfer, video processing, DNS changes, merge, and publication remain future
-  separately approved work.
+  `{"ok":true,"scope":"owner-browser"}`. Pull Request #89 merged the
+  review-receipt, privacy-first invalidation, owner-withdrawal, and proactive-
+  exclusion source to `main` at exact merge commit
+  `9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`; its migrations and changed
+  Workers remain undeployed. The protected `gallery-processing` environment is
+  restricted to exact `main`, stores the six service connection secrets plus
+  the Gallery review App ID and private key, and has not run either workflow.
+  The App is installed only on this repository with Contents and Pull requests
+  write plus required Metadata read. Exactly one private key remains after
+  protected storage and cleanup of the local PEM and two unusable remote keys.
+  The active `main` rules do not yet make an App-authored merge impossible after
+  checks pass. The current safety branch adds a pre-processing same-commit ref
+  probe that requires a rules-owned denial and unchanged `main`; it is not yet
+  merged or remotely exercised. Real-media transfer, video processing, DNS
+  changes, candidate merge, and Gallery publication remain separately gated.
 
 ### Local review and takedown safety slice — 2 September 2026
 
