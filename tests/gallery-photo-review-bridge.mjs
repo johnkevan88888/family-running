@@ -249,6 +249,102 @@ assert.match(workflowText, /inputs:\s*\n\s+draft_id:/);
 assert.doesNotMatch(workflowText, /\n\s{6}(?:site|destination|filename|caption|athlete|consent):/i);
 assert.doesNotMatch(workflowText, /GITHUB_TOKEN|git\s+push|merge|deploy|wrangler/i);
 
+for (const secondReadMode of ['changed', 'ineligible']) {
+    let currentReadCount = 0;
+    let invalidationCall = null;
+    const exactReview = {
+        schemaVersion: '1.0',
+        pullRequest: {
+            number: 321,
+            url: 'https://github.com/johnkevan88888/family-running/pull/321',
+            state: 'open'
+        }
+    };
+    await assert.rejects(
+        runPhotoReviewBridge({
+            draftId,
+            expectedBaseSha: '1'.repeat(40),
+            githubToken: 'short-lived-test-token',
+            processing: { origin: processingOrigin, ...access },
+            promotion: { origin: promotionOrigin, ...access },
+            root,
+            fetchImpl: async (url, init) => {
+                const pathname = new URL(url).pathname;
+                if (pathname.endsWith('/photo-processing-eligibility')) {
+                    return jsonResponse(200, {
+                        schemaVersion: '1.0', draftId,
+                        state: 'approved-for-processing', stateVersion: 1
+                    });
+                }
+                if (pathname.endsWith('/processing-runs')) {
+                    return jsonResponse(201, processingRun());
+                }
+                if (pathname.endsWith('/original')) {
+                    return new Response(sourceBytes, {
+                        status: 200,
+                        headers: {
+                            'Cache-Control': 'no-store',
+                            'Content-Length': String(sourceBytes.byteLength),
+                            'Content-Type': 'image/jpeg',
+                            'X-Gallery-Content-SHA256': sourceSha256
+                        }
+                    });
+                }
+                if (pathname.includes('/derivatives/')) {
+                    return jsonResponse(201, { stored: true });
+                }
+                if (pathname.endsWith('/result')) {
+                    return jsonResponse(200, {
+                        status: 'staged', state: 'processing', stateVersion: 2
+                    });
+                }
+                if (pathname.endsWith('/photo-promotions')) {
+                    return jsonResponse(201, { candidate, replayed: false });
+                }
+                if (pathname.endsWith('/photo-candidate')) {
+                    currentReadCount += 1;
+                    if (currentReadCount === 1) return jsonResponse(200, { candidate });
+                    if (secondReadMode === 'ineligible') {
+                        return jsonResponse(409, { error: 'candidate-ineligible' });
+                    }
+                    return jsonResponse(200, {
+                        candidate: {
+                            ...candidate,
+                            context: {
+                                ...candidate.context,
+                                pendingHiddenAthleteIds: [athleteId]
+                            }
+                        }
+                    });
+                }
+                throw new Error(`Unexpected stale-review request ${init.method} ${pathname}`);
+            },
+            processPhoto: async () => processedPhoto(),
+            createReview: async () => exactReview,
+            invalidateReview: async (candidateResult, reviewResult, options) => {
+                invalidationCall = { candidateResult, reviewResult, options };
+                return {
+                    branchState: 'retained-for-reviewed-cleanup',
+                    pullRequest: { state: 'closed' }
+                };
+            }
+        }),
+        /review PR was closed and branch retained for reviewed cleanup/
+    );
+    assert.equal(currentReadCount, 2);
+    assert.equal(invalidationCall.candidateResult.changed, true);
+    assert.equal(invalidationCall.reviewResult, exactReview);
+    assert.deepEqual(Object.keys(invalidationCall.options).sort(), [
+        'expectedBaseSha', 'fetchImpl', 'token'
+    ]);
+}
+
+assert.deepEqual(
+    await Promise.all(publicManifestPaths.map(file => fs.readFile(file))),
+    manifestsBefore,
+    'Stale-review invalidation must not edit either live manifest locally.'
+);
+
 console.log('Gallery photo-only review bridge tests passed.');
 
 function derivative(role, bytes) {
@@ -260,6 +356,52 @@ function derivative(role, bytes) {
         height: role === 'photo-display' ? 800 : 320,
         metadataEntryCount: 0,
         payload: new Blob([bytes], { type: 'image/webp' })
+    };
+}
+
+function processingRun() {
+    return {
+        schemaVersion: '1.0',
+        scope: 'photo-processing-v1',
+        processingRunId: runId,
+        site: 'family',
+        mediaType: 'photo',
+        state: 'processing',
+        stateVersion: 2,
+        source: {
+            downloadPath: `/api/service/processing-runs/${runId}/original`,
+            sha256: sourceSha256,
+            byteLength: sourceBytes.byteLength,
+            detectedFormat: 'jpeg',
+            declaredMimeType: 'image/jpeg',
+            fileExtension: 'jpg'
+        },
+        requiredRoles: ['photo-display', 'photo-thumbnail'],
+        runStatus: 'active',
+        replayed: false
+    };
+}
+
+function processedPhoto() {
+    return {
+        scope: 'photo-processing-v1',
+        mediaType: 'photo',
+        inheritedSite: 'family',
+        draftId,
+        processingRunId: runId,
+        source: {
+            sha256: sourceSha256,
+            byteLength: sourceBytes.byteLength,
+            detectedFormat: 'jpeg'
+        },
+        toolchain: {
+            sharp: 'test', libvips: 'test', webp: 'test', png: 'test',
+            exiftool: 'test', videoEnabled: false
+        },
+        derivatives: [
+            derivative('photo-display', Buffer.from('display')),
+            derivative('photo-thumbnail', Buffer.from('thumbnail'))
+        ]
     };
 }
 

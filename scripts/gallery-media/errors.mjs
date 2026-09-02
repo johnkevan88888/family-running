@@ -1,5 +1,6 @@
 const publicMessages = Object.freeze({
     'invalid-request': 'The Gallery photo processing request is invalid.',
+    'source-rejected': 'The source photo did not match its recorded checksum.',
     'input-rejected': 'The source photo did not pass the input contract.',
     'decoder-rejected': 'The pinned image decoder rejected the source photo.',
     'toolchain-unavailable': 'The pinned Gallery media toolchain is unavailable.',

@@ -5,7 +5,10 @@ import path from 'node:path';
 import { buildGalleryAdminCatalog } from '../build-gallery-admin-catalog.mjs';
 import { repoRoot } from '../export-bundle-tools.mjs';
 import { prepareGalleryManifestCandidate } from './candidate-manifest.mjs';
-import { createOrReconcileGalleryReview } from './github-review-client.mjs';
+import {
+    createOrReconcileGalleryReview,
+    invalidateGalleryReview
+} from './github-review-client.mjs';
 import { processGalleryPhoto } from './processor.mjs';
 
 const draftIdPattern = /^draft_[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
@@ -22,7 +25,8 @@ const optionKeys = Object.freeze([
     'fetchImpl',
     'root',
     'processPhoto',
-    'createReview'
+    'createReview',
+    'invalidateReview'
 ]);
 
 /**
@@ -36,6 +40,7 @@ export async function runPhotoReviewBridge(options) {
     const fetchImpl = options.fetchImpl || globalThis.fetch;
     const processPhoto = options.processPhoto || processGalleryPhoto;
     const createReview = options.createReview || createOrReconcileGalleryReview;
+    const invalidateReview = options.invalidateReview || invalidateGalleryReview;
     const root = path.resolve(options.root || repoRoot);
     const processingClient = serviceClient(options.processing, fetchImpl);
     const promotionClient = serviceClient(options.promotion, fetchImpl);
@@ -150,13 +155,34 @@ export async function runPhotoReviewBridge(options) {
     });
 
     // A consent withdrawal or new exclusion may land while GitHub is creating
-    // the branch and PR. Re-read the complete D1/R2 candidate evidence and do
-    // not report success if it changed. The PR remains unmerged for owner review.
-    const candidateAfterReview = exactCandidate((await promotionClient.json(
-        'GET',
-        `/api/service/drafts/${draftPath}/photo-candidate`
-    ))?.candidate);
-    assertSameCandidate(currentCandidate, candidateAfterReview);
+    // the branch and PR. Re-read the complete D1/R2 candidate evidence. Any
+    // changed or failed read closes the exact PR before this run reports
+    // failure. The candidate branch remains for separately reviewed cleanup;
+    // GitHub ref deletion has no expected-SHA compare-and-swap.
+    try {
+        const candidateAfterReview = exactCandidate((await promotionClient.json(
+            'GET',
+            `/api/service/drafts/${draftPath}/photo-candidate`
+        ))?.candidate);
+        assertSameCandidate(currentCandidate, candidateAfterReview);
+    } catch (candidateError) {
+        try {
+            await invalidateReview(candidateResult, review, {
+                expectedBaseSha: options.expectedBaseSha,
+                token: options.githubToken,
+                fetchImpl
+            });
+        } catch (invalidationError) {
+            throw new AggregateError(
+                [candidateError, invalidationError],
+                'The Gallery candidate became ineligible and its review PR could not be proved closed.'
+            );
+        }
+        throw new Error(
+            'The Gallery candidate became ineligible; its review PR was closed and branch retained for reviewed cleanup.',
+            { cause: candidateError }
+        );
+    }
 
     return Object.freeze({
         schemaVersion: '1.0',
@@ -286,7 +312,8 @@ function validateOptions(options) {
         options.githubToken.length < 1 ||
         typeof (options.fetchImpl || globalThis.fetch) !== 'function' ||
         (options.processPhoto !== undefined && typeof options.processPhoto !== 'function') ||
-        (options.createReview !== undefined && typeof options.createReview !== 'function')
+        (options.createReview !== undefined && typeof options.createReview !== 'function') ||
+        (options.invalidateReview !== undefined && typeof options.invalidateReview !== 'function')
     ) {
         throw new Error('The photo review bridge configuration is invalid.');
     }

@@ -976,9 +976,16 @@ zero-based insertion, preserves existing order, rejects cross-mode ID reuse in
 automation, and reconciles an exact operation receipt. A separate GitHub client
 fixes this repository, `main`, the candidate-branch namespace, and those two
 paths; it can create or reconcile one one-file review Pull Request and then
-re-proves its parent, bytes, and diff. Before any mutation it also reads the
-target manifest at the exact expected `main` commit and proves the candidate is
-one new item while every existing item and its order remain unchanged. It has
+re-proves its parent, bytes, and diff. A post-PR candidate reread is mandatory.
+If that read fails or current consent, suppression, exclusion, revision, or
+approved-byte evidence changes, the client closes and reads back the exact
+operation-marked PR, retains the deterministic candidate branch for separately
+reviewed cleanup, and returns failure. It exposes no ref deletion because
+GitHub cannot condition that deletion on the previously observed SHA; a
+pre-read would leave a time-of-check/time-of-use race. Before any mutation it
+also reads the target manifest at the exact expected `main` commit and proves
+the candidate is one new item while every existing item and its order remain
+unchanged. It has
 no merge, default-branch update, force-update, deployment, Pages, secret, or
 environment operation. No workflow, App, branch-rule change, candidate branch,
 or candidate-media Pull Request was created by this repository slice.

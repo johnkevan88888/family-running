@@ -49,8 +49,12 @@ private original, processes and stages the two derivatives, promotes them,
 fetches the fresh candidate, generates one inherited-area manifest addition in
 memory, and invokes the existing narrow GitHub review client with a short-lived
 repository-scoped GitHub App token. It re-reads candidate evidence after PR
-creation and reports no success if consent, suppression, exclusion, revision,
-generation, or approved bytes changed. The client still has no merge,
+creation. If that read fails or consent, suppression, exclusion, revision,
+generation, or approved bytes changed, it closes and reads back the exact
+operation-marked review PR, retains the deterministic candidate branch for
+separately reviewed cleanup, and reports failure. Automatic ref deletion is
+deliberately unavailable because GitHub provides no expected-SHA
+compare-and-swap for that operation. The client still has no merge,
 default-branch update, deployment, Pages, environment, secret, or GitHub-settings
 operation. Neither public manifest is edited locally by this bridge.
 

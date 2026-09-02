@@ -241,6 +241,18 @@ try {
         declaredMimeType: 'image/jpeg',
         draftBinding
     };
+    await assert.rejects(
+        processGalleryPhoto({
+            sourceBytes: hostileBytes,
+            fileExtension: 'jpg',
+            declaredMimeType: 'image/jpeg',
+            expectedSha256: '0'.repeat(64),
+            draftBinding
+        }),
+        error =>
+            error?.code === 'source-rejected' &&
+            error.message === 'The source photo did not match its recorded checksum.'
+    );
     const first = await processGalleryPhoto({
         sourceBytes: hostileBytes,
         fileExtension: 'jpg',

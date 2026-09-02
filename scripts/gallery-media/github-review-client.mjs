@@ -28,6 +28,20 @@ const candidateReceiptKeys = Object.freeze([
     'itemId',
     'manifestSha256'
 ]);
+const reviewResultKeys = Object.freeze([
+    'schemaVersion',
+    'replayed',
+    'repository',
+    'baseRef',
+    'baseSha',
+    'branchRef',
+    'headSha',
+    'targetRelativePath',
+    'itemId',
+    'manifestSha256',
+    'pullRequest'
+]);
+const reviewPullRequestKeys = Object.freeze(['number', 'url', 'state']);
 const itemIdPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const operationIdPattern = /^promotion_[A-Za-z0-9_-]{16,119}$/;
 const sha256RevisionPattern = /^sha256:[a-f0-9]{64}$/;
@@ -152,6 +166,58 @@ export async function createOrReconcileGalleryReview(candidateResult, options = 
             number: pullRequest.number,
             url: pullRequest.html_url,
             state: 'open'
+        }
+    });
+}
+
+/**
+ * Close one exact stale Gallery review PR. The deterministic candidate branch
+ * is retained for separately reviewed cleanup because GitHub ref deletion has
+ * no expected-SHA compare-and-swap. This operation cannot merge a PR, update or
+ * delete main, or delete any branch.
+ */
+export async function invalidateGalleryReview(candidateResult, reviewResult, options = {}) {
+    const candidate = validateCandidateResult(candidateResult);
+    requireExactKeys(
+        options,
+        ['expectedBaseSha', 'token', 'fetchImpl'],
+        'Gallery review invalidation options'
+    );
+    const expectedBaseSha = validateCommitSha(options.expectedBaseSha, 'expectedBaseSha');
+    const token = validateToken(options.token);
+    const fetchImpl = validateFetch(options.fetchImpl);
+    const review = validateReviewResult(reviewResult, candidate, expectedBaseSha);
+    const github = createFixedGitHubClient(fetchImpl, token);
+    const pullPath = `/pulls/${review.pullRequest.number}`;
+
+    const pullBefore = await github.request('GET', pullPath);
+    validateOwnedPullRequestForInvalidation(pullBefore, candidate, review, ['open', 'closed']);
+
+    let closeRequestError = null;
+    if (pullBefore.state === 'open') {
+        try {
+            await github.request('PATCH', pullPath, { state: 'closed' });
+        } catch (error) {
+            closeRequestError = error;
+        }
+    }
+
+    try {
+        const verifiedPull = await github.request('GET', pullPath);
+        validateOwnedPullRequestForInvalidation(verifiedPull, candidate, review, ['closed']);
+    } catch (verificationError) {
+        throw closeRequestError || verificationError;
+    }
+
+    return deepFreeze({
+        schemaVersion: '1.0',
+        repository: repositoryFullName,
+        branchRef: review.branchRef,
+        branchState: 'retained-for-reviewed-cleanup',
+        pullRequest: {
+            number: review.pullRequest.number,
+            url: review.pullRequest.url,
+            state: 'closed'
         }
     });
 }
@@ -426,6 +492,58 @@ function validateOpenPullRequest(value, { branchRef, branchSha, baseSha, title, 
     return value;
 }
 
+function validateReviewResult(value, candidate, expectedBaseSha) {
+    requireExactKeys(value, reviewResultKeys, 'Gallery review result');
+    requireExactKeys(value.pullRequest, reviewPullRequestKeys, 'Gallery review Pull Request result');
+    const branchRef = deriveOwnedBranch(candidate.receipt.operationId);
+    const pullNumber = value.pullRequest.number;
+    if (
+        value.schemaVersion !== '1.0' ||
+        typeof value.replayed !== 'boolean' ||
+        value.repository !== repositoryFullName ||
+        value.baseRef !== baseRef ||
+        validateCommitSha(value.baseSha, 'review base SHA') !== expectedBaseSha ||
+        value.branchRef !== branchRef ||
+        !commitShaPattern.test(stringValue(value.headSha)) ||
+        value.targetRelativePath !== candidate.targetRelativePath ||
+        value.itemId !== candidate.itemId ||
+        value.manifestSha256 !== candidate.manifestSha256 ||
+        !Number.isSafeInteger(pullNumber) ||
+        pullNumber < 1 ||
+        value.pullRequest.url !==
+            `https://github.com/${repositoryFullName}/pull/${pullNumber}` ||
+        value.pullRequest.state !== 'open'
+    ) {
+        throw new Error('Gallery review invalidation requires the exact created review result.');
+    }
+    return deepFreeze(cloneJson(value));
+}
+
+function validateOwnedPullRequestForInvalidation(value, candidate, review, allowedStates) {
+    const title = `Add approved Gallery photo: ${candidate.itemId}`;
+    const body = pullRequestBody(candidate, review.branchRef);
+    const number = review.pullRequest.number;
+    if (
+        !allowedStates.includes(value?.state) ||
+        value?.number !== number ||
+        value?.merged_at !== null ||
+        value?.draft !== false ||
+        value?.title !== title ||
+        value?.body !== body ||
+        value?.html_url !== review.pullRequest.url ||
+        value?.base?.ref !== baseRef ||
+        value?.base?.repo?.full_name !== repositoryFullName ||
+        value?.head?.ref !== review.branchRef ||
+        !commitShaPattern.test(stringValue(value?.head?.sha)) ||
+        value?.head?.repo?.full_name !== repositoryFullName
+    ) {
+        throw new Error(
+            'Gallery review invalidation refused a merged, changed, or unowned Pull Request.'
+        );
+    }
+    return value;
+}
+
 async function assertBaseStillCurrent(github, expectedBaseSha) {
     const currentBaseSha = await readRequiredRef(github, `heads/${baseRef}`, 'base branch');
     if (currentBaseSha !== expectedBaseSha) {
@@ -504,7 +622,8 @@ function assertAllowedApiRequest(method, relativePath, body) {
         /^\/compare\/[a-f0-9]{40}\.\.\.[a-f0-9]{40}$/,
         /^\/contents\/gallery-data\/(?:family|everyone)\.json\?ref=[a-f0-9]{40}$/,
         /^\/contents\/gallery-data\/(?:family|everyone)\.json\?ref=gallery-media%2Fcandidate-[a-f0-9]{32}$/,
-        /^\/pulls\?state=all&head=johnkevan88888%3Agallery-media%2Fcandidate-[a-f0-9]{32}&base=main&per_page=10$/
+        /^\/pulls\?state=all&head=johnkevan88888%3Agallery-media%2Fcandidate-[a-f0-9]{32}&base=main&per_page=10$/,
+        /^\/pulls\/[1-9][0-9]*$/
     ];
     const safePostPaths = new Set([
         '/git/blobs',
@@ -519,6 +638,17 @@ function assertAllowedApiRequest(method, relativePath, body) {
     }
     if (method === 'POST' && safePostPaths.has(relativePath) && isPlainObject(body)) {
         validateMutationBody(relativePath, body);
+        return;
+    }
+    if (
+        method === 'PATCH' &&
+        /^\/pulls\/[1-9][0-9]*$/.test(relativePath) &&
+        isPlainObject(body)
+    ) {
+        requireExactKeys(body, ['state'], 'Pull Request invalidation request');
+        if (body.state !== 'closed') {
+            throw new Error('Pull Request invalidation may only close the exact review.');
+        }
         return;
     }
     throw new Error('GitHub review client refused an unsupported repository operation.');
