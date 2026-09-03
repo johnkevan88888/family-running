@@ -14,10 +14,12 @@ const commitShaPattern = /^[a-f0-9]{40}$/i;
  *
  * The PATCH deliberately supplies main's current SHA, so even an unexpected
  * success cannot change branch contents. Success is nevertheless rejected.
- * The proof also requires the complete active ruleset, its exact owner-only PR
- * bypass, the effective rules, a denied update, and an unchanged ref. Because
- * a PR merge updates the same protected ref, the restriction also removes the
- * App's merge capability while leaving candidate-branch and PR creation intact.
+ * The App-token proof requires the exact effective rules, a denied update, and
+ * an unchanged ref. The owner-authenticated release gate separately verifies
+ * the ruleset's owner-only PR bypass because GitHub does not expose that list
+ * to this limited token. A PR merge updates the same protected ref, so the
+ * restriction also removes the App's merge capability while leaving candidate-
+ * branch and PR creation intact.
  */
 export async function verifyGalleryReviewBoundary(options) {
     requireExactKeys(options, ['expectedBaseSha', 'token', 'fetchImpl']);
@@ -27,9 +29,6 @@ export async function verifyGalleryReviewBoundary(options) {
 
     const before = await requestJson(fetchImpl, token, 'GET', '/git/ref/heads/main');
     assertMainRef(before, expectedBaseSha);
-
-    const ruleset = await requestJson(fetchImpl, token, 'GET', `/rulesets/${mainRulesetId}`);
-    assertMainRuleset(ruleset);
 
     const rules = await requestJson(
         fetchImpl,
@@ -107,42 +106,6 @@ function assertMainRef(value, expectedBaseSha) {
         validateCommitSha(value.object?.sha, 'main ref SHA') !== expectedBaseSha
     ) {
         throw new Error('Gallery review permission proof found a changed or malformed main ref.');
-    }
-}
-
-function assertMainRuleset(value) {
-    if (
-        !isPlainObject(value) ||
-        value.id !== mainRulesetId ||
-        value.name !== 'main' ||
-        value.target !== 'branch' ||
-        value.enforcement !== 'active' ||
-        !isPlainObject(value.conditions) ||
-        !isPlainObject(value.conditions.ref_name) ||
-        JSON.stringify(value.conditions.ref_name.include) !== JSON.stringify(['~DEFAULT_BRANCH']) ||
-        JSON.stringify(value.conditions.ref_name.exclude) !== JSON.stringify([])
-    ) {
-        throw new Error('Gallery review permission proof did not receive the exact active main ruleset.');
-    }
-
-    if (
-        !Array.isArray(value.bypass_actors) ||
-        value.bypass_actors.length !== 1 ||
-        !isPlainObject(value.bypass_actors[0]) ||
-        value.bypass_actors[0].actor_id !== 5 ||
-        value.bypass_actors[0].actor_type !== 'RepositoryRole' ||
-        value.bypass_actors[0].bypass_mode !== 'pull_request'
-    ) {
-        throw new Error('Gallery review permission proof requires the exact owner-only Pull Request bypass.');
-    }
-
-    if (!Array.isArray(value.rules)) {
-        throw new Error('Gallery review permission proof did not receive the main ruleset rules.');
-    }
-    for (const type of ['update', 'pull_request', 'required_status_checks']) {
-        if (value.rules.filter(rule => isPlainObject(rule) && rule.type === type).length !== 1) {
-            throw new Error(`Gallery review permission proof requires one exact ${type} ruleset rule.`);
-        }
     }
 }
 
