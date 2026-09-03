@@ -2,13 +2,15 @@
 
 ## Current task: durable photo-review and owner-takedown controls
 
-### Status — Pull Request #89 merged; remote activation pending 2 September 2026
+### Status — remote review path active; API-name correction pending review 3 September 2026
 
 Pull Request #89 merged the reviewed implementation to `main` at exact commit
-`9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`. No review/invalidation workflow
-has been dispatched and migrations `0011`–`0012` plus the changed admin,
-processing, and promotion Workers remain unapplied or undeployed. No real media,
-Gallery manifest, candidate Pull Request, or Gallery publication was created.
+`9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`. Provider readback on 3 September
+confirmed that migrations `0011`–`0012` and the changed admin, processing, and
+promotion Workers were activated on 2 September after the earlier status below
+was written. No review/invalidation workflow has been dispatched. No real
+media, Gallery manifest, candidate Pull Request, or Gallery publication was
+created.
 
 The local change adds the missing durable boundary around a photo review Pull
 Request. Migration `0011_photo_review_invalidation.sql` records immutable
@@ -58,17 +60,27 @@ Both new workflows remain undispatched and have no merge, deployment, Pages,
 default-branch update, branch deletion, manifest publication, or GitHub
 settings capability.
 
-Current provider state must stay separate from this local implementation. The
-processing Worker already exists at version
-`f58e0a1f-3ca4-4b66-a81f-9435d9af4f15` with its active narrow Service Auth
-policy; it was not redeployed here. The `gallery-processing` GitHub environment
-exists and has no workflow run for this feature. The earlier promotion Worker
-is deployed at exact version `44109f3f-53ac-4714-977e-41176656ff40` behind its
-active narrow Service Auth policy, but the PR #89 review/invalidation routes are
-not deployed. Non-production D1 currently ends at migration `0010`; migrations
-`0011` and `0012` are not applied. The existing admin Worker, public media
-Worker, verifier, Access resources, R2 buckets, lifecycle rules, delivery
-epoch, and GitHub configuration are unchanged by this task.
+Current provider state must stay separate from this local implementation. A
+read-only D1 query confirms migration IDs `11` and `12`, named
+`0011_photo_review_invalidation.sql` and
+`0012_owner_withdrawal_exclusion_receipts.sql`, were applied at exact remote
+time `2026-09-02 17:10:05`. Current Cloudflare deployment readback confirms:
+
+- admin deployment `416ce09e-7860-4626-bfef-8fa4a09411c1`, version
+  `d3bf3f92-2b95-421b-8078-2b1b74b1bb81`, serves the owner withdrawal and
+  athlete-exclusion controls at 100 percent;
+- processing deployment `24a48203-9f2a-4637-98df-19d4dfead640`, version
+  `3d264d5f-ae24-4423-926c-8a48a3d250c8`, serves the post-PR-89 eligibility
+  implementation at 100 percent; and
+- promotion deployment `c699f213-bcd7-4a5e-b9b3-a9cb236a0f36`, version
+  `85ada30e-6e80-4839-a843-ac372ac96c52`, serves the reservation, open,
+  terminal, abandonment, and invalidation routes at 100 percent.
+
+The retrieved deployed bundles contain the reviewed photo-review route strings.
+All three historical upload sessions remain complete; all historical drafts
+carry `real_photo_intake_confirmed = 0`, so none can enter the new real-photo
+path. The public media Worker, verifier, Access resources, R2 lifecycle rules,
+and delivery epoch were not changed during this read-only reconciliation.
 
 The focused completion gate passed after the final race and log-safety
 hardening. Focused real-SQLite migration, review service,
@@ -85,12 +97,26 @@ public manifests and the shared suppression file are empty. Independent final
 reviews found no remaining code, security, public-data, owner-control, or
 review-recovery blocker.
 
-Pull Request #89 completed its standard checks and merged. The current approval
-does not authorize migrations `0011`–`0012` or any Cloudflare Worker deployment.
-It authorizes only the repository safety PR and byte-identical Pages run,
-owner-only GitHub ruleset hardening, installation-token proof, and a generated
-synthetic-photo rehearsal if the already-deployed remote routes can support it.
-No real media or Gallery publication is authorized.
+Pull Request #90 completed the required full-preview checks and merged the App
+permission preflight at exact merge commit
+`72d9795dd8eecafa5f3590d96f0b83d1b5e2d633`. Pages run `33683169501` succeeded
+for that commit; all 114 public files byte-match their canonical Git blobs and
+both Gallery manifests still contain zero items. Ruleset `18119142` was saved
+after action-time identity confirmation and read back with one owner-only
+Pull-Request bypass, no Gallery App bypass, and the active `update`,
+`pull_request`, and required-status-check rules. `main` remained at the exact
+merge commit above.
+
+Protected workflow run `33774404669` then exercised a guaranteed-nonexistent
+draft. It failed closed before contacting either Gallery service because
+GitHub's effective branch-rules API calls the UI's “Restrict updates” rule
+`update`, while the merged preflight expected the label `restrict_updates`.
+The smallest local correction now requires the exact API value and its focused
+test passes. The complete `pnpm test` also passes, including all Gallery,
+artifact, and responsive browser checks. This correction still needs an
+ordinary reviewed Pull Request before the protected preflight can be repeated.
+No real media, candidate Pull Request, Gallery publication, video, DNS, or
+Cloudflare deployment was created or authorized by this failed-closed run.
 
 ## Current task: photo-only Gallery go-live implementation bridge
 
