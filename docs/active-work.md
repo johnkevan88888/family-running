@@ -2,7 +2,7 @@
 
 ## Current task: durable photo-review and owner-takedown controls
 
-### Status — remote review path active; denial-shape correction pending review 3 September 2026
+### Status — remote review path active; exact-ruleset proof pending review 3 September 2026
 
 Pull Request #89 merged the reviewed implementation to `main` at exact commit
 `9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`. Provider readback on 3 September
@@ -119,14 +119,24 @@ Protected workflow run `33810675318` reached the harmless same-SHA update
 probe on that exact commit and GitHub denied the App's update before either
 Gallery service was contacted. GitHub represented that denial using its
 documented validation response shape rather than either previously observed
-top-level policy message. The smallest local follow-up accepts only a 422/403
-`Validation Failed` response containing exactly one
-`Reference`/`protected`/`Cannot update this protected ref` error; unrelated
-validation errors remain rejected. Its focused permission-boundary test and
-`git diff --check` pass. This follow-up still needs an ordinary reviewed Pull
-Request before the protected preflight can be repeated. No real media,
-candidate Pull Request, Gallery publication, video, DNS, or Cloudflare
-deployment was created or authorized by either failed-closed run.
+top-level policy message. Pull Request #93 added a narrow structured-denial
+allowlist, passed the required checks, and merged through the owner-only
+Pull-Request bypass at exact commit
+`662afc908f0054d05b3549cfe3fd2d1d9fcfe9b6`.
+
+Protected workflow run `33812562806` again proved that GitHub denied the App's
+same-SHA update and again stopped before either Gallery service, but the
+provider's body still did not match that wording-specific allowlist. The local
+follow-up ends that brittle message loop without weakening the boundary: the
+same App token must now read back exact active ruleset `18119142`, its default-
+branch condition, its one owner-role Pull-Request bypass, no App bypass, and
+its `update`, `pull_request`, and required-status-check rules. It must also see
+the same effective branch rules, receive only a 403/422 denial for the harmless
+update, and re-read an unchanged `main`. Any missing, extra, inactive, or
+malformed protection, bypass, response, or ref fails closed. The focused test
+and `git diff --check` pass; the complete suite is pending before review. No
+real media, candidate Pull Request, Gallery publication, video, DNS, or
+Cloudflare deployment was created or authorized by any failed-closed run.
 
 ## Current task: photo-only Gallery go-live implementation bridge
 

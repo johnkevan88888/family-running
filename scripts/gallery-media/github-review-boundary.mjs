@@ -7,24 +7,16 @@ const apiOrigin = 'https://api.github.com';
 const repositoryApiPath = `/repos/${repositoryFullName}`;
 const apiVersion = '2022-11-28';
 const commitShaPattern = /^[a-f0-9]{40}$/i;
-const policyDenialMessages = new Set([
-    'Repository rule violations found',
-    'Protected branch update failed'
-]);
-const protectedRefValidationMessage = 'Validation Failed';
-const protectedRefErrorMessages = new Set([
-    'Cannot update this protected ref',
-    'Cannot update this protected ref.'
-]);
 
 /**
  * Prove, before any media service is contacted, that this exact short-lived
  * App token is subject to the owner-only main update restriction.
  *
  * The PATCH deliberately supplies main's current SHA, so even an unexpected
- * success cannot change branch contents. Success is nevertheless rejected:
- * only a rules-owned denial plus an unchanged ref is acceptable. Because a PR
- * merge updates the same protected ref, the same restriction also removes the
+ * success cannot change branch contents. Success is nevertheless rejected.
+ * The proof also requires the complete active ruleset, its exact owner-only PR
+ * bypass, the effective rules, a denied update, and an unchanged ref. Because
+ * a PR merge updates the same protected ref, the restriction also removes the
  * App's merge capability while leaving candidate-branch and PR creation intact.
  */
 export async function verifyGalleryReviewBoundary(options) {
@@ -35,6 +27,9 @@ export async function verifyGalleryReviewBoundary(options) {
 
     const before = await requestJson(fetchImpl, token, 'GET', '/git/ref/heads/main');
     assertMainRef(before, expectedBaseSha);
+
+    const ruleset = await requestJson(fetchImpl, token, 'GET', `/rulesets/${mainRulesetId}`);
+    assertMainRuleset(ruleset);
 
     const rules = await requestJson(
         fetchImpl,
@@ -51,7 +46,7 @@ export async function verifyGalleryReviewBoundary(options) {
         '/git/refs/heads/main',
         { sha: expectedBaseSha, force: false }
     );
-    await assertRuleOwnedDenial(denial);
+    await assertDeniedUpdate(denial);
 
     const after = await requestJson(fetchImpl, token, 'GET', '/git/ref/heads/main');
     assertMainRef(after, expectedBaseSha);
@@ -115,6 +110,42 @@ function assertMainRef(value, expectedBaseSha) {
     }
 }
 
+function assertMainRuleset(value) {
+    if (
+        !isPlainObject(value) ||
+        value.id !== mainRulesetId ||
+        value.name !== 'main' ||
+        value.target !== 'branch' ||
+        value.enforcement !== 'active' ||
+        !isPlainObject(value.conditions) ||
+        !isPlainObject(value.conditions.ref_name) ||
+        JSON.stringify(value.conditions.ref_name.include) !== JSON.stringify(['~DEFAULT_BRANCH']) ||
+        JSON.stringify(value.conditions.ref_name.exclude) !== JSON.stringify([])
+    ) {
+        throw new Error('Gallery review permission proof did not receive the exact active main ruleset.');
+    }
+
+    if (
+        !Array.isArray(value.bypass_actors) ||
+        value.bypass_actors.length !== 1 ||
+        !isPlainObject(value.bypass_actors[0]) ||
+        value.bypass_actors[0].actor_id !== 5 ||
+        value.bypass_actors[0].actor_type !== 'RepositoryRole' ||
+        value.bypass_actors[0].bypass_mode !== 'pull_request'
+    ) {
+        throw new Error('Gallery review permission proof requires the exact owner-only Pull Request bypass.');
+    }
+
+    if (!Array.isArray(value.rules)) {
+        throw new Error('Gallery review permission proof did not receive the main ruleset rules.');
+    }
+    for (const type of ['update', 'pull_request', 'required_status_checks']) {
+        if (value.rules.filter(rule => isPlainObject(rule) && rule.type === type).length !== 1) {
+            throw new Error(`Gallery review permission proof requires one exact ${type} ruleset rule.`);
+        }
+    }
+}
+
 function assertRequiredRules(value) {
     if (!Array.isArray(value)) {
         throw new Error('Gallery review permission proof did not receive the active main rules.');
@@ -137,7 +168,7 @@ function assertRequiredRules(value) {
     }
 }
 
-async function assertRuleOwnedDenial(response) {
+async function assertDeniedUpdate(response) {
     if (response.ok) {
         throw new Error('Gallery review App unexpectedly accepted a main ref update.');
     }
@@ -153,32 +184,9 @@ async function assertRuleOwnedDenial(response) {
     } catch {
         throw new Error('Gallery review main-update denial returned invalid JSON.');
     }
-    if (!isAcceptedRuleOwnedDenial(value)) {
-        throw new Error('Gallery review main-update denial was not an accepted rules-owned denial.');
+    if (!isPlainObject(value) || typeof value.message !== 'string' || value.message.length === 0) {
+        throw new Error('Gallery review main-update denial returned an invalid error object.');
     }
-}
-
-function isAcceptedRuleOwnedDenial(value) {
-    if (!isPlainObject(value)) {
-        return false;
-    }
-    if (policyDenialMessages.has(value.message)) {
-        return true;
-    }
-    if (
-        value.message !== protectedRefValidationMessage ||
-        !Array.isArray(value.errors) ||
-        value.errors.length !== 1
-    ) {
-        return false;
-    }
-    const [error] = value.errors;
-    return (
-        isPlainObject(error) &&
-        error.resource === 'Reference' &&
-        error.code === 'protected' &&
-        protectedRefErrorMessages.has(error.message)
-    );
 }
 
 function validateCommitSha(value, label) {
