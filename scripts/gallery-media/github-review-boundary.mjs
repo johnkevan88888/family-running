@@ -114,7 +114,10 @@ function assertRequiredRules(value) {
     if (!Array.isArray(value)) {
         throw new Error('Gallery review permission proof did not receive the active main rules.');
     }
-    const requiredTypes = ['restrict_updates', 'pull_request', 'required_status_checks'];
+    // GitHub labels this setting "Restrict updates" in the ruleset UI, but
+    // the effective branch-rules API represents it with the stable type
+    // value `update`.
+    const requiredTypes = ['update', 'pull_request', 'required_status_checks'];
     for (const type of requiredTypes) {
         const matches = value.filter(rule =>
             isPlainObject(rule) &&

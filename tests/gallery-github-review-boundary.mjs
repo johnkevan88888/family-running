@@ -11,7 +11,7 @@ const expectedRule = type => ({
     ruleset_source: 'johnkevan88888/family-running'
 });
 const requiredRules = [
-    expectedRule('restrict_updates'),
+    expectedRule('update'),
     expectedRule('pull_request'),
     expectedRule('required_status_checks')
 ];
@@ -50,8 +50,8 @@ assert.deepEqual(JSON.parse(requests[2].init.body), { sha: baseSha, force: false
 assert.ok(requests.every(entry => entry.init.redirect === 'error'));
 assert.ok(requests.every(entry => entry.init.headers.Authorization === `Bearer ${token}`));
 
-await assert.rejects(runWith({ rules: requiredRules.filter(rule => rule.type !== 'restrict_updates') }),
-    /requires one exact restrict_updates/);
+await assert.rejects(runWith({ rules: requiredRules.filter(rule => rule.type !== 'update') }),
+    /requires one exact update/);
 await assert.rejects(runWith({ initialSha: 'b'.repeat(40) }), /changed or malformed main ref/);
 await assert.rejects(runWith({ denialStatus: 200, denialBody: mainRef(baseSha) }),
     /unexpectedly accepted a main ref update/);
