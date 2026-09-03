@@ -2,7 +2,7 @@
 
 ## Current task: durable photo-review and owner-takedown controls
 
-### Status — remote review path active; exact-ruleset proof pending review 3 September 2026
+### Status — remote review path active; App-visible proof pending review 3 September 2026
 
 Pull Request #89 merged the reviewed implementation to `main` at exact commit
 `9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`. Provider readback on 3 September
@@ -126,17 +126,26 @@ Pull-Request bypass at exact commit
 
 Protected workflow run `33812562806` again proved that GitHub denied the App's
 same-SHA update and again stopped before either Gallery service, but the
-provider's body still did not match that wording-specific allowlist. The local
-follow-up ends that brittle message loop without weakening the boundary: the
-same App token must now read back exact active ruleset `18119142`, its default-
-branch condition, its one owner-role Pull-Request bypass, no App bypass, and
-its `update`, `pull_request`, and required-status-check rules. It must also see
-the same effective branch rules, receive only a 403/422 denial for the harmless
-update, and re-read an unchanged `main`. Any missing, extra, inactive, or
-malformed protection, bypass, response, or ref fails closed. The focused test
-and `git diff --check` pass; the complete suite is pending before review. No
-real media, candidate Pull Request, Gallery publication, video, DNS, or
-Cloudflare deployment was created or authorized by any failed-closed run.
+provider's body still did not match that wording-specific allowlist. Pull
+Request #95 replaced that brittle message dependency with exact ruleset and
+bypass-list verification, passed the required checks, and merged through the
+owner-only Pull-Request bypass at exact commit
+`7eab598965a66e717eb4a2839a6cbe0e092e6534`.
+
+Protected workflow run `33814670512` showed that the limited App token can read
+the effective `update`, `pull_request`, and required-status-check rules from
+ruleset `18119142`, but GitHub withholds the administrative bypass list from
+that token. The owner-authenticated release gate has already read back the one
+owner-role Pull-Request bypass and no App bypass. The local follow-up therefore
+keeps those two proofs separate: the App token must see the three exact
+effective rules, receive only a 403/422 denial for the harmless same-SHA
+update, and re-read an unchanged `main`; the owner proof supplies the bypass
+configuration. Unexpected success, missing or extra effective rules, other
+status codes, invalid error bodies, and changed refs still fail closed. The
+focused test and `git diff --check` pass; the complete suite is pending before
+review. No real media, candidate Pull Request, Gallery publication, video,
+DNS, or Cloudflare deployment was created or authorized by any failed-closed
+run.
 
 ## Current task: photo-only Gallery go-live implementation bridge
 
