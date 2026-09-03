@@ -11,6 +11,11 @@ const policyDenialMessages = new Set([
     'Repository rule violations found',
     'Protected branch update failed'
 ]);
+const protectedRefValidationMessage = 'Validation Failed';
+const protectedRefErrorMessages = new Set([
+    'Cannot update this protected ref',
+    'Cannot update this protected ref.'
+]);
 
 /**
  * Prove, before any media service is contacted, that this exact short-lived
@@ -148,9 +153,32 @@ async function assertRuleOwnedDenial(response) {
     } catch {
         throw new Error('Gallery review main-update denial returned invalid JSON.');
     }
-    if (!isPlainObject(value) || !policyDenialMessages.has(value.message)) {
+    if (!isAcceptedRuleOwnedDenial(value)) {
         throw new Error('Gallery review main-update denial was not an accepted rules-owned denial.');
     }
+}
+
+function isAcceptedRuleOwnedDenial(value) {
+    if (!isPlainObject(value)) {
+        return false;
+    }
+    if (policyDenialMessages.has(value.message)) {
+        return true;
+    }
+    if (
+        value.message !== protectedRefValidationMessage ||
+        !Array.isArray(value.errors) ||
+        value.errors.length !== 1
+    ) {
+        return false;
+    }
+    const [error] = value.errors;
+    return (
+        isPlainObject(error) &&
+        error.resource === 'Reference' &&
+        error.code === 'protected' &&
+        protectedRefErrorMessages.has(error.message)
+    );
 }
 
 function validateCommitSha(value, label) {
