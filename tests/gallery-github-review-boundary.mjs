@@ -57,6 +57,27 @@ await assert.rejects(runWith({ denialStatus: 200, denialBody: mainRef(baseSha) }
     /unexpectedly accepted a main ref update/);
 await assert.rejects(runWith({ denialBody: { message: 'Validation Failed' } }),
     /was not an accepted rules-owned denial/);
+const structuredProtectedRefResult = await runWith({
+    denialBody: {
+        message: 'Validation Failed',
+        errors: [{
+            resource: 'Reference',
+            code: 'protected',
+            message: 'Cannot update this protected ref.'
+        }]
+    }
+});
+assert.equal(structuredProtectedRefResult.directMainUpdateDenied, true);
+await assert.rejects(runWith({
+    denialBody: {
+        message: 'Validation Failed',
+        errors: [{
+            resource: 'Reference',
+            code: 'invalid',
+            message: 'Cannot update this protected ref.'
+        }]
+    }
+}), /was not an accepted rules-owned denial/);
 await assert.rejects(runWith({ finalSha: 'c'.repeat(40) }), /changed or malformed main ref/);
 await assert.rejects(
     verifyGalleryReviewBoundary({ expectedBaseSha: baseSha, token, fetchImpl: null }),

@@ -2,7 +2,7 @@
 
 ## Current task: durable photo-review and owner-takedown controls
 
-### Status — remote review path active; API-name correction pending review 3 September 2026
+### Status — remote review path active; denial-shape correction pending review 3 September 2026
 
 Pull Request #89 merged the reviewed implementation to `main` at exact commit
 `9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`. Provider readback on 3 September
@@ -111,12 +111,22 @@ Protected workflow run `33774404669` then exercised a guaranteed-nonexistent
 draft. It failed closed before contacting either Gallery service because
 GitHub's effective branch-rules API calls the UI's “Restrict updates” rule
 `update`, while the merged preflight expected the label `restrict_updates`.
-The smallest local correction now requires the exact API value and its focused
-test passes. The complete `pnpm test` also passes, including all Gallery,
-artifact, and responsive browser checks. This correction still needs an
-ordinary reviewed Pull Request before the protected preflight can be repeated.
-No real media, candidate Pull Request, Gallery publication, video, DNS, or
-Cloudflare deployment was created or authorized by this failed-closed run.
+Pull Request #92 corrected that exact API value, passed the required checks,
+and merged through the owner-only Pull-Request bypass at exact commit
+`eb0c156cad2f675ab57b9d697742674b48510a3f`.
+
+Protected workflow run `33810675318` reached the harmless same-SHA update
+probe on that exact commit and GitHub denied the App's update before either
+Gallery service was contacted. GitHub represented that denial using its
+documented validation response shape rather than either previously observed
+top-level policy message. The smallest local follow-up accepts only a 422/403
+`Validation Failed` response containing exactly one
+`Reference`/`protected`/`Cannot update this protected ref` error; unrelated
+validation errors remain rejected. Its focused permission-boundary test and
+`git diff --check` pass. This follow-up still needs an ordinary reviewed Pull
+Request before the protected preflight can be repeated. No real media,
+candidate Pull Request, Gallery publication, video, DNS, or Cloudflare
+deployment was created or authorized by either failed-closed run.
 
 ## Current task: photo-only Gallery go-live implementation bridge
 
