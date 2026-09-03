@@ -6,75 +6,84 @@
 - **Approved pilot boundaries:** Cloudflare-managed `workers.dev` hostnames and
   temporary processing of each private original on an ephemeral GitHub-hosted
   runner
-- **Infrastructure state:** Synthetic rehearsal Phases C and D are complete on
-  isolated non-production `workers.dev` resources. D1 carries independently
-  verified migrations `0001`–`0010`; local migrations `0011` and `0012` have
-  not been applied. The owner administration Worker can reach
-  only D1 and private originals; the media Worker can reach only approved
-  derivatives; and the
-  restored normal processing Worker can reach only D1, private originals, and
-  private derivative staging. It is deployed at exact version
-  `f58e0a1f-3ca4-4b66-a81f-9435d9af4f15` behind its active one-token Service
-  Auth policy. The photo-promotion Worker is deployed at exact version
-  `44109f3f-53ac-4714-977e-41176656ff40` with only D1, staging-read,
-  approved-media-write, fixed origins, and its separate one-token Service Auth
-  identity. Those are current-state facts only; the merged `0011`–`0012`
-  migrations and updated Worker code are not remotely applied or deployed.
-- **Media state:** exactly one built-in synthetic Family photo and one built-in
-  synthetic Everyone video remain protected private originals with D1 records.
-  The final Phase D photo run leaves exactly two verified synthetic derivatives
-  in private staging. Approved storage contains only the fixed 28-byte delivery
-  witness, and both public manifests remain empty; no real original or approved
-  Gallery derivative exists.
-- **Implementation state:** provider-independent Phase A, infrastructure and
-  authentication Phase B, synthetic private-upload Phase C, and the private
-  synthetic photo-processing and cleanup-race rehearsal in Phase D are
-  complete. Pull Request #84 merged the photo-promotion,
-  approved-storage-cleanup, candidate-manifest, and review-only GitHub client
-  foundation to `main` at exact commit
-  `4b6c7be70d77ce389f7ee9a5b103858cd31ff55b`. Its 114-file Pages artifact and
-  production site were verified byte-for-byte at that exact commit, including
-  all 72 manifest-listed CSVs and both rendered modes; both public Gallery
-  manifests stayed empty. That was static release proof, not Cloudflare
-  deployment. Migrations `0007`–`0009` were applied to the non-production D1
-  database on 31 August 2026 after separate approval. The delivery-proof media
-  Worker was then separately approved and deployed at exact version
-  `cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`; its fixed synthetic witness was then
-  separately uploaded and independently byte-verified. Matching delivery epoch
-  `media_delivery_epoch_dev_0001` was then separately registered and activated
-  as sequence `1`. The fixed-origin verifier was then separately deployed at
-  exact version `6ba9af24-6123-480b-8e6f-980a742348dc`, and its non-mutating
-  no/wrong/exact Service Auth proof passed. The approved synthetic
-  zero-generation editorial-withdrawal, guarded purge, D1-integrity, and
-  unchanged Worker/R2 postflight then passed. Its temporary Service Auth policy
-  and token were deleted, leaving the exact-host verifier application parked
-  with zero policies. The promotion Worker remains undeployed. The approved-
-  prefix orphan-multipart lifecycle requirement is now applied to the exact
-  approved-media bucket and independently verified through the lifecycle API
-  and bucket Settings page. The repository now contains the local photo-only
-  real-file
-  intake, migration `0010`, protected processing-eligibility and candidate-read
-  routes, orchestration runner, and default-branch review workflow. These are
-  locally tested except for the separately deployed admin intake. Migration
-  `0010` is applied and independently verified on non-production D1, and the
-  updated admin Worker has exact version/binding readback. Anonymous browser and
-  service health requests still stop at Access, while the exact authenticated
-  owner browser health route returned
-  `{"ok":true,"scope":"owner-browser"}`. Pull Request #89 merged the
-  review-receipt, privacy-first invalidation, owner-withdrawal, and proactive-
-  exclusion source to `main` at exact merge commit
-  `9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`; its migrations and changed
-  Workers remain undeployed. The protected `gallery-processing` environment is
-  restricted to exact `main`, stores the six service connection secrets plus
-  the Gallery review App ID and private key, and has not run either workflow.
-  The App is installed only on this repository with Contents and Pull requests
-  write plus required Metadata read. Exactly one private key remains after
-  protected storage and cleanup of the local PEM and two unusable remote keys.
-  The active `main` rules do not yet make an App-authored merge impossible after
-  checks pass. The current safety branch adds a pre-processing same-commit ref
-  probe that requires a rules-owned denial and unchanged `main`; it is not yet
-  merged or remotely exercised. Real-media transfer, video processing, DNS
-  changes, candidate merge, and Gallery publication remain separately gated.
+- **Infrastructure state:** This branch is based on exact `origin/main` commit
+  `e76494bc55d29d2e39af2f0690044d5f87e7b617`, the merge of Pull Request #96.
+  That baseline includes the fail-closed pre-processing same-commit `main` ref
+  probe from Pull Request #90, the response corrections from Pull Requests #92
+  and #93, the exact-ruleset proof from Pull Request #95, and Pull Request #96's
+  separation of the App-visible rules proof from the owner-only bypass proof.
+  The separately
+  approved non-production activation through
+  migration `0012` and the existing admin, processing, promotion, media,
+  verifier, and Access boundaries occurred under their own gates before this
+  finalizer slice. This branch has not freshly reread or changed those provider
+  resources. Migration `0013`, the dedicated withdrawal-finalizer Worker, its
+  Access boundary, and the two protected finalization workflows remain
+  unapplied, undeployed, unconfigured, and undispatched.
+- **Media state:** The two public Gallery manifests and the shared suppression
+  file have no branch diff and remain empty in the repository. This branch has
+  not read or mutated private or approved provider
+  media inventory, transferred real media, or created a public derivative.
+- **Implementation state:** The provider-independent contracts, owner-only
+  photo intake, private processing, promotion/review, privacy-first
+  invalidation, owner withdrawal, proactive whole-item athlete exclusion,
+  fixed-origin verifier, and PR #90 GitHub permission probe are present on
+  `main`. The current branch closes the remaining operational gap between
+  `withdrawal-pending`, final `withdrawn`, and later private-data purge. Local
+  source and tests are
+  not evidence that migration `0013` is applied, the finalizer is deployed, its
+  Access identity is configured, the protected environment has the required
+  reviewers and secrets, or either workflow has run. Real-media transfer, video
+  processing, DNS changes, merge, deployment, and publication remain
+  separately approved work.
+
+### Local withdrawal-finalization and purge slice — 3 September 2026
+
+Migration `0013_withdrawal_finalization.sql` records two different operations:
+first `withdrawal`, then `purge`. Each has its own deterministic idempotency
+key, protected workflow approval, immutable operation, and permanent receipt.
+The caller supplies only the opaque draft ID and key. D1 derives the current
+withdrawal kind, state/version, retention deadline, host proof, cleanup proof,
+private-original target, and whether the requested step is currently valid.
+
+The dedicated finalizer Worker is service-only and has exactly D1,
+private-original R2, one fixed HTTPS origin, and one Access service identity.
+It has no approved-media, staging, manifest, GitHub, Pages, merge, deployment,
+or browser capability. The finalizer is always called before the existing
+public-host verifier so a permanent receipt can answer retries after the draft
+has been purged. If current generation/epoch-bound host evidence is missing,
+the finalizer returns only the required state version and a verifier key bound
+to that current evidence. The bridge accepts an exact positive verifier result
+and retries the unchanged finalizer request.
+
+For consent withdrawal, the finalizer durably reserves deletion, verifies the
+exact R2 version, ETag, byte count, and SHA-256, rechecks the object, deletes the
+exact key, proves final `HEAD` absence and a fully paginated empty draft prefix,
+then completes withdrawal. Purge is a separate immediately eligible approval.
+For editorial removal or athlete exclusion, withdrawal retains the original
+for exactly 30 days from the SQLite-owned withdrawal time. The later purge
+repeats the deletion proof before atomically recording the purge receipt and
+removing the private parent rows. Initial unexplained object absence fails;
+absence following a valid durable reservation is safe retry evidence.
+
+Permanent withdrawal, private-deletion, and purge receipts contain hashes and
+proof facts only. They survive parent purge without raw draft, uploader, site,
+race, athlete, consent-note, caption, storage-key, version, or ETag values. The
+older live retention authorization necessarily carries the opaque draft ID
+until purge. It stays immutable while the parent exists and is deleted
+automatically inside the same guarded parent-purge transaction, leaving only
+the hash-only permanent evidence. Migration `0013` first removes any legacy row
+whose parent was already purged under the older schema, including the known
+non-production rehearsal shape, so the new guard cannot strand it.
+
+Migration `0012` remains one deliberate narrow exception: its athlete-exclusion
+request receipt preserves the canonical opaque affected-draft list so an owner
+retry remains identical after purge. The finalizer neither copies that list
+into its own receipts nor removes the earlier replay authority.
+
+All existing inherited Family/Everyone, server-derived metadata, consent/guardian,
+complete tagging, whole-item suppression, external-media, metadata-stripping,
+and photo-only rules remain unchanged.
 
 ### Local review and takedown safety slice — 2 September 2026
 
@@ -576,6 +585,12 @@ The implementation is expected to add:
   cleanup;
 - `.github/workflows/gallery-media-review.yml` for the protected processing and
   Pull Request path;
+- `.github/workflows/gallery-withdrawal-finalization.yml` and
+  `.github/workflows/gallery-withdrawal-purge.yml` for separately approved,
+  finalizer-first withdrawal and later purge;
+- `gallery-admin/src/withdrawal-finalizer-worker.js` plus migration `0013` for
+  the narrow D1/private-original completion boundary and permanent hash-only
+  receipts;
 - focused contract, security, state-machine, processor, and delivery tests;
 - an example configuration containing names only, never account IDs, owner
   email, token values, private URLs, or credentials.
@@ -1116,12 +1131,26 @@ video processing from the photo-only checkpoint.
 
 ### Phase E — takedown rehearsal and first real-media pilot
 
-1. Exercise hidden-athlete suppression and urgent host deletion with synthetic
-   media, including cache and known-URL checks.
-2. Verify the cleanup dry run, actual cleanup, audit trail, and token rotation.
-3. Upload one genuinely approved photograph. Review its private consent record,
-   sanitized bytes, exact manifest diff, both modes, and responsive preview.
-4. Merge and publish only after a new explicit approval for that real-media Pull
+1. Review and merge the local finalizer slice through the ordinary protected
+   Pull Request path without changing either public manifest.
+2. With separate approval, apply migration `0013`, deploy the narrow finalizer,
+   configure its exact-host Service Auth policy and protected
+   `gallery-finalization` environment, then prove anonymous/wrong credentials
+   stop at Access while the exact identity reaches only the non-mutating method
+   boundary.
+3. With a fresh approval, complete one synthetic photo withdrawal: approved and
+   staging cleanup, current fixed-origin host proof, final `withdrawn`, and the
+   category-appropriate private-original result. Dispatch purge separately;
+   prove immediate consent purge and 30-day editorial/athlete blocking through
+   the appropriate fixtures rather than shortening time.
+4. Reconcile D1 integrity, permanent hash-only survivors, private/approved/
+   staging inventories, exact public-host responses, closed-unmerged review,
+   and unchanged public manifests. Park or remove temporary Access authority
+   only under its own approved cleanup step.
+5. Only after that rehearsal, upload one genuinely approved photograph. Review
+   its private consent record, sanitized bytes, exact manifest diff, both modes,
+   and responsive preview.
+6. Merge and publish only after a new explicit approval for that real-media Pull
    Request. Repeat the pilot separately for video before enabling routine video
    use.
 
@@ -1157,6 +1186,10 @@ Before review of implementation changes:
 - Pull Request creation without merge, standard release-path enforcement,
   preview rendering, both-mode desktop/mobile screenshots, and closed-PR cleanup;
 - urgent derivative deletion plus manifest/suppression corrective workflow.
+- separate finalizer-first withdrawal and purge bridge tests, real-SQLite
+  migration/service integration, SQL-owned 30-day retention, durable R2
+  interruption/retry, immediate consent purge, atomic parent purge, and
+  hash-only post-purge replay.
 
 No real media is used until the synthetic end-to-end and takedown rehearsals
 pass.

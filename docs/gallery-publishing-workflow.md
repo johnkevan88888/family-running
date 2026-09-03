@@ -4,14 +4,68 @@ Phase 1 is an owner-curated public gallery. It deliberately does not accept
 visitor uploads and does not put photographs or videos into Git or the GitHub
 Pages artifact.
 
-## Local review and takedown update — 2 September 2026
+## Local withdrawal-finalization update — 3 September 2026
+
+The finalizer slice is implemented and locally validated on branch
+`codex/gallery-withdrawal-finalizer`, based on exact current `main` commit
+`e76494bc55d29d2e39af2f0690044d5f87e7b617`, the merge of Pull Request #96.
+That baseline includes the PR #90 GitHub permission probe, the PR #92/#93
+response corrections, PR #95's exact-ruleset proof, and PR #96's separation of
+the App-visible rules proof from the owner-only bypass proof. Nothing in this
+slice is deployed: migration `0013` is unapplied, the finalizer Worker and its
+Access boundary do not exist as activated resources, the protected
+finalization secrets/reviewer gate are unproved, and neither new workflow has
+been dispatched. No private or approved media, public manifest, suppression
+file, merge, or publication was changed.
+
+Withdrawal completion and private-data purge are deliberately two different
+manual workflow approvals. Each workflow accepts only the same opaque
+`draft_id`; it fixes its own action internally and derives a different
+deterministic idempotency key. The caller cannot send Family/Everyone, race,
+athlete, consent category, object key, URL, deadline, manifest, or destination.
+D1 remains the authority for all of those facts.
+
+Both workflows call the finalizer before the public-host verifier. A permanent
+withdrawal or purge receipt can therefore answer a safe retry after operational
+rows have gone. If the finalizer reports that current fixed-origin proof is
+missing, it returns only an exact state version and an epoch-bound verifier key.
+The bridge accepts only the verifier's complete positive response, then retries
+the unchanged finalizer request. Storage absence never substitutes for public-
+host absence.
+
+For consent withdrawal, the finalizer first reserves and verifies the exact
+private original, deletes it, and proves the exact key and every server-derived
+draft prefix are empty. Only then can the draft become `withdrawn`; the later
+purge approval is immediately eligible. Editorial removal and athlete
+exclusion instead retain the original for exactly 30 days from the SQLite-owned
+withdrawal time. Their separate purge cannot reserve or touch R2 early. At the
+deadline it performs the same exact deletion and absence proof before D1
+atomically records the purge and removes the private parent rows.
+
+An interrupted provider or database response is resumed from a durable deletion
+reservation. Missing storage before that reservation is an unexplained failure;
+missing storage after the reservation is an accepted retry outcome. Permanent
+receipts keep only hashes and proof facts, not raw draft, uploader, race, site,
+athlete, consent-note, caption, storage-key, provider-version, or ETag values.
+The existing athlete-exclusion request receipt remains the narrow exception:
+it retains its canonical opaque affected-draft list so an exact owner retry is
+stable after purge; the finalizer does not duplicate that list.
+
+The existing no-destination upload, server-derived race/event/distance and
+athlete tags, guardian/consent gates, metadata-stripped public derivatives,
+external-media storage, and whole-item suppression/exclusion rules do not
+change. The finalizer has no approved-media, staging, manifest, suppression,
+GitHub, merge, deployment, or publication capability.
+
+## Historical review and takedown update — 2 September 2026
 
 Pull Request #89 merged durable photo-review receipts, owner withdrawal
 controls, proactive athlete-wide exclusion, and a separate draft-only
 invalidation workflow to `main` at exact merge commit
-`9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`. Its migrations `0011`–`0012`
-and updated Workers have not been applied or deployed, and neither protected
-workflow has been dispatched.
+`9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`. Migrations `0011`–`0012` and their
+narrow non-production Worker/Access proofs subsequently completed only under
+separate approvals. Those gates did not activate the finalizer described above
+or authorize real media or publication.
 
 The review workflow and invalidation workflow each accept only one opaque
 `draft_id`. D1 derives the inherited Family/Everyone area, the race date,
@@ -104,16 +158,16 @@ Request remain the only public publication path. See
 The repository-scoped GitHub App is installed only on this repository with
 Contents and Pull requests write plus required Metadata read. Exactly one
 private key remains after protected storage and cleanup of the local PEM and two
-unusable remote keys. The active `main` rules do not yet make an App-authored
-merge impossible after checks pass. The current safety branch therefore adds a
-fail-closed pre-processing proof: it reads the exact effective rules, submits
-only a same-commit `main` ref update, accepts only a rules-owned denial, and
-re-reads unchanged `main`. That proof has not run remotely. The fixed-origin
+unusable remote keys. Pull Request #90 placed the fail-closed pre-processing
+proof on `main`: it reads the exact effective rules, submits only a same-commit
+`main` ref update, accepts only a rules-owned denial, and re-reads unchanged
+`main`. That proof has not run remotely. The fixed-origin
 host-absence verifier exists remotely only for its
 completed approved synthetic proof and is not a shortcut around
 generation-bound withdrawal verification. Video processing and real family
-media use remain forbidden until separately approved. The local implementation does not authorize a public media URL,
-manifest change, DNS change, Pull Request, merge, or publication.
+media use remain forbidden until separately approved. The local implementation
+does not authorize a public media URL, manifest change, DNS change,
+candidate-media Pull Request, merge, or publication.
 
 ## Public And Private Boundaries
 

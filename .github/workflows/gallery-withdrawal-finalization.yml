@@ -1,0 +1,53 @@
+name: Gallery withdrawal finalization
+
+on:
+  workflow_dispatch:
+    inputs:
+      draft_id:
+        description: Opaque Gallery photo draft ID with completed review cleanup
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gallery-photo-${{ inputs.draft_id }}
+  cancel-in-progress: false
+
+jobs:
+  withdrawal-finalization:
+    if: github.repository == 'johnkevan88888/family-running' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: gallery-finalization
+    timeout-minutes: 20
+    steps:
+      - name: Check out the exact default-branch revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install pinned dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify public absence and finalize private withdrawal
+        env:
+          GALLERY_FINALIZATION_ACTION: withdrawal
+          GALLERY_DRAFT_ID: ${{ inputs.draft_id }}
+          GALLERY_PUBLIC_HOST_VERIFIER_ORIGIN: ${{ secrets.GALLERY_PUBLIC_HOST_VERIFIER_ORIGIN }}
+          GALLERY_PUBLIC_HOST_VERIFIER_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_PUBLIC_HOST_VERIFIER_ACCESS_CLIENT_ID }}
+          GALLERY_PUBLIC_HOST_VERIFIER_ACCESS_CLIENT_SECRET: ${{ secrets.GALLERY_PUBLIC_HOST_VERIFIER_ACCESS_CLIENT_SECRET }}
+          GALLERY_WITHDRAWAL_FINALIZER_ORIGIN: ${{ secrets.GALLERY_WITHDRAWAL_FINALIZER_ORIGIN }}
+          GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_ID }}
+          GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_SECRET: ${{ secrets.GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_SECRET }}
+        run: node scripts/run-gallery-withdrawal-finalization.mjs
