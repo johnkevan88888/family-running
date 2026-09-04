@@ -1,11 +1,11 @@
 SortOrder,RecordGroup,RecordTitle,Sex,Distance,ResultDistance,Participant,Athlete ID,Time,Date,Event,TimeClass,AgeClass,AgeGrade,SourceRow,ExportBundleID
-10,Men,Men's Marathon record,Men,Marathon,Marathon,Kevin Reaney,kevin-reaney,03:30:48,20/10/2024,Yorkshire Marathon,Official,M42,59.5%,83,20260901T174557123Z-3458E180
-20,Men,Men's Half Marathon record,Men,Half Marathon,H. Mar,David Graham-Kevan,david-graham-kevan,01:32:46,10/05/2009,Tewkesbury Half Marathon,Official,M39,63.8%,8,20260901T174557123Z-3458E180
-30,Men,Men's 10 Mile record,Men,10 Mile,10 Mile,Jim Chambers,jim-chambers,01:34:11,14/04/2026,Derry 10 Mile,Official,M69,62.0%,135,20260901T174557123Z-3458E180
-40,Men,Men's 10 km record,Men,10 km,10 km,Kevin Reaney,kevin-reaney,00:48:17,20/10/2024,Yorkshire Marathon,Official,M42,57.6%,84,20260901T174557123Z-3458E180
-50,Men,Men's 5 km record,Men,5 km,5 km,Gareth Devine,gareth-devine,00:19:12,15/08/2026,Darlington South Park Parkrun,Official,M52,77.3%,182,20260901T174557123Z-3458E180
-110,Women,Women's Marathon record,Women,Marathon,Marathon,No eligible result,,,,,Official,,,,20260901T174557123Z-3458E180
-120,Women,Women's Half Marathon record,Women,Half Marathon,H. Mar,Poppy Coleman,poppy-coleman,01:42:56,17/05/2026,Worcester Half,Official,F24,61.1%,145,20260901T174557123Z-3458E180
-130,Women,Women's 10 Mile record,Women,10 Mile,10 Mile,No eligible result,,,,,Official,,,,20260901T174557123Z-3458E180
-140,Women,Women's 10 km record,Women,10 km,10 km,Carolyn Kevan,carolyn-kevan,00:46:54,07/12/2019,Xmas Pudding 10k,Official,F60,78.4%,63,20260901T174557123Z-3458E180
-150,Women,Women's 5 km record,Women,5 km,5 km,Poppy Coleman,poppy-coleman,00:22:37,20/12/2025,Worcester Parkrun,Official,F24,61.5%,112,20260901T174557123Z-3458E180
+10,Men,Men's Marathon record,Men,Marathon,Marathon,Kevin Reaney,kevin-reaney,03:30:48,20/10/2024,Yorkshire Marathon,Official,M42,59.5%,86,20260903T155855260Z-352FE180
+20,Men,Men's Half Marathon record,Men,Half Marathon,H. Mar,David Graham-Kevan,david-graham-kevan,01:32:46,10/05/2009,Tewkesbury Half Marathon,Official,M39,63.8%,8,20260903T155855260Z-352FE180
+30,Men,Men's 10 Mile record,Men,10 Mile,10 Mile,Jim Chambers,jim-chambers,01:34:11,14/04/2026,Derry 10 Mile,Official,M69,62.0%,138,20260903T155855260Z-352FE180
+40,Men,Men's 10 km record,Men,10 km,10 km,Kevin Reaney,kevin-reaney,00:43:09,09/06/2024,Woodhall Spa 10k,Official,M41,64.0%,84,20260903T155855260Z-352FE180
+50,Men,Men's 5 km record,Men,5 km,5 km,Gareth Devine,gareth-devine,00:19:12,15/08/2026,Darlington South Park Parkrun,Official,M52,77.3%,185,20260903T155855260Z-352FE180
+110,Women,Women's Marathon record,Women,Marathon,Marathon,No eligible result,,,,,Official,,,,20260903T155855260Z-352FE180
+120,Women,Women's Half Marathon record,Women,Half Marathon,H. Mar,Poppy Coleman,poppy-coleman,01:42:56,17/05/2026,Worcester Half,Official,F24,61.1%,148,20260903T155855260Z-352FE180
+130,Women,Women's 10 Mile record,Women,10 Mile,10 Mile,No eligible result,,,,,Official,,,,20260903T155855260Z-352FE180
+140,Women,Women's 10 km record,Women,10 km,10 km,Carolyn Kevan,carolyn-kevan,00:46:54,07/12/2019,Xmas Pudding 10k,Official,F60,78.4%,63,20260903T155855260Z-352FE180
+150,Women,Women's 5 km record,Women,5 km,5 km,Poppy Coleman,poppy-coleman,00:22:37,20/12/2025,Worcester Parkrun,Official,F24,61.5%,115,20260903T155855260Z-352FE180
