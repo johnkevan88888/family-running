@@ -1,8 +1,77 @@
 # Active Work
 
-## Current task: durable photo-review and owner-takedown controls
+## Current task: complete owner-approved withdrawal and private-data purge
 
-### Status — remote review path active; App-visible proof pending review 3 September 2026
+### Status — post-rebase validation complete for Pull Request review 4 September 2026
+
+This branch is based on exact current `main` commit
+`e76494bc55d29d2e39af2f0690044d5f87e7b617`, the merge of Pull Request #96.
+That baseline contains the durable review, invalidation, owner withdrawal,
+athlete-exclusion, corrected GitHub review-boundary controls, and all work from
+Pull Requests #90, #92, #93, #95, and #96. The separately approved
+non-production activation through migration `0012` and the associated narrow
+Worker/Access proofs happened before this branch. Those provider facts have not
+been changed or freshly reread by this local implementation turn.
+
+The missing final step is now implemented locally. Migration
+`0013_withdrawal_finalization.sql` adds separate, immutable `withdrawal` and
+`purge` operations. A dedicated service-only finalizer Worker accepts only an
+opaque draft ID in its route and one deterministic idempotency key in its JSON
+body. It has exactly D1 and private-original storage capability; it cannot reach
+approved media, private staging, manifests, GitHub, Pages, merge, or deployment
+controls.
+
+The protected withdrawal workflow always asks the finalizer first. If the
+current delivery epoch still needs a fixed-origin public-host absence receipt,
+the finalizer returns only the required state version and an epoch-bound
+verifier key. The workflow calls the existing verifier and retries the same
+finalizer action. The separately protected purge workflow uses a different
+deterministic key and approval. Neither workflow can choose Family/Everyone,
+race metadata, athlete tags, consent category, storage keys, retention dates,
+or a publication destination.
+
+Consent withdrawal deletes and proves absence of the exact private original
+before final withdrawal, then makes purge immediately eligible. Editorial
+removal and athlete exclusion retain the private original for exactly 30 days
+from the database-owned withdrawal time, after which the separate purge action
+deletes and proves absence before removing the operational draft. A durable D1
+reservation makes an interrupted R2 deletion safely resumable. Initial
+unexplained object absence fails closed; absence after a valid reservation is a
+recoverable terminal result. Permanent withdrawal, deletion, and purge
+receipts retain hashes and proof facts only, so exact replay still works after
+the private parent rows are purged without retaining uploader, race, site,
+athlete, object-key, or free-text data.
+The migration also removes any legacy raw-ID retention authorization whose
+parent was already purged before `0013`; future rows leave inside the same
+guarded parent-purge transaction.
+
+After rebasing onto Pull Request #96, focused tests pass for the complete
+migration chain `0001`–`0013`, the real finalizer service against SQLite and an
+in-memory R2 substitute, the Worker and inert Wrangler example, and both
+protected workflow bridges. Regression checks
+also pass for review invalidation, public-host verification, approved-media
+lifecycle, owner withdrawal/exclusion, admin capability boundaries, and
+repository safety. The complete repository suite passes, including the exact
+114-file preview artifact and responsive Family/Everyone browser checks. A
+final independent read-only security review found no remaining blocker; it also
+confirmed that public manifests, data, suppression, and runtime files remain
+unchanged and that no media file was added.
+
+Migration `0013` has not been applied, no finalizer Worker or Access resource
+has been created or deployed, and neither new workflow has been dispatched. No
+merge, R2 mutation, real-media transfer, manifest edit, or publication has
+occurred.
+Both public manifests and the shared suppression file remain unchanged. The
+feature branch and Pull Request are repository-review gates only; every remote
+activation step remains a later explicit approval gate.
+
+## Completed task: durable photo-review and owner-takedown controls
+
+### Status — merged as Pull Request #89 on 2 September 2026
+
+The material below records the separately completed PR #89, PR #90, PR #92,
+PR #93, PR #95, PR #96, and non-production activation history. The current
+finalizer status is the section above.
 
 Pull Request #89 merged the reviewed implementation to `main` at exact commit
 `9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`. Provider readback on 3 September
@@ -146,6 +215,9 @@ focused test and `git diff --check` pass; the complete suite is pending before
 review. No real media, candidate Pull Request, Gallery publication, video,
 DNS, or Cloudflare deployment was created or authorized by any failed-closed
 run.
+
+This finalizer branch has not dispatched either finalizer workflow or changed
+the separately controlled provider resources.
 
 ## Current task: photo-only Gallery go-live implementation bridge
 

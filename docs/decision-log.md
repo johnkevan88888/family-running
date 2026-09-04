@@ -3,10 +3,68 @@
 This log records durable architectural decisions, not proposed features.
 Unknown historical details are labelled rather than inferred.
 
+## Withdrawal completion and private-data purge are separate approved actions
+
+- **Status:** Accepted and implemented locally; migration `0013`, the dedicated
+  Worker, its Access boundary, and both workflows are not activated
+- **Date:** 3 September 2026
+- **Decision:** Final withdrawal and later private-data purge use one dedicated
+  service-only Worker with exactly D1 and private-original R2 bindings. The
+  route contains only the opaque draft ID and the body contains only one exact
+  deterministic idempotency key. Withdrawal and purge have different keys,
+  durable operations, protected workflow approvals, and permanent receipts.
+  The caller cannot select the action by sending a field: current D1 state and
+  the exact key together determine whether the request is the withdrawal step
+  or the later purge step.
+- **Decision:** The finalizer is consulted before the public-host verifier. A
+  permanent finalizer receipt can therefore answer a replay after operational
+  rows have been purged. When current fixed-origin absence evidence is missing,
+  the finalizer returns only the required state version and an idempotency key
+  bound to the current delivery epoch. The bridge calls the existing verifier,
+  accepts only its exact positive proof response, and retries the same
+  finalizer request. R2 absence alone never substitutes for public-host proof.
+- **Decision:** SQLite owns all authoritative withdrawal, deletion, retention,
+  approval, and purge timestamps. Consent withdrawal must reserve, verify, and
+  delete the exact version/ETag/SHA-bound private original before the draft can
+  become `withdrawn`; its separate purge is immediately eligible. Editorial
+  removal and athlete exclusion retain the original until exactly 30 days after
+  the database-recorded withdrawal time, then require a separately approved
+  purge that deletes and proves absence first.
+- **Rationale:** Storage deletion and database updates cannot form one provider
+  transaction. A durable deletion reservation, exact object rechecks, bounded
+  byte hashing, final `HEAD`, and fully paginated empty-prefix proof make a lost
+  HTTP or D1 response safely retryable without treating unexplained pre-action
+  absence as success. Database-owned time prevents a caller or Worker clock
+  from shortening retention.
+- **Consequences:** Final withdrawal still requires positive terminal review or
+  abandonment evidence, exact approved-media and private-staging cleanup rows
+  with their matching tombstones, and a current generation/epoch-bound host
+  receipt. Purge is atomic at the D1 boundary. Permanent withdrawal,
+  private-deletion, and purge receipts survive parent deletion with hashes and
+  proof facts only; they retain no raw draft ID, uploader, site, race, athlete,
+  consent note, object key, provider identifier, caption, or other free text.
+  The existing inherited-area, owner tagging, whole-item suppression,
+  metadata-stripping, external-media, and photo-only contracts do not change.
+  Neither finalizer workflow can edit a manifest, suppression file, branch,
+  Pull Request, deployment, or `main`.
+- **Consequence:** The older live retention-authorization table contains the raw
+  opaque draft ID needed before purge. Migration `0013` keeps that row immutable
+  while the parent exists, removes any pre-`0013` row whose parent is already
+  gone, then removes future rows automatically in the same guarded parent-purge
+  transaction. Only the permanent hash-only purge receipt, or the
+  existing permanent retention-purpose host receipt for the historical
+  rejected/processing-failed branch, can authorize that cleanup.
+- **Existing exception preserved:** Migration `0012` deliberately keeps the
+  original canonical list of opaque affected draft IDs in an athlete-exclusion
+  request receipt so an owner retry returns the same result after draft purge.
+  The new hash-only promise applies to finalizer, deletion, purge, host, and
+  retired live-retention evidence; it does not rewrite or weaken that earlier
+  exact-replay contract.
+
 ## Gallery review and owner takedown evidence is durable and privacy-first
 
-- **Status:** Accepted and implemented locally; migrations and changed Workers
-  are not deployed
+- **Status:** Accepted, merged in Pull Request #89, and separately activated in
+  non-production; exact provider state was not refreshed in this local turn
 - **Date:** 2 September 2026
 - **Decision:** A photo review is bound to one immutable D1 reservation before
   GitHub is contacted. The receipt fixes the opaque draft, promotion and

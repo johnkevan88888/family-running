@@ -1,53 +1,98 @@
 # Gallery Administration Workers
 
-This directory contains the deployed authentication baseline, the remotely
-verified synthetic Phase C rehearsal, the deployed real-photo admin intake,
-and the Phase D private photo-
-processing boundary. It is not part of the GitHub Pages runtime and does not
-provide a public-site upload control. The deployed administration Worker
-remains owner-only and can reach only D1 and private originals; the separate
-media Worker can reach only approved derivatives. The normal Phase D processing
-Worker is a third, service-only component that can read private originals and
-write private staging, but cannot reach approved media or either public
-manifest. It is currently deployed at exact version
-`f58e0a1f-3ca4-4b66-a81f-9435d9af4f15` behind its active narrow Service Auth
-policy; the merged PR #89 processing changes are not deployed. A fourth
-repository-only promotion Worker now covers D1 plus staging-read and approved-
-write access. Its earlier photo-only version is deployed at exact version
-`44109f3f-53ac-4714-977e-41176656ff40` behind a separate one-token Service
-Auth policy and cannot reach originals, manifests, or GitHub; the newer PR #89
-review/invalidation routes are not deployed. Pull
-Request #84 merged that promotion/cleanup and review foundation to `main` at
-exact commit `4b6c7be70d77ce389f7ee9a5b103858cd31ff55b`; the exact 114-file
-GitHub Pages artifact and production site were byte-verified, with both modes
-rendered and both public Gallery manifests still empty. That static verification
-did not deploy a Cloudflare migration or Worker. A fifth service-only public-
-host verifier and the delivery-proof media changes are implemented and fully
-locally validated in source. Migrations `0007`–`0009` were applied to the
-non-production D1 database on 31 August 2026, and the delivery-proof media
-Worker was separately deployed at exact version
-`cf327eb6-6ba6-46e4-a5da-8e3f541afb8e`. The fixed witness was then separately
-uploaded and byte-verified; matching delivery epoch
-`media_delivery_epoch_dev_0001` was then separately registered and activated as
-  sequence `1`. The verifier was then separately deployed at exact version
-  `6ba9af24-6123-480b-8e6f-980a742348dc`, and its non-mutating no/wrong/exact
-  Service Auth proof passed. The separately approved live synthetic zero-
-  generation editorial-withdrawal, guarded purge, and integrity postflight also
-  passed. Its temporary Service Auth policy and token were then deleted, leaving
-  the exact-host verifier application parked with zero policies. Both Worker
-  deployments, approved R2's witness-only inventory, both public manifests, and
-  the public site remained unchanged.
+This directory contains the owner-only administration Worker and separate
+least-privilege service Workers for private processing, promotion, approved
+media delivery, fixed-origin host verification, and the withdrawal
+finalizer. It is not part of the GitHub Pages runtime and does not provide a
+public-site upload control. No Worker combines access to private originals,
+private staging, approved media, and GitHub.
 
-## Local review, withdrawal, and exclusion safety slice
+The exact repository baseline for this branch is `origin/main` commit
+`e76494bc55d29d2e39af2f0690044d5f87e7b617`, the merge of Pull Request #96.
+That baseline includes the fail-closed pre-processing same-commit `main` ref
+probe from Pull Request #90, the response corrections from Pull Requests #92
+and #93, the exact-ruleset proof from Pull Request #95, and Pull Request #96's
+separation of the App-visible rules proof from the owner-only bypass proof.
+The earlier admin, processing, promotion, media, verifier, delivery-epoch,
+review, invalidation, and non-production migrations through `0012` passed
+their own separately approved activation gates. This branch has not changed or
+freshly reread that provider state. The public manifests and suppression file
+remain unchanged, and the finalizer files do not enter the 114-file GitHub
+Pages artifact.
 
-The 2 September 2026 merged slice adds migrations `0011` and `0012`, protected
+## Local withdrawal-finalizer boundary
+
+The 3 September 2026 branch adds a sixth, service-only Worker at
+`src/withdrawal-finalizer-worker.js`, migration
+`0013_withdrawal_finalization.sql`, and two separately approved manual
+workflows. The implementation is not merged or deployed: migration `0013` is
+unapplied, no finalizer Access application, policy, or token is configured, the
+`gallery-finalization` reviewer and secrets gate is unproved, and neither
+workflow has been dispatched.
+
+The exact route is
+`POST /api/service/drafts/{draft_id}/withdrawal-finalizations`. Its JSON body is
+exactly `{ "idempotencyKey": "..." }`. The service independently recomputes
+different deterministic keys for `withdrawal` and `purge`; current D1 state and
+the key determine the action. No action, site, race, athlete, consent kind,
+storage key, deadline, URL, or manifest destination is accepted from the
+caller.
+
+The Worker environment has exactly four bindings/values: `DB`,
+`PRIVATE_ORIGINALS`, `FINALIZER_IDENTITY`, and `FINALIZER_ORIGIN`. The committed
+Wrangler example deliberately contains only the two resource bindings and
+invalid replacement markers; the identity and origin must be supplied outside
+Git. The Worker has no approved-media, private-staging, manifest, suppression,
+GitHub, branch, Pull Request, merge, deployment, Pages, browser, route, cron, or
+custom-domain capability.
+
+The workflow sequence is finalizer first. If current fixed-origin host evidence
+is absent, the service returns only the required state version and an
+epoch-bound verifier idempotency key. The bridge calls the existing verifier,
+requires its exact positive proof package, and retries the same finalizer key.
+This order preserves permanent replay after the operational draft is purged and
+does not confuse R2 deletion with public-host absence.
+
+Consent withdrawal durably reserves deletion, checks the exact R2 version,
+ETag, size, and SHA-256, rereads the exact bytes within the existing bound,
+rechecks the object, deletes the exact key, proves final `HEAD` absence, and
+fully paginates every server-derived draft prefix to prove it empty. The
+withdrawal then completes and a separate purge is immediately eligible.
+Editorial removal and athlete exclusion keep the original for exactly 30 days
+from the SQLite-owned withdrawal timestamp; their separate purge returns
+`retention-pending` without reserving an operation or touching R2 until that
+deadline.
+
+An interrupted storage action is resumed from its durable deletion reservation.
+Initial unexplained absence fails closed; absence after a matching reservation
+is an exact terminal retry result. Permanent withdrawal, private-deletion, and
+purge receipts survive parent deletion with hashes and proof facts only. They
+do not retain raw draft, uploader, site, race, athlete, consent-note, caption,
+object-key, provider-version, or ETag values.
+The older live retention authorization keeps its opaque draft ID only until the
+guarded parent purge, then a migration-owned trigger removes that row in the
+same transaction so it cannot become a permanent raw-identifier survivor.
+Migration `0013` first removes every already-orphaned legacy retention row,
+which can no longer authorize a live action after its parent is gone.
+The earlier migration-`0012` athlete-exclusion request receipt remains a narrow
+intentional exception: it keeps the canonical opaque affected-draft list for
+exact owner replay after purge. The finalizer does not copy that list into its
+own receipts or weaken that established retry contract.
+
+Focused real-SQLite migration and service integration, R2 interruption/retry,
+Worker/configuration, protected bridge/workflow, and earlier takedown regression
+tests pass locally. The public manifests and suppression file are unchanged.
+
+## Merged review, withdrawal, and exclusion safety slice
+
+The 2 September 2026 slice added migrations `0011` and `0012`, protected
 review and invalidation routes on the promotion Worker, and owner-only
-withdrawal/exclusion routes on the admin Worker. The migrations are not applied,
-the changed Workers are not deployed, and neither workflow has been dispatched.
-The reviewed source merged through Pull Request #89 at exact `main` commit
-`9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`.
-and Pull Request #89; opening that review branch changed no R2 object, public
-manifest, suppression file, Access resource, deployment, merge, or publication.
+withdrawal/exclusion routes on the admin Worker. The reviewed source was commit
+`3078c59`; Pull Request #89 later merged as exact `main` commit
+`9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`. Its later, separately approved
+non-production activation is outside this historical implementation record.
+Opening that review branch changed no R2 object, public manifest, suppression
+file, Access resource, deployment, merge, or publication.
 
 The protected review workflow accepts only `draft_id`. It reserves one
 immutable receipt before GitHub, then records exact open and terminal Pull
@@ -364,27 +409,20 @@ copy would require the confirmed D1/staging/approved resource identifiers plus:
 - `PROMOTION_ORIGIN`: the exact HTTPS promotion Worker origin; and
 - `APPROVED_MEDIA_ORIGIN`: the exact HTTPS read-only media Worker origin.
 
-Migrations `0007`–`0009` are now applied to the non-production D1 database.
-Do not deploy this Worker without separate approval. R2 bucket absence is not
-host-absence proof; the deployed verifier below has completed only the approved
-synthetic zero-generation withdrawal-purpose rehearsal. The tracked one-day
-`media/v1/` incomplete-multipart lifecycle requirement is orphan containment
-only and cannot authorize a tombstone or purge. It is now applied to the exact
-approved-media bucket and independently verified through the lifecycle API and
-bucket Settings page.
-Protected candidate retrieval, orchestration, and both default-branch workflows
-are merged but have not been dispatched. The protected `gallery-processing`
-environment is restricted to exact `main` and contains the six processing and
-promotion connection secrets plus the Gallery review App ID and single
-remaining private key. The App is installed only on this repository with
-Contents and Pull requests write plus required Metadata read. The downloaded
-PEM and two unusable remote keys were deleted after storage. The current safety
-branch adds a fail-closed proof before contacting the processing Worker: it
-requires the exact effective `main` rules, accepts only a rules-owned denial of
-a same-commit update, and re-reads unchanged `main`. It is not yet merged or
-remotely exercised. No promotion/cleanup route, approved Gallery derivative,
-manifest edit, candidate branch, or candidate-media Pull Request has been
-created.
+Migrations `0007`–`0012` are applied to the non-production D1 database. The
+promotion Worker, its narrow Access boundary, and the protected review and
+invalidation path were subsequently activated and proved only under their own
+approved gates. Pull Request #90 placed the fail-closed same-commit `main` ref
+probe on `main`. At that checkpoint, the protected `gallery-processing`
+environment was recorded as restricted to exact `main`, with the six service
+connection secrets and repository-only Gallery review App credentials. This
+branch has not freshly rerun or reread those remote controls and therefore does
+not claim new provider proof. R2 bucket absence is not host-absence proof; the
+deployed verifier below supplies that separate boundary. The tracked one-day
+`media/v1/` incomplete-multipart lifecycle requirement remains orphan
+containment only and cannot authorize a tombstone or purge. The finalizer slice
+changes none of these resources and cannot deploy, promote, edit a manifest,
+open or merge a candidate-media Pull Request, or publish.
 
 ## Local public-host verifier boundary
 
@@ -521,22 +559,22 @@ private originals, and secret names `ADMIN_ORIGIN`, `OWNER_IDENTITIES`, and
 unchanged. Anonymous browser and service health requests both redirect to
 Access. A normal owner session then returned exact
 `{"ok":true,"scope":"owner-browser"}` from the browser health route, with both
-screenshot and live-tab confirmation. Processing/promotion Worker deployment
-and new service Access remain later, separate gates. No source, local test, or
-admin health result grants approval for either or for a real-media transfer.
+screenshot and live-tab confirmation. At that checkpoint, processing/promotion
+deployment and new service Access were still separate gates; their later
+approved activation does not grant permission for this new finalizer or for a
+real-media transfer.
 
 ## Configuration boundary
 
-The five example Wrangler files contain resource names and unmistakable invalid
+The six example Wrangler files contain resource names and unmistakable invalid
 replacement markers only. They are not deployable as committed. This is
 deliberate: current Wrangler can automatically provision a D1 database when an
 identifier is omitted. Make ignored local configuration only after the exact
 non-production resources are confirmed, replace the markers there, and never
 commit a real database or account identifier.
 
-The currently deployed Phase C admin Worker binds only D1 and private originals
-plus an hourly cleanup trigger. It does not bind derivative staging or approved-
-public storage. The three
+The admin Worker binds only D1 and private originals plus an hourly cleanup
+trigger. It does not bind derivative staging or approved-public storage. The three
 provisioned bucket names are:
 
 - `family-running-gallery-originals-dev`
@@ -544,11 +582,11 @@ provisioned bucket names are:
 - `family-running-gallery-approved-dev`
 
 The public media Worker binds only the last bucket. Phase C binds only the first.
-The processing Worker binds D1 plus only the first two buckets. The undeployed
-promotion Worker binds D1 plus only staging and approved storage. The deployed
-verifier binds D1 only; its fixed public checks use outbound fetch,
-not an R2 binding. No component
-can reach originals, staging, approved storage, and GitHub together.
+The processing Worker binds D1 plus only the first two buckets. The promotion
+Worker binds D1 plus only staging and approved storage. The verifier binds D1
+only; its fixed public checks use outbound fetch, not an R2 binding. The local
+finalizer binds D1 plus only private originals. No component can reach
+originals, staging, approved storage, and GitHub together.
 
 Set these values outside Git for the current owner-only admin deployment:
 
@@ -708,8 +746,9 @@ intake with both pieces of evidence and prevent either fact from changing.
 Historical synthetic uploads keep the default false marker and cannot enter the
 real-photo processing path.
 
-Migration `migrations/0011_photo_review_invalidation.sql` is local and not
-applied. It adds immutable photo-review reservation/open/terminal receipts and
+Migration `migrations/0011_photo_review_invalidation.sql` is in the merged
+baseline and was separately applied to non-production after approval. It adds
+immutable photo-review reservation/open/terminal receipts and
 an immutable pre-reservation abandonment receipt. It keeps the processing run,
 candidate and generation facts, inherited-area manifest path, workflow run,
 deterministic branch, and exact Pull Request evidence together. Review and
@@ -717,14 +756,26 @@ abandonment are mutually exclusive for one draft. A final withdrawn transition
 cannot pass while a review remains reserved or open, and no migration makes
 `pr-open` or `published` reachable.
 
-Migration `migrations/0012_owner_withdrawal_exclusion_receipts.sql` is local and
-not applied. It adds one immutable athlete-exclusion request receipt with the
+Migration `migrations/0012_owner_withdrawal_exclusion_receipts.sql` is in the
+merged baseline and was separately applied to non-production after approval. It
+adds one immutable athlete-exclusion request receipt with the
 public athlete ID, request and suppression hashes, original suppression
 revision, canonical sorted opaque affected-draft JSON/hash/count, and audit
 timestamps. It contains no draft foreign keys so the retry authority survives
 an approved purge. SQL enforces exact lowercase `draft_<UUID-v4>` values,
 strict ordering and uniqueness, exact set hashing, and append-only/no-replace
 behavior. It stores no names, reasons, request notes, or private identities.
+
+Migration `migrations/0013_withdrawal_finalization.sql` is local and unapplied.
+It adds separate live withdrawal and purge operations, permanent hash-only
+withdrawal/private-deletion/purge receipts, exact current-host and cleanup
+guards, a one-way private-deletion scalar, SQLite-owned immutable timestamps,
+an exact generated 30-day editorial/athlete retention deadline, and atomic
+purge receipt plus parent deletion. Consent withdrawal requires its exact
+private-original deletion tombstone before final withdrawal. The older
+rejected/processing-failed retention-expiry path remains available only through
+its hardened 30-day, current-host, private-deletion, and approved-retention
+evidence.
 
 Private consent, derivative, publication, and transition rows cascade when an
 eligible draft is explicitly purged. Original, staging, and approved object
