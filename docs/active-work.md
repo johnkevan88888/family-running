@@ -2,7 +2,38 @@
 
 ## Current task: durable photo-review and owner-takedown controls
 
-### Status — remote review path active; App-visible proof pending review 3 September 2026
+### Status — synthetic rehearsal verified processing; bounded diagnostic correction pending review 4 September 2026
+
+The owner-approved, synthetic-only rehearsal reached the protected workflow on
+exact `main` commit `e76494bc55d29d2e39af2f0690044d5f87e7b617`. GitHub App
+permission preflight passed against ruleset `18119142`. The generated JPEG was
+accepted through the inherited Family area with server-derived Training,
+10 km, and public athlete-tag facts. Its exact source SHA-256 was preserved,
+and the processing service created and verified both required WebP outputs.
+A read-only D1 readback shows the display output at 1200 by 800 and the
+thumbnail at 480 by 320, both with the exact zero-entry ExifTool metadata scan.
+No real media was used.
+
+Workflow run `33908268250` then failed closed inside promotion before a
+candidate, branch, review receipt, or Pull Request existed. Read-only D1 and R2
+checks show an active promotion with both approved-object rows still reserved;
+the two private staging objects remain byte-exact to their recorded SHA-256 and
+lengths. No approved-media object, public-manifest item, candidate branch, or
+candidate Pull Request was created. Both public Gallery manifests remain empty
+and `main` remains unchanged.
+
+The protected runner previously collapsed this safe service failure and its
+expected failed abandonment into one generic message. The corrective change
+now reads at most 256 bytes from a JSON error response, accepts only a fixed
+allowlist of non-sensitive service codes, and includes the bounded nested
+failure chain in the runner message. Unknown, malformed, non-JSON, or oversized
+responses still disclose no body content and remain fail closed. The focused
+bridge test now reproduces the partial-promotion case and proves that neither
+GitHub review creation nor a false cleanup-success claim occurs. The next
+approved step after the required repository checks is to merge this
+script/test/documentation-only correction, verify the Pages artifact remains
+byte-identical with both manifests empty, and retry the same idempotent
+synthetic draft. A Worker deployment is not part of this correction.
 
 Pull Request #89 merged the reviewed implementation to `main` at exact commit
 `9bb7a0e665a4ee83ad3f7f97fc2cf6b1605b050e`. Provider readback on 3 September

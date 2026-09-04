@@ -19,6 +19,30 @@ const sha256Pattern = /^[a-f0-9]{64}$/;
 const workflowRunReferencePattern =
     /^https:\/\/github\.com\/johnkevan88888\/family-running\/actions\/runs\/[1-9][0-9]*\/attempts\/[1-9][0-9]*$/;
 const serviceKeys = Object.freeze(['origin', 'clientId', 'clientSecret']);
+const serviceErrorCodes = new Set([
+    'approved-object-conflict',
+    'candidate-ineligible',
+    'cleanup-failed',
+    'conflict',
+    'derivative-rejected',
+    'invalid-media',
+    'invalid-request',
+    'metadata-scan-failed',
+    'not-found',
+    'processing-failed',
+    'processing-not-eligible',
+    'promotion-cleanup-not-eligible',
+    'promotion-cleaned',
+    'promotion-not-eligible',
+    'review-invalidation-not-required',
+    'review-not-eligible',
+    'service-unavailable',
+    'source-rejected',
+    'staging-object-conflict',
+    'toolchain-unavailable'
+]);
+const safeServiceFailurePattern =
+    /^Protected Gallery service request failed with status (?:400|404|409|413|422|503)(?: \([a-z-]+\))?\.$/;
 const optionKeys = Object.freeze([
     'draftId',
     'expectedBaseSha',
@@ -178,7 +202,9 @@ export async function runPhotoReviewBridge(options) {
         } catch (compensationError) {
             throw new AggregateError(
                 [preReviewError, compensationError],
-                'The Gallery candidate could not reach review and its durable cleanup could not be completed.'
+                'The Gallery candidate could not reach review and its durable cleanup could not be completed. ' +
+                    `Pre-review: ${safeFailureSummary(preReviewError)} ` +
+                    `Cleanup: ${safeFailureSummary(compensationError)}`
             );
         }
         throw new Error(
@@ -271,7 +297,14 @@ function serviceClient(configuration, fetchImpl) {
                 redirect: 'error'
             });
             if (!(response instanceof Response) || !response.ok) {
-                throw new Error(`Protected Gallery service request failed with status ${response?.status || 503}.`);
+                const status = response?.status || 503;
+                const errorCode = response instanceof Response
+                    ? await readSafeServiceErrorCode(response)
+                    : null;
+                throw new Error(
+                    `Protected Gallery service request failed with status ${status}` +
+                        `${errorCode ? ` (${errorCode})` : ''}.`
+                );
             }
             return response;
         },
@@ -290,6 +323,65 @@ function serviceClient(configuration, fetchImpl) {
             return response.json();
         }
     };
+}
+
+async function readSafeServiceErrorCode(response) {
+    if (response.headers.get('Content-Type')?.split(';')[0] !== 'application/json') {
+        return null;
+    }
+    const reader = response.body?.getReader?.();
+    if (!reader) return null;
+    const chunks = [];
+    let length = 0;
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            length += value.byteLength;
+            if (length > 256) {
+                await reader.cancel().catch(() => {});
+                return null;
+            }
+            chunks.push(value);
+        }
+        const bytes = new Uint8Array(length);
+        let offset = 0;
+        for (const chunk of chunks) {
+            bytes.set(chunk, offset);
+            offset += chunk.byteLength;
+        }
+        const value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+        return exactKeys(value, ['error']) && serviceErrorCodes.has(value.error)
+            ? value.error
+            : null;
+    } catch {
+        return null;
+    } finally {
+        try {
+            reader.releaseLock();
+        } catch {
+            // The response body is diagnostic-only and remains fail closed.
+        }
+    }
+}
+
+function safeFailureSummary(error) {
+    const messages = [];
+    const visit = value => {
+        if (!value || messages.length >= 8) return;
+        if (
+            typeof value.message === 'string' &&
+            safeServiceFailurePattern.test(value.message)
+        ) {
+            messages.push(value.message);
+        }
+        if (value instanceof AggregateError) {
+            for (const nested of value.errors) visit(nested);
+        }
+        if (value.cause) visit(value.cause);
+    };
+    visit(error);
+    return [...new Set(messages)].join(' | ') || 'details unavailable';
 }
 
 async function failAndCleanProcessing(client, run, draftId, error) {
