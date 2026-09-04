@@ -193,6 +193,26 @@ assert.ok(abandonmentServer.requests.some(entry =>
 ));
 assertCleanupBodies(abandonmentServer.requests);
 
+const partialPromotionServer = bridgeServer({ promotionAlwaysFails: true });
+await assert.rejects(
+    runPhotoReviewBridge({
+        ...bridgeOptions(partialPromotionServer.fetchImpl),
+        createReview: async () => {
+            throw new Error('GitHub must not be reached without a promoted candidate.');
+        }
+    }),
+    error => {
+        assert.match(error.message, /durable cleanup could not be completed/);
+        assert.match(error.message, /status 503 \(service-unavailable\)/);
+        assert.match(error.message, /status 409 \(review-not-eligible\)/);
+        return true;
+    }
+);
+assert.equal(partialPromotionServer.promotionCount(), 2);
+assert.ok(partialPromotionServer.requests.some(entry =>
+    entry.pathname.endsWith('/photo-review-abandonment')
+));
+
 for (const secondReadMode of ['changed', 'ineligible']) {
     const staleServer = bridgeServer({ secondReadMode });
     let reconciliation;
@@ -376,6 +396,9 @@ function bridgeServer(options = {}) {
         }
         if (parsed.pathname.endsWith('/photo-promotions')) {
             promotions += 1;
+            if (options.promotionAlwaysFails) {
+                return jsonResponse(503, { error: 'service-unavailable' });
+            }
             if (options.promotionFirstFailure && promotions === 1) {
                 return jsonResponse(503, { error: 'service-unavailable' });
             }
@@ -418,6 +441,9 @@ function bridgeServer(options = {}) {
             });
         }
         if (parsed.pathname.endsWith('/photo-review-abandonment')) {
+            if (options.promotionAlwaysFails) {
+                return jsonResponse(409, { error: 'review-not-eligible' });
+            }
             return jsonResponse(201, {
                 abandonment: {
                     schemaVersion: '1.0',
