@@ -94,6 +94,10 @@ pnpm run test:gallery-phase-d-processing-configs
 pnpm run test:gallery-phase-d-remote-rehearsal
 pnpm run test:gallery-public-host-remote-rehearsal
 pnpm run test:gallery-public-host-remote-sqlite-integration
+pnpm run test:gallery-withdrawal-finalization-migration
+pnpm run test:gallery-withdrawal-finalizer-service
+pnpm run test:gallery-withdrawal-finalizer-worker
+pnpm run test:gallery-withdrawal-finalization-bridge
 ```
 
 These commands use generated synthetic bytes, in-memory substitutes, and fake
@@ -101,6 +105,26 @@ command/service adapters. They do not mutate Cloudflare. Running the actual
 remote rehearsal requires separate explicit approval and an Access credential
 passed only in memory, never through an argument, environment variable, file,
 report, or log.
+
+The withdrawal-finalization migration and service suites apply the real
+`0001`–`0013` chain to SQLite and use an in-memory R2 substitute. They prove
+separate deterministic withdrawal/purge authority, positive terminal review
+and exact cleanup gates, current host-proof convergence, database-owned
+timestamps, exact 30-day editorial/athlete retention, consent deletion before
+withdrawal, durable interrupted-deletion retry, atomic purge rollback,
+hash-only permanent receipts, and replay after parent purge without storage
+I/O. For the consent fixture, they also scan every surviving table for the
+purged raw draft ID and prove the older live retention authorization leaves in
+the same guarded transaction. This is not applied as a universal athlete-
+exclusion assertion: migration `0012` intentionally preserves its canonical
+opaque affected-draft list for exact owner replay after purge.
+The migration fixture also seeds the known pre-`0013` orphan-retention shape
+and requires the migration-time cleanup to remove it before the new guard is
+installed.
+The Worker/configuration and bridge suites prove the exact service route,
+identity/origin/body/binding limits, separate protected workflows, finalizer-
+first ordering, bounded verifier refresh, fixed non-identifying logs, and no
+manifest, suppression, GitHub-write, merge, deployment, or publication path.
 
 The administration integration suite drives the actual router through
 signed-session and CSRF controls, applies migrations `0001`–`0003` plus the
@@ -1241,6 +1265,25 @@ Before approving a Pull Request:
   only the intended item while preserving every existing item and order in the
   upload's inherited Family or Everyone area; there must be no destination
   selector or cross-mode edit.
+- For withdrawal-finalizer infrastructure, treat repository review, migration
+  application, Worker deployment, Access policy/token creation, protected
+  environment configuration, withdrawal dispatch, purge dispatch, and
+  credential cleanup as separate approval gates. Before dispatch, read back
+  migration `0013`, the exact four-value Worker environment, no unexpected
+  routes/triggers/bindings, the exact-host Access application/policy, and the
+  protected environment's required reviewers and secret names. Prove anonymous
+  and wrong credentials stop at Access and the exact identity reaches only a
+  non-mutating method or not-found boundary. Never use a real draft for that
+  access proof.
+- In a synthetic finalization rehearsal, prove the finalizer is called first,
+  any verifier request is bound to the current state version and delivery
+  epoch, and the same action key is retried. Verify consent deletes the exact
+  private original before withdrawal and is immediately purge-eligible;
+  separately prove editorial/athlete purge remains pending for the full
+  database-owned 30 days without reserving a purge or touching R2. Reconcile
+  exact R2 prefix inventories, D1 foreign keys/quick check, permanent hash-only
+  receipts, closed review state, and unchanged public manifests. Do not shorten
+  retention or fabricate timestamps to make a remote rehearsal convenient.
 - Do not report a local injected redirect, cache, wrong-binding, or historical-
   target fault as remote proof. A live fault run needs a reviewed harness,
   explicit Worker-deployment approvals, restoration evidence, and a separately
@@ -1299,6 +1342,17 @@ instead require the exact token lookup to return not found, the token and policy
 lists to omit their IDs, the retained Access application to report zero
 policies, and a credential-free request to be intercepted before the Worker.
 Record that limitation explicitly in the handoff.
+
+A passing local withdrawal-finalizer suite is implementation evidence only. It
+does not authorize migration `0013`, a Worker deployment, an Access resource,
+GitHub environment secrets, a workflow dispatch, R2 deletion, or private-row
+purge. Withdrawal and purge remain two human-approved workflow runs. For
+editorial removal and athlete exclusion, a `retention-pending` result is a
+successful safe stop, not permission to bypass or shorten the 30-day deadline.
+For consent withdrawal, do not report final withdrawal until the exact private
+original and every server-derived prefix are proved absent. In every category,
+do not report purge until the permanent purge receipt exists and the parent
+operational draft is absent while the hash-only receipts remain replayable.
 
 The first Official Results News release changes the workbook, export set, CSV
 contract, published runtime, and browser behavior. It must use the standard
