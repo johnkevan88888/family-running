@@ -67,7 +67,7 @@ activation step remains a later explicit approval gate.
 
 ## Current task: complete the synthetic photo-review rehearsal
 
-### Status — verified processing; bounded diagnostic correction pending review 4 September 2026
+### Status — verified staged-run resume correction awaiting approval 4 September 2026
 
 The owner-approved, synthetic-only rehearsal reached the protected workflow on
 exact `main` commit `e76494bc55d29d2e39af2f0690044d5f87e7b617`. GitHub App
@@ -87,18 +87,34 @@ lengths. No approved-media object, public-manifest item, candidate branch, or
 candidate Pull Request was created. Both public Gallery manifests remain empty
 and `main` remains unchanged.
 
-The protected runner previously collapsed this safe service failure and its
-expected failed abandonment into one generic message. The corrective change
-now reads at most 256 bytes from a JSON error response, accepts only a fixed
-allowlist of non-sensitive service codes, and includes the bounded nested
-failure chain in the runner message. Unknown, malformed, non-JSON, or oversized
-responses still disclose no body content and remain fail closed. The focused
-bridge test now reproduces the partial-promotion case and proves that neither
-GitHub review creation nor a false cleanup-success claim occurs. The next
-approved step after the required repository checks is to merge this
-script/test/documentation-only correction, verify the Pages artifact remains
-byte-identical with both manifests empty, and retry the same idempotent
-synthetic draft. A Worker deployment is not part of this correction.
+Pull Request #97 added bounded, allowlisted protected-service diagnostics and
+merged at exact commit `76e73e9dbad008639cc383d3e201cadecaf21414` after all
+required checks passed. Pages run `33912518038` completed successfully. Its 113
+tracked public files are byte-identical to that exact commit; the 114th is the
+expected empty build-generated `.nojekyll`, and both Gallery manifests remain
+empty.
+
+The retry on exact `main`, workflow run `33912746492`, passed the GitHub App
+ruleset boundary and then failed closed with the now-exact
+`processing-not-eligible` code. That proves the workflow currently accepts only
+a fresh `approved-for-processing` draft and cannot resume the verified staged
+run left by the first promotion attempt.
+
+The local correction adds that missing resume bridge without accepting another
+caller input. The processing service returns the staged run's opaque ID, site,
+state version, and two fixed photo roles only after rechecking the complete
+server-derived draft/run/revision/consent/suppression/exclusion evidence,
+matching both immutable derivative rows, and byte-verifying both private R2
+objects. It repeats the complete D1 read after R2 verification to close the
+race window. The runner then skips source download, processing, and staging and
+retries only the deterministic promotion. Fresh drafts keep the existing path.
+Focused processing-service, runner-resume, Worker-boundary, repository-safety,
+and diff checks pass. The complete `pnpm test` also passes, including both-mode
+CSV and Gallery validation, processor and metadata-stripping checks, lifecycle
+and promotion checks, preview-artifact safety, and desktop/mobile browser smoke
+tests. No remote Worker change has been made; the next explicit approval gate
+is review and merge of this correction followed by deployment of only the
+updated processing Worker and retry of the same synthetic draft.
 
 ## Completed task: durable photo-review and owner-takedown controls
 

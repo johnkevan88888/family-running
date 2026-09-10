@@ -78,71 +78,93 @@ export async function runPhotoReviewBridge(options) {
         'GET',
         `/api/service/drafts/${draftPath}/photo-processing-eligibility`
     );
-    assertEligibility(eligibility, options.draftId);
+    const resumeStagedRun = assertEligibility(eligibility, options.draftId);
 
-    const startKey = operationKey('photo-start', options.draftId, eligibility.stateVersion);
-    const run = await processingClient.json(
-        'POST',
-        `/api/service/drafts/${draftPath}/processing-runs`,
-        {
-            expectedStateVersion: eligibility.stateVersion,
-            idempotencyKey: startKey
-        }
-    );
-    assertProcessingRun(run, options.draftId);
-
-    let processed;
-    try {
-        const sourceResponse = await processingClient.raw('GET', run.source.downloadPath);
-        if (sourceResponse.headers.get('Content-Length') !== String(run.source.byteLength)) {
-            throw new Error('The private-photo response length does not match its bound evidence.');
-        }
-        const sourceBytes = Buffer.from(await sourceResponse.arrayBuffer());
-        assertSourceResponse(sourceResponse, sourceBytes, run.source);
-        processed = await processPhoto({
-            sourceBytes,
-            fileExtension: run.source.fileExtension,
-            declaredMimeType: run.source.declaredMimeType,
-            expectedSha256: run.source.sha256,
-            draftBinding: {
-                site: run.site,
-                draftId: options.draftId,
-                processingRunId: run.processingRunId
+    let run;
+    let staged;
+    if (resumeStagedRun) {
+        run = {
+            processingRunId: eligibility.processingRunId,
+            site: eligibility.site,
+            mediaType: 'photo',
+            state: 'processing',
+            stateVersion: eligibility.stateVersion,
+            runStatus: 'staged',
+            replayed: true
+        };
+        staged = {
+            processingRunId: eligibility.processingRunId,
+            status: 'staged',
+            state: 'processing',
+            stateVersion: eligibility.stateVersion,
+            roles: [...eligibility.roles],
+            replayed: true
+        };
+    } else {
+        const startKey = operationKey('photo-start', options.draftId, eligibility.stateVersion);
+        run = await processingClient.json(
+            'POST',
+            `/api/service/drafts/${draftPath}/processing-runs`,
+            {
+                expectedStateVersion: eligibility.stateVersion,
+                idempotencyKey: startKey
             }
-        });
-        assertProcessedPhoto(processed, run, options.draftId);
+        );
+        assertProcessingRun(run, options.draftId);
 
-        for (const derivative of processed.derivatives) {
-            const bytes = Buffer.from(await derivative.payload.arrayBuffer());
-            await processingClient.raw(
-                'PUT',
-                `/api/service/processing-runs/${encodeURIComponent(run.processingRunId)}` +
-                    `/derivatives/${encodeURIComponent(derivative.storageRole)}`,
-                bytes,
-                {
-                    'Content-Type': 'image/webp',
-                    'Content-Length': String(bytes.byteLength),
-                    'X-Gallery-Content-SHA256': derivative.sha256,
-                    'Idempotency-Key': operationKey(
-                        `photo-${derivative.storageRole}`,
-                        options.draftId,
-                        run.stateVersion
-                    )
+        let processed;
+        try {
+            const sourceResponse = await processingClient.raw('GET', run.source.downloadPath);
+            if (sourceResponse.headers.get('Content-Length') !== String(run.source.byteLength)) {
+                throw new Error('The private-photo response length does not match its bound evidence.');
+            }
+            const sourceBytes = Buffer.from(await sourceResponse.arrayBuffer());
+            assertSourceResponse(sourceResponse, sourceBytes, run.source);
+            processed = await processPhoto({
+                sourceBytes,
+                fileExtension: run.source.fileExtension,
+                declaredMimeType: run.source.declaredMimeType,
+                expectedSha256: run.source.sha256,
+                draftBinding: {
+                    site: run.site,
+                    draftId: options.draftId,
+                    processingRunId: run.processingRunId
                 }
-            );
-        }
-    } catch (error) {
-        await failAndCleanProcessing(processingClient, run, options.draftId, error);
-        throw error;
-    }
+            });
+            assertProcessedPhoto(processed, run, options.draftId);
 
-    const staged = await processingClient.json(
-        'POST',
-        `/api/service/processing-runs/${encodeURIComponent(run.processingRunId)}/result`,
-        stagedResult(run, processed, options.draftId)
-    );
-    if (staged?.status !== 'staged' || staged.stateVersion !== run.stateVersion) {
-        throw new Error('The processing service did not confirm the exact staged photo run.');
+            for (const derivative of processed.derivatives) {
+                const bytes = Buffer.from(await derivative.payload.arrayBuffer());
+                await processingClient.raw(
+                    'PUT',
+                    `/api/service/processing-runs/${encodeURIComponent(run.processingRunId)}` +
+                        `/derivatives/${encodeURIComponent(derivative.storageRole)}`,
+                    bytes,
+                    {
+                        'Content-Type': 'image/webp',
+                        'Content-Length': String(bytes.byteLength),
+                        'X-Gallery-Content-SHA256': derivative.sha256,
+                        'Idempotency-Key': operationKey(
+                            `photo-${derivative.storageRole}`,
+                            options.draftId,
+                            run.stateVersion
+                        )
+                    }
+                );
+            }
+        } catch (error) {
+            await failAndCleanProcessing(processingClient, run, options.draftId, error);
+            throw error;
+        }
+
+        staged = await processingClient.json(
+            'POST',
+            `/api/service/processing-runs/${encodeURIComponent(run.processingRunId)}/result`,
+            stagedResult(run, processed, options.draftId)
+        );
+        if (staged?.status !== 'staged' || staged.stateVersion !== run.stateVersion) {
+            throw new Error('The processing service did not confirm the exact staged photo run.');
+        }
     }
 
     const expectedCandidateStateVersion = staged.stateVersion + 1;
@@ -1115,14 +1137,32 @@ function safeSecret(value) {
 }
 
 function assertEligibility(value, draftId) {
+    const common = plainObject(value) &&
+        value.schemaVersion === '1.0' &&
+        value.draftId === draftId &&
+        Number.isSafeInteger(value.stateVersion) &&
+        value.stateVersion >= 0;
     if (
-        !plainObject(value) ||
-        value.schemaVersion !== '1.0' ||
-        value.draftId !== draftId ||
-        value.state !== 'approved-for-processing' ||
-        !Number.isSafeInteger(value.stateVersion) ||
-        value.stateVersion < 0
-    ) throw new Error('The processing service did not return current photo eligibility.');
+        common &&
+        value.state === 'approved-for-processing' &&
+        exactKeys(value, ['draftId', 'schemaVersion', 'state', 'stateVersion'])
+    ) return false;
+    if (
+        common &&
+        value.scope === 'photo-processing-resume-v1' &&
+        value.state === 'processing' &&
+        value.mediaType === 'photo' &&
+        value.runStatus === 'staged' &&
+        runIdPattern.test(value.processingRunId || '') &&
+        ['family', 'everyone'].includes(value.site) &&
+        JSON.stringify(value.roles) ===
+            JSON.stringify(['photo-display', 'photo-thumbnail']) &&
+        exactKeys(value, [
+            'draftId', 'mediaType', 'processingRunId', 'roles', 'runStatus',
+            'schemaVersion', 'scope', 'site', 'state', 'stateVersion'
+        ])
+    ) return true;
+    throw new Error('The processing service did not return current photo eligibility.');
 }
 
 function assertProcessingRun(run, draftId) {

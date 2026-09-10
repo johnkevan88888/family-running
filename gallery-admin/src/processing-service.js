@@ -184,7 +184,8 @@ export async function readPhotoProcessingEligibility(env, identity, draftId) {
             expectedStateVersion: draft?.stateVersion
         }, env.DB);
         if (problems.length > 0) {
-            return failure(409, 'processing-not-eligible');
+            const resumed = await readResumableStagedRun(env, draftId);
+            return resumed || failure(409, 'processing-not-eligible');
         }
         return success(200, {
             schemaVersion: '1.0',
@@ -195,6 +196,80 @@ export async function readPhotoProcessingEligibility(env, identity, draftId) {
     } catch {
         return failure(503, 'service-unavailable');
     }
+}
+
+async function readResumableStagedRun(env, draftId) {
+    let run = await readStagedRunByDraft(env.DB, draftId);
+    let outputs = run
+        ? await readResumableOutputs(env.DB, run.processingRunId)
+        : [];
+    if (!await resumableStagedRunIsCurrent(env, run, outputs)) return null;
+    const verifiedSnapshot = JSON.stringify({ run, outputs });
+
+    for (const output of outputs) {
+        if (!await readExactStagedObject(env.DERIVATIVE_STAGING, output)) return null;
+    }
+
+    // Consent, suppression, an athlete exclusion, or a revision can change
+    // while R2 is being read. Re-read the complete D1 snapshot before
+    // authorizing a resume so stale verified bytes cannot cross promotion.
+    run = await readStagedRunByDraft(env.DB, draftId);
+    outputs = run
+        ? await readResumableOutputs(env.DB, run.processingRunId)
+        : [];
+    if (
+        JSON.stringify({ run, outputs }) !== verifiedSnapshot ||
+        !await resumableStagedRunIsCurrent(env, run, outputs)
+    ) return null;
+
+    return success(200, {
+        schemaVersion: '1.0',
+        scope: 'photo-processing-resume-v1',
+        draftId,
+        processingRunId: run.processingRunId,
+        site: run.runSiteMode,
+        mediaType: 'photo',
+        state: 'processing',
+        stateVersion: run.processingStateVersion,
+        roles: [...REQUIRED_ROLES],
+        runStatus: 'staged'
+    });
+}
+
+async function resumableStagedRunIsCurrent(env, run, outputs) {
+    if (!run || outputs.length !== 2) return false;
+    const problems = await processingEligibilityProblems(run, {
+        requiredState: 'processing',
+        expectedStateVersion: run.processingStateVersion,
+        requiredRunStatus: 'staged',
+        expectedDerivativeCount: 2
+    }, env.DB);
+    if (problems.length > 0 || !runMatchesEvidence(run)) return false;
+    const roles = outputs.map(output => output.role).sort();
+    if (JSON.stringify(roles) !== JSON.stringify(REQUIRED_ROLES)) return false;
+    return outputs.every(output =>
+        output.processingRunId === run.processingRunId &&
+        output.status === 'verified' &&
+        output.contentType === 'image/webp' &&
+        output.metadataScanJson ===
+            '{"schemaVersion":"1.0","scannerName":"exiftool","scannerVersion":"13.40","metadataEntryCount":0,"findingCategories":[]}' &&
+        output.scannerVersion === '13.40' &&
+        output.derivativeItemRevision === run.runItemRevision &&
+        output.derivativeConsentRevision === run.runConsentRevision &&
+        output.derivativeExportBundleId === run.runExportBundleId &&
+        output.derivativeSourceRevision === run.runSourceRevision &&
+        output.derivativeSuppressionRevision === run.runSuppressionRevision &&
+        output.derivativeStagingObjectKey === output.stagingObjectKey &&
+        output.derivativeApprovedObjectKey === null &&
+        output.derivativeByteCount === output.byteCount &&
+        output.derivativeSha256 === output.sha256 &&
+        output.derivativeContentType === output.contentType &&
+        output.derivativeWidth === output.width &&
+        output.derivativeHeight === output.height &&
+        output.derivativeMetadataScanJson === output.metadataScanJson &&
+        output.derivativeScannerVersion === output.scannerVersion &&
+        output.derivativeHostDeletedAt === null
+    );
 }
 
 export async function startProcessingRun(env, identity, draftId, input, nowMilliseconds) {
@@ -1402,7 +1477,10 @@ async function processingEligibilityProblems(record, requirements, database) {
     ) {
         problems.push('cleanup');
     }
-    if (!evidenceShapeIsCurrent(record)) {
+    if (!evidenceShapeIsCurrent(
+        record,
+        requirements.expectedDerivativeCount ?? 0
+    )) {
         problems.push('evidence');
     }
     let contractDraft;
@@ -1438,7 +1516,7 @@ async function processingEligibilityProblems(record, requirements, database) {
     return problems;
 }
 
-function evidenceShapeIsCurrent(record) {
+function evidenceShapeIsCurrent(record, expectedDerivativeCount = 0) {
     let siteModes;
     try {
         siteModes = JSON.parse(record.siteModesJson);
@@ -1456,7 +1534,7 @@ function evidenceShapeIsCurrent(record) {
         record.originalByteCount > 25 * 1024 * 1024 ||
         !SHA256_PATTERN.test(record.originalSha256 || '') ||
         record.uploadComplete !== 1 ||
-        record.existingDerivativeCount !== 0 ||
+        record.existingDerivativeCount !== expectedDerivativeCount ||
         record.uploadStatus !== 'complete' ||
         record.realPhotoIntakeConfirmed !== 1 ||
         record.uploadDeclaredSha256 !== record.originalSha256 ||
@@ -2386,6 +2464,56 @@ async function readRun(database, processingRunId) {
         `${RUN_SELECT} WHERE run.processing_run_id = ?1`,
         processingRunId
     );
+}
+
+async function readStagedRunByDraft(database, draftId) {
+    return queryFirst(
+        database,
+        `${RUN_SELECT} WHERE run.draft_id = ?1 AND run.status = 'staged'`,
+        draftId
+    );
+}
+
+async function readResumableOutputs(database, processingRunId) {
+    return queryAll(database, `
+        SELECT
+            output.processing_run_id AS processingRunId,
+            output.role,
+            output.staging_object_key AS stagingObjectKey,
+            output.sha256,
+            output.byte_count AS byteCount,
+            output.content_type AS contentType,
+            output.width,
+            output.height,
+            output.status,
+            output.staging_object_version AS stagingObjectVersion,
+            output.staging_etag AS stagingEtag,
+            output.metadata_scan_json AS metadataScanJson,
+            output.scanner_version AS scannerVersion,
+            derivative.item_revision AS derivativeItemRevision,
+            derivative.consent_revision AS derivativeConsentRevision,
+            derivative.export_bundle_id AS derivativeExportBundleId,
+            derivative.source_revision AS derivativeSourceRevision,
+            derivative.suppression_revision AS derivativeSuppressionRevision,
+            derivative.staging_object_key AS derivativeStagingObjectKey,
+            derivative.approved_object_key AS derivativeApprovedObjectKey,
+            derivative.byte_count AS derivativeByteCount,
+            derivative.sha256 AS derivativeSha256,
+            derivative.content_type AS derivativeContentType,
+            derivative.width AS derivativeWidth,
+            derivative.height AS derivativeHeight,
+            derivative.metadata_scan_json AS derivativeMetadataScanJson,
+            derivative.scanner_version AS derivativeScannerVersion,
+            derivative.host_deleted_at AS derivativeHostDeletedAt
+        FROM draft_processing_outputs AS output
+        JOIN draft_processing_runs AS run
+          ON run.processing_run_id = output.processing_run_id
+        JOIN draft_derivatives AS derivative
+          ON derivative.draft_id = run.draft_id
+         AND derivative.role = output.role
+        WHERE output.processing_run_id = ?1
+        ORDER BY output.role ASC
+    `, processingRunId);
 }
 
 async function readRunIdentity(database, processingRunId) {
