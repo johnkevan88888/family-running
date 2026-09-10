@@ -649,6 +649,31 @@ assert.throws(
 assert.equal(staging.objects.size, 2);
 assert.equal(staging.overwriteAttempts, 0);
 
+const stagedResumeResponse = await processorRequest(eligibilityPath, {
+    identity: processorIdentity()
+});
+assert.equal(stagedResumeResponse.status, 200, await stagedResumeResponse.clone().text());
+assert.deepEqual(await stagedResumeResponse.json(), {
+    schemaVersion: '1.0',
+    scope: 'photo-processing-resume-v1',
+    draftId: draft.draftId,
+    processingRunId: run.processingRunId,
+    site: 'family',
+    mediaType: 'photo',
+    state: 'processing',
+    stateVersion: run.stateVersion,
+    roles: ['photo-display', 'photo-thumbnail'],
+    runStatus: 'staged'
+});
+
+insertPendingExclusion(sqlite, selectedResult.athleteId, catalog.suppressionRevision);
+assert.equal((await processorRequest(eligibilityPath, {
+    identity: processorIdentity()
+})).status, 409, 'A newly pending exclusion must block staged-run resumption.');
+resolvePendingExclusion(sqlite, selectedResult.athleteId, catalog.suppressionRevision);
+sqlite.prepare('DELETE FROM pending_athlete_exclusions WHERE athlete_id = ?')
+    .run(selectedResult.athleteId);
+
 for (const row of sqlite.prepare(
     'SELECT role, staging_object_key AS stagingObjectKey, sha256, byte_count AS byteCount, ' +
     'staging_object_version AS objectVersion, staging_etag AS etag ' +

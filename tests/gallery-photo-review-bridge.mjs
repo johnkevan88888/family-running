@@ -177,6 +177,20 @@ assert.ok(!lostReservationServer.requests.some(entry =>
     entry.pathname.endsWith('/photo-review-abandonment')
 ), 'A committed reservation must resume review instead of being abandoned.');
 
+const stagedResumeServer = bridgeServer({ resumeStagedRun: true });
+const stagedResumeResult = await runPhotoReviewBridge({
+    ...bridgeOptions(stagedResumeServer.fetchImpl),
+    createReview: async candidateResult => reviewResult(candidateResult)
+});
+assert.equal(stagedResumeResult.draftId, draftId);
+assert.equal(stagedResumeServer.promotionCount(), 1);
+assert.equal(stagedResumeServer.requests.some(entry =>
+    entry.pathname.endsWith('/processing-runs')
+), false, 'A verified staged run must resume without creating another processing run.');
+assert.equal(stagedResumeServer.requests.some(entry =>
+    entry.pathname.includes('/derivatives/') || entry.pathname.endsWith('/original')
+), false, 'A staged resume must not download or rewrite private media bytes.');
+
 const abandonmentServer = bridgeServer({ reservationAlwaysFails: true });
 await assert.rejects(
     runPhotoReviewBridge({
@@ -367,7 +381,18 @@ function bridgeServer(options = {}) {
         assert.equal(headers.get('CF-Access-Client-Secret'), access.clientSecret);
 
         if (parsed.pathname.endsWith('/photo-processing-eligibility')) {
-            return jsonResponse(200, {
+            return jsonResponse(200, options.resumeStagedRun ? {
+                schemaVersion: '1.0',
+                scope: 'photo-processing-resume-v1',
+                draftId,
+                processingRunId: runId,
+                site: 'family',
+                mediaType: 'photo',
+                state: 'processing',
+                stateVersion: 2,
+                roles: ['photo-display', 'photo-thumbnail'],
+                runStatus: 'staged'
+            } : {
                 schemaVersion: '1.0', draftId,
                 state: 'approved-for-processing', stateVersion: 1
             });
