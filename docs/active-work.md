@@ -2,20 +2,24 @@
 
 ## Current task: complete owner-approved withdrawal and private-data purge
 
-### Status — post-rebase validation complete for Pull Request review 4 September 2026
+### Status — merged; non-production activation remains gated 11 September 2026
 
-This branch is based on exact current `main` commit
-`e76494bc55d29d2e39af2f0690044d5f87e7b617`, the merge of Pull Request #96.
-That baseline contains the durable review, invalidation, owner withdrawal,
-athlete-exclusion, corrected GitHub review-boundary controls, and all work from
-Pull Requests #90, #92, #93, #95, and #96. The separately approved
-non-production activation through migration `0012` and the associated narrow
-Worker/Access proofs happened before this branch. Those provider facts have not
-been changed or freshly reread by this local implementation turn.
+Pull Request #94 merged the finalizer implementation at exact commit
+`bae4071bae81d2d3a70d9552600c9ce5f778a871`. Current `main` is exact commit
+`8ad9fc5518b12d52dd85e3e1194ddd4677c40639`, the merge of Pull Request #99.
+That baseline also contains Pull Request #97's bounded rehearsal diagnostics
+and Pull Request #98's validated data and generated-catalogue refresh.
 
-The missing final step is now implemented locally. Migration
-`0013_withdrawal_finalization.sql` adds separate, immutable `withdrawal` and
-`purge` operations. A dedicated service-only finalizer Worker accepts only an
+A fresh read-only provider audit on 11 September confirms that migration
+`0013` remains pending and none of its five tables exists in D1. The finalizer
+Worker, its Access application/policy/token, and the protected
+`gallery-finalization` GitHub environment do not exist. Both checked-in
+finalizer workflows remain undispatched. The separately activated resources
+through migration `0012` are unchanged by this repository branch.
+
+The merged finalizer implementation includes migration
+`0013_withdrawal_finalization.sql`. It adds separate, immutable `withdrawal`
+and `purge` operations. A dedicated service-only finalizer Worker accepts only an
 opaque draft ID in its route and one deterministic idempotency key in its JSON
 body. It has exactly D1 and private-original storage capability; it cannot reach
 approved media, private staging, manifests, GitHub, Pages, merge, or deployment
@@ -45,29 +49,29 @@ The migration also removes any legacy raw-ID retention authorization whose
 parent was already purged before `0013`; future rows leave inside the same
 guarded parent-purge transaction.
 
-After rebasing onto Pull Request #96, focused tests pass for the complete
-migration chain `0001`–`0013`, the real finalizer service against SQLite and an
-in-memory R2 substitute, the Worker and inert Wrangler example, and both
-protected workflow bridges. Regression checks
-also pass for review invalidation, public-host verification, approved-media
-lifecycle, owner withdrawal/exclusion, admin capability boundaries, and
-repository safety. The complete repository suite passes, including the exact
-114-file preview artifact and responsive Family/Everyone browser checks. A
+Pull Request #94's focused tests passed for the complete migration chain
+`0001`–`0013`, the real finalizer service against SQLite and an in-memory R2
+substitute, the Worker and inert Wrangler example, and both protected workflow
+bridges. Regression checks also passed for review invalidation, public-host
+verification, approved-media lifecycle, owner withdrawal/exclusion, admin
+capability boundaries, and repository safety. The complete repository suite
+passed, including the exact 114-file preview artifact and responsive
+Family/Everyone browser checks. A
 final independent read-only security review found no remaining blocker; it also
 confirmed that public manifests, data, suppression, and runtime files remain
 unchanged and that no media file was added.
 
 Migration `0013` has not been applied, no finalizer Worker or Access resource
 has been created or deployed, and neither new workflow has been dispatched. No
-merge, R2 mutation, real-media transfer, manifest edit, or publication has
-occurred.
-Both public manifests and the shared suppression file remain unchanged. The
-feature branch and Pull Request are repository-review gates only; every remote
-activation step remains a later explicit approval gate.
+finalizer R2 mutation, real-media transfer, manifest edit, or Gallery
+publication has occurred. Both public manifests and the shared suppression
+file remain unchanged. The protected GitHub environment, migration, Worker,
+Access resources, workflow credentials, and each workflow dispatch remain
+separate explicit approval gates.
 
 ## Current task: complete the synthetic photo-review rehearsal
 
-### Status — verified staged-run resume correction awaiting approval 4 September 2026
+### Status — repository correction merged; deployment and fresh rehearsal remain gated 11 September 2026
 
 The owner-approved, synthetic-only rehearsal reached the protected workflow on
 exact `main` commit `e76494bc55d29d2e39af2f0690044d5f87e7b617`. GitHub App
@@ -100,7 +104,7 @@ ruleset boundary and then failed closed with the now-exact
 a fresh `approved-for-processing` draft and cannot resume the verified staged
 run left by the first promotion attempt.
 
-The local correction adds that missing resume bridge without accepting another
+The correction adds that missing resume bridge without accepting another
 caller input. The processing service returns the staged run's opaque ID, site,
 state version, and two fixed photo roles only after rechecking the complete
 server-derived draft/run/revision/consent/suppression/exclusion evidence,
@@ -108,13 +112,39 @@ matching both immutable derivative rows, and byte-verifying both private R2
 objects. It repeats the complete D1 read after R2 verification to close the
 race window. The runner then skips source download, processing, and staging and
 retries only the deterministic promotion. Fresh drafts keep the existing path.
-Focused processing-service, runner-resume, Worker-boundary, repository-safety,
-and diff checks pass. The complete `pnpm test` also passes, including both-mode
-CSV and Gallery validation, processor and metadata-stripping checks, lifecycle
-and promotion checks, preview-artifact safety, and desktop/mobile browser smoke
-tests. No remote Worker change has been made; the next explicit approval gate
-is review and merge of this correction followed by deployment of only the
-updated processing Worker and retry of the same synthetic draft.
+
+Pull Request #98 subsequently refreshed the generated Gallery catalogue to
+bundle `20260910T220351920Z-2B71E180` and source revision
+`sha256:b3002450c38c808df55f199954da90bdaebbfd51298265592e1aa28f66eae838`.
+The processing Worker imports that exact snapshot and fails closed on a draft
+from a different catalogue. The 4 September staged draft therefore must not be
+claimed as resumable by a Worker built from current `main`. The merged
+safeguard remains available for future interrupted runs, but the earlier
+synthetic operation now requires a fresh read-only inventory and separately
+approved cleanup/withdrawal. A complete rehearsal must use a new synthetic
+draft created under the refreshed catalogue.
+
+Before merge, the refreshed-catalogue branch passed focused
+processing-service, runner-resume, Worker-boundary, repository-safety, and
+diff checks. The complete `pnpm test` also passed, including both-mode CSV and
+Gallery validation, processor and metadata-stripping checks, lifecycle and
+promotion checks, the exact 114-file preview artifact, and desktop/mobile
+browser smoke tests. Pull Request #99 then merged the correction to `main` at
+exact commit `8ad9fc5518b12d52dd85e3e1194ddd4677c40639` after its required GitHub
+checks passed.
+
+The 11 September follow-up reconciliation changes only this active-work record,
+the publishing workflow, the upload architecture, and the Gallery admin
+README. The complete `pnpm test` suite passed before handoff, including both
+site modes, the exact 114-file artifact, and desktop/mobile browser smoke
+checks. An independent read-only diff review found no blocker. This
+documentation-only change does not alter code, workflows, media, manifests,
+suppression, D1, R2, Access, or deployed Worker state.
+
+No remote Worker change has been made. Pull Request #99 completed only the
+repository gate. Deployment of only the updated processing Worker, cleanup of
+the earlier synthetic operation, and a fresh synthetic rehearsal remain later,
+separate approval gates.
 
 ## Completed task: durable photo-review and owner-takedown controls
 
