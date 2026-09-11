@@ -51,10 +51,13 @@ The exact synthetic variant behind Pull Request #102 was recorded as editorial
 The automatic approval review then rejected dispatch of
 `gallery-media-invalidation.yml`: the prior continuation did not explicitly
 authorize deleting its approved/staging objects and closing Pull Request #102.
-The workflow was not dispatched, no cleanup is claimed, and R2 absence is not
-public-host absence. Explicit permission for that exact synthetic cleanup is
-still required. The test correction also remains local pending approval to
-push, open its corrective Pull Request, pass its required checks, and merge.
+The workflow was not dispatched at that point, no cleanup is claimed, and R2
+absence is not public-host absence. On 11 September John explicitly approved
+pushing/opening the prepared correction, completing its required checks and
+standard preview review, merging it with the normal Pages CSS deployment,
+then running protected cleanup for only this synthetic variant's approved and
+staging objects and closing Pull Request #102 unmerged. These approved steps
+are now being executed; their runtime results must be recorded separately.
 Real media, candidate merge, Gallery publication, finalizer activation, and
 withdrawal/purge dispatch are not authorized by either of those gates.
 
