@@ -3,6 +3,7 @@ import {
     readBoundedBytes,
     sha256Hex
 } from './media-byte-verification.js';
+import { matchesExactImageHttpMetadata } from './r2-http-metadata.js';
 import { hashIdentity } from './session.js';
 import { buildV1ApprovedDerivativeKey } from './storage-keys.js';
 
@@ -633,9 +634,7 @@ function approvedObjectMatches(stored, object) {
         stored.size === object.expectedByteCount &&
         safeProviderValue(stored.version) &&
         safeProviderValue(stored.etag) &&
-        isPlainObject(http) &&
-        Object.keys(http).length === 1 &&
-        http.contentType === object.expectedContentType &&
+        matchesExactImageHttpMetadata(http, object.expectedContentType) &&
         isPlainObject(custom) &&
         Object.keys(custom).length === 2 &&
         custom.contract === 'gallery-approved-media-v1' &&
