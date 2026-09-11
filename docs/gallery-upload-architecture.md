@@ -7,19 +7,17 @@
   temporary processing of each private original on an ephemeral GitHub-hosted
   runner
 - **Infrastructure state:** This branch is based on exact `origin/main` commit
-  `e76494bc55d29d2e39af2f0690044d5f87e7b617`, the merge of Pull Request #96.
-  That baseline includes the fail-closed pre-processing same-commit `main` ref
-  probe from Pull Request #90, the response corrections from Pull Requests #92
-  and #93, the exact-ruleset proof from Pull Request #95, and Pull Request #96's
-  separation of the App-visible rules proof from the owner-only bypass proof.
-  The separately
-  approved non-production activation through
+  `8ad9fc5518b12d52dd85e3e1194ddd4677c40639`, the merge of Pull Request #99.
+  That baseline includes the finalizer merge in Pull Request #94, Pull Request
+  #97's bounded rehearsal diagnostics, and Pull Request #98's validated data
+  and generated-catalogue refresh, plus Pull Request #99's generic verified
+  staged-run resume safeguard. The separately approved activation through
   migration `0012` and the existing admin, processing, promotion, media,
   verifier, and Access boundaries occurred under their own gates before this
-  finalizer slice. This branch has not freshly reread or changed those provider
-  resources. Migration `0013`, the dedicated withdrawal-finalizer Worker, its
-  Access boundary, and the two protected finalization workflows remain
-  unapplied, undeployed, unconfigured, and undispatched.
+  finalizer slice. A fresh read-only provider audit on 11 September found
+  migration `0013` pending; the dedicated withdrawal-finalizer Worker, its
+  Access boundary, and the protected `gallery-finalization` GitHub environment
+  do not exist. The two finalization workflows have no runs.
 - **Media state:** The two public Gallery manifests and the shared suppression
   file have no branch diff and remain empty in the repository. This branch has
   not read or mutated private or approved provider
@@ -28,10 +26,10 @@
   photo intake, private processing, promotion/review, privacy-first
   invalidation, owner withdrawal, proactive whole-item athlete exclusion,
   fixed-origin verifier, and PR #90 GitHub permission probe are present on
-  `main`. The current branch closes the remaining operational gap between
-  `withdrawal-pending`, final `withdrawn`, and later private-data purge. Local
-  source and tests are
-  not evidence that migration `0013` is applied, the finalizer is deployed, its
+  `main`. Pull Request #94 closed the repository implementation gap between
+  `withdrawal-pending`, final `withdrawn`, and later private-data purge.
+  Repository evidence does not prove that migration `0013` is applied, the
+  finalizer is deployed, its
   Access identity is configured, the protected environment has the required
   reviewers and secrets, or either workflow has run. Real-media transfer, video
   processing, DNS changes, merge, deployment, and publication remain

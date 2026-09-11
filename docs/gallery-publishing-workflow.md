@@ -4,19 +4,18 @@ Phase 1 is an owner-curated public gallery. It deliberately does not accept
 visitor uploads and does not put photographs or videos into Git or the GitHub
 Pages artifact.
 
-## Local withdrawal-finalization update — 3 September 2026
+## Merged withdrawal-finalization update — 3 September 2026
 
-The finalizer slice is implemented and locally validated on branch
-`codex/gallery-withdrawal-finalizer`, based on exact current `main` commit
-`e76494bc55d29d2e39af2f0690044d5f87e7b617`, the merge of Pull Request #96.
-That baseline includes the PR #90 GitHub permission probe, the PR #92/#93
-response corrections, PR #95's exact-ruleset proof, and PR #96's separation of
-the App-visible rules proof from the owner-only bypass proof. Nothing in this
-slice is deployed: migration `0013` is unapplied, the finalizer Worker and its
-Access boundary do not exist as activated resources, the protected
-finalization secrets/reviewer gate are unproved, and neither new workflow has
-been dispatched. No private or approved media, public manifest, suppression
-file, merge, or publication was changed.
+Pull Request #94 merged the locally validated finalizer implementation at exact
+commit `bae4071bae81d2d3a70d9552600c9ce5f778a871`. Current `main` is
+`8ad9fc5518b12d52dd85e3e1194ddd4677c40639`, the merge of Pull Request #99,
+and contains Pull Request #98's validated data and generated-catalogue refresh.
+A fresh read-only provider audit on 11 September confirms that migration
+`0013` is unapplied, the finalizer Worker and Access boundary do not exist, the
+protected
+`gallery-finalization` environment does not exist, and neither new workflow
+has been dispatched. No private or approved media, public manifest,
+suppression file, or Gallery publication was changed by that audit.
 
 Withdrawal completion and private-data purge are deliberately two different
 manual workflow approvals. Each workflow accepts only the same opaque

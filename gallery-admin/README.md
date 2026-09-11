@@ -8,27 +8,29 @@ public-site upload control. No Worker combines access to private originals,
 private staging, approved media, and GitHub.
 
 The exact repository baseline for this branch is `origin/main` commit
-`e76494bc55d29d2e39af2f0690044d5f87e7b617`, the merge of Pull Request #96.
-That baseline includes the fail-closed pre-processing same-commit `main` ref
-probe from Pull Request #90, the response corrections from Pull Requests #92
-and #93, the exact-ruleset proof from Pull Request #95, and Pull Request #96's
-separation of the App-visible rules proof from the owner-only bypass proof.
+`8ad9fc5518b12d52dd85e3e1194ddd4677c40639`, the merge of Pull Request #99.
+That baseline includes the finalizer merge in Pull Request #94, Pull Request
+#97's bounded rehearsal diagnostics, Pull Request #98's validated data and
+generated-catalogue refresh, and Pull Request #99's generic verified staged-run
+resume safeguard.
 The earlier admin, processing, promotion, media, verifier, delivery-epoch,
 review, invalidation, and non-production migrations through `0012` passed
-their own separately approved activation gates. This branch has not changed or
-freshly reread that provider state. The public manifests and suppression file
-remain unchanged, and the finalizer files do not enter the 114-file GitHub
-Pages artifact.
+their own separately approved activation gates. A fresh read-only provider
+audit on 11 September found migration `0013` pending and no finalizer Worker,
+Access resources, protected GitHub environment, or workflow run. The public
+manifests and suppression file remain unchanged, and the finalizer files do not
+enter the 114-file GitHub Pages artifact.
 
-## Local withdrawal-finalizer boundary
+## Merged withdrawal-finalizer boundary
 
-The 3 September 2026 branch adds a sixth, service-only Worker at
+Pull Request #94 merged the 3 September 2026 implementation of a sixth,
+service-only Worker at
 `src/withdrawal-finalizer-worker.js`, migration
 `0013_withdrawal_finalization.sql`, and two separately approved manual
-workflows. The implementation is not merged or deployed: migration `0013` is
-unapplied, no finalizer Access application, policy, or token is configured, the
-`gallery-finalization` reviewer and secrets gate is unproved, and neither
-workflow has been dispatched.
+workflows. The implementation is not activated: migration `0013` is unapplied,
+no finalizer Access application, policy, or token is configured, the
+`gallery-finalization` environment does not exist, and neither workflow has
+been dispatched.
 
 The exact route is
 `POST /api/service/drafts/{draft_id}/withdrawal-finalizations`. Its JSON body is
