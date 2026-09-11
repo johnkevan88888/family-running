@@ -29,9 +29,6 @@ const manifestUrls = [
     new URL('../gallery-data/everyone.json', import.meta.url)
 ];
 const manifestBaselines = await Promise.all(manifestUrls.map(url => readFile(url, 'utf8')));
-for (const baseline of manifestBaselines) {
-    assert.deepEqual(JSON.parse(baseline), { schemaVersion: '1.0', items: [] });
-}
 
 const migrationSources = await Promise.all([
     readFile(
@@ -976,10 +973,11 @@ assert.ok(
 );
 assert.deepEqual(findUnpublishablePublicationEntryProblems(publishedSiteEntries), []);
 const manifestFinals = await Promise.all(manifestUrls.map(url => readFile(url, 'utf8')));
-assert.deepEqual(manifestFinals, manifestBaselines);
-for (const finalText of manifestFinals) {
-    assert.deepEqual(JSON.parse(finalText), { schemaVersion: '1.0', items: [] });
-}
+assert.deepEqual(
+    manifestFinals,
+    manifestBaselines,
+    'Private intake and moderation must leave both public manifests byte-for-byte unchanged.'
+);
 
 assert.ok(countRows(sqlite, 'draft_upload_sessions') >= 4);
 assert.ok(countRows(sqlite, 'gallery_audit_events') >= 1);

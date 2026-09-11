@@ -1,12 +1,70 @@
 # Active Work
 
+## Current task: make a populated Gallery pass the launch checks
+
+### Status — local correction fully validated 11 September 2026
+
+Pull Request #101 merged at `75cad4c4561deb3335177890893fa87e00c65cda`.
+Protected photo-review run `34590861215` succeeded against that exact commit
+and opened synthetic-only Pull Request #102 at
+`9eafbf32d653cd1fbdfdc875324bfbfb37119e58`. Its only changed file is
+`gallery-data/family.json`; it remains open and unmerged. The Gallery validator
+passed, but required run `34590975624` failed because the review-bridge test
+assumed the checked-in Family manifest was empty.
+
+The local correction uses a disposable review-bridge fixture and explicitly
+checks both first-photo creation and preservation of existing items and order.
+Testing the exact candidate in an isolated local checkout also reproduced the
+same empty-manifest assumption in the private-intake suite. That suite now
+requires both public manifests to remain byte-for-byte unchanged, irrespective
+of their starting contents. The browser podium check now compares every
+athlete's image or accessible fallback with the selected manifest after
+suppression instead of requiring an empty Gallery.
+
+The same candidate browser run reproduced a real mobile layout defect: a
+blocked thumbnail with long alternative text stretched the podium to 928px.
+`gallery.css` now fixes the existing media frames at their intended desktop
+and responsive mobile heights. A browser regression deliberately aborts the
+image response and requires the complete accessible alternative text to remain
+while the podium stays within the existing 280px limit. Public manifests,
+CSVs, the suppression list, service code, and deployment configuration remain
+unchanged. The CSS correction is a public runtime change, so this correction
+requires the standard preview pathway and explicit Pages release approval;
+the former byte-identical-artifact condition does not cover it.
+
+Focused review-bridge and private-intake tests and `git diff --check` pass.
+The complete `node scripts/run-all-tests.mjs` suite passes both on the current
+`main` baseline plus this correction and on an isolated checkout of the exact
+Pull Request #102 head with byte-identical copies of the four changed code/test
+files. Both runs include repository/vendor/CSV/Gallery validation, all privacy
+and review boundaries, the 114-file preview artifact, and Family/Everyone
+desktop/mobile browser checks. The new failed-image regression passes, and
+representative populated desktop and failed-image mobile screenshots were
+visually reviewed. The two artifacts differ only in the synthetic candidate's
+`gallery-data/family.json`; both main-baseline manifests remain empty. Release
+classification is `full-preview` with no errors. This is local evidence;
+Pull Request #102's remote required check remains failed until a separately
+approved correction reaches the relevant checked commit.
+
+The exact synthetic variant behind Pull Request #102 was recorded as editorial
+`withdrawal-pending`, state version 6, through the owner control.
+The automatic approval review then rejected dispatch of
+`gallery-media-invalidation.yml`: the prior continuation did not explicitly
+authorize deleting its approved/staging objects and closing Pull Request #102.
+The workflow was not dispatched, no cleanup is claimed, and R2 absence is not
+public-host absence. Explicit permission for that exact synthetic cleanup is
+still required. The test correction also remains local pending approval to
+push, open its corrective Pull Request, pass its required checks, and merge.
+Real media, candidate merge, Gallery publication, finalizer activation, and
+withdrawal/purge dispatch are not authorized by either of those gates.
+
 ## Current task: complete owner-approved withdrawal and private-data purge
 
 ### Status — merged; non-production activation remains gated 11 September 2026
 
 Pull Request #94 merged the finalizer implementation at exact commit
-`bae4071bae81d2d3a70d9552600c9ce5f778a871`. Current `main` is exact commit
-`8ad9fc5518b12d52dd85e3e1194ddd4677c40639`, the merge of Pull Request #99.
+`bae4071bae81d2d3a70d9552600c9ce5f778a871`. The 11 September activation audit
+used `8ad9fc5518b12d52dd85e3e1194ddd4677c40639`, the merge of Pull Request #99.
 That baseline also contains Pull Request #97's bounded rehearsal diagnostics
 and Pull Request #98's validated data and generated-catalogue refresh.
 
@@ -71,7 +129,7 @@ separate explicit approval gates.
 
 ## Current task: complete the synthetic photo-review rehearsal
 
-### Status — promotion metadata correction prepared after synthetic rehearsal 11 September 2026
+### Status — promotion metadata correction merged; synthetic candidate #102 open 11 September 2026
 
 The owner-approved, synthetic-only rehearsal reached the protected workflow on
 exact `main` commit `e76494bc55d29d2e39af2f0690044d5f87e7b617`. GitHub App
@@ -171,11 +229,12 @@ both-mode CSV and Gallery validation, metadata stripping, promotion, cleanup,
 withdrawal and GitHub review boundaries, the exact 114-file preview artifact,
 and desktop/mobile browser smoke tests.
 
-The already-approved next gate is: merge this corrective Pull Request only
-after its required checks pass, deploy only the corrected promotion Worker,
-then retry the existing staged synthetic draft and stop at an unmerged Pull
-Request changing only `gallery-data/family.json`. Candidate merge, Gallery
-publication, real media, video, and any other deployment remain outside scope.
+The approved promotion correction was merged as Pull Request #101, the
+corrected promotion Worker was deployed, and the staged synthetic retry opened
+Pull Request #102. See the current launch-check task above for its failed
+empty-manifest assumptions, local correction, and pending synthetic cleanup.
+Candidate merge, Gallery publication, real media, video, and any other
+deployment remain outside scope.
 
 ## Completed task: durable photo-review and owner-takedown controls
 
