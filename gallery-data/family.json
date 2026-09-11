@@ -1,4 +1,21 @@
 {
   "schemaVersion": "1.0",
-  "items": []
+  "items": [
+    {
+      "id": "synthetic-photo-pipeline-rehearsal-variant-2-20260911",
+      "type": "photo",
+      "title": "Synthetic photo-only pipeline rehearsal variant 2",
+      "caption": "Synthetic pipeline rehearsal variant 2 only. This graphic contains no real person and must remain unmerged.",
+      "alt": "A clearly labelled synthetic graphic of a blue geometric runner on a teal background, created for a protected pipeline rehearsal.",
+      "raceDate": "2026-09-01",
+      "raceEvent": "Training",
+      "raceDistance": "10 km",
+      "sourceUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v1/7bc25454f37eb7ad80e9346efed07012f4eee724cf33256a6519b2d6215dd569/display.webp",
+      "thumbnailUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v1/c223fa5336bb2bdb6c8a50515c89aa43f78b86cd709c0e26e8e04c76de267a22/thumbnail.webp",
+      "featured": false,
+      "athleteIds": [
+        "john-kevan"
+      ]
+    }
+  ]
 }
