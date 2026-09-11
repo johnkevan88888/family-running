@@ -71,7 +71,7 @@ separate explicit approval gates.
 
 ## Current task: complete the synthetic photo-review rehearsal
 
-### Status — repository correction merged; deployment and fresh rehearsal remain gated 11 September 2026
+### Status — promotion metadata correction prepared after synthetic rehearsal 11 September 2026
 
 The owner-approved, synthetic-only rehearsal reached the protected workflow on
 exact `main` commit `e76494bc55d29d2e39af2f0690044d5f87e7b617`. GitHub App
@@ -133,18 +133,49 @@ browser smoke tests. Pull Request #99 then merged the correction to `main` at
 exact commit `8ad9fc5518b12d52dd85e3e1194ddd4677c40639` after its required GitHub
 checks passed.
 
-The 11 September follow-up reconciliation changes only this active-work record,
-the publishing workflow, the upload architecture, and the Gallery admin
-README. The complete `pnpm test` suite passed before handoff, including both
-site modes, the exact 114-file artifact, and desktop/mobile browser smoke
-checks. An independent read-only diff review found no blocker. This
-documentation-only change does not alter code, workflows, media, manifests,
-suppression, D1, R2, Access, or deployed Worker state.
+Pull Request #100 merged the 11 September documentation reconciliation to
+`main` at exact commit `928269b661b5c58d6ea8a04491bca73bf88cc916` after its
+required checks passed. Under later explicit approval, the current processing,
+admin, and promotion Worker catalogue was deployed without changing another
+Worker or Cloudflare resource.
 
-No remote Worker change has been made. Pull Request #99 completed only the
-repository gate. Deployment of only the updated processing Worker, cleanup of
-the earlier synthetic operation, and a fresh synthetic rehearsal remain later,
-separate approval gates.
+A fresh Family draft then used a byte-distinct, clearly labelled synthetic
+graphic with no real person. Protected workflow run `34587609270` passed the
+GitHub App and ruleset preflight, resumed the exact approved draft, and created
+and verified both private-staging WebP derivatives. Promotion then failed
+closed with `409 staging-object-conflict` before any candidate branch or Pull
+Request was created. Its cleanup attempt returned `404 not-found`; it did not
+turn missing cleanup state into evidence that R2 or the public host was absent.
+Both public Gallery manifests remain empty, and no real media was used.
+
+The failure was caused by a representation mismatch at the promotion boundary.
+The processing service had already validated the bytes, hashes, dimensions,
+provider version and ETag, exact custom metadata, and the absence of any
+defined optional HTTP metadata. Promotion additionally required the metadata
+object to contain exactly one enumerable key. Cloudflare's current
+`R2HTTPMetadata` shape can enumerate its five standard optional keys with
+`undefined` values, so that key-count check rejected the same safe object.
+
+The corrective branch replaces only that brittle key-count condition in the
+promotion and approved-media cleanup reads. It accepts the six documented R2
+HTTP metadata keys only when `contentType` is the expected `image/webp` and all
+five optional values remain undefined. It still rejects wrong content types,
+defined cache/language/disposition/encoding/expiry values, unknown keys, extra
+custom metadata, altered provider identity, bytes, hashes, or dimensions. The
+focused processing-bridge test now presents Cloudflare's full enumerable shape
+on every R2 read and passes; it separately proves that a defined cache directive
+and an unknown key fail closed before approved-media upload. The promotion
+Worker boundary and Wrangler-config tests, repository-safety validation, and
+`git diff --check` passed. The complete `pnpm test` suite also passed, including
+both-mode CSV and Gallery validation, metadata stripping, promotion, cleanup,
+withdrawal and GitHub review boundaries, the exact 114-file preview artifact,
+and desktop/mobile browser smoke tests.
+
+The already-approved next gate is: merge this corrective Pull Request only
+after its required checks pass, deploy only the corrected promotion Worker,
+then retry the existing staged synthetic draft and stop at an unmerged Pull
+Request changing only `gallery-data/family.json`. Candidate merge, Gallery
+publication, real media, video, and any other deployment remain outside scope.
 
 ## Completed task: durable photo-review and owner-takedown controls
 

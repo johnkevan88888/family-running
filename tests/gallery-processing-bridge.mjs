@@ -3000,6 +3000,42 @@ approved.afterNextCreate = async ({ uploadId }) => {
         throw error;
     }
 };
+// Cloudflare may materialize every declared R2HTTPMetadata field on reads even
+// when the optional values are undefined. That exact platform shape is valid,
+// but a defined optional value or any unknown key must still fail closed before
+// an approved-media upload can begin.
+const promotionDisplayStagingKey = sqlite.prepare(`
+    SELECT staging_object_key AS stagingObjectKey
+    FROM draft_processing_outputs
+    WHERE processing_run_id = ? AND role = 'photo-display'
+`).get(promotionFixture.run.processingRunId).stagingObjectKey;
+const promotionDisplayStagingObject = staging.objects.get(
+    promotionDisplayStagingKey
+);
+const exactPromotionDisplayHttpMetadata = {
+    ...promotionDisplayStagingObject.httpMetadata
+};
+const approvedCallsBeforeRejectedHttpMetadata = approved.calls.length;
+for (const rejectedHttpMetadata of [
+    { ...exactPromotionDisplayHttpMetadata, cacheControl: 'public, max-age=60' },
+    { ...exactPromotionDisplayHttpMetadata, unexpected: undefined }
+]) {
+    promotionDisplayStagingObject.httpMetadata = rejectedHttpMetadata;
+    assert.deepEqual(await promotePhotoDraft(
+        promotionEnv,
+        promotionIdentity,
+        promotionFixture.draft.draftId,
+        promotionInput,
+        approvedOrigin,
+        currentNow += 1
+    ), {
+        ok: false,
+        status: 409,
+        code: 'staging-object-conflict'
+    });
+    assert.equal(approved.calls.length, approvedCallsBeforeRejectedHttpMetadata);
+}
+promotionDisplayStagingObject.httpMetadata = exactPromotionDisplayHttpMetadata;
 // The first multipart completion succeeds in R2 but its response is lost. The
 // exact retry adopts those bytes; it does not create another key or overwrite.
 approved.failAfterNextComplete = true;
@@ -7182,8 +7218,20 @@ function objectMetadata(object) {
 function stagedMetadata(object) {
     return {
         ...objectMetadata(object),
-        httpMetadata: { ...object.httpMetadata },
+        httpMetadata: cloudflareR2HttpMetadata(object.httpMetadata),
         customMetadata: { ...object.customMetadata }
+    };
+}
+
+function cloudflareR2HttpMetadata(value) {
+    return {
+        ...value,
+        contentType: value.contentType,
+        contentLanguage: value.contentLanguage,
+        contentDisposition: value.contentDisposition,
+        contentEncoding: value.contentEncoding,
+        cacheControl: value.cacheControl,
+        cacheExpiry: value.cacheExpiry
     };
 }
 

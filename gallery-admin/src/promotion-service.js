@@ -8,6 +8,7 @@ import {
     readBoundedBytes,
     sha256Hex
 } from './media-byte-verification.js';
+import { matchesExactImageHttpMetadata } from './r2-http-metadata.js';
 import { hashIdentity } from './session.js';
 import {
     buildV1ApprovedDerivativeKey,
@@ -838,9 +839,7 @@ function approvedObjectMatches(stored, object) {
 function exactMetadata(stored, role, contract) {
     const http = stored?.httpMetadata;
     const custom = stored?.customMetadata;
-    return isPlainObject(http) &&
-        Object.keys(http).length === 1 &&
-        http.contentType === 'image/webp' &&
+    return matchesExactImageHttpMetadata(http, 'image/webp') &&
         isPlainObject(custom) &&
         Object.keys(custom).length === 2 &&
         custom.contract === contract &&
