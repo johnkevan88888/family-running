@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,6 +9,16 @@ import { buildGalleryAdminCatalog } from '../scripts/build-gallery-admin-catalog
 import { runPhotoReviewBridge } from '../scripts/gallery-media/photo-review-bridge.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+await using fixture = await fs.mkdtempDisposable(
+    path.join(os.tmpdir(), 'family-running-photo-review-bridge-')
+);
+const fixtureRoot = fixture.path;
+await fs.cp(path.join(root, 'data'), path.join(fixtureRoot, 'data'), { recursive: true });
+await fs.mkdir(path.join(fixtureRoot, 'gallery-data'));
+await fs.writeFile(
+    path.join(fixtureRoot, 'gallery-data', 'hidden-athlete-ids.json'),
+    JSON.stringify({ schemaVersion: '1.0', hiddenAthleteIds: [] })
+);
 const draftId = 'draft_12345678-1234-4123-8123-1234567890ab';
 const runId = `run_${'1'.repeat(12)}4${'2'.repeat(3)}8${'3'.repeat(15)}`;
 const reviewId = `review_${'4'.repeat(32)}`;
@@ -22,7 +33,7 @@ const access = {
     clientId: 'photo-bridge-client-id.access',
     clientSecret: 'photo-bridge-client-secret'
 };
-const catalog = await buildGalleryAdminCatalog(root);
+const catalog = await buildGalleryAdminCatalog(fixtureRoot);
 const familyCatalog = catalog.sites.family.catalog;
 const everyoneCatalog = catalog.sites.everyone.catalog;
 const race = familyCatalog.races[0];
@@ -114,52 +125,90 @@ const publicManifestPaths = [
     path.join(root, 'gallery-data', 'everyone.json')
 ];
 const manifestsBefore = await Promise.all(publicManifestPaths.map(file => fs.readFile(file)));
+const existingFamilyItems = [1, 2].map(index => ({
+    ...candidate.draft.manifestItem,
+    id: `existing-family-photo-${index}`,
+    title: `Existing Family photo ${index}`
+}));
+const existingEveryoneItem = {
+    ...candidate.draft.manifestItem,
+    ...everyoneCatalog.races[0],
+    id: 'existing-everyone-photo',
+    title: 'Existing Everyone photo',
+    athleteIds: [everyoneCatalog.athleteIds[0]]
+};
+await fs.writeFile(
+    path.join(fixtureRoot, 'gallery-data', 'family.json'),
+    JSON.stringify({ schemaVersion: '1.0', items: existingFamilyItems })
+);
+await fs.writeFile(
+    path.join(fixtureRoot, 'gallery-data', 'everyone.json'),
+    JSON.stringify({ schemaVersion: '1.0', items: [existingEveryoneItem] })
+);
+const fixtureManifestPaths = ['family', 'everyone'].map(site =>
+    path.join(fixtureRoot, 'gallery-data', `${site}.json`)
+);
+const fixtureManifestsBefore = await Promise.all(
+    fixtureManifestPaths.map(file => fs.readFile(file))
+);
 
-const successServer = bridgeServer({
-    promotionFirstFailure: true,
-    reservationFirstFailure: true
-});
-let successReviewCandidate;
-const result = await runPhotoReviewBridge({
-    ...bridgeOptions(successServer.fetchImpl),
-    createReview: async (candidateResult, options) => {
-        successReviewCandidate = candidateResult;
-        assert.equal(options.expectedBaseSha, '1'.repeat(40));
-        assert.equal(options.token, 'short-lived-test-token');
-        return reviewResult(candidateResult);
-    }
-});
+for (const existingItems of [[], existingFamilyItems]) {
+    await fs.writeFile(
+        fixtureManifestPaths[0],
+        JSON.stringify({ schemaVersion: '1.0', items: existingItems })
+    );
+    const successServer = bridgeServer({
+        promotionFirstFailure: true,
+        reservationFirstFailure: true
+    });
+    let successReviewCandidate;
+    const result = await runPhotoReviewBridge({
+        ...bridgeOptions(successServer.fetchImpl),
+        createReview: async (candidateResult, options) => {
+            successReviewCandidate = candidateResult;
+            assert.equal(options.expectedBaseSha, '1'.repeat(40));
+            assert.equal(options.token, 'short-lived-test-token');
+            return reviewResult(candidateResult);
+        }
+    });
 
-assert.equal(result.draftId, draftId);
-assert.equal(result.targetRelativePath, 'gallery-data/family.json');
-assert.equal(result.itemId, itemInput.id);
-assert.equal(successServer.candidateReadCount(), 2);
-assert.equal(
-    successServer.promotionCount(),
-    2,
-    'One exact idempotent promotion retry must recover a lost response.'
-);
-assert.equal(
-    successServer.reservationCount(),
-    2,
-    'One exact idempotent reservation retry must recover a lost response.'
-);
-assert.equal(successReviewCandidate.changed, true);
-assert.deepEqual(
-    JSON.parse(successReviewCandidate.manifestText).items,
-    [candidate.draft.manifestItem]
-);
-assert.ok(successServer.requests.every(entry =>
-    !JSON.stringify(entry.body).includes('destination') &&
-    !JSON.stringify(entry.body).includes('fileName')
-));
-const openRequest = successServer.requests.find(entry =>
-    entry.pathname === `/api/service/photo-reviews/${reviewId}/open`
-);
-assert.deepEqual(Object.keys(openRequest.body).sort(), [
-    'expectedStateVersion', 'headSha', 'idempotencyKey', 'openEvidenceHash',
-    'pullRequestNumber', 'pullRequestUrl'
-]);
+    assert.equal(result.draftId, draftId);
+    assert.equal(result.targetRelativePath, 'gallery-data/family.json');
+    assert.equal(result.itemId, itemInput.id);
+    assert.equal(successServer.candidateReadCount(), 2);
+    assert.equal(
+        successServer.promotionCount(),
+        2,
+        'One exact idempotent promotion retry must recover a lost response.'
+    );
+    assert.equal(
+        successServer.reservationCount(),
+        2,
+        'One exact idempotent reservation retry must recover a lost response.'
+    );
+    assert.equal(successReviewCandidate.changed, true);
+    assert.deepEqual(
+        JSON.parse(successReviewCandidate.manifestText).items,
+        [...existingItems, candidate.draft.manifestItem],
+        'Adding a photo must preserve every existing item and its order.'
+    );
+    assert.deepEqual(
+        JSON.parse(await fs.readFile(fixtureManifestPaths[0], 'utf8')).items,
+        existingItems,
+        'Candidate preparation must leave its input manifest unchanged.'
+    );
+    assert.ok(successServer.requests.every(entry =>
+        !JSON.stringify(entry.body).includes('destination') &&
+        !JSON.stringify(entry.body).includes('fileName')
+    ));
+    const openRequest = successServer.requests.find(entry =>
+        entry.pathname === `/api/service/photo-reviews/${reviewId}/open`
+    );
+    assert.deepEqual(Object.keys(openRequest.body).sort(), [
+        'expectedStateVersion', 'headSha', 'idempotencyKey', 'openEvidenceHash',
+        'pullRequestNumber', 'pullRequestUrl'
+    ]);
+}
 
 const lostReservationServer = bridgeServer({
     reservationResponsesLostAfterCommit: true
@@ -333,11 +382,16 @@ assert.deepEqual(
     manifestsBefore,
     'Review generation and compensation must not edit either public manifest locally.'
 );
+assert.deepEqual(
+    await Promise.all(fixtureManifestPaths.map(file => fs.readFile(file))),
+    fixtureManifestsBefore,
+    'The bridge must prepare its one-item addition in memory without editing either fixture manifest.'
+);
 
 console.log(
     'Gallery photo-only review bridge: immutable reservation, lost-response replay, ' +
     'pre-review abandonment, privacy-first post-PR compensation, GitHub-outage safety, ' +
-    'and workflow boundary passed.'
+    'empty/populated manifest preservation, and workflow boundary passed.'
 );
 
 function bridgeOptions(fetchImpl) {
@@ -348,7 +402,7 @@ function bridgeOptions(fetchImpl) {
         githubToken: 'short-lived-test-token',
         processing: { origin: processingOrigin, ...access },
         promotion: { origin: promotionOrigin, ...access },
-        root,
+        root: fixtureRoot,
         fetchImpl,
         processPhoto: async input => {
             assert.equal(input.draftBinding.site, 'family');

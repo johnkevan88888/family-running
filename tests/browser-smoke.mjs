@@ -2880,16 +2880,7 @@ async function assertGalleryPage(page, mode, viewport, requestedPaths) {
     const suppressionFile = 'gallery-data/hidden-athlete-ids.json';
     const otherMode = mode === 'family' ? 'everyone' : 'family';
     const otherFile = `gallery-data/${otherMode}.json`;
-    const manifest = JSON.parse(
-        await fs.readFile(path.join(siteRoot, 'gallery-data', `${mode}.json`), 'utf8')
-    );
-    const suppressionDocument = JSON.parse(
-        await fs.readFile(path.join(siteRoot, ...suppressionFile.split('/')), 'utf8')
-    );
-    const hiddenAthleteIds = new Set(suppressionDocument.hiddenAthleteIds);
-    const visibleItems = manifest.items.filter(item =>
-        !item.athleteIds.some(athleteId => hiddenAthleteIds.has(athleteId))
-    );
+    const visibleItems = await readVisibleGalleryItems(mode);
 
     if (!requestedPaths.includes(expectedFile)) {
         failures.push(`${context}: Gallery did not request ${expectedFile}.`);
@@ -3722,7 +3713,8 @@ async function runGalleryEdgeCaseTests(browserInstance) {
                 type: 'photo',
                 title: 'Finish-line smile',
                 caption: '<img data-gallery-injection src=x> is text, not markup.',
-                alt: 'A runner smiling after crossing the finish line',
+                alt: 'A runner smiling after crossing the finish line, with a blue race banner ' +
+                    'behind them and spectators standing beside the barriers on a bright afternoon.',
                 raceDate: '2026-08-23',
                 raceEvent: 'Summer 5 km',
                 raceDistance: '5 km',
@@ -3937,6 +3929,40 @@ async function runGalleryEdgeCaseTests(browserInstance) {
         }
         await mobilePage.screenshot({
             path: path.join(artifactsDir, 'championship-populated-mobile.png'),
+            fullPage: true,
+            scale: 'css'
+        });
+
+        await mobilePage.route('https://media.example.com/**', route => route.abort());
+        await mobilePage.reload({ waitUntil: 'domcontentloaded' });
+        await waitForRenderedChampionship(mobilePage, 'family');
+        const failedImage = mobilePage.locator(
+            '[data-gallery-athlete-photo="carolyn-kevan"].has-gallery-media img'
+        ).first();
+        await failedImage.waitFor({ state: 'visible' });
+        const failedImageLayout = await failedImage.evaluate(async element => {
+            if (!element.complete) {
+                await new Promise(resolve => {
+                    element.addEventListener('load', resolve, { once: true });
+                    element.addEventListener('error', resolve, { once: true });
+                });
+            }
+            return {
+                failed: element.naturalWidth === 0,
+                alt: element.alt,
+                height: Math.round(element.closest('.championship-podium').getBoundingClientRect().height),
+                overflows: document.documentElement.scrollWidth > window.innerWidth
+            };
+        });
+        if (!failedImageLayout.failed || failedImageLayout.alt !== manifest.items[0].alt ||
+            failedImageLayout.height > 280 || failedImageLayout.overflows) {
+            failures.push(
+                'gallery mobile edge case: a failed image with long alternative text broke ' +
+                `the compact accessible podium (${failedImageLayout.height}px high).`
+            );
+        }
+        await mobilePage.screenshot({
+            path: path.join(artifactsDir, 'championship-unavailable-media-mobile.png'),
             fullPage: true,
             scale: 'css'
         });
@@ -4670,6 +4696,7 @@ async function assertLeaderboardDisplayLabels(page, mode, viewport) {
 
 async function assertChampionshipPodiums(page, mode, viewport) {
     const context = `${mode}/${viewport.name} championship podiums`;
+    const visibleItems = await readVisibleGalleryItems(mode);
     const layout = await page.evaluate(() => {
         const sections = [...document.querySelectorAll('#leaderboards .leaderboard-section')];
         const firstPodium = document.querySelector('#leaderboards .championship-podium');
@@ -4694,6 +4721,18 @@ async function assertChampionshipPodiums(page, mode, viewport) {
             tableMedalCount: firstTable?.querySelectorAll('tbody .medal').length || 0,
             fallbackCount: firstPodium?.querySelectorAll('.championship-podium-media[role="img"]').length || 0,
             mediaCount: firstPodium?.querySelectorAll('.championship-podium-media.has-gallery-media img').length || 0,
+            athleteMedia: [...document.querySelectorAll(
+                '#leaderboards [data-gallery-athlete-photo]'
+            )].map(container => ({
+                athleteId: container.dataset.galleryAthletePhoto,
+                itemId: container.dataset.galleryMediaId || null,
+                imageCount: container.querySelectorAll('img').length,
+                source: container.querySelector('img')?.getAttribute('src') || null,
+                alt: container.querySelector('img')?.getAttribute('alt') || null,
+                hasMedia: container.classList.contains('has-gallery-media'),
+                hasFallback: container.getAttribute('role') === 'img' &&
+                    Boolean(container.getAttribute('aria-label'))
+            })),
             columns: firstPodium ? getComputedStyle(firstPodium).gridTemplateColumns : '',
             height: firstPodium ? Math.round(firstPodium.getBoundingClientRect().height) : 0,
             overflows: document.documentElement.scrollWidth > window.innerWidth,
@@ -4717,8 +4756,21 @@ async function assertChampionshipPodiums(page, mode, viewport) {
             `(cards ${layout.cardCount}, card medals ${layout.cardMedalCount}, table medals ${layout.tableMedalCount}).`
         );
     }
-    if (layout.fallbackCount !== 3 || layout.mediaCount !== 0) {
-        failures.push(`${context}: tracked empty manifests did not leave three accessible media fallbacks.`);
+    if (layout.fallbackCount + layout.mediaCount !== 3) {
+        failures.push(`${context}: expected one approved image or accessible fallback per podium card.`);
+    }
+    for (const media of layout.athleteMedia) {
+        const taggedItems = visibleItems.filter(item => item.athleteIds.includes(media.athleteId));
+        const expectedItem = taggedItems.find(item => item.type === 'photo') || taggedItems[0];
+        if (expectedItem) {
+            if (media.itemId !== expectedItem.id || media.source !== expectedItem.thumbnailUrl ||
+                media.alt !== expectedItem.alt || media.imageCount !== 1 || !media.hasMedia ||
+                media.hasFallback) {
+                failures.push(`${context}: ${media.athleteId} did not use its first eligible Gallery image.`);
+            }
+        } else if (!media.hasFallback || media.hasMedia || media.imageCount !== 0 || media.itemId) {
+            failures.push(`${context}: ${media.athleteId} lost its accessible fallback without eligible media.`);
+        }
     }
     if (layout.categoryLabels.some(label => label.split(/\s+/).length !== 1)) {
         failures.push(`${context}: an age-graded category still displays more than its first word.`);
@@ -4741,6 +4793,19 @@ async function assertChampionshipPodiums(page, mode, viewport) {
     if (layout.overflows) {
         failures.push(`${context}: podium or standings content overflows horizontally.`);
     }
+}
+
+async function readVisibleGalleryItems(mode) {
+    const manifest = JSON.parse(
+        await fs.readFile(path.join(siteRoot, 'gallery-data', `${mode}.json`), 'utf8')
+    );
+    const suppressionDocument = JSON.parse(
+        await fs.readFile(path.join(siteRoot, 'gallery-data', 'hidden-athlete-ids.json'), 'utf8')
+    );
+    const hiddenAthleteIds = new Set(suppressionDocument.hiddenAthleteIds);
+    return manifest.items.filter(item =>
+        !item.athleteIds.some(athleteId => hiddenAthleteIds.has(athleteId))
+    );
 }
 
 async function assertHallOfFameDisplayLabels(page, mode, viewport) {

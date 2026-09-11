@@ -363,18 +363,17 @@
     font-size: 2.35rem;
     font-weight: 900;
     justify-content: center;
-    min-height: 190px;
+    height: 190px;
     overflow: hidden;
 }
 
 .championship-podium-card[data-podium-position="1"] .championship-podium-media {
-    min-height: 230px;
+    height: 230px;
 }
 
 .championship-podium-media img {
     display: block;
     height: 100%;
-    min-height: inherit;
     object-fit: cover;
     width: 100%;
 }
@@ -563,11 +562,11 @@
 
     .championship-podium-media,
     .championship-podium-card[data-podium-position="1"] .championship-podium-media {
-        min-height: clamp(88px, 24vw, 128px);
+        height: clamp(88px, 24vw, 128px);
     }
 
     .championship-podium-card[data-podium-position="1"] .championship-podium-media {
-        min-height: clamp(106px, 29vw, 150px);
+        height: clamp(106px, 29vw, 150px);
     }
 
     .championship-podium-copy {
