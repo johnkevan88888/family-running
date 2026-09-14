@@ -235,6 +235,20 @@ mode, and standings. Only then does it delete the merged branch and perform
 update-scoped cleanup. A failure retains the merged state and recovery files;
 `--resume` retries verification without attempting another merge.
 
+The final merge preflight reads the effective branch rules and all required
+checks again. When the recognised owner-only update restriction is active,
+the updater requests the owner's `--admin` merge permission only after proving
+the supported policy, current base ancestry, resolved review threads, and
+successful required checks from their configured provider. Unknown or changed
+protections, classic branch protection, pending/failed/skipped checks, a draft,
+or outstanding review requirements stop the merge. An unrestricted branch uses
+the ordinary merge command. The final request still pins the exact reviewed
+head with `--match-head-commit`; production verification precedes cleanup.
+These are fresh preflight reads, not an atomic replacement for GitHub policy
+enforcement: GitHub's administrator merge API pins the head but cannot also pin
+the branch policy or base commit. The updater rechecks the base immediately
+before sending the request and stops if it has changed.
+
 Run focused export-bundle failure regression tests:
 
 ```bash

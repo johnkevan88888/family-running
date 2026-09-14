@@ -437,6 +437,16 @@ assert.match(confirmBody, /options\.approveMerge/);
 assert.match(confirmBody, /printReviewCheckpoint\(state\)/);
 
 const mergeReviewedBody = functionSource(updater, 'function mergeReviewedPullRequest');
+const policyIndex = mergeReviewedBody.indexOf('verifyRoutineDataMergePolicy');
+const finalReadIndex = mergeReviewedBody.indexOf('loadPullRequest(state, tools.gh)');
+const finalIdentityIndex = mergeReviewedBody.indexOf('requireDataPullRequestIdentity(beforeMerge, state)');
+const mergeCommandIndex = mergeReviewedBody.indexOf("'merge'");
+assert.ok(policyIndex >= 0 && finalReadIndex > policyIndex);
+assert.ok(finalIdentityIndex > finalReadIndex && mergeCommandIndex > finalIdentityIndex);
+assert.match(mergeReviewedBody, /assessRequiredDataChecks\(beforeMerge\)/);
+assert.match(mergeReviewedBody, /beforeMerge\.baseRefOid !== baseCommit/);
+assert.match(mergeReviewedBody, /useAdmin \? \['--admin'\] : \[\]/);
+assert.match(mergeReviewedBody, /'--match-head-commit',\s*state\.commitSha/);
 assert.doesNotMatch(
     mergeReviewedBody,
     /--delete-branch/,
@@ -706,6 +716,24 @@ assert.match(
     /title changed|marker/
 );
 assert.deepEqual(assessRequiredDataChecks(mergePullRequest), []);
+for (const secondCheck of [
+    { name: 'Test static site', conclusion: null, status: 'IN_PROGRESS' },
+    { name: 'Test static site', conclusion: 'FAILURE', status: 'COMPLETED' }
+]) {
+    assert.match(assessRequiredDataChecks({
+        statusCheckRollup: [
+            { name: 'Test static site', conclusion: 'SUCCESS', status: 'COMPLETED' },
+            secondCheck
+        ]
+    }).join('\n'), /did not succeed/,
+    'An earlier success must not hide another pending or failed required check.');
+}
+assert.deepEqual(assessRequiredDataChecks({
+    statusCheckRollup: [
+        { name: 'Test static site', conclusion: 'SUCCESS', status: 'COMPLETED' },
+        { name: 'Test static site', conclusion: 'SUCCESS', status: 'COMPLETED' }
+    ]
+}), []);
 assert.match(
     assessRequiredDataChecks({
         ...mergePullRequest,

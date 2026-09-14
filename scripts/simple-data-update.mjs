@@ -17,6 +17,7 @@ import {
     waitForPagesRunRegistration
 } from './pages-deployment-verification.mjs';
 import { verifyProductionData } from './verify-production-data.mjs';
+import { verifyRoutineDataMergePolicy } from './data-update-merge-policy.mjs';
 
 const STATE_VERSION = 1;
 const REPOSITORY = 'johnkevan88888/family-running';
@@ -481,18 +482,19 @@ export function assessRequiredDataChecks(pullRequest) {
     const checks = Array.isArray(pullRequest?.statusCheckRollup)
         ? pullRequest.statusCheckRollup
         : [];
-    const requiredCheck = checks.find(check => check?.name === REQUIRED_CHECK);
+    const requiredChecks = checks.filter(check => check?.name === REQUIRED_CHECK);
 
-    if (!requiredCheck) {
+    if (requiredChecks.length === 0) {
         return [`GitHub did not report the required ${REQUIRED_CHECK} check.`];
     }
-    if (requiredCheck.conclusion !== 'SUCCESS') {
-        return [
-            `${REQUIRED_CHECK} did not succeed (reported ${requiredCheck.conclusion || requiredCheck.status || 'unknown'}).`
-        ];
-    }
 
-    return [];
+    // Different workflows can reuse a job name. A successful first match must
+    // not hide another pending or failed report before an owner merge.
+    return requiredChecks
+        .filter(check => check.conclusion !== 'SUCCESS')
+        .map(check =>
+            `${REQUIRED_CHECK} did not succeed (reported ${check.conclusion || check.status || 'unknown'}).`
+        );
 }
 
 export function readExportBundleId(manifestText) {
@@ -1170,6 +1172,33 @@ async function confirmReviewedMerge(state, tools, options) {
 }
 
 function mergeReviewedPullRequest(state, tools) {
+    const { useAdmin, baseCommit } = verifyRoutineDataMergePolicy({
+        state,
+        gh: tools.gh,
+        runCommand
+    });
+
+    // Policy inspection makes several read-only requests. Pin the identity and
+    // successful check again after those reads, immediately before the merge.
+    const beforeMerge = loadPullRequest(state, tools.gh);
+    requireDataPullRequestIdentity(beforeMerge, state);
+    if (beforeMerge.state === 'MERGED') {
+        return recordMergedPullRequest(state, beforeMerge);
+    }
+    if (beforeMerge.state !== 'OPEN') {
+        throw new Error('The data Pull Request is no longer open for merging.');
+    }
+    if (beforeMerge.baseRefOid !== baseCommit) {
+        throw new Error('The production branch moved during merge policy verification. Resume to check the updated branch before merging.');
+    }
+    const checkErrors = assessRequiredDataChecks(beforeMerge);
+    if (checkErrors.length > 0) {
+        throw new Error(`Automatic merge refused:\n- ${checkErrors.join('\n- ')}`);
+    }
+
+    if (useAdmin) {
+        console.log('Using the repository owner merge permission after verifying branch policy and required checks.');
+    }
     console.log('Merging the reviewed data Pull Request...');
     runCommand(
         tools.gh,
@@ -1180,6 +1209,7 @@ function mergeReviewedPullRequest(state, tools) {
             '--repo',
             REPOSITORY,
             '--merge',
+            ...(useAdmin ? ['--admin'] : []),
             '--match-head-commit',
             state.commitSha
         ],
@@ -1269,7 +1299,7 @@ function loadPullRequest(state, gh) {
             '--repo',
             REPOSITORY,
             '--json',
-            'url,state,title,baseRefName,headRefName,headRefOid,mergeCommit,mergedAt,statusCheckRollup'
+            'url,state,title,baseRefName,baseRefOid,headRefName,headRefOid,mergeCommit,mergedAt,statusCheckRollup'
         ],
         { label: 'Data Pull Request inspection', quiet: true }
     );
