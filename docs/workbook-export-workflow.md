@@ -270,6 +270,15 @@ not byte-for-byte current in both modes, and non-fast-forward local `main`. Use
 the manual workflow below for schema, export-set, code, configuration, or
 broader documentation changes.
 
+If all checks pass but GitHub reports `the base branch policy prohibits the
+merge`, the cause is branch permission rather than CSV validation. The guided
+updater now recognises the supported owner-only update restriction and requests
+the owner's merge permission after a fresh policy, review, ancestry, and check
+preflight. It retains `PROMOTE`, `PUBLISH`, and `MERGE`; it never treats that
+error as permission to ignore an unknown protection or a failed check. A saved
+checked update can resume once the corrected updater is integrated. Do not
+export the workbook again to repair this GitHub permission failure.
+
 If preflight fails, no data branch, staged run, or resumable state is created;
 fix the workbook and start normally rather than using `--resume`. If export,
 validation, or comparison fails after branch creation but before state is saved,

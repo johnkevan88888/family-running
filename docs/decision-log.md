@@ -3,6 +3,25 @@
 This log records durable architectural decisions, not proposed features.
 Unknown historical details are labelled rather than inferred.
 
+## Routine data merges use the checked owner permission when updates are restricted
+
+- **Date:** 14 September 2026
+- **Status:** Locally validated 15 September 2026; release pending.
+- **Problem:** The normal merge command rejects a validated data Pull Request
+  under the active `main` update restriction even after John types `MERGE`.
+  PR #105 supplied the exact failure; its static-site check had succeeded.
+- **Decision:** Preserve all three approval checkpoints and request `--admin`
+  only when a fresh read proves the supported owner-only restriction and no
+  additional unrecognised protection. Independently verify current required
+  checks and their provider, current base ancestry, mergeability, and review
+  completion, then recheck the exact Pull Request identity and base before the
+  head-pinned merge. Without the update restriction, use the normal merge path.
+- **Limits:** The owner must already have GitHub permission. This changes no
+  repository settings. Administrator merging cannot atomically bind policy or
+  base reads to the merge, so these are preflight safeguards rather than a
+  replacement for server enforcement. Unknown protections require a separate
+  implementation review. Pages and live-data verification still precede cleanup.
+
 ## Withdrawal completion and private-data purge are separate approved actions
 
 - **Status:** Accepted and implemented locally; migration `0013`, the dedicated

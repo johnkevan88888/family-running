@@ -48,6 +48,7 @@ const checks = [
     ['Analytics configuration tests', ['tests/analytics-config.mjs']],
     ['PR release-path tests', ['tests/pr-release-path.mjs']],
     ['Simple data-update workflow tests', ['tests/simple-data-update.mjs']],
+    ['Routine data owner-merge policy tests', ['tests/data-update-merge-policy.mjs']],
     ['Pages deployment verification tests', ['tests/pages-deployment-verification.mjs']],
     ['Production data verification tests', ['tests/verify-production-data.mjs']],
     ['Export bundle validation regression tests', ['tests/export-bundle-validation.mjs']],

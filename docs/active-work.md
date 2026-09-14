@@ -1,5 +1,58 @@
 # Active Work
 
+## Current task: repair the routine data merge permission failure
+
+### Status — data release verified; approved tooling release in progress, 15 September 2026
+
+John's PR #105 screenshot shows `Test static site` passing, followed by the
+entered `MERGE` approval and GitHub's `base branch policy prohibits the merge`
+error. Provider reads confirmed the active update restriction and exact reviewed
+head `13acce4e670d4fb32ef37a62aaf795dd80bf88b7`. CSV validation was not the failing
+step. John explicitly approved completing that data release and publishing,
+reviewing, and merging the permanent repair through the standard preview route.
+
+The repair is isolated on `codex/fix-data-update-merge-policy`. It adds a
+read-only merge-policy preflight and conditionally requests the owner's
+administrator merge permission for the recognised restriction. All three
+approval prompts, complete data validation, exact head identity, and
+post-merge production verification remain in place. It rejects unexpected
+protections and incomplete check, review, or current-base evidence.
+
+The updater's focused suite and 46 new behavioral merge-policy cases pass.
+A read-only live invocation of the new preflight against PR #105 returned
+`useAdmin: true` for exact head `13acce4e670d4fb32ef37a62aaf795dd80bf88b7` and
+base `1dded1b982b27ff7197f1eec440ba2b5f288ce84`. An independent bounded review
+also identified a final-check ambiguity when different workflows reuse the
+same check name. The final guard now requires every matching report to succeed;
+focused regression cases prove an earlier success cannot hide a pending or
+failed report. The reviewer confirmed that correction resolves the finding.
+Repository safety includes all 291 candidate paths,
+and this new release-tooling module requires the standard full-preview route.
+The complete `node scripts/run-all-tests.mjs` suite passed, including both-mode
+CSV/Gallery validation, all export and lifecycle regressions, the exact 114-file
+preview artifact, and desktop/mobile browser checks. The updater and merge-policy
+focused suites were rerun successfully after the final duplicate-check correction.
+Family and Everyone championship screenshots were visually reviewed at both
+sizes. Whitespace validation passes. The full log remains ignored at
+`test-artifacts/updater-repair-validation.log` in the repair worktree.
+
+The approved owner merge completed PR #105 at
+`dde51d5f339021bcef292a60dfdd433c6facfe8a`. Exact Pages run `34904715173` succeeded.
+The existing updater then proved all 72 live CSVs byte-identical to bundle
+`20260914T004905031Z-3EAC6180` and rendered Family and Everyone before cleanup.
+It fast-forwarded local `main`, removed only that completed update's local and
+remote data branch, and removed its staged export, promotion backup, and saved
+state. The repair worktree and other work remained intact. No workbook was
+opened or exported again.
+
+The permanent repair is rebased onto this completed data release. Its complete
+local suite passed again on that baseline, including all export, policy, artifact,
+and both-mode browser checks; the log is
+`test-artifacts/updater-repair-rebased-validation.log`. Its standard-preview
+Pull Request still requires successful remote checks and review of both preview
+modes before the approved merge. No CSV, public runtime, Gallery manifest, or
+Cloudflare infrastructure change belongs to the repair.
+
 ## Current task: make a populated Gallery pass the launch checks
 
 ### Status — local correction fully validated 11 September 2026
