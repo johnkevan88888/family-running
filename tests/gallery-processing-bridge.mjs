@@ -63,7 +63,8 @@ const migrationSources = await Promise.all([
     '0007_photo_promotion.sql',
     '0008_photo_promotion_cleanup.sql',
     '0009_public_host_verification.sql',
-    '0010_photo_intake_review_bridge.sql'
+    '0010_photo_intake_review_bridge.sql',
+    '0011_photo_review_invalidation.sql'
 ].map(fileName => readFile(
     new URL(`../gallery-admin/migrations/${fileName}`, import.meta.url),
     'utf8'
@@ -72,6 +73,24 @@ const sqlite = new DatabaseSync(':memory:');
 for (const migrationSource of migrationSources) {
     sqlite.exec(migrationSource);
 }
+// This broad processing suite deliberately exercises the pre-finalizer schema.
+// The dedicated legacy-recovery suite applies migration 0014. Empty views here
+// preserve the new read-only eligibility probes without importing later
+// withdrawal guards into unrelated processing-race fixtures.
+sqlite.exec(`
+    CREATE VIEW gallery_abandonable_pre_candidate_photo_promotions AS
+    SELECT NULL AS draft_id, NULL AS promotion_id, NULL AS processing_run_id,
+           NULL AS expected_state_version, NULL AS result_state_version
+    WHERE 0;
+    CREATE VIEW gallery_terminal_photo_withdrawal_transitions AS
+    SELECT NULL AS draft_id, NULL AS expected_state_version,
+           NULL AS result_state_version
+    WHERE 0;
+    CREATE VIEW gallery_complete_photo_withdrawal_cleanups AS
+    SELECT NULL AS draft_id, NULL AS promotion_id, NULL AS processing_run_id,
+           NULL AS cleanup_state_version
+    WHERE 0;
+`);
 const mediaDeliveryEpoch = seedExactCurrentMediaDeliveryEpoch(
     sqlite,
     approvedOrigin

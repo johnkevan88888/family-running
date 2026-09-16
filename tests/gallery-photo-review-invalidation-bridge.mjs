@@ -43,6 +43,11 @@ const processingCleanup = {
     expectedStateVersion: 4,
     idempotencyKey: `photo-review-staging-${'8'.repeat(32)}`
 };
+const processingOnlyCleanup = {
+    processingRunId,
+    expectedStateVersion: 5,
+    idempotencyKey: `photo-review-staging-${'4'.repeat(32)}`
+};
 const abandonment = {
     schemaVersion: '1.0',
     draftId,
@@ -210,6 +215,43 @@ assert.deepEqual(abandonmentRequests[2].body, {
     idempotencyKey: processingCleanup.idempotencyKey
 });
 
+// A processing-only staged run has no promotion, approved media, generation,
+// review, or branch. After the owner explicitly records editorial withdrawal,
+// recovery may remove only private staging and must never call GitHub.
+let processingOnlyReconciliationCalled = false;
+const processingOnlyRequests = [];
+const processingOnlyResult = await runPhotoReviewInvalidationBridge({
+    draftId,
+    githubToken: 'short-lived-test-token',
+    processing: { origin: processingOrigin, ...access },
+    promotion: { origin: promotionOrigin, ...access },
+    fetchImpl: processingOnlyServiceFetch(processingOnlyRequests),
+    reconcileReview: async () => {
+        processingOnlyReconciliationCalled = true;
+        throw new Error('GitHub must not be called for processing-only recovery.');
+    }
+});
+assert.equal(processingOnlyReconciliationCalled, false);
+assert.deepEqual(processingOnlyResult, {
+    schemaVersion: '1.0',
+    draftId,
+    recoveryStatus: 'withdrawal-pending',
+    approvedMediaStatus: 'not-created',
+    stagingStatus: 'cleaned',
+    branchState: 'no-reviewed-pr'
+});
+assert.deepEqual(
+    processingOnlyRequests.map(request => `${request.method} ${request.pathname}`),
+    [
+        `GET /api/service/drafts/${draftId}/photo-review-invalidation`,
+        `POST /api/service/processing-runs/${processingRunId}/cleanup`
+    ]
+);
+assert.deepEqual(processingOnlyRequests[1].body, {
+    expectedStateVersion: 5,
+    idempotencyKey: processingOnlyCleanup.idempotencyKey
+});
+
 await assert.rejects(
     runPhotoReviewInvalidationBridge({
         draftId,
@@ -231,6 +273,17 @@ await assert.rejects(
         reconcileReview: async () => terminal
     }),
     /exact abandonment receipt/
+);
+await assert.rejects(
+    runPhotoReviewInvalidationBridge({
+        draftId,
+        githubToken: 'short-lived-test-token',
+        processing: { origin: processingOrigin, ...access },
+        promotion: { origin: promotionOrigin, ...access },
+        fetchImpl: processingOnlyServiceFetch([], { unexpected: true }),
+        reconcileReview: async () => terminal
+    }),
+    /exact processing-only receipt/
 );
 
 const workflowText = await fs.readFile(
@@ -271,7 +324,8 @@ assert.deepEqual(
 console.log(
     'Gallery photo review invalidation: host-first cleanup, exact PR closure, ' +
     'GitHub-outage privacy behavior, terminal replay, delayed abandonment ' +
-    'cleanup, and workflow boundary passed.'
+    'cleanup, processing-only staging cleanup without promotion or GitHub, ' +
+    'and workflow boundary passed.'
 );
 
 function reviewEvidence(status) {
@@ -404,6 +458,50 @@ function abandonmentServiceFetch(requestsList, extraReceiptFields = {}) {
             });
         }
         throw new Error(`Unexpected abandonment request ${init.method} ${parsed.pathname}`);
+    };
+}
+
+function processingOnlyServiceFetch(requestsList, extraReceiptFields = {}) {
+    return async (url, init) => {
+        const parsed = new URL(url);
+        const headers = new Headers(init.headers);
+        const body = typeof init.body === 'string' ? JSON.parse(init.body) : null;
+        assert.equal(headers.get('CF-Access-Client-Id'), access.clientId);
+        assert.equal(headers.get('CF-Access-Client-Secret'), access.clientSecret);
+        requestsList.push({
+            origin: parsed.origin,
+            pathname: parsed.pathname,
+            method: init.method,
+            body
+        });
+        if (parsed.pathname.endsWith('/photo-review-invalidation')) {
+            return jsonResponse(200, {
+                receiptKind: 'processing-only',
+                recovery: {
+                    schemaVersion: '1.0',
+                    draftId,
+                    processingRunId,
+                    expectedStateVersion: 4,
+                    cleanupStateVersion: 5,
+                    status: 'withdrawal-pending'
+                },
+                processingCleanup: processingOnlyCleanup,
+                replayed: true,
+                ...extraReceiptFields
+            });
+        }
+        if (parsed.pathname ===
+            `/api/service/processing-runs/${processingRunId}/cleanup`) {
+            return jsonResponse(200, {
+                processingRunId,
+                cleanupReason: 'withdrawal',
+                status: 'cleaned',
+                replayed: true
+            });
+        }
+        throw new Error(
+            `Unexpected processing-only request ${init.method} ${parsed.pathname}`
+        );
     };
 }
 

@@ -6,34 +6,66 @@
 - **Approved pilot boundaries:** Cloudflare-managed `workers.dev` hostnames and
   temporary processing of each private original on an ephemeral GitHub-hosted
   runner
-- **Infrastructure state:** This branch is based on exact `origin/main` commit
-  `8ad9fc5518b12d52dd85e3e1194ddd4677c40639`, the merge of Pull Request #99.
-  That baseline includes the finalizer merge in Pull Request #94, Pull Request
-  #97's bounded rehearsal diagnostics, and Pull Request #98's validated data
-  and generated-catalogue refresh, plus Pull Request #99's generic verified
-  staged-run resume safeguard. The separately approved activation through
-  migration `0012` and the existing admin, processing, promotion, media,
-  verifier, and Access boundaries occurred under their own gates before this
-  finalizer slice. A fresh read-only provider audit on 11 September found
-  migration `0013` pending; the dedicated withdrawal-finalizer Worker, its
-  Access boundary, and the protected `gallery-finalization` GitHub environment
-  do not exist. The two finalization workflows have no runs.
-- **Media state:** The two public Gallery manifests and the shared suppression
-  file have no branch diff and remain empty in the repository. This branch has
-  not read or mutated private or approved provider
-  media inventory, transferred real media, or created a public derivative.
+- **Infrastructure state:** This corrective branch is based on exact
+  `origin/main` commit `319384638e482fbc3669f59616a971d14b95c6cb`, the merge
+  of Pull Request #107. Under separate later approvals, the protected
+  `gallery-finalization` environment was created, migration `0013` was applied,
+  and the dedicated finalizer Worker plus exact-host Access boundary passed a
+  non-mutating proof. The first protected finalizer retry failed before mutation
+  because `0013`'s combined receipt guard exceeded D1's expression-depth limit.
+  Forward migration `0014` and the matching service recovery changes are local
+  only: they have not been merged, applied, or deployed.
+- **Media state:** This branch changes neither public Gallery manifest nor the
+  shared suppression file. It has not transferred real media, mutated provider
+  media, created a derivative, or published a Gallery item. The protected
+  failure changed no finalizer receipt or draft state.
 - **Implementation state:** The provider-independent contracts, owner-only
   photo intake, private processing, promotion/review, privacy-first
   invalidation, owner withdrawal, proactive whole-item athlete exclusion,
   fixed-origin verifier, and PR #90 GitHub permission probe are present on
   `main`. Pull Request #94 closed the repository implementation gap between
-  `withdrawal-pending`, final `withdrawn`, and later private-data purge.
-  Repository evidence does not prove that migration `0013` is applied, the
-  finalizer is deployed, its
-  Access identity is configured, the protected environment has the required
-  reviewers and secrets, or either workflow has run. Real-media transfer, video
-  processing, DNS changes, merge, deployment, and publication remain
-  separately approved work.
+  `withdrawal-pending`, final `withdrawn`, and later private-data purge. The
+  current correction leaves that architecture intact while making its D1
+  guards compile at the provider limit and adding exact recovery for two old
+  synthetic pre-candidate shapes. Real-media transfer, video processing, DNS
+  changes, merge, migration `0014`, deployment, recovery dispatch, rehearsal,
+  and publication remain separately approved work.
+
+### Local forward recovery and D1 parity slice — 16 September 2026
+
+Remote read-only compilation isolated the first protected finalizer failure to
+the combined migration-`0013` withdrawal-completion guard: D1 returned its
+maximum expression depth of 100 before any receipt or draft mutation. The same
+exported database and exact service completed under generic local SQLite, so
+provider-compatible compilation is now an explicit release test rather than an
+inferred property.
+
+Forward migration `0014_pre_candidate_promotion_abandonment.sql` does not edit
+or replay applied migration `0013`. It divides the oversized operation,
+completion-receipt, and final-draft predicates into small pure-read triggers.
+The original `AFTER INSERT` consequence remains the only mutation, retaining
+atomic receipt, transition, and operation completion.
+
+The migration also records two distinct legacy recovery contracts. A promoted
+pre-candidate photo must still have its exact staged run, active promotion, two
+promotion objects, two public-generation targets, matching consent/revisions,
+and no review or cleanup. It creates the existing immutable abandonment receipt
+and requires approved-media plus staging cleanup. A processing-only staged
+photo is eligible only after a genuine owner editorial-withdrawal transition
+and matching owner audit; it must have no promotion, generation, review,
+approved object, workflow, branch, Pull Request, or merge evidence, and it
+requires only its exact staging cleanup. That path cannot manufacture the
+missing promotion or review.
+
+All finalizer write boundaries consume the same canonical terminal-source and
+complete-cleanup views. A processing-only item has no historical public target,
+so finalization uses the existing zero-generation fixed-origin proof. The
+service accepts generation/target counts only as `0/0` or as two positive
+counts. Editorial removal retains the untouched private original for the
+database-owned 30 days; the consent and athlete-exclusion rules are unchanged.
+The pinned Wrangler/workerd regression first proves a depth-101 expression is
+rejected, then applies migrations `0001`–`0014`, successfully compiles the
+receipt insert with `EXPLAIN`, and proves no receipt was created.
 
 ### Local withdrawal-finalization and purge slice — 3 September 2026
 
@@ -589,6 +621,9 @@ The implementation is expected to add:
 - `gallery-admin/src/withdrawal-finalizer-worker.js` plus migration `0013` for
   the narrow D1/private-original completion boundary and permanent hash-only
   receipts;
+- `gallery-admin/migrations/0014_pre_candidate_promotion_abandonment.sql` and
+  `gallery-admin/src/legacy-photo-recovery.js` for the forward-only D1 depth
+  correction and strict lineage-specific recovery;
 - focused contract, security, state-machine, processor, and delivery tests;
 - an example configuration containing names only, never account IDs, owner
   email, token values, private URLs, or credentials.
@@ -1129,28 +1164,28 @@ video processing from the photo-only checkpoint.
 
 ### Phase E — takedown rehearsal and first real-media pilot
 
-1. Review and merge the local finalizer slice through the ordinary protected
-   Pull Request path without changing either public manifest.
-2. With separate approval, apply migration `0013`, deploy the narrow finalizer,
-   configure its exact-host Service Auth policy and protected
-   `gallery-finalization` environment, then prove anonymous/wrong credentials
-   stop at Access while the exact identity reaches only the non-mutating method
-   boundary.
-3. With a fresh approval, complete one synthetic photo withdrawal: approved and
-   staging cleanup, current fixed-origin host proof, final `withdrawn`, and the
-   category-appropriate private-original result. Dispatch purge separately;
-   prove immediate consent purge and 30-day editorial/athlete blocking through
-   the appropriate fixtures rather than shortening time.
-4. Reconcile D1 integrity, permanent hash-only survivors, private/approved/
-   staging inventories, exact public-host responses, closed-unmerged review,
-   and unchanged public manifests. Park or remove temporary Access authority
-   only under its own approved cleanup step.
-5. Only after that rehearsal, upload one genuinely approved photograph. Review
-   its private consent record, sanitized bytes, exact manifest diff, both modes,
-   and responsive preview.
-6. Merge and publish only after a new explicit approval for that real-media Pull
-   Request. Repeat the pilot separately for video before enabling routine video
-   use.
+1. Review and merge the corrective repository change without modifying either
+   public manifest or the suppression file.
+2. With separate approval, apply migration `0014`, deploy the affected
+   processing, promotion/review, and finalizer Workers from the exact approved
+   `main`, and repeat their least-privilege Access and binding proofs.
+3. Recover each obsolete synthetic operation through its actual lineage:
+   promoted pre-candidate abandonment with both cleanups, processing-only owner
+   editorial withdrawal with processing cleanup only, and the already-clean
+   withdrawal-pending candidate through corrected finalization. Never fabricate
+   a missing promotion, review, receipt, or storage result.
+4. Reconcile D1 integrity, current host receipts, exact R2 inventories,
+   permanent hash-only survivors, retained private originals, review state, and
+   unchanged public manifests before starting a fresh current-catalogue
+   synthetic photo rehearsal.
+5. Stop at that rehearsal's unmerged one-file inherited-area manifest Pull
+   Request for visual approval. No real media, merge, or publication follows
+   automatically.
+6. Only after the synthetic rehearsal and a new explicit approval, upload one
+   genuinely approved photograph. Review its private consent record, sanitized
+   bytes, exact manifest diff, both modes, and responsive preview. Merge and
+   publish only after another explicit approval for that real-media Pull
+   Request; repeat the pilot separately for video before routine video use.
 
 **Exit gate:** full local and remote checks, reviewed screenshots, recovery and
 takedown runbooks, cost alerts, and explicit approval.
@@ -1172,6 +1207,15 @@ Before review of implementation changes:
   individual-item withdrawal, and stale-bundle failure tests;
 - multipart completion, checksum, idempotent retry, abandoned-upload cleanup,
   and concurrent state-transition tests;
+- pinned Wrangler/workerd D1 expression-depth calibration and compile parity
+  for the real `0001`–`0014` receipt insert, with an explicit zero-receipt
+  non-mutation assertion;
+- promoted pre-candidate abandonment, lost-response replay, dual cleanup,
+  owner-withdrawal race, and mismatched-lineage refusal;
+- processing-only owner editorial withdrawal with no promotion, generation,
+  review, approved-media, or GitHub fabrication and processing cleanup only;
+- zero-generation/zero-target finalization, retained editorial original,
+  current host proof, mixed-count rejection, and clean D1 integrity checks;
 - immutable exactly-two-target generation, append-only delivery-epoch,
   permanent key-retirement, current-receipt invalidation, canonical
   zero-generation withdrawal, and approved-purge-guard migration tests;

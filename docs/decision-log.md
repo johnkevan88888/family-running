@@ -3,6 +3,54 @@
 This log records durable architectural decisions, not proposed features.
 Unknown historical details are labelled rather than inferred.
 
+## Legacy photo recovery is evidence-specific and D1-depth tested
+
+- **Date:** 16 September 2026
+- **Status:** Accepted and implemented locally in forward migration `0014`;
+  Pull Request, migration application, Worker deployment, and recovery runs are
+  pending separate gates.
+- **Problem:** Applied migration `0013`'s combined withdrawal-completion guard
+  expands past D1's expression-depth limit of 100. The first protected retry
+  failed before mutation even though the live database contained the required
+  withdrawal, cleanup, public-host, consent, and private-original evidence.
+  Two older synthetic photo runs also predate the current catalogue: one has a
+  promotion and public generation but no candidate or review; the other has a
+  complete staged run but never created promotion, generation, or review facts.
+- **Decision:** Never edit applied migration `0013`. Forward migration
+  `0014_pre_candidate_promotion_abandonment.sql` replaces its oversized
+  operation, completion-receipt, and final-draft guards with small pure-read
+  triggers. The existing `AFTER INSERT` trigger remains the only mutating
+  consequence, so receipt insertion, draft transition, and operation completion
+  still commit or roll back together.
+- **Decision:** Recovery follows two mutually exclusive server-derived paths.
+  A promoted pre-candidate run may use the existing abandonment receipt only
+  when its exact promotion, staged run, two output roles, generation targets,
+  revisions, consent, and no-review/no-cleanup lineage agree; it requires both
+  approved-media and staging cleanup. A processing-only run requires a real
+  owner editorial-withdrawal transition and matching verified-owner audit,
+  exact complete upload and staged outputs, no current exclusion or consent
+  withdrawal, and no promotion, public generation, review, approved key,
+  workflow, branch, Pull Request, or merge evidence; it requires staging
+  cleanup only and never fabricates the missing publication lineage.
+- **Decision:** All three finalizer consumers—operation reservation, permanent
+  withdrawal receipt, and final draft transition—read the same canonical
+  terminal-source and complete-cleanup views. Processing-only withdrawal uses
+  the existing zero-generation public-host contract. Finalizer context accepts
+  generation and target counts only as `0/0` or as two positive values; a mixed
+  zero/positive pair fails closed.
+- **Validation consequence:** Repository tests must use the pinned local
+  Wrangler/workerd D1 runtime, first demonstrate that depth 101 fails at the
+  provider's limit, then apply the complete migration chain and compile the
+  withdrawal receipt insert with `EXPLAIN`. Generic SQLite success alone is not
+  sufficient. The parity probe must also prove that compilation created no
+  permanent receipt.
+- **Existing contracts preserved:** The caller still supplies no destination,
+  race, athlete, cleanup target, promotion, review, generation, or retention
+  fact. Inherited Family/Everyone area, server-derived metadata and public
+  athlete tags, guardian/consent gates, whole-item suppression and exclusion,
+  metadata stripping, external storage, photo-only scope, immediate consent
+  deletion, and 30-day editorial/athlete original retention do not change.
+
 ## Routine data merges use the checked owner permission when updates are restricted
 
 - **Date:** 14 September 2026
@@ -24,8 +72,10 @@ Unknown historical details are labelled rather than inferred.
 
 ## Withdrawal completion and private-data purge are separate approved actions
 
-- **Status:** Accepted and implemented locally; migration `0013`, the dedicated
-  Worker, its Access boundary, and both workflows are not activated
+- **Status:** Accepted and merged; migration `0013`, the dedicated Worker, its
+  Access boundary, and protected environment were activated under later
+  separate approvals. The first protected retry exposed the D1 depth fault
+  addressed by pending forward migration `0014`; purge remains unrun.
 - **Date:** 3 September 2026
 - **Decision:** Final withdrawal and later private-data purge use one dedicated
   service-only Worker with exactly D1 and private-original R2 bindings. The

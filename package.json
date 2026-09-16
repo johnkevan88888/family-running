@@ -35,6 +35,8 @@
     "test:gallery-public-host-migration": "node tests/gallery-public-host-migration.mjs",
     "test:gallery-photo-review-migration": "node tests/gallery-photo-review-migration.mjs",
     "test:gallery-photo-review-service": "node tests/gallery-photo-review-service.mjs",
+    "test:gallery-pre-candidate-abandonment": "node tests/gallery-pre-candidate-abandonment.mjs",
+    "test:gallery-d1-expression-depth": "node tests/gallery-d1-expression-depth.mjs",
     "test:gallery-public-host-verifier": "node tests/gallery-public-host-verifier.mjs",
     "test:gallery-public-host-remote-rehearsal": "node tests/gallery-public-host-remote-rehearsal.mjs",
     "test:gallery-public-host-remote-sqlite-integration": "node tests/gallery-public-host-remote-sqlite-integration.mjs",

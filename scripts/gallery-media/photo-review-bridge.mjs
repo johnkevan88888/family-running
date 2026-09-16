@@ -78,11 +78,42 @@ export async function runPhotoReviewBridge(options) {
         'GET',
         `/api/service/drafts/${draftPath}/photo-processing-eligibility`
     );
-    const resumeStagedRun = assertEligibility(eligibility, options.draftId);
+    const eligibilityMode = assertEligibility(eligibility, options.draftId);
+
+    if (eligibilityMode === 'abandon') {
+        const strandedRun = {
+            processingRunId: eligibility.processingRunId,
+            mediaType: 'photo',
+            state: 'processing',
+            stateVersion: eligibility.stateVersion,
+            runStatus: 'staged',
+            replayed: true
+        };
+        try {
+            await compensateAbandonedCandidate({
+                promotionClient,
+                processingClient,
+                run: strandedRun,
+                draftId: options.draftId,
+                expectedStateVersion: eligibility.stateVersion,
+                failureStage: 'stale-pre-candidate'
+            });
+        } catch (compensationError) {
+            throw new AggregateError(
+                [compensationError],
+                'The stale pre-candidate Gallery promotion could not be abandoned and cleaned up. ' +
+                    `Cleanup: ${safeFailureSummary(compensationError)}`
+            );
+        }
+        throw new Error(
+            'The stale pre-candidate Gallery promotion was abandoned; approved media and ' +
+                'private staging cleanup were confirmed, and no review was created.'
+        );
+    }
 
     let run;
     let staged;
-    if (resumeStagedRun) {
+    if (eligibilityMode === 'resume') {
         run = {
             processingRunId: eligibility.processingRunId,
             site: eligibility.site,
@@ -1146,7 +1177,7 @@ function assertEligibility(value, draftId) {
         common &&
         value.state === 'approved-for-processing' &&
         exactKeys(value, ['draftId', 'schemaVersion', 'state', 'stateVersion'])
-    ) return false;
+    ) return 'fresh';
     if (
         common &&
         value.scope === 'photo-processing-resume-v1' &&
@@ -1161,7 +1192,19 @@ function assertEligibility(value, draftId) {
             'draftId', 'mediaType', 'processingRunId', 'roles', 'runStatus',
             'schemaVersion', 'scope', 'site', 'state', 'stateVersion'
         ])
-    ) return true;
+    ) return 'resume';
+    if (
+        common &&
+        value.scope === 'photo-processing-abandonment-v1' &&
+        value.state === 'processing' &&
+        value.mediaType === 'photo' &&
+        value.runStatus === 'staged' &&
+        runIdPattern.test(value.processingRunId || '') &&
+        exactKeys(value, [
+            'draftId', 'mediaType', 'processingRunId', 'runStatus',
+            'schemaVersion', 'scope', 'state', 'stateVersion'
+        ])
+    ) return 'abandon';
     throw new Error('The processing service did not return current photo eligibility.');
 }
 

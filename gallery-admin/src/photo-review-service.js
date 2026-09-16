@@ -1,5 +1,11 @@
 import { sha256Hex } from './media-byte-verification.js';
 import { readPhotoCandidate } from './promotion-service.js';
+import {
+    exactPreCandidateAbandonmentFacts,
+    exactProcessingOnlyRecoveryFacts,
+    readPreCandidateAbandonmentFacts,
+    readProcessingOnlyRecoveryFacts
+} from './legacy-photo-recovery.js';
 import { hashIdentity } from './session.js';
 
 const textEncoder = new TextEncoder();
@@ -345,9 +351,18 @@ export async function abandonPhotoReviewCandidate(
         if (await readReviewByDraft(env.DB, draftId)) {
             return failure(409, 'conflict');
         }
-        const candidate = await readCandidateReview(env.DB, draftId);
+        let candidate = await readCandidateReview(env.DB, draftId);
+        let abandonmentFromState = 'candidate-public';
+        if (!currentCandidateFacts(candidate)) {
+            candidate = await readPreCandidateAbandonmentFacts(env.DB, draftId);
+            abandonmentFromState = 'processing';
+        }
         if (
-            !currentCandidateFacts(candidate) ||
+            (
+                abandonmentFromState === 'candidate-public'
+                    ? !currentCandidateFacts(candidate)
+                    : !exactPreCandidateAbandonmentFacts(candidate, draftId)
+            ) ||
             candidate.stateVersion !== input.expectedStateVersion
         ) return failure(candidate ? 409 : 404, candidate ? 'review-not-eligible' : 'not-found');
 
@@ -365,6 +380,52 @@ export async function abandonPhotoReviewCandidate(
         const actorIdentityHash = await hashIdentity(identity);
         const subjectHash = await sha256Text(`draft:${draftId}`);
         const occurredAt = isoTime(nowMilliseconds);
+        const stateTransitionStatements = (
+            abandonmentFromState === 'processing' &&
+            candidate.draftState === 'withdrawal-pending'
+        ) ? [] : [
+            env.DB.prepare(`
+                UPDATE gallery_drafts
+                   SET state = 'withdrawal-pending',
+                       state_version = state_version + 1,
+                       updated_at = ?3
+                 WHERE draft_id = ?1
+                   AND state = ?4
+                   AND state_version = ?2
+                   AND EXISTS (
+                       SELECT 1
+                       FROM draft_photo_review_abandonment_receipts
+                       WHERE draft_id = ?1
+                   )
+                   AND NOT EXISTS (
+                       SELECT 1 FROM draft_photo_review_receipts
+                       WHERE draft_id = ?1
+                   )
+            `).bind(
+                draftId,
+                input.expectedStateVersion,
+                occurredAt,
+                abandonmentFromState
+            ),
+            env.DB.prepare(`
+                INSERT INTO draft_transition_receipts (
+                    draft_id, idempotency_key, payload_fingerprint,
+                    from_state, to_state, expected_state_version,
+                    result_state_version, created_at
+                ) VALUES (
+                    ?1, ?2, ?3, ?4, 'withdrawal-pending', ?5,
+                    CASE WHEN changes() = 1 THEN ?6 ELSE ?5 END, ?7
+                )
+            `).bind(
+                draftId,
+                input.idempotencyKey,
+                payloadFingerprint,
+                abandonmentFromState,
+                input.expectedStateVersion,
+                input.expectedStateVersion + 1,
+                occurredAt
+            )
+        ];
 
         try {
             await runBatch(env.DB, [
@@ -461,47 +522,7 @@ export async function abandonPhotoReviewCandidate(
                            )
                        )
                 `).bind(draftId, occurredAt),
-                env.DB.prepare(`
-                    UPDATE gallery_drafts
-                       SET state = 'withdrawal-pending',
-                           state_version = state_version + 1,
-                           updated_at = ?3
-                     WHERE draft_id = ?1
-                       AND state = 'candidate-public'
-                       AND state_version = ?2
-                       AND EXISTS (
-                           SELECT 1
-                           FROM draft_photo_review_abandonment_receipts
-                           WHERE draft_id = ?1
-                       )
-                       AND NOT EXISTS (
-                           SELECT 1 FROM draft_photo_review_receipts
-                           WHERE draft_id = ?1
-                       )
-                `).bind(
-                    draftId,
-                    input.expectedStateVersion,
-                    occurredAt
-                ),
-                env.DB.prepare(`
-                    INSERT INTO draft_transition_receipts (
-                        draft_id, idempotency_key, payload_fingerprint,
-                        from_state, to_state, expected_state_version,
-                        result_state_version, created_at
-                    ) VALUES (
-                        ?1, ?2, ?3, 'candidate-public',
-                        'withdrawal-pending', ?4,
-                        CASE WHEN changes() = 1 THEN ?5 ELSE ?4 END,
-                        ?6
-                    )
-                `).bind(
-                    draftId,
-                    input.idempotencyKey,
-                    payloadFingerprint,
-                    input.expectedStateVersion,
-                    input.expectedStateVersion + 1,
-                    occurredAt
-                ),
+                ...stateTransitionStatements,
                 auditInsert(env.DB, {
                     eventType: 'photo-review-abandoned',
                     subjectHash,
@@ -731,6 +752,13 @@ export async function readPhotoReviewInvalidation(env, identity, draftId) {
                 processingCleanup: recovered.processingCleanup,
                 replayed: true
             });
+        }
+        const processingOnly = await readProcessingOnlyRecoveryFacts(
+            env.DB,
+            draftId
+        );
+        if (exactProcessingOnlyRecoveryFacts(processingOnly, draftId)) {
+            return processingOnlyRecoverySuccess(processingOnly);
         }
         return failure(404, 'not-found');
     } catch {
@@ -1357,6 +1385,27 @@ function abandonmentSuccess(receipt, replayed, status) {
                 `photo-review-staging-${receipt.payloadFingerprint.slice(0, 32)}`
         },
         replayed
+    });
+}
+
+function processingOnlyRecoverySuccess(recovery) {
+    return success(200, {
+        receiptKind: 'processing-only',
+        recovery: {
+            schemaVersion: '1.0',
+            draftId: recovery.draftId,
+            processingRunId: recovery.processingRunId,
+            expectedStateVersion: recovery.expectedStateVersion,
+            cleanupStateVersion: recovery.cleanupStateVersion,
+            status: 'withdrawal-pending'
+        },
+        processingCleanup: {
+            processingRunId: recovery.processingRunId,
+            expectedStateVersion: recovery.cleanupStateVersion,
+            idempotencyKey:
+                `photo-review-staging-${recovery.transitionPayloadFingerprint.slice(0, 32)}`
+        },
+        replayed: true
     });
 }
 

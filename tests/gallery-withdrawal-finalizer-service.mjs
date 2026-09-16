@@ -20,7 +20,8 @@ const migrationNames = [
     '0010_photo_intake_review_bridge.sql',
     '0011_photo_review_invalidation.sql',
     '0012_owner_withdrawal_exclusion_receipts.sql',
-    '0013_withdrawal_finalization.sql'
+    '0013_withdrawal_finalization.sql',
+    '0014_pre_candidate_promotion_abandonment.sql'
 ];
 const migrations = await Promise.all(migrationNames.map(name => readFile(
     new URL(`../gallery-admin/migrations/${name}`, import.meta.url),
@@ -28,7 +29,7 @@ const migrations = await Promise.all(migrationNames.map(name => readFile(
 )));
 
 const sqlite = new DatabaseSync(':memory:');
-for (const migration of migrations.slice(0, -1)) sqlite.exec(migration);
+for (const migration of migrations.slice(0, -2)) sqlite.exec(migration);
 
 // The earlier migration suites already prove their own admission paths. This
 // fixture temporarily removes and then restores those exact triggers so it can
@@ -50,6 +51,7 @@ const athleteExclusion = seedReviewedPhoto(sqlite, {
     withdrawalKind: 'athlete-exclusion'
 });
 restoreTriggers(sqlite, suspendedTriggers);
+sqlite.exec(migrations.at(-2));
 sqlite.exec(migrations.at(-1));
 
 assert.equal(sqlite.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);
@@ -108,6 +110,21 @@ assert.equal(count(sqlite, 'draft_withdrawal_finalization_operations'), 0);
 assert.equal(originals.calls.length, noHostCalls);
 
 seedCurrentHostProof(sqlite, editorial, epoch);
+const mixedHostCountResult = await finalizeGalleryWithdrawal(
+    {
+        ...env,
+        DB: withFinalizationContextCounts(d1, 0, 2)
+    },
+    identity,
+    editorial.draftId,
+    { idempotencyKey: editorial.withdrawalKey }
+);
+assert.deepEqual(mixedHostCountResult, {
+    ok: false,
+    status: 409,
+    code: 'conflict'
+}, 'A mixed zero/positive generation-target pair must fail closed.');
+assert.equal(count(sqlite, 'draft_withdrawal_finalization_operations'), 0);
 const editorialCallsBefore = originals.calls.length;
 const withdrawnEditorial = await finalizeGalleryWithdrawal(
     env,
@@ -1124,6 +1141,33 @@ function seedCurrentHostProof(database, fixture, epochValue) {
         FROM gallery_current_public_host_absence_receipts
         WHERE draft_id = ? AND final_receipt_hash = ?
     `).get(fixture.draftId, finalReceiptHash).count, 1);
+}
+
+function withFinalizationContextCounts(database, generationCount, targetCount) {
+    return {
+        prepare(sql) {
+            const statement = database.prepare(sql);
+            if (!sql.includes('permanent_host.generation_count AS generationCount')) {
+                return statement;
+            }
+            return {
+                bind(...bindings) {
+                    const bound = statement.bind(...bindings);
+                    return {
+                        async first(columnName) {
+                            const row = await bound.first(columnName);
+                            return row && typeof row === 'object'
+                                ? { ...row, generationCount, targetCount }
+                                : row;
+                        }
+                    };
+                }
+            };
+        },
+        batch(statements) {
+            return database.batch(statements);
+        }
+    };
 }
 
 function createSqliteD1(database) {

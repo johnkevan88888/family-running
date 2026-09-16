@@ -462,9 +462,16 @@ function validContext(context, state, action) {
         SHA256_PATTERN.test(context.deliveryVersionHash || '') &&
         context.mediaDeliveryEpochIdHash === state.currentEpochIdHash &&
         Number.isSafeInteger(context.generationCount) &&
-        context.generationCount >= 1 &&
         Number.isSafeInteger(context.targetCount) &&
-        context.targetCount >= 1 &&
+        (
+            (
+                context.generationCount === 0 &&
+                context.targetCount === 0
+            ) || (
+                context.generationCount >= 1 &&
+                context.targetCount >= 1
+            )
+        ) &&
         validIsoTime(context.uploadCreatedAt) &&
         validIsoTime(context.uploadCompletedAt) &&
         privateOriginalKeyMatchesRecord(context.originalObjectKey, {
