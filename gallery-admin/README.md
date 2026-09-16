@@ -90,10 +90,10 @@ tests pass locally. The public manifests and suppression file are unchanged.
 ## Local D1-depth and legacy-photo recovery correction
 
 `migrations/0014_pre_candidate_promotion_abandonment.sql` is forward-only. It
-does not edit applied migration `0013`. It replaces the oversized completion-
-receipt and draft-withdrawal read guards with smaller pure-read triggers while
-leaving `0013`'s `AFTER INSERT` trigger as the single atomic state-changing
-command.
+does not edit applied migration `0013`. It replaces the oversized operation-
+reservation, completion-receipt, and draft-withdrawal read guards with smaller
+pure-read triggers while leaving `0013`'s `AFTER INSERT` trigger as the single
+atomic state-changing command.
 
 `src/legacy-photo-recovery.js` exposes strict read-only validators for two
 different shapes. Promoted pre-candidate recovery requires the real staged run,
@@ -152,9 +152,11 @@ staging last. If GitHub is unavailable, media remains removed while Pull
 Request closure stays pending. Neither route completes fixed-origin host proof,
 private-original deletion, final withdrawal, or purge.
 Review cleanup packages remain fixed at `candidateStateVersion + 1` and
-abandonment packages at their immutable result version. Final `withdrawn` is
-blocked until both exact approved-media and receipt-bound private-staging cleanup
-rows are complete and their matching hash-only tombstones exist.
+abandonment packages at their immutable result version. Those two lineages are
+blocked until both exact approved-media and receipt-bound private-staging
+cleanup rows are complete and their matching hash-only tombstones exist. The
+processing-only path above has a separate staging-only cleanup contract and
+cannot create promotion or review evidence.
 
 The owner browser routes are:
 
@@ -815,8 +817,9 @@ evidence.
 Migration `migrations/0014_pre_candidate_promotion_abandonment.sql` is locally
 validated and unapplied. It adds exact promoted pre-candidate abandonment and
 processing-only editorial-withdrawal evidence views, requires lineage-specific
-cleanup, and splits the `0013` completion and draft-state read guards so the
-real receipt insert compiles below D1's expression-depth ceiling. It grants no
+cleanup, and splits the `0013` operation, completion, and draft-state read
+guards so the real reservation and receipt inserts compile below D1's
+expression-depth ceiling. It grants no
 promotion, publication, GitHub, manifest, suppression, merge, deployment, or
 storage capability by itself.
 

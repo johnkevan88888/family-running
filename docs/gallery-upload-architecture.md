@@ -143,8 +143,10 @@ cleaned last. If GitHub is unavailable, the approved bytes remain removed while
 Pull Request closure and final staging cleanup stay explicitly pending. Final
 withdrawal cannot outrun cleanup: review packages remain fixed at the immutable
 candidate-to-withdrawal result version, abandonment packages remain fixed at
-their immutable result version, and both exact approved-media and receipt-bound
-staging cleanup rows plus matching tombstones are required. Fixed-origin
+their immutable result version, and those two lineages require both exact
+approved-media and receipt-bound staging cleanup rows plus matching tombstones.
+The later processing-only lineage uses its separate staging-only contract
+above. Fixed-origin
 public-host absence is still required, consent withdrawal still also depends on
 private-original deletion, and purge remains a later separate gate.
 

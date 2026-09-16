@@ -105,10 +105,15 @@ Unknown historical details are labelled rather than inferred.
   HTTP or D1 response safely retryable without treating unexplained pre-action
   absence as success. Database-owned time prevents a caller or Worker clock
   from shortening retention.
-- **Consequences:** Final withdrawal still requires positive terminal review or
-  abandonment evidence, exact approved-media and private-staging cleanup rows
-  with their matching tombstones, and a current generation/epoch-bound host
-  receipt. Purge is atomic at the D1 boundary. Permanent withdrawal,
+- **Consequences:** Final withdrawal requires exactly one accepted terminal
+  lineage and its matching cleanup contract. Review or promoted pre-candidate
+  abandonment requires exact approved-media and private-staging cleanup rows
+  plus their tombstones. Processing-only owner editorial withdrawal requires
+  its exact private-staging cleanup and tombstone and must have no promotion,
+  generation, review, approved-media, or GitHub lineage. Every path still
+  requires a current delivery-epoch-bound host receipt; a genuine no-generation
+  path uses only the canonical `0/0` form. Purge is atomic at the D1 boundary.
+  Permanent withdrawal,
   private-deletion, and purge receipts survive parent deletion with hashes and
   proof facts only; they retain no raw draft ID, uploader, site, race, athlete,
   consent note, object key, provider identifier, caption, or other free text.

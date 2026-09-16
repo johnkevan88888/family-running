@@ -111,8 +111,8 @@ report, or log.
 
 The withdrawal-finalization migration and service suites apply the real
 `0001`–`0014` chain to SQLite and use an in-memory R2 substitute. They prove
-separate deterministic withdrawal/purge authority, positive terminal review
-and exact cleanup gates, current host-proof convergence, database-owned
+separate deterministic withdrawal/purge authority, lineage-specific terminal
+evidence and exact cleanup gates, current host-proof convergence, database-owned
 timestamps, exact 30-day editorial/athlete retention, consent deletion before
 withdrawal, durable interrupted-deletion retry, atomic purge rollback,
 hash-only permanent receipts, and replay after parent purge without storage

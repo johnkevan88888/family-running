@@ -116,9 +116,11 @@ calling GitHub.
 The review-open write rechecks all mutable candidate and consent facts at the
 SQL boundary. If withdrawal or exclusion wins that race, the receipt stays
 reserved and no opened audit is emitted. Cleanup packages remain pinned to the
-immutable candidate-to-withdrawal or abandonment result version. Final
-`withdrawn` requires exact completed approved-media and receipt-bound staging
-cleanup evidence and matching hash-only tombstones.
+immutable candidate-to-withdrawal or abandonment result version. Those two
+lineages require exact completed approved-media and receipt-bound staging
+cleanup evidence plus matching hash-only tombstones. The processing-only path
+described above instead requires its strict staging-only cleanup and zero
+promotion/review evidence.
 
 The owner can record editorial removal or consent withdrawal for an exact
 draft, and can proactively exclude any current public athlete in the inherited
