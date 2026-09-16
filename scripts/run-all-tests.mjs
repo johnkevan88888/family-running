@@ -27,6 +27,8 @@ const checks = [
     ['Gallery public-host verification migration tests', ['tests/gallery-public-host-migration.mjs']],
     ['Gallery photo review reservation migration tests', ['tests/gallery-photo-review-migration.mjs']],
     ['Gallery photo review reservation service tests', ['tests/gallery-photo-review-service.mjs']],
+    ['Gallery legacy photo recovery tests', ['tests/gallery-pre-candidate-abandonment.mjs']],
+    ['Gallery D1 expression-depth parity tests', ['tests/gallery-d1-expression-depth.mjs']],
     ['Gallery public-host verifier tests', ['tests/gallery-public-host-verifier.mjs']],
     ['Gallery public-host remote rehearsal driver tests', ['tests/gallery-public-host-remote-rehearsal.mjs']],
     ['Gallery public-host remote SQLite/service integration tests', ['tests/gallery-public-host-remote-sqlite-integration.mjs']],

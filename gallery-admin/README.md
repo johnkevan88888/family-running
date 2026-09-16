@@ -7,19 +7,20 @@ finalizer. It is not part of the GitHub Pages runtime and does not provide a
 public-site upload control. No Worker combines access to private originals,
 private staging, approved media, and GitHub.
 
-The exact repository baseline for this branch is `origin/main` commit
-`8ad9fc5518b12d52dd85e3e1194ddd4677c40639`, the merge of Pull Request #99.
-That baseline includes the finalizer merge in Pull Request #94, Pull Request
-#97's bounded rehearsal diagnostics, Pull Request #98's validated data and
-generated-catalogue refresh, and Pull Request #99's generic verified staged-run
-resume safeguard.
-The earlier admin, processing, promotion, media, verifier, delivery-epoch,
-review, invalidation, and non-production migrations through `0012` passed
-their own separately approved activation gates. A fresh read-only provider
-audit on 11 September found migration `0013` pending and no finalizer Worker,
-Access resources, protected GitHub environment, or workflow run. The public
-manifests and suppression file remain unchanged, and the finalizer files do not
-enter the 114-file GitHub Pages artifact.
+The exact repository baseline for this corrective branch is `origin/main`
+commit `319384638e482fbc3669f59616a971d14b95c6cb`, the merge of Pull Request
+#107. The earlier admin, processing, promotion, media, verifier, review,
+invalidation, finalizer, and non-production migrations through `0013` passed
+their separately approved gates. The protected `gallery-finalization`
+environment exists, and the finalizer Worker and exact-host Access boundary
+have passed their approved access proof.
+
+A protected finalization retry then failed closed at D1's expression-depth
+limit before writing a completion receipt or changing the draft. Forward
+migration `0014` and the corrective processing, promotion/review, and finalizer
+source are local only. They have not been applied or deployed. The public
+manifests and suppression file remain unchanged, and none of these files enters
+the GitHub Pages artifact.
 
 ## Merged withdrawal-finalizer boundary
 
@@ -27,10 +28,11 @@ Pull Request #94 merged the 3 September 2026 implementation of a sixth,
 service-only Worker at
 `src/withdrawal-finalizer-worker.js`, migration
 `0013_withdrawal_finalization.sql`, and two separately approved manual
-workflows. The implementation is not activated: migration `0013` is unapplied,
-no finalizer Access application, policy, or token is configured, the
-`gallery-finalization` environment does not exist, and neither workflow has
-been dispatched.
+workflows. Migration `0013`, the finalizer Worker, its exact-host Access
+boundary, and the protected environment were later activated in non-production
+under separate approvals. That activation exposed the D1 compile defect
+corrected by local migration `0014`; the correction remains unapplied and
+undeployed.
 
 The exact route is
 `POST /api/service/drafts/{draft_id}/withdrawal-finalizations`. Its JSON body is
@@ -85,6 +87,36 @@ Focused real-SQLite migration and service integration, R2 interruption/retry,
 Worker/configuration, protected bridge/workflow, and earlier takedown regression
 tests pass locally. The public manifests and suppression file are unchanged.
 
+## Local D1-depth and legacy-photo recovery correction
+
+`migrations/0014_pre_candidate_promotion_abandonment.sql` is forward-only. It
+does not edit applied migration `0013`. It replaces the oversized operation-
+reservation, completion-receipt, and draft-withdrawal read guards with smaller
+pure-read triggers while leaving `0013`'s `AFTER INSERT` trigger as the single
+atomic state-changing command.
+
+`src/legacy-photo-recovery.js` exposes strict read-only validators for two
+different shapes. Promoted pre-candidate recovery requires the real staged run,
+active promotion, generation targets, and absence of review or prior cleanup;
+it records abandonment and requires both promotion and processing cleanup.
+Processing-only recovery requires the complete synthetic upload, staged photo
+run, real owner editorial-withdrawal transition and audit, and no promotion,
+generation, review, approved-media, branch, or Pull Request evidence; it
+returns processing cleanup only.
+
+The withdrawal finalizer accepts a coherent zero-generation/zero-target host
+receipt for that processing-only path and continues to accept positive
+generation/target evidence. Mixed counts fail closed. Host proof, exact
+cleanup, editorial retention, consent deletion, and separate purge rules are
+unchanged.
+
+`tests/gallery-d1-expression-depth.mjs` proves pinned local D1 enforces the
+depth-100 ceiling, compiles the corrected real receipt insert after migrations
+`0001`–`0014`, and writes no receipt.
+`tests/gallery-pre-candidate-abandonment.mjs` proves both recovery paths,
+idempotent cleanup, zero-generation finalization, retained editorial original,
+and fail-closed lineage mismatches.
+
 ## Merged review, withdrawal, and exclusion safety slice
 
 The 2 September 2026 slice added migrations `0011` and `0012`, protected
@@ -120,9 +152,11 @@ staging last. If GitHub is unavailable, media remains removed while Pull
 Request closure stays pending. Neither route completes fixed-origin host proof,
 private-original deletion, final withdrawal, or purge.
 Review cleanup packages remain fixed at `candidateStateVersion + 1` and
-abandonment packages at their immutable result version. Final `withdrawn` is
-blocked until both exact approved-media and receipt-bound private-staging cleanup
-rows are complete and their matching hash-only tombstones exist.
+abandonment packages at their immutable result version. Those two lineages are
+blocked until both exact approved-media and receipt-bound private-staging
+cleanup rows are complete and their matching hash-only tombstones exist. The
+processing-only path above has a separate staging-only cleanup contract and
+cannot create promotion or review evidence.
 
 The owner browser routes are:
 
@@ -768,8 +802,9 @@ an approved purge. SQL enforces exact lowercase `draft_<UUID-v4>` values,
 strict ordering and uniqueness, exact set hashing, and append-only/no-replace
 behavior. It stores no names, reasons, request notes, or private identities.
 
-Migration `migrations/0013_withdrawal_finalization.sql` is local and unapplied.
-It adds separate live withdrawal and purge operations, permanent hash-only
+Migration `migrations/0013_withdrawal_finalization.sql` is applied to
+non-production and remains immutable. It adds separate live withdrawal and
+purge operations, permanent hash-only
 withdrawal/private-deletion/purge receipts, exact current-host and cleanup
 guards, a one-way private-deletion scalar, SQLite-owned immutable timestamps,
 an exact generated 30-day editorial/athlete retention deadline, and atomic
@@ -778,6 +813,15 @@ private-original deletion tombstone before final withdrawal. The older
 rejected/processing-failed retention-expiry path remains available only through
 its hardened 30-day, current-host, private-deletion, and approved-retention
 evidence.
+
+Migration `migrations/0014_pre_candidate_promotion_abandonment.sql` is locally
+validated and unapplied. It adds exact promoted pre-candidate abandonment and
+processing-only editorial-withdrawal evidence views, requires lineage-specific
+cleanup, and splits the `0013` operation, completion, and draft-state read
+guards so the real reservation and receipt inserts compile below D1's
+expression-depth ceiling. It grants no
+promotion, publication, GitHub, manifest, suppression, merge, deployment, or
+storage capability by itself.
 
 Private consent, derivative, publication, and transition rows cascade when an
 eligible draft is explicitly purged. Original, staging, and approved object

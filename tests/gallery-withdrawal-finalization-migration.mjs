@@ -16,7 +16,8 @@ const migrationNames = [
     '0010_photo_intake_review_bridge.sql',
     '0011_photo_review_invalidation.sql',
     '0012_owner_withdrawal_exclusion_receipts.sql',
-    '0013_withdrawal_finalization.sql'
+    '0013_withdrawal_finalization.sql',
+    '0014_pre_candidate_promotion_abandonment.sql'
 ];
 const migrations = await Promise.all(migrationNames.map(name => readFile(
     new URL(`../gallery-admin/migrations/${name}`, import.meta.url),
@@ -24,7 +25,7 @@ const migrations = await Promise.all(migrationNames.map(name => readFile(
 )));
 
 const database = new DatabaseSync(':memory:');
-for (const migration of migrations.slice(0, -1)) database.exec(migration);
+for (const migration of migrations.slice(0, -2)) database.exec(migration);
 
 // Earlier migrations separately prove how upload, processing, promotion and
 // review rows are produced. Drop only those setup guards needed to build exact
@@ -69,9 +70,10 @@ database.prepare(`
     hash('pre-0013-orphan-retention-evidence')
 );
 
-// Apply the migration under test only after the historical fixture exists.
+// Apply the migrations under test only after the historical fixture exists.
 // That models a legitimate pre-migration rejected/processing-failed row whose
 // one-way private-deletion scalar was already true.
+database.exec(migrations.at(-2));
 database.exec(migrations.at(-1));
 
 assert.equal(database.prepare(
@@ -86,6 +88,10 @@ assert.equal(database.prepare('PRAGMA integrity_check').get().integrity_check, '
 for (const [type, name] of [
     ['view', 'gallery_terminal_photo_review_invalidations'],
     ['view', 'gallery_complete_photo_review_invalidation_cleanups'],
+    ['view', 'gallery_abandonable_pre_candidate_photo_promotions'],
+    ['view', 'gallery_processing_only_editorial_withdrawal_sources'],
+    ['view', 'gallery_terminal_photo_withdrawal_transitions'],
+    ['view', 'gallery_complete_photo_withdrawal_cleanups'],
     ['table', 'draft_withdrawal_finalization_operations'],
     ['table', 'gallery_withdrawal_completion_receipts'],
     ['table', 'draft_private_original_deletions'],

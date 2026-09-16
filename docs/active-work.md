@@ -1,5 +1,85 @@
 # Active Work
 
+## Current task: unblock exact legacy synthetic Gallery cleanup
+
+### Status — corrective implementation fully locally validated; Pull Request pending, 16 September 2026
+
+Current `main` is exact commit
+`319384638e482fbc3669f59616a971d14b95c6cb`, the merge of Pull Request #107.
+Under earlier separate approvals, the protected `gallery-finalization`
+environment was created, migration `0013` was applied, and the least-privilege
+withdrawal-finalizer Worker and exact-host Access boundary passed their
+non-mutating proof. The processing Worker has not yet been redeployed from this
+current `main`, no fresh current-catalogue rehearsal has run, and no Gallery
+manifest candidate is approved for merge or publication.
+
+The first protected finalizer retry against the withdrawn synthetic Pull
+Request #102 lineage failed before mutation. Read-only D1 compilation against
+the live schema returned `Expression tree is too large (maximum depth 100)` for
+the withdrawal-completion receipt insert. An export of the same live database
+and the exact service code completed locally, while a remote `EXPLAIN INSERT`
+reproduced the provider failure and each individual consequence statement
+compiled. This isolates the fault to migration `0013`'s combined receipt guard,
+not to missing withdrawal, cleanup, host, consent, or original evidence. The
+failed remote transaction left no completion receipt and did not advance the
+draft.
+
+The corrective branch leaves applied migration `0013` immutable and adds
+forward migration `0014_pre_candidate_promotion_abandonment.sql`. It replaces
+the oversized finalizer admission and final-state guards with small read-only
+triggers while retaining the original atomic `AFTER INSERT` consequence. It
+also adds two mutually exclusive, evidence-derived recovery paths for old
+synthetic work:
+
+- a promoted pre-candidate photo may create the existing immutable abandonment
+  receipt only when its exact staged run, promotion, two generation targets,
+  consent, revisions, and no-review/no-cleanup lineage still agree; it then
+  performs both approved-media and private-staging cleanup;
+- a processing-only staged photo becomes recoverable only after a genuine
+  owner editorial-withdrawal transition and matching owner audit. It must have
+  no promotion, generation, review, approved key, workflow, branch, Pull
+  Request, or merge evidence, and it performs private-staging cleanup only.
+
+Both paths converge on the same canonical terminal-source and complete-cleanup
+views consumed by operation reservation, permanent receipt insertion, and the
+final draft transition. The processing-only path can finalize only with the
+existing canonical zero-generation host proof; the finalizer now accepts
+generation and target counts only as the exact pair `0/0` or as a positive
+pair, never a mixed count. Editorial withdrawal retains the private original
+for the database-owned 30 days. Consent withdrawal, athlete exclusion,
+inherited Family/Everyone area, server-derived race/event/distance and athlete
+tags, whole-item suppression, metadata stripping, external storage, and
+photo-only scope are unchanged.
+
+Focused checks pass for syntax, whitespace, the real migration chain, the real
+finalizer service and Worker, finalization bridge, processing and review
+services, both recovery bridges, owner-withdrawal races, exact cleanup replay,
+zero-generation finalization, and a pinned local Wrangler/workerd parity test.
+That parity test first proves the runtime rejects expression depth above 100,
+then applies migrations `0001`–`0014`, compiles the final receipt insert, and
+confirms that `EXPLAIN` created no receipt. Two explicit negative regressions
+also prove a mixed zero/positive generation-target pair cannot reserve an
+operation and a current zero-generation host receipt cannot bypass incomplete
+staging cleanup.
+
+The complete `node scripts/run-all-tests.mjs` suite passed from the clean
+corrective worktree. It includes repository/vendor/CSV/Gallery validation,
+every Gallery privacy and lifecycle boundary, the new D1 parity and legacy-
+recovery suites, routine-data merge-policy regressions, the exact 114-file
+preview artifact, and Family/Everyone desktop and mobile browser checks. The
+representative championship and populated-Gallery screenshots were visually
+reviewed with no overflow or layout regression. `pnpm test` was not used as the
+launcher because pnpm correctly offered to replace the clean worktree's local
+dependency junction; that destructive reinstall was declined, and the exact
+underlying complete runner was invoked directly instead. An independent
+read-only source/security audit found no actionable finding.
+
+This branch changes no public manifest, suppression file, CSV, public runtime,
+media object, Cloudflare resource, or credential. Its next gate is the
+corrective Pull Request only. Merge, migration `0014`, Worker deployment,
+cleanup of either stale synthetic operation, a fresh rehearsal, and any
+one-file Gallery manifest Pull Request each remain separate explicit approvals.
+
 ## Current task: repair the routine data merge permission failure
 
 ### Status — data release verified; approved tooling release in progress, 15 September 2026
@@ -114,9 +194,9 @@ are now being executed; their runtime results must be recorded separately.
 Real media, candidate merge, Gallery publication, finalizer activation, and
 withdrawal/purge dispatch are not authorized by either of those gates.
 
-## Current task: complete owner-approved withdrawal and private-data purge
+## Prior task: complete owner-approved withdrawal and private-data purge
 
-### Status — merged; non-production activation remains gated 11 September 2026
+### Status — merged and activated under later approvals; corrective `0014` pending 16 September 2026
 
 Pull Request #94 merged the finalizer implementation at exact commit
 `bae4071bae81d2d3a70d9552600c9ce5f778a871`. The 11 September activation audit
@@ -124,12 +204,13 @@ used `8ad9fc5518b12d52dd85e3e1194ddd4677c40639`, the merge of Pull Request #99.
 That baseline also contains Pull Request #97's bounded rehearsal diagnostics
 and Pull Request #98's validated data and generated-catalogue refresh.
 
-A fresh read-only provider audit on 11 September confirms that migration
-`0013` remains pending and none of its five tables exists in D1. The finalizer
-Worker, its Access application/policy/token, and the protected
-`gallery-finalization` GitHub environment do not exist. Both checked-in
-finalizer workflows remain undispatched. The separately activated resources
-through migration `0012` are unchanged by this repository branch.
+The 11 September read-only audit recorded below was the pre-activation state.
+Under later separate approvals, the protected `gallery-finalization`
+environment was created, migration `0013` was applied, and the finalizer Worker
+plus exact-host Access boundary passed deployment and non-mutating access
+proofs. The first real protected finalizer retry then exposed D1's expression-
+depth limit before mutation. The current corrective status and forward-only
+`0014` response are recorded at the top of this file.
 
 The merged finalizer implementation includes migration
 `0013_withdrawal_finalization.sql`. It adds separate, immutable `withdrawal`
@@ -175,13 +256,15 @@ final independent read-only security review found no remaining blocker; it also
 confirmed that public manifests, data, suppression, and runtime files remain
 unchanged and that no media file was added.
 
-Migration `0013` has not been applied, no finalizer Worker or Access resource
-has been created or deployed, and neither new workflow has been dispatched. No
-finalizer R2 mutation, real-media transfer, manifest edit, or Gallery
-publication has occurred. Both public manifests and the shared suppression
-file remain unchanged. The protected GitHub environment, migration, Worker,
-Access resources, workflow credentials, and each workflow dispatch remain
-separate explicit approval gates.
+Activation of `0013`, the narrow Worker, Access boundary, protected environment,
+and credentials did not authorize a media mutation or publication. The failed
+protected retry created no completion receipt and changed no draft state. No
+real-media transfer, manifest edit, or Gallery publication has occurred. Both
+public manifests and the shared suppression file remain governed by their
+ordinary review contracts. Forward migration `0014`, any updated Worker
+deployment, every cleanup/finalization workflow dispatch, purge, fresh
+rehearsal, candidate merge, and publication remain separate explicit approval
+gates.
 
 ## Current task: complete the synthetic photo-review rehearsal
 

@@ -36,6 +36,10 @@ const ABANDONMENT_KEYS = Object.freeze([
     'processingRunId', 'promotionId', 'resultStateVersion', 'schemaVersion',
     'status'
 ]);
+const PROCESSING_ONLY_RECOVERY_KEYS = Object.freeze([
+    'cleanupStateVersion', 'draftId', 'expectedStateVersion',
+    'processingRunId', 'schemaVersion', 'status'
+]);
 
 /**
  * Remove approved media for one owner-withdrawn draft, then close only its
@@ -55,6 +59,18 @@ export async function runPhotoReviewInvalidationBridge(options) {
         `/api/service/drafts/${draftPath}/photo-review-invalidation`
     );
     const evidence = exactInvalidationReceipt(response, options.draftId);
+
+    if (evidence.receiptKind === 'processing-only') {
+        await cleanPrivateStaging(processingClient, evidence.processingCleanup);
+        return Object.freeze({
+            schemaVersion: '1.0',
+            draftId: options.draftId,
+            recoveryStatus: evidence.recovery.status,
+            approvedMediaStatus: 'not-created',
+            stagingStatus: 'cleaned',
+            branchState: 'no-reviewed-pr'
+        });
+    }
 
     // Privacy-first: an unavailable GitHub API must never keep approved media
     // publicly reachable after the owner has already recorded withdrawal.
@@ -166,6 +182,9 @@ function exactInvalidationReceipt(value, draftId) {
     if (value.receiptKind === 'abandonment') {
         return exactAbandonmentInvalidation(value, draftId);
     }
+    if (value.receiptKind === 'processing-only') {
+        return exactProcessingOnlyInvalidation(value, draftId);
+    }
     throw new Error('The review service returned an unsupported invalidation receipt.');
 }
 
@@ -241,6 +260,40 @@ function exactAbandonmentInvalidation(value, draftId) {
         receiptKind: 'abandonment',
         abandonment,
         cleanup: value.cleanup,
+        processingCleanup: value.processingCleanup
+    };
+}
+
+function exactProcessingOnlyInvalidation(value, draftId) {
+    if (!hasExactKeys(
+        value,
+        ['receiptKind', 'recovery', 'processingCleanup', 'replayed']
+    )) {
+        throw new Error('The review service did not return an exact processing-only receipt.');
+    }
+    const recovery = value.recovery;
+    if (
+        value.replayed !== true ||
+        !hasExactKeys(recovery, PROCESSING_ONLY_RECOVERY_KEYS) ||
+        recovery.schemaVersion !== '1.0' ||
+        recovery.draftId !== draftId ||
+        !PROCESSING_RUN_ID_PATTERN.test(recovery.processingRunId || '') ||
+        !Number.isSafeInteger(recovery.expectedStateVersion) ||
+        recovery.expectedStateVersion < 1 ||
+        recovery.cleanupStateVersion !== recovery.expectedStateVersion + 1 ||
+        recovery.status !== 'withdrawal-pending' ||
+        !validProcessingCleanup(
+            value.processingCleanup,
+            recovery.processingRunId
+        ) ||
+        value.processingCleanup.expectedStateVersion !==
+            recovery.cleanupStateVersion
+    ) {
+        throw new Error('The review service did not return exact processing-only evidence.');
+    }
+    return {
+        receiptKind: 'processing-only',
+        recovery,
         processingCleanup: value.processingCleanup
     };
 }

@@ -23,7 +23,10 @@ const migrationNames = [
     '0008_photo_promotion_cleanup.sql',
     '0009_public_host_verification.sql',
     '0010_photo_intake_review_bridge.sql',
-    '0011_photo_review_invalidation.sql'
+    '0011_photo_review_invalidation.sql',
+    '0012_owner_withdrawal_exclusion_receipts.sql',
+    '0013_withdrawal_finalization.sql',
+    '0014_pre_candidate_promotion_abandonment.sql'
 ];
 const migrations = await Promise.all(migrationNames.map(name => readFile(
     new URL(`../gallery-admin/migrations/${name}`, import.meta.url),
@@ -247,10 +250,15 @@ assert.throws(
            SET state = 'withdrawn', state_version = state_version + 1
          WHERE draft_id = ?
     `).run(candidate.draftId),
-    /approved and staging cleanup tombstones are required/i
+    /(approved and staging cleanup tombstones are required|final withdrawal requires an exact completion receipt)/i
 );
 sqlite.exec(`
     DROP TRIGGER gallery_drafts_withdrawal_evidence_guard;
+    DROP TRIGGER gallery_drafts_withdrawal_derivative_absence_guard;
+    DROP TRIGGER gallery_drafts_withdrawal_terminal_source_guard;
+    DROP TRIGGER gallery_drafts_withdrawal_cleanup_guard;
+    DROP TRIGGER gallery_drafts_withdrawal_retained_original_guard;
+    DROP TRIGGER gallery_drafts_withdrawal_consent_original_guard;
     DROP TRIGGER gallery_drafts_photo_review_cleanup_guard;
 `);
 sqlite.prepare(`

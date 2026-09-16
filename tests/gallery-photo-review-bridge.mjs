@@ -240,6 +240,73 @@ assert.equal(stagedResumeServer.requests.some(entry =>
     entry.pathname.includes('/derivatives/') || entry.pathname.endsWith('/original')
 ), false, 'A staged resume must not download or rewrite private media bytes.');
 
+const strandedServer = bridgeServer({ abandonPreCandidate: true });
+await assert.rejects(
+    runPhotoReviewBridge({
+        ...bridgeOptions(strandedServer.fetchImpl),
+        createReview: async () => {
+            throw new Error('GitHub must not be reached for abandonment-only recovery.');
+        }
+    }),
+    /stale pre-candidate Gallery promotion was abandoned.*no review was created/i
+);
+assert.equal(strandedServer.promotionCount(), 0);
+assert.equal(strandedServer.reservationCount(), 0);
+assert.equal(strandedServer.candidateReadCount(), 0);
+assert.equal(strandedServer.requests.some(entry =>
+    entry.pathname.endsWith('/processing-runs') ||
+    entry.pathname.includes('/derivatives/') ||
+    entry.pathname.endsWith('/original')
+), false, 'Abandonment-only recovery must not start processing or read stale bytes.');
+const strandedAbandonment = strandedServer.requests.find(entry =>
+    entry.pathname.endsWith('/photo-review-abandonment')
+);
+assert.equal(strandedAbandonment.body.expectedStateVersion, 2);
+assert.match(strandedAbandonment.body.failureEvidenceHash, /^[a-f0-9]{64}$/);
+assert.deepEqual(strandedServer.requests.find(entry =>
+    entry.pathname === `/api/service/photo-promotions/${promotionId}/cleanup`
+).body, {
+    expectedStateVersion: 3,
+    idempotencyKey: cleanup.idempotencyKey
+});
+assert.deepEqual(strandedServer.requests.find(entry =>
+    entry.pathname === `/api/service/processing-runs/${runId}/cleanup`
+).body, {
+    expectedStateVersion: 3,
+    idempotencyKey: processingCleanup.idempotencyKey
+});
+
+const strandedRetryServer = bridgeServer({
+    abandonPreCandidate: true,
+    processingCleanupFirstFailure: true
+});
+const strandedRetryOptions = {
+    ...bridgeOptions(strandedRetryServer.fetchImpl),
+    createReview: async () => {
+        throw new Error('GitHub must not be reached during abandonment recovery.');
+    }
+};
+await assert.rejects(
+    runPhotoReviewBridge(strandedRetryOptions),
+    /could not be abandoned and cleaned up.*status 503 \(service-unavailable\)/is
+);
+await assert.rejects(
+    runPhotoReviewBridge(strandedRetryOptions),
+    /stale pre-candidate Gallery promotion was abandoned.*no review was created/i
+);
+assert.equal(strandedRetryServer.requests.filter(entry =>
+    entry.pathname.endsWith('/photo-review-abandonment')
+).length, 2, 'The second run must replay the immutable abandonment receipt.');
+assert.equal(strandedRetryServer.requests.filter(entry =>
+    entry.pathname === `/api/service/photo-promotions/${promotionId}/cleanup`
+).length, 2, 'The second run must safely replay completed approved-media cleanup.');
+assert.equal(strandedRetryServer.requests.filter(entry =>
+    entry.pathname === `/api/service/processing-runs/${runId}/cleanup`
+).length, 2, 'The second run must finish cleanup that failed after receipt commit.');
+assert.equal(strandedRetryServer.promotionCount(), 0);
+assert.equal(strandedRetryServer.reservationCount(), 0);
+assert.equal(strandedRetryServer.candidateReadCount(), 0);
+
 const abandonmentServer = bridgeServer({ reservationAlwaysFails: true });
 await assert.rejects(
     runPhotoReviewBridge({
@@ -418,6 +485,9 @@ function bridgeServer(options = {}) {
     let candidateReads = 0;
     let promotions = 0;
     let reservations = 0;
+    let abandonments = 0;
+    let promotionCleanups = 0;
+    let processingCleanups = 0;
     let reservationBody;
     let invalidationStarted = false;
     const fetchImpl = async (url, init) => {
@@ -435,7 +505,16 @@ function bridgeServer(options = {}) {
         assert.equal(headers.get('CF-Access-Client-Secret'), access.clientSecret);
 
         if (parsed.pathname.endsWith('/photo-processing-eligibility')) {
-            return jsonResponse(200, options.resumeStagedRun ? {
+            return jsonResponse(200, options.abandonPreCandidate ? {
+                schemaVersion: '1.0',
+                scope: 'photo-processing-abandonment-v1',
+                draftId,
+                processingRunId: runId,
+                mediaType: 'photo',
+                state: 'processing',
+                stateVersion: 2,
+                runStatus: 'staged'
+            } : options.resumeStagedRun ? {
                 schemaVersion: '1.0',
                 scope: 'photo-processing-resume-v1',
                 draftId,
@@ -520,23 +599,29 @@ function bridgeServer(options = {}) {
             });
         }
         if (parsed.pathname.endsWith('/photo-review-abandonment')) {
+            abandonments += 1;
             if (options.promotionAlwaysFails) {
                 return jsonResponse(409, { error: 'review-not-eligible' });
             }
-            return jsonResponse(201, {
+            const expectedStateVersion = options.abandonPreCandidate ? 2 : 3;
+            const resultStateVersion = expectedStateVersion + 1;
+            return jsonResponse(abandonments > 1 ? 200 : 201, {
                 abandonment: {
                     schemaVersion: '1.0',
                     draftId,
                     promotionId,
                     processingRunId: runId,
-                    expectedStateVersion: 3,
-                    resultStateVersion: 4,
+                    expectedStateVersion,
+                    resultStateVersion,
                     failureEvidenceHash: body.failureEvidenceHash,
                     status: 'withdrawal-pending'
                 },
-                cleanup,
-                processingCleanup,
-                replayed: false
+                cleanup: { ...cleanup, expectedStateVersion: resultStateVersion },
+                processingCleanup: {
+                    ...processingCleanup,
+                    expectedStateVersion: resultStateVersion
+                },
+                replayed: abandonments > 1
             });
         }
         if (parsed.pathname === `/api/service/photo-reviews/${reviewId}/invalidation-start`) {
@@ -599,19 +684,24 @@ function bridgeServer(options = {}) {
             });
         }
         if (parsed.pathname === `/api/service/photo-promotions/${promotionId}/cleanup`) {
+            promotionCleanups += 1;
             return jsonResponse(200, {
                 promotionId,
                 cleanupReason: 'editorial-removal',
                 promotionStatus: 'cleaned',
-                replayed: false
+                replayed: promotionCleanups > 1
             });
         }
         if (parsed.pathname === `/api/service/processing-runs/${runId}/cleanup`) {
+            processingCleanups += 1;
+            if (options.processingCleanupFirstFailure && processingCleanups === 1) {
+                return jsonResponse(503, { error: 'service-unavailable' });
+            }
             return jsonResponse(200, {
                 processingRunId: runId,
                 cleanupReason: 'editorial-removal',
                 status: 'cleaned',
-                replayed: false
+                replayed: processingCleanups > 1
             });
         }
         throw new Error(`Unexpected bridge request ${init.method} ${parsed.pathname}`);

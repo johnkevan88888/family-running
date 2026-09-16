@@ -4,18 +4,48 @@ Phase 1 is an owner-curated public gallery. It deliberately does not accept
 visitor uploads and does not put photographs or videos into Git or the GitHub
 Pages artifact.
 
-## Merged withdrawal-finalization update — 3 September 2026
+## Corrective synthetic recovery workflow — 16 September 2026
+
+Migration `0013`, the protected `gallery-finalization` environment, the
+least-privilege finalizer Worker, and its exact-host Access boundary now exist
+in non-production. A protected retry failed closed before mutation because
+`0013`'s combined withdrawal-completion receipt guard exceeds D1's expression-
+depth limit of 100. Forward migration `0014` is locally validated but has not
+been applied, and the corrective Workers have not been deployed.
+
+For a promoted pre-candidate photo, use only the exact existing staged run,
+active promotion, and immutable public-generation target set. Record one
+abandonment, then complete approved-promotion cleanup and private-processing
+cleanup. There is no candidate or Pull Request to close.
+
+For a processing-only photo, first use the authenticated owner's existing
+editorial-withdrawal control. Recovery is available only when D1 proves the
+complete synthetic upload, staged run, matching owner audit, and complete
+absence of promotion, generation, review, approved-object, branch, and Pull
+Request evidence. Run private-processing cleanup only. Do not call promotion
+cleanup, GitHub, or manufacture a review/abandonment receipt.
+
+Both paths still require current fixed-origin host absence before final
+withdrawal. A processing-only item uses the canonical zero-generation receipt,
+with both generation and target counts equal to zero. Editorial withdrawal
+retains the private original for the full database-owned 30 days; later purge
+remains separately approved. Neither recovery path edits a manifest or
+suppression file.
+
+Apply migration `0014`, deploy each affected Worker from the exact approved
+`main`, and run each protected recovery only under separate approvals. After
+legacy cleanup, run a fresh current-catalogue synthetic photo through its
+inherited Family or Everyone area and stop at the unmerged one-file manifest
+Pull Request for visual approval.
+
+## Historical withdrawal-finalization implementation — 3 September 2026
 
 Pull Request #94 merged the locally validated finalizer implementation at exact
-commit `bae4071bae81d2d3a70d9552600c9ce5f778a871`. Current `main` is
-`8ad9fc5518b12d52dd85e3e1194ddd4677c40639`, the merge of Pull Request #99,
-and contains Pull Request #98's validated data and generated-catalogue refresh.
-A fresh read-only provider audit on 11 September confirms that migration
-`0013` is unapplied, the finalizer Worker and Access boundary do not exist, the
-protected
-`gallery-finalization` environment does not exist, and neither new workflow
-has been dispatched. No private or approved media, public manifest,
-suppression file, or Gallery publication was changed by that audit.
+commit `bae4071bae81d2d3a70d9552600c9ce5f778a871`. It was still inactive at
+the 11 September audit formerly recorded here. Its later activation and the
+current forward-only correction are recorded in the 16 September section
+above. No private or approved media, public manifest, suppression file, or
+Gallery publication was changed by that read-only audit.
 
 Withdrawal completion and private-data purge are deliberately two different
 manual workflow approvals. Each workflow accepts only the same opaque
@@ -86,9 +116,11 @@ calling GitHub.
 The review-open write rechecks all mutable candidate and consent facts at the
 SQL boundary. If withdrawal or exclusion wins that race, the receipt stays
 reserved and no opened audit is emitted. Cleanup packages remain pinned to the
-immutable candidate-to-withdrawal or abandonment result version. Final
-`withdrawn` requires exact completed approved-media and receipt-bound staging
-cleanup evidence and matching hash-only tombstones.
+immutable candidate-to-withdrawal or abandonment result version. Those two
+lineages require exact completed approved-media and receipt-bound staging
+cleanup evidence plus matching hash-only tombstones. The processing-only path
+described above instead requires its strict staging-only cleanup and zero
+promotion/review evidence.
 
 The owner can record editorial removal or consent withdrawal for an exact
 draft, and can proactively exclude any current public athlete in the inherited
@@ -345,6 +377,14 @@ invalid or duplicate suppression IDs, and differing copies of a shared item.
 The browser fails closed if the suppression list is missing or malformed. The
 artifact build also rejects every unexpected file under `gallery-data/`,
 including photographs and videos.
+
+Run `pnpm run test:gallery-d1-expression-depth` and
+`pnpm run test:gallery-pre-candidate-abandonment` for this corrective path.
+The first must compile through pinned local D1 and write no receipt; the second
+must prove both distinct recovery lineages, exact cleanup, zero-generation
+finalization, retained editorial original, and refusal to fabricate promotion,
+review, or GitHub history. Passing locally does not authorize migration,
+deployment, cleanup, rehearsal, manifest mutation, merge, or publication.
 
 Any public manifest or runtime Gallery change is a standard site change: use a
 feature branch, a normal Pull Request, a successful Netlify preview, responsive

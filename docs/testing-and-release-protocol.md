@@ -88,6 +88,9 @@ boundary, deployment-configuration, and remote-driver contract suites:
 pnpm run test:gallery-media-processor
 pnpm run test:gallery-processing-bridge
 pnpm run test:gallery-photo-review-bridge
+pnpm run test:gallery-photo-review-invalidation-bridge
+pnpm run test:gallery-pre-candidate-abandonment
+pnpm run test:gallery-d1-expression-depth
 pnpm run test:gallery-processing-rehearsal-worker
 pnpm run test:gallery-phase-d-migration-configs
 pnpm run test:gallery-phase-d-processing-configs
@@ -107,9 +110,9 @@ passed only in memory, never through an argument, environment variable, file,
 report, or log.
 
 The withdrawal-finalization migration and service suites apply the real
-`0001`–`0013` chain to SQLite and use an in-memory R2 substitute. They prove
-separate deterministic withdrawal/purge authority, positive terminal review
-and exact cleanup gates, current host-proof convergence, database-owned
+`0001`–`0014` chain to SQLite and use an in-memory R2 substitute. They prove
+separate deterministic withdrawal/purge authority, lineage-specific terminal
+evidence and exact cleanup gates, current host-proof convergence, database-owned
 timestamps, exact 30-day editorial/athlete retention, consent deletion before
 withdrawal, durable interrupted-deletion retry, atomic purge rollback,
 hash-only permanent receipts, and replay after parent purge without storage
@@ -121,6 +124,20 @@ opaque affected-draft list for exact owner replay after purge.
 The migration fixture also seeds the known pre-`0013` orphan-retention shape
 and requires the migration-time cleanup to remove it before the new guard is
 installed.
+The D1 expression-depth parity suite uses the repository-pinned Wrangler/
+workerd local runtime with Cloudflare credentials removed. It first proves that
+a depth-101 expression fails with the same maximum-depth-100 error as remote
+D1, applies the real migration chain through `0014`, compiles the actual
+withdrawal-completion receipt insert with `EXPLAIN`, and then proves the
+permanent receipt table remains empty.
+
+The legacy recovery suite keeps promoted pre-candidate and processing-only
+lineages separate. It covers abandonment and lost-response replay, exact
+promotion plus processing cleanup, owner-withdrawal races, wrong-owner and
+mismatched-target refusal, the ban on making a real promotion masquerade as
+processing-only, processing-only cleanup with no promotion or GitHub call,
+canonical zero-generation host proof, real finalizer completion, retained
+editorial original, and clean foreign-key and integrity checks.
 The Worker/configuration and bridge suites prove the exact service route,
 identity/origin/body/binding limits, separate protected workflows, finalizer-
 first ordering, bounded verifier refresh, fixed non-identifying logs, and no
@@ -1282,13 +1299,13 @@ Before approving a Pull Request:
 - For withdrawal-finalizer infrastructure, treat repository review, migration
   application, Worker deployment, Access policy/token creation, protected
   environment configuration, withdrawal dispatch, purge dispatch, and
-  credential cleanup as separate approval gates. Before dispatch, read back
-  migration `0013`, the exact four-value Worker environment, no unexpected
-  routes/triggers/bindings, the exact-host Access application/policy, and the
-  protected environment's required reviewers and secret names. Prove anonymous
-  and wrong credentials stop at Access and the exact identity reaches only a
-  non-mutating method or not-found boundary. Never use a real draft for that
-  access proof.
+  credential cleanup as separate approval gates. Before corrective dispatch,
+  read back applied migrations `0013` and `0014`, the exact approved commit
+  deployed to the processing, promotion/review, and finalizer Workers, their
+  narrow bindings and Access policies, and the protected environment's
+  required reviewers and secret names. Prove anonymous and wrong credentials
+  stop at Access and the exact identity reaches only a non-mutating method or
+  not-found boundary. Never use a real draft for that access proof.
 - In a synthetic finalization rehearsal, prove the finalizer is called first,
   any verifier request is bound to the current state version and delivery
   epoch, and the same action key is retried. Verify consent deletes the exact
@@ -1357,14 +1374,16 @@ lists to omit their IDs, the retained Access application to report zero
 policies, and a credential-free request to be intercepted before the Worker.
 Record that limitation explicitly in the handoff.
 
-A passing local withdrawal-finalizer suite is implementation evidence only. It
-does not authorize migration `0013`, a Worker deployment, an Access resource,
-GitHub environment secrets, a workflow dispatch, R2 deletion, or private-row
-purge. Withdrawal and purge remain two human-approved workflow runs. For
-editorial removal and athlete exclusion, a `retention-pending` result is a
-successful safe stop, not permission to bypass or shorten the 30-day deadline.
-For consent withdrawal, do not report final withdrawal until the exact private
-original and every server-derived prefix are proved absent. In every category,
+A passing local withdrawal-finalizer or legacy-recovery suite is implementation
+evidence only. It does not authorize migration `0014`, an affected Worker
+deployment, an Access change, a workflow dispatch, R2 deletion, private-row
+mutation, synthetic rehearsal, manifest edit, merge, or publication. Applied
+migration `0013` must never be rewritten. Each legacy operation must follow its
+actual D1 lineage, and processing-only recovery must not invent promotion,
+generation, review, approved-media, branch, or Pull Request evidence.
+Withdrawal and purge remain separately approved. Editorial removal and athlete
+exclusion still stop safely at 30-day retention; consent withdrawal still
+requires exact private-original deletion before completion. In every category,
 do not report purge until the permanent purge receipt exists and the parent
 operational draft is absent while the hash-only receipts remain replayable.
 

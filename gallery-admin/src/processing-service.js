@@ -6,6 +6,12 @@ import toolchainContract from '../../scripts/gallery-media-toolchain.json' with 
 
 import { hashIdentity } from './session.js';
 import {
+    exactPreCandidateAbandonmentFacts,
+    exactPreCandidateAbandonmentRecoveryFacts,
+    readPreCandidateAbandonmentFacts,
+    readPreCandidateAbandonmentRecoveryFacts
+} from './legacy-photo-recovery.js';
+import {
     buildV1StagingDerivativeKey,
     privateOriginalKeyMatchesRecord
 } from './storage-keys.js';
@@ -185,7 +191,36 @@ export async function readPhotoProcessingEligibility(env, identity, draftId) {
         }, env.DB);
         if (problems.length > 0) {
             const resumed = await readResumableStagedRun(env, draftId);
-            return resumed || failure(409, 'processing-not-eligible');
+            if (resumed) return resumed;
+            const abandonment = await readPreCandidateAbandonmentFacts(
+                env.DB,
+                draftId
+            );
+            const recoverableAbandonment = exactPreCandidateAbandonmentFacts(
+                abandonment,
+                draftId
+            ) ? abandonment : await readPreCandidateAbandonmentRecoveryFacts(
+                env.DB,
+                draftId
+            );
+            return (
+                exactPreCandidateAbandonmentFacts(recoverableAbandonment, draftId) ||
+                exactPreCandidateAbandonmentRecoveryFacts(
+                    recoverableAbandonment,
+                    draftId
+                )
+            )
+                ? success(200, {
+                    schemaVersion: '1.0',
+                    scope: 'photo-processing-abandonment-v1',
+                    draftId,
+                    processingRunId: recoverableAbandonment.processingRunId,
+                    mediaType: 'photo',
+                    state: 'processing',
+                    stateVersion: recoverableAbandonment.stateVersion,
+                    runStatus: 'staged'
+                })
+                : failure(409, 'processing-not-eligible');
         }
         return success(200, {
             schemaVersion: '1.0',
