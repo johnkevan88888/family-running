@@ -2,7 +2,7 @@
 
 ## Current task: unblock exact legacy synthetic Gallery cleanup
 
-### Status — Pull Request #108 activated; operation-depth correction local only, 16 September 2026
+### Status — operation-depth correction ready for approved repository release, 17 September 2026
 
 Pull Request #108 merged as exact `main` commit
 `252150b2547769ee643dc32cb6b27a9e8cf2af78`. Its tree matches reviewed head
@@ -78,12 +78,40 @@ current-catalogue synthetic rehearsal has not started, no real media has been
 used, and both public manifests and the shared suppression list remain
 unchanged.
 
-The next gate is a repository Pull Request for `0015`. It must be reviewed and
-merged before that migration is applied remotely. Only after remote compilation
-of both finalizer inserts, unchanged-row-count proof, and completion of both
-remaining legacy lineages may the fresh synthetic rehearsal begin. That
-rehearsal must still stop at an unmerged one-file inherited-area Gallery
-manifest Pull Request for visual approval.
+John explicitly approved pushing/opening the existing `0015` correction and
+merging after required checks, with normal Pages deployment allowed only if
+the public artifact is byte-identical and both Gallery manifests remain empty.
+That approval stops before remote migration application or withdrawal retry.
+
+The 17 September release rerun of `node scripts/run-all-tests.mjs` passed in
+full, including both independent D1 compile probes, lifecycle safety tests,
+the 114-file artifact build, and Family/Everyone desktop/mobile browser checks.
+Fresh Gallery screenshots for both modes and the populated mobile fixture
+were visually reviewed without overflow or layout regression. Canonical Git
+builds of current main `252150b2547769ee643dc32cb6b27a9e8cf2af78` and correction
+commit `645ce5d69ab612a2bd5456b415db14fd1cd27da6` have the exact same 114 paths
+and bytes, with zero items in each Gallery manifest. The artifact inventory
+SHA-256 is `86f1f795a798f9e9cfa3921e51b798b9c040723b31fe00d5a98d10f046594082`.
+No public input or publishing control is changed. Required remote PR checks,
+preview review, merge, and exact-commit Pages/live verification remain pending
+at this pre-push handoff; local test evidence is not deployment evidence.
+
+During release preparation, archiving the earlier task removed its parent
+worktree and the nested uncommitted correction. The exact saved patches were
+recovered into an isolated worktree on the existing correction branch. All
+12 restored files matched the pre-incident source fingerprint byte-for-byte
+before commit; no correction was reimplemented or expanded. Dependencies were
+reused through an ignored local junction, with no install or lockfile change.
+
+After this repository release, the next separate gate is remote application
+of `0015` and read-only compilation of both finalizer inserts with unchanged
+row-count proof. A withdrawal retry still needs explicit approval and must
+resume the failed reservation checkpoint without repeating completed cleanup
+or host verification. The completed original synthetic withdrawal must not be
+repeated. Only after both remaining legacy lineages are terminal may a fresh
+synthetic rehearsal begin; it must stop at an unmerged one-file inherited-area
+Gallery manifest Pull Request for visual approval. No purge, real-media use,
+Worker deployment, credentials, or Gallery publication is approved here.
 
 ## Current task: repair the routine data merge permission failure
 
