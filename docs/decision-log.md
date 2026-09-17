@@ -3,12 +3,46 @@
 This log records durable architectural decisions, not proposed features.
 Unknown historical details are labelled rather than inferred.
 
+## Finalizer reservation and completion are separate D1 compilation gates
+
+- **Date:** 16 September 2026
+- **Status:** Accepted and implemented locally in forward migration `0015`;
+  repository review, merge, remote application, and corrective retry are
+  pending separate gates.
+- **Problem:** Migration `0014` made the permanent completion-receipt insert
+  compile at D1's expression-depth limit, but the earlier operation-reservation
+  insert has its own trigger expansion. A protected pre-candidate finalization
+  proved that second boundary still exceeded depth 100. The provider rejected
+  the statement before inserting an operation or receipt, so its completed
+  cleanup and public-host evidence remain at a safe retry boundary.
+- **Decision:** Applied migrations remain immutable. Forward migration
+  `0015_withdrawal_finalization_operation_depth.sql` replaces only the oversized
+  withdrawal reservation source guard with two `BEFORE INSERT` guards. The
+  state guard requires the exact current draft, publication, current host,
+  consent, null-input, and derivative-absence facts. The source guard separately
+  requires exactly one row from the canonical terminal-source view using
+  `GROUP BY ... HAVING COUNT(*) = 1`. Both run inside the same SQLite statement,
+  so either rejection prevents the reservation atomically.
+- **Validation consequence:** Provider-parity testing must compile both
+  `draft_withdrawal_finalization_operations` and
+  `gallery_withdrawal_completion_receipts` inserts after the complete migration
+  chain, then prove both table counts are unchanged. Calibrating the pinned
+  Wrangler/workerd runtime with a known depth-101 failure remains required;
+  generic SQLite success is not sufficient.
+- **Limits:** This changes no lineage, consent, retention, deletion, tagging,
+  suppression, storage, Access, or publication authority. The cleaned
+  pre-candidate operation must retry its same deterministic finalizer request;
+  its abandonment, cleanups, and current host proof must not be fabricated or
+  repeated merely to work around the compile failure.
+
 ## Legacy photo recovery is evidence-specific and D1-depth tested
 
 - **Date:** 16 September 2026
-- **Status:** Accepted and implemented locally in forward migration `0014`;
-  Pull Request, migration application, Worker deployment, and recovery runs are
-  pending separate gates.
+- **Status:** Accepted in Pull Request #108 and applied to non-production.
+  One promoted pre-candidate cleanup and its host proof completed; its finalizer
+  reservation exposed the separate D1-depth boundary addressed by pending
+  forward migration `0015` above. Processing-only recovery and the fresh
+  rehearsal remain unstarted.
 - **Problem:** Applied migration `0013`'s combined withdrawal-completion guard
   expands past D1's expression-depth limit of 100. The first protected retry
   failed before mutation even though the live database contained the required
@@ -40,10 +74,10 @@ Unknown historical details are labelled rather than inferred.
   zero/positive pair fails closed.
 - **Validation consequence:** Repository tests must use the pinned local
   Wrangler/workerd D1 runtime, first demonstrate that depth 101 fails at the
-  provider's limit, then apply the complete migration chain and compile the
-  withdrawal receipt insert with `EXPLAIN`. Generic SQLite success alone is not
-  sufficient. The parity probe must also prove that compilation created no
-  permanent receipt.
+  provider's limit, then apply the complete migration chain and compile both
+  finalizer insert boundaries with `EXPLAIN`. Generic SQLite success alone is
+  not sufficient. The parity probe must also prove that compilation created no
+  operation or permanent receipt.
 - **Existing contracts preserved:** The caller still supplies no destination,
   race, athlete, cleanup target, promotion, review, generation, or retention
   fact. Inherited Family/Everyone area, server-derived metadata and public
@@ -74,8 +108,10 @@ Unknown historical details are labelled rather than inferred.
 
 - **Status:** Accepted and merged; migration `0013`, the dedicated Worker, its
   Access boundary, and protected environment were activated under later
-  separate approvals. The first protected retry exposed the D1 depth fault
-  addressed by pending forward migration `0014`; purge remains unrun.
+  separate approvals. Migration `0014` corrected the completion-receipt depth
+  fault and added evidence-specific legacy recovery. A separate operation-
+  reservation depth fault is addressed by pending forward migration `0015`;
+  purge remains unrun.
 - **Date:** 3 September 2026
 - **Decision:** Final withdrawal and later private-data purge use one dedicated
   service-only Worker with exactly D1 and private-original R2 bindings. The

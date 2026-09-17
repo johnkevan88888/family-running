@@ -8,19 +8,18 @@ public-site upload control. No Worker combines access to private originals,
 private staging, approved media, and GitHub.
 
 The exact repository baseline for this corrective branch is `origin/main`
-commit `319384638e482fbc3669f59616a971d14b95c6cb`, the merge of Pull Request
-#107. The earlier admin, processing, promotion, media, verifier, review,
-invalidation, finalizer, and non-production migrations through `0013` passed
-their separately approved gates. The protected `gallery-finalization`
-environment exists, and the finalizer Worker and exact-host Access boundary
-have passed their approved access proof.
-
-A protected finalization retry then failed closed at D1's expression-depth
-limit before writing a completion receipt or changing the draft. Forward
-migration `0014` and the corrective processing, promotion/review, and finalizer
-source are local only. They have not been applied or deployed. The public
+commit `252150b2547769ee643dc32cb6b27a9e8cf2af78`, the merge of Pull Request
+#108. Migration `0014` is applied to non-production, and the processing,
+promotion/review, and finalizer Workers are deployed from that exact merge
+behind their separately proved least-privilege Access boundaries. The public
 manifests and suppression file remain unchanged, and none of these files enters
 the GitHub Pages artifact.
+
+The Pull Request #102 synthetic is fully withdrawn. A promoted pre-candidate
+synthetic completed abandonment, both cleanups, and current host proof, then
+failed closed before operation reservation at D1's separate expression-depth
+boundary. Its zero-operation, zero-receipt state is safe to retry after local
+forward migration `0015` is reviewed, merged, and applied.
 
 ## Merged withdrawal-finalizer boundary
 
@@ -30,9 +29,9 @@ service-only Worker at
 `0013_withdrawal_finalization.sql`, and two separately approved manual
 workflows. Migration `0013`, the finalizer Worker, its exact-host Access
 boundary, and the protected environment were later activated in non-production
-under separate approvals. That activation exposed the D1 compile defect
-corrected by local migration `0014`; the correction remains unapplied and
-undeployed.
+under separate approvals. Migration `0014` corrected the completion-receipt
+compile defect and is now applied. A separate operation-reservation compile
+defect is addressed by local, unapplied migration `0015`.
 
 The exact route is
 `POST /api/service/drafts/{draft_id}/withdrawal-finalizations`. Its JSON body is
@@ -87,7 +86,7 @@ Focused real-SQLite migration and service integration, R2 interruption/retry,
 Worker/configuration, protected bridge/workflow, and earlier takedown regression
 tests pass locally. The public manifests and suppression file are unchanged.
 
-## Local D1-depth and legacy-photo recovery correction
+## Activated legacy-photo recovery and local operation-depth correction
 
 `migrations/0014_pre_candidate_promotion_abandonment.sql` is forward-only. It
 does not edit applied migration `0013`. It replaces the oversized operation-
@@ -110,9 +109,17 @@ generation/target evidence. Mixed counts fail closed. Host proof, exact
 cleanup, editorial retention, consent deletion, and separate purge rules are
 unchanged.
 
+The first protected pre-candidate finalizer attempt proved the completion-
+receipt boundary now compiles, but the operation-reservation source guard still
+crosses D1's depth-100 ceiling. Forward migration
+`migrations/0015_withdrawal_finalization_operation_depth.sql` splits that one
+predicate into a current-state guard and an exact-one terminal-source guard.
+It changes no service route, binding, storage action, lineage, consent rule, or
+retention outcome.
+
 `tests/gallery-d1-expression-depth.mjs` proves pinned local D1 enforces the
-depth-100 ceiling, compiles the corrected real receipt insert after migrations
-`0001`–`0014`, and writes no receipt.
+depth-100 ceiling, compiles both corrected inserts after migrations
+`0001`–`0015`, and writes no operation or receipt.
 `tests/gallery-pre-candidate-abandonment.mjs` proves both recovery paths,
 idempotent cleanup, zero-generation finalization, retained editorial original,
 and fail-closed lineage mismatches.
@@ -229,8 +236,9 @@ the three existing secret-text bindings. Anonymous health requests still stop
 at Access. A normal owner Access session then returned exact
 `{"ok":true,"scope":"owner-browser"}` from `/api/browser/health`, confirmed by
 the supplied screenshot and an independent live-tab readback. This closes the
-admin health gate, but real-photo upload remains prohibited until the separate
-processing and promotion gates are approved and completed.
+admin health gate. Real media remains prohibited until a fresh current-catalogue
+synthetic photo reaches its unmerged one-file review Pull Request and a later,
+separate real-media approval is given.
 
 The deterministic selector snapshot is built from the exact public export.
 The owner opens the page with exactly `?site=family` or `?site=everyone`; that
@@ -366,8 +374,10 @@ ignored local copy must have exactly `DB`, `PRIVATE_ORIGINALS`, and
   `subject:<Cloudflare-Access-service-Client-ID>` entry; and
 - `PROCESSING_ORIGIN`: the exact HTTPS processing Worker origin.
 
-The deployed component remains the synthetic-rehearsal build. The repository
-now has a local photo-only JPEG/opaque-PNG entry point plus a current-eligibility
+The normal processing Worker is deployed from Pull Request #108 as exact
+version `0f0aac2e-f179-4dba-b27e-f4a8806767fa` with only its D1, private-
+original, private-staging, identity, and fixed-origin bindings. The repository
+has a photo-only JPEG/opaque-PNG entry point plus a current-eligibility
 read that rechecks server-derived area, race, public tags, consent, suppression,
 exclusions, revisions, upload evidence, and checksum before a run begins.
 Migrations `0003`–`0006` and the normal processing Worker were applied and
@@ -814,12 +824,15 @@ rejected/processing-failed retention-expiry path remains available only through
 its hardened 30-day, current-host, private-deletion, and approved-retention
 evidence.
 
-Migration `migrations/0014_pre_candidate_promotion_abandonment.sql` is locally
-validated and unapplied. It adds exact promoted pre-candidate abandonment and
+Migration `migrations/0014_pre_candidate_promotion_abandonment.sql` is applied
+to non-production. It adds exact promoted pre-candidate abandonment and
 processing-only editorial-withdrawal evidence views, requires lineage-specific
 cleanup, and splits the `0013` operation, completion, and draft-state read
-guards so the real reservation and receipt inserts compile below D1's
-expression-depth ceiling. It grants no
+guards. Its completion-receipt insert compiles below D1's expression-depth
+ceiling. Local forward migration
+`migrations/0015_withdrawal_finalization_operation_depth.sql` separately splits
+the remaining oversized operation-reservation source guard; it is not merged
+or applied. Neither migration grants
 promotion, publication, GitHub, manifest, suppression, merge, deployment, or
 storage capability by itself.
 

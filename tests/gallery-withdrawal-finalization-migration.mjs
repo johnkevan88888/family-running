@@ -17,7 +17,8 @@ const migrationNames = [
     '0011_photo_review_invalidation.sql',
     '0012_owner_withdrawal_exclusion_receipts.sql',
     '0013_withdrawal_finalization.sql',
-    '0014_pre_candidate_promotion_abandonment.sql'
+    '0014_pre_candidate_promotion_abandonment.sql',
+    '0015_withdrawal_finalization_operation_depth.sql'
 ];
 const migrations = await Promise.all(migrationNames.map(name => readFile(
     new URL(`../gallery-admin/migrations/${name}`, import.meta.url),
@@ -25,7 +26,13 @@ const migrations = await Promise.all(migrationNames.map(name => readFile(
 )));
 
 const database = new DatabaseSync(':memory:');
-for (const migration of migrations.slice(0, -2)) database.exec(migration);
+const finalizationMigrationIndex = migrationNames.indexOf(
+    '0013_withdrawal_finalization.sql'
+);
+assert.ok(finalizationMigrationIndex > 0);
+for (const migration of migrations.slice(0, finalizationMigrationIndex)) {
+    database.exec(migration);
+}
 
 // Earlier migrations separately prove how upload, processing, promotion and
 // review rows are produced. Drop only those setup guards needed to build exact
@@ -73,8 +80,9 @@ database.prepare(`
 // Apply the migrations under test only after the historical fixture exists.
 // That models a legitimate pre-migration rejected/processing-failed row whose
 // one-way private-deletion scalar was already true.
-database.exec(migrations.at(-2));
-database.exec(migrations.at(-1));
+for (const migration of migrations.slice(finalizationMigrationIndex)) {
+    database.exec(migration);
+}
 
 assert.equal(database.prepare(
     'SELECT COUNT(*) AS count FROM gallery_retention_tombstones WHERE draft_id = ?'
@@ -98,6 +106,8 @@ for (const [type, name] of [
     ['table', 'gallery_private_original_deletion_tombstones'],
     ['table', 'gallery_draft_purge_receipts'],
     ['trigger', 'draft_withdrawal_finalization_operations_insert_guard'],
+    ['trigger', 'draft_withdrawal_finalization_operations_withdrawal_state_guard'],
+    ['trigger', 'draft_withdrawal_finalization_operations_withdrawal_source_guard'],
     ['trigger', 'gallery_withdrawal_completion_receipts_insert_guard'],
     ['trigger', 'draft_upload_sessions_finalizer_delete_guard'],
     ['trigger', 'gallery_retention_tombstones_finalization_insert_guard'],
@@ -326,6 +336,116 @@ const editorialWithdrawal = finalizationOperation(editorial, editorialHost, {
     action: 'withdrawal',
     expectedStateVersion: 7
 });
+
+assert.equal(database.prepare(`
+    SELECT COUNT(*) AS count
+      FROM gallery_terminal_photo_withdrawal_transitions
+     WHERE draft_id = ?
+       AND cleanup_state_version = 7
+       AND withdrawal_kind = 'editorial-removal'
+`).get(editorial.draftId).count, 1);
+assert.equal(database.prepare(`
+    SELECT COUNT(*) AS count
+      FROM gallery_complete_photo_withdrawal_cleanups
+     WHERE draft_id = ?
+       AND cleanup_state_version = 7
+       AND withdrawal_kind = 'editorial-removal'
+`).get(editorial.draftId).count, 1);
+
+// Exercise the new current-state half independently: terminal-source, cleanup,
+// host and original evidence all remain complete while only the live state is
+// deliberately stale.
+database.prepare(
+    "UPDATE gallery_drafts SET state = 'candidate-public' WHERE draft_id = ?"
+).run(editorial.draftId);
+assert.throws(
+    () => insertFinalizationOperation(editorialWithdrawal),
+    /lacks exact current evidence/i,
+    'A fully evidenced withdrawal must still require withdrawal-pending state.'
+);
+assert.equal(database.prepare(`
+    SELECT COUNT(*) AS count
+      FROM draft_withdrawal_finalization_operations
+     WHERE draft_id = ?
+`).get(editorial.draftId).count, 0);
+database.prepare(
+    "UPDATE gallery_drafts SET state = 'withdrawal-pending' WHERE draft_id = ?"
+).run(editorial.draftId);
+
+// The schema ordinarily makes review and abandonment mutually exclusive. Add
+// that impossible ambiguity inside a savepoint and suspend only the cleanup
+// guard that would also see the duplicated derived row. The source guard must
+// independently reject two canonical terminal sources; rollback restores the
+// real schema and lineage before the valid reservation.
+database.exec('SAVEPOINT duplicate_terminal_source_test');
+try {
+    database.exec(
+        'DROP TRIGGER draft_photo_review_abandonment_receipts_insert_guard'
+    );
+    database.prepare(`
+        INSERT INTO draft_photo_review_abandonment_receipts (
+            draft_id, promotion_id, processing_run_id,
+            expected_state_version, result_state_version,
+            failure_evidence_hash, idempotency_key, idempotency_key_hash,
+            payload_fingerprint, service_actor_identity_hash, created_at
+        ) VALUES (?, ?, ?, 6, 7, ?, ?, ?, ?, ?, ?)
+    `).run(
+        editorial.draftId,
+        editorial.promotionId,
+        editorial.processingRunId,
+        hash('ambiguous-terminal-source:editorial'),
+        'ambiguous-terminal-editorial-0001',
+        hash('ambiguous-terminal-idempotency:editorial'),
+        hash('ambiguous-terminal-payload:editorial'),
+        actorHash,
+        editorial.timestamp
+    );
+    assert.equal(database.prepare(`
+        SELECT COUNT(*) AS count
+          FROM gallery_terminal_photo_withdrawal_transitions
+         WHERE draft_id = ?
+           AND cleanup_state_version = 7
+           AND withdrawal_kind = 'editorial-removal'
+    `).get(editorial.draftId).count, 2);
+    assert.ok(database.prepare(`
+        SELECT COUNT(*) AS count
+          FROM gallery_complete_photo_withdrawal_cleanups
+         WHERE draft_id = ?
+           AND cleanup_state_version = 7
+           AND withdrawal_kind = 'editorial-removal'
+    `).get(editorial.draftId).count > 1);
+    database.exec(
+        'DROP TRIGGER draft_withdrawal_finalization_operations_withdrawal_cleanup_guard'
+    );
+    assert.throws(
+        () => insertFinalizationOperation(editorialWithdrawal),
+        /lacks exact current evidence/i,
+        'Two canonical terminal sources must fail closed independently.'
+    );
+    assert.equal(database.prepare(`
+        SELECT COUNT(*) AS count
+          FROM draft_withdrawal_finalization_operations
+         WHERE draft_id = ?
+    `).get(editorial.draftId).count, 0);
+} finally {
+    database.exec('ROLLBACK TO duplicate_terminal_source_test');
+    database.exec('RELEASE duplicate_terminal_source_test');
+}
+assert.equal(schemaCount(
+    'trigger',
+    'draft_photo_review_abandonment_receipts_insert_guard'
+), 1);
+assert.equal(schemaCount(
+    'trigger',
+    'draft_withdrawal_finalization_operations_withdrawal_cleanup_guard'
+), 1);
+assert.equal(database.prepare(`
+    SELECT COUNT(*) AS count
+      FROM gallery_terminal_photo_withdrawal_transitions
+     WHERE draft_id = ?
+       AND cleanup_state_version = 7
+       AND withdrawal_kind = 'editorial-removal'
+`).get(editorial.draftId).count, 1);
 insertFinalizationOperation(editorialWithdrawal);
 const forgedEditorialReceipt = withdrawalReceipt(
     editorial,
