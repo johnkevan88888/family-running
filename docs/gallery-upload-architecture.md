@@ -6,32 +6,34 @@
 - **Approved pilot boundaries:** Cloudflare-managed `workers.dev` hostnames and
   temporary processing of each private original on an ephemeral GitHub-hosted
   runner
-- **Infrastructure state:** This corrective branch is based on exact
-  `origin/main` commit `319384638e482fbc3669f59616a971d14b95c6cb`, the merge
-  of Pull Request #107. Under separate later approvals, the protected
-  `gallery-finalization` environment was created, migration `0013` was applied,
-  and the dedicated finalizer Worker plus exact-host Access boundary passed a
-  non-mutating proof. The first protected finalizer retry failed before mutation
-  because `0013`'s combined receipt guard exceeded D1's expression-depth limit.
-  Forward migration `0014` and the matching service recovery changes are local
-  only: they have not been merged, applied, or deployed.
-- **Media state:** This branch changes neither public Gallery manifest nor the
-  shared suppression file. It has not transferred real media, mutated provider
-  media, created a derivative, or published a Gallery item. The protected
-  failure changed no finalizer receipt or draft state.
+- **Infrastructure state:** Pull Request #108 merged as exact `main` commit
+  `252150b2547769ee643dc32cb6b27a9e8cf2af78`. Migration `0014` is applied to
+  non-production, and the processing, promotion/review, and finalizer Workers
+  are deployed from that exact merge behind their existing narrow Access
+  boundaries. The Pull Request #102 synthetic is finalized. A promoted
+  pre-candidate synthetic completed abandonment, both cleanups, and current
+  host proof, but its operation reservation exposed a second provider D1-depth
+  boundary. Forward migration `0015` is local only: it has not been reviewed,
+  merged, or applied.
+- **Media state:** The approved synthetic cleanup removed only its server-owned
+  approved and staging objects. Editorial private originals remain retained
+  under the database-owned 30-day rule. This correction changes neither public
+  Gallery manifest nor the shared suppression file, has used no real media,
+  and has not published a Gallery item.
 - **Implementation state:** The provider-independent contracts, owner-only
   photo intake, private processing, promotion/review, privacy-first
   invalidation, owner withdrawal, proactive whole-item athlete exclusion,
   fixed-origin verifier, and PR #90 GitHub permission probe are present on
   `main`. Pull Request #94 closed the repository implementation gap between
   `withdrawal-pending`, final `withdrawn`, and later private-data purge. The
-  current correction leaves that architecture intact while making its D1
-  guards compile at the provider limit and adding exact recovery for two old
-  synthetic pre-candidate shapes. Real-media transfer, video processing, DNS
-  changes, merge, migration `0014`, deployment, recovery dispatch, rehearsal,
-  and publication remain separately approved work.
+  merged `0014` recovery keeps that architecture intact and supplies exact
+  recovery for two old synthetic pre-candidate shapes. Local `0015` separates
+  the still-oversized operation reservation guard without changing any recovery
+  authority. Processing-only recovery, the remaining finalization, real-media
+  transfer, video processing, DNS changes, rehearsal, and publication remain
+  separately controlled work.
 
-### Local forward recovery and D1 parity slice — 16 September 2026
+### Activated legacy recovery and local operation-depth correction — 16 September 2026
 
 Remote read-only compilation isolated the first protected finalizer failure to
 the combined migration-`0013` withdrawal-completion guard: D1 returned its
@@ -40,11 +42,13 @@ exported database and exact service completed under generic local SQLite, so
 provider-compatible compilation is now an explicit release test rather than an
 inferred property.
 
-Forward migration `0014_pre_candidate_promotion_abandonment.sql` does not edit
-or replay applied migration `0013`. It divides the oversized operation,
-completion-receipt, and final-draft predicates into small pure-read triggers.
+Forward migration `0014_pre_candidate_promotion_abandonment.sql` did not edit
+or replay applied migration `0013`. It divided the oversized operation,
+completion-receipt, and final-draft predicates into smaller pure-read triggers.
 The original `AFTER INSERT` consequence remains the only mutation, retaining
-atomic receipt, transition, and operation completion.
+atomic receipt, transition, and operation completion. Pull Request #108 merged
+that change, `0014` is applied, and its affected Workers are deployed from the
+exact merge.
 
 The migration also records two distinct legacy recovery contracts. A promoted
 pre-candidate photo must still have its exact staged run, active promotion, two
@@ -63,9 +67,21 @@ so finalization uses the existing zero-generation fixed-origin proof. The
 service accepts generation/target counts only as `0/0` or as two positive
 counts. Editorial removal retains the untouched private original for the
 database-owned 30 days; the consent and athlete-exclusion rules are unchanged.
-The pinned Wrangler/workerd regression first proves a depth-101 expression is
-rejected, then applies migrations `0001`–`0014`, successfully compiles the
-receipt insert with `EXPLAIN`, and proves no receipt was created.
+The first promoted pre-candidate recovery then completed its abandonment, both
+storage cleanups, permanent cleanup evidence, and current fixed-origin absence
+proof. D1 rejected the next operation-reservation insert before mutation because
+the `0014` source guard still expanded beyond depth 100. Its zero-operation,
+zero-receipt withdrawal-pending state is a durable retry boundary; the cleanup
+and host proof must not be repeated.
+
+Forward migration `0015_withdrawal_finalization_operation_depth.sql` leaves
+`0014` immutable. It splits only that reservation source guard into a current-
+state guard and an exact-one terminal-source guard. Both are atomic
+`BEFORE INSERT` checks and preserve the original fail-closed predicate. The
+pinned Wrangler/workerd regression first proves a depth-101 expression is
+rejected, then applies migrations `0001`–`0015`, successfully compiles both the
+operation-reservation and completion-receipt inserts with `EXPLAIN`, and proves
+that neither probe creates an operation or receipt.
 
 ### Local withdrawal-finalization and purge slice — 3 September 2026
 
@@ -626,6 +642,9 @@ The implementation is expected to add:
 - `gallery-admin/migrations/0014_pre_candidate_promotion_abandonment.sql` and
   `gallery-admin/src/legacy-photo-recovery.js` for the forward-only D1 depth
   correction and strict lineage-specific recovery;
+- `gallery-admin/migrations/0015_withdrawal_finalization_operation_depth.sql`
+  for the separate provider-depth correction at the operation-reservation
+  boundary;
 - focused contract, security, state-machine, processor, and delivery tests;
 - an example configuration containing names only, never account IDs, owner
   email, token values, private URLs, or credentials.
@@ -1158,7 +1177,8 @@ The remaining Phase D plan is:
    repeat the promotion and Pull Request rehearsal before enabling video.
 
 **Next photo checkpoint:** one synthetic photo passes the full promotion, Pull
-Request, and preview path. Close the rehearsal Pull Request; do not merge it.
+Request, and preview path. Stop with that one-file Pull Request open and
+unmerged for owner visual approval; do not close or merge it without direction.
 
 **Full Phase D exit gate:** repeat the same complete path for one synthetic
 video after the immutable video toolchain is selected. Do not enable routine
@@ -1166,17 +1186,21 @@ video processing from the photo-only checkpoint.
 
 ### Phase E — takedown rehearsal and first real-media pilot
 
-1. Review and merge the corrective repository change without modifying either
-   public manifest or the suppression file.
-2. With separate approval, apply migration `0014`, deploy the affected
-   processing, promotion/review, and finalizer Workers from the exact approved
-   `main`, and repeat their least-privilege Access and binding proofs.
-3. Recover each obsolete synthetic operation through its actual lineage:
-   promoted pre-candidate abandonment with both cleanups, processing-only owner
-   editorial withdrawal with processing cleanup only, and the already-clean
-   withdrawal-pending candidate through corrected finalization. Never fabricate
-   a missing promotion, review, receipt, or storage result.
-4. Reconcile D1 integrity, current host receipts, exact R2 inventories,
+1. Pull Request #108, migration `0014`, and the exact-main processing,
+   promotion/review, and finalizer deployments are complete. Their separate
+   least-privilege binding and Access proofs passed without changing a public
+   manifest or suppression file.
+2. Review and merge forward migration `0015`, then apply it separately and
+   prove both the operation-reservation and completion-receipt inserts compile
+   remotely without creating a row.
+3. Retry the already-clean promoted pre-candidate's same deterministic
+   finalization request; do not repeat its completed abandonment, storage
+   cleanups, or current host proof. Recover the untouched processing-only
+   synthetic through owner editorial withdrawal, processing cleanup only,
+   zero-generation host proof, and corrected finalization. Never fabricate a
+   missing promotion, review, receipt, or storage result.
+4. Reconfirm the already-finalized Pull Request #102 synthetic, then reconcile
+   D1 integrity, current host receipts, exact R2 inventories,
    permanent hash-only survivors, retained private originals, review state, and
    unchanged public manifests before starting a fresh current-catalogue
    synthetic photo rehearsal.
@@ -1210,8 +1234,9 @@ Before review of implementation changes:
 - multipart completion, checksum, idempotent retry, abandoned-upload cleanup,
   and concurrent state-transition tests;
 - pinned Wrangler/workerd D1 expression-depth calibration and compile parity
-  for the real `0001`–`0014` receipt insert, with an explicit zero-receipt
-  non-mutation assertion;
+  for the real `0001`–`0015` operation-reservation and completion-receipt
+  inserts, with explicit zero-operation and zero-receipt non-mutation
+  assertions;
 - promoted pre-candidate abandonment, lost-response replay, dual cleanup,
   owner-withdrawal race, and mismatched-lineage refusal;
 - processing-only owner editorial withdrawal with no promotion, generation,

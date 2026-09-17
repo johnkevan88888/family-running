@@ -110,7 +110,7 @@ passed only in memory, never through an argument, environment variable, file,
 report, or log.
 
 The withdrawal-finalization migration and service suites apply the real
-`0001`–`0014` chain to SQLite and use an in-memory R2 substitute. They prove
+`0001`–`0015` chain to SQLite and use an in-memory R2 substitute. They prove
 separate deterministic withdrawal/purge authority, lineage-specific terminal
 evidence and exact cleanup gates, current host-proof convergence, database-owned
 timestamps, exact 30-day editorial/athlete retention, consent deletion before
@@ -127,9 +127,9 @@ installed.
 The D1 expression-depth parity suite uses the repository-pinned Wrangler/
 workerd local runtime with Cloudflare credentials removed. It first proves that
 a depth-101 expression fails with the same maximum-depth-100 error as remote
-D1, applies the real migration chain through `0014`, compiles the actual
-withdrawal-completion receipt insert with `EXPLAIN`, and then proves the
-permanent receipt table remains empty.
+D1, applies the real migration chain through `0015`, compiles both the actual
+withdrawal operation-reservation and completion-receipt inserts with
+`EXPLAIN`, and then proves both tables remain empty.
 
 The legacy recovery suite keeps promoted pre-candidate and processing-only
 lineages separate. It covers abandonment and lost-response replay, exact
@@ -1300,12 +1300,16 @@ Before approving a Pull Request:
   application, Worker deployment, Access policy/token creation, protected
   environment configuration, withdrawal dispatch, purge dispatch, and
   credential cleanup as separate approval gates. Before corrective dispatch,
-  read back applied migrations `0013` and `0014`, the exact approved commit
-  deployed to the processing, promotion/review, and finalizer Workers, their
+  read back applied migrations `0013`, `0014`, and `0015`, the exact approved
+  commit deployed to the processing, promotion/review, and finalizer Workers, their
   narrow bindings and Access policies, and the protected environment's
   required reviewers and secret names. Prove anonymous and wrong credentials
   stop at Access and the exact identity reaches only a non-mutating method or
-  not-found boundary. Never use a real draft for that access proof.
+  not-found boundary. Never use a real draft for that access proof. After
+  `0015`, remotely compile both the operation-reservation and completion-receipt
+  inserts with `EXPLAIN`, then prove operation and receipt counts are unchanged.
+  Retry the cleaned pre-candidate's same deterministic finalizer request; do
+  not rerun its durable abandonment, cleanup, or current host proof.
 - In a synthetic finalization rehearsal, prove the finalizer is called first,
   any verifier request is bound to the current state version and delivery
   epoch, and the same action key is retried. Verify consent deletes the exact
@@ -1375,10 +1379,10 @@ policies, and a credential-free request to be intercepted before the Worker.
 Record that limitation explicitly in the handoff.
 
 A passing local withdrawal-finalizer or legacy-recovery suite is implementation
-evidence only. It does not authorize migration `0014`, an affected Worker
-deployment, an Access change, a workflow dispatch, R2 deletion, private-row
+evidence only. It does not itself authorize any unapplied migration, Worker
+deployment, Access change, workflow dispatch, R2 deletion, private-row
 mutation, synthetic rehearsal, manifest edit, merge, or publication. Applied
-migration `0013` must never be rewritten. Each legacy operation must follow its
+migrations must never be rewritten. Each legacy operation must follow its
 actual D1 lineage, and processing-only recovery must not invent promotion,
 generation, review, approved-media, branch, or Pull Request evidence.
 Withdrawal and purge remain separately approved. Editorial removal and athlete

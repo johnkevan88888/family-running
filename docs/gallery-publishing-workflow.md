@@ -6,12 +6,11 @@ Pages artifact.
 
 ## Corrective synthetic recovery workflow — 16 September 2026
 
-Migration `0013`, the protected `gallery-finalization` environment, the
-least-privilege finalizer Worker, and its exact-host Access boundary now exist
-in non-production. A protected retry failed closed before mutation because
-`0013`'s combined withdrawal-completion receipt guard exceeds D1's expression-
-depth limit of 100. Forward migration `0014` is locally validated but has not
-been applied, and the corrective Workers have not been deployed.
+Pull Request #108 is merged, migration `0014` is applied to non-production,
+and the processing, promotion/review, and finalizer Workers are deployed from
+the exact merge behind their least-privilege Access boundaries. The synthetic
+Pull Request #102 lineage is fully withdrawn with one permanent receipt and its
+editorial original retained for the database-owned 30 days.
 
 For a promoted pre-candidate photo, use only the exact existing staged run,
 active promotion, and immutable public-generation target set. Record one
@@ -25,18 +24,27 @@ absence of promotion, generation, review, approved-object, branch, and Pull
 Request evidence. Run private-processing cleanup only. Do not call promotion
 cleanup, GitHub, or manufacture a review/abandonment receipt.
 
-Both paths still require current fixed-origin host absence before final
-withdrawal. A processing-only item uses the canonical zero-generation receipt,
-with both generation and target counts equal to zero. Editorial withdrawal
-retains the private original for the full database-owned 30 days; later purge
-remains separately approved. Neither recovery path edits a manifest or
-suppression file.
+The promoted pre-candidate synthetic has now recorded its abandonment,
+completed both storage cleanups, proved current fixed-origin absence, and
+retained no review or GitHub artefact. Its finalizer operation reservation then
+failed before mutation at D1's separate expression-depth boundary. Leave that
+lineage at its durable withdrawal-pending state: do not repeat abandonment,
+cleanup, or host proof.
 
-Apply migration `0014`, deploy each affected Worker from the exact approved
-`main`, and run each protected recovery only under separate approvals. After
-legacy cleanup, run a fresh current-catalogue synthetic photo through its
-inherited Family or Everyone area and stop at the unmerged one-file manifest
-Pull Request for visual approval.
+Forward migration `0015_withdrawal_finalization_operation_depth.sql` splits the
+unchanged reservation predicate into independent current-state and exact-one
+terminal-source guards. It must be reviewed, merged, applied, and remotely
+compiled before retrying the same deterministic finalizer request. The
+processing-only synthetic remains untouched and still requires authenticated
+owner editorial withdrawal, processing cleanup only, and canonical
+zero-generation host proof. Editorial withdrawal retains the private original
+for the full database-owned 30 days; later purge remains separately approved.
+Neither recovery path edits a manifest or suppression file.
+
+Only after both remaining legacy lineages are terminal and reconciled may a
+fresh current-catalogue synthetic photo run through its inherited Family or
+Everyone area. Stop at the unmerged one-file manifest Pull Request for visual
+approval.
 
 ## Historical withdrawal-finalization implementation — 3 September 2026
 
@@ -380,7 +388,8 @@ including photographs and videos.
 
 Run `pnpm run test:gallery-d1-expression-depth` and
 `pnpm run test:gallery-pre-candidate-abandonment` for this corrective path.
-The first must compile through pinned local D1 and write no receipt; the second
+The first must compile both finalizer insert boundaries through pinned local D1
+after migrations `0001`–`0015` and write no operation or receipt; the second
 must prove both distinct recovery lineages, exact cleanup, zero-generation
 finalization, retained editorial original, and refusal to fabricate promotion,
 review, or GitHub history. Passing locally does not authorize migration,

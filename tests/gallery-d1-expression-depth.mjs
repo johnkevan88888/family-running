@@ -77,11 +77,35 @@ try {
     assert.equal(migrations.error, undefined, diagnostic(migrations));
     assert.equal(migrations.status, 0, diagnostic(migrations));
 
-    // EXPLAIN compiles the INSERT and all table triggers into bytecode but does
-    // not execute them. DEFAULT VALUES deliberately avoids fixture data: this
-    // test is about whether D1 can compile the receipt guard, not whether a
-    // fabricated receipt can satisfy the evidence contract.
-    const compile = runWrangler([
+    // EXPLAIN compiles each INSERT and all table triggers into bytecode but does
+    // not execute them. DEFAULT VALUES deliberately avoids fixture data: these
+    // tests are about whether D1 can compile both sides of the finalization
+    // boundary, not whether fabricated evidence can satisfy either contract.
+    const operationCompile = runWrangler([
+        'd1',
+        'execute',
+        ...commonArguments,
+        '--command',
+        'EXPLAIN INSERT INTO draft_withdrawal_finalization_operations DEFAULT VALUES',
+        '--json'
+    ], environment);
+    assert.equal(operationCompile.error, undefined, diagnostic(operationCompile));
+    assert.equal(operationCompile.status, 0, diagnostic(operationCompile));
+
+    const operationCompileResult = parseWranglerJson(operationCompile);
+    assert.equal(
+        Array.isArray(operationCompileResult),
+        true,
+        diagnostic(operationCompile)
+    );
+    assert.equal(operationCompileResult.length, 1, diagnostic(operationCompile));
+    assert.equal(operationCompileResult[0].success, true, diagnostic(operationCompile));
+    assert.ok(
+        operationCompileResult[0].results.length > 0,
+        diagnostic(operationCompile)
+    );
+
+    const receiptCompile = runWrangler([
         'd1',
         'execute',
         ...commonArguments,
@@ -89,31 +113,36 @@ try {
         'EXPLAIN INSERT INTO gallery_withdrawal_completion_receipts DEFAULT VALUES',
         '--json'
     ], environment);
-    assert.equal(compile.error, undefined, diagnostic(compile));
-    assert.equal(compile.status, 0, diagnostic(compile));
+    assert.equal(receiptCompile.error, undefined, diagnostic(receiptCompile));
+    assert.equal(receiptCompile.status, 0, diagnostic(receiptCompile));
 
-    const compileResult = parseWranglerJson(compile);
-    assert.equal(Array.isArray(compileResult), true, diagnostic(compile));
-    assert.equal(compileResult.length, 1, diagnostic(compile));
-    assert.equal(compileResult[0].success, true, diagnostic(compile));
-    assert.ok(compileResult[0].results.length > 0, diagnostic(compile));
+    const receiptCompileResult = parseWranglerJson(receiptCompile);
+    assert.equal(Array.isArray(receiptCompileResult), true, diagnostic(receiptCompile));
+    assert.equal(receiptCompileResult.length, 1, diagnostic(receiptCompile));
+    assert.equal(receiptCompileResult[0].success, true, diagnostic(receiptCompile));
+    assert.ok(receiptCompileResult[0].results.length > 0, diagnostic(receiptCompile));
 
     // Keep a direct non-mutation assertion beside the compile check. Even if a
     // future Wrangler release changes its EXPLAIN output, this test must never
     // create a synthetic permanent receipt as a side effect.
-    const receiptCount = runWrangler([
+    const finalizationCounts = runWrangler([
         'd1',
         'execute',
         ...commonArguments,
         '--command',
-        'SELECT COUNT(*) AS receiptCount FROM gallery_withdrawal_completion_receipts',
+        'SELECT ' +
+            '(SELECT COUNT(*) FROM draft_withdrawal_finalization_operations) ' +
+                'AS operationCount, ' +
+            '(SELECT COUNT(*) FROM gallery_withdrawal_completion_receipts) ' +
+                'AS receiptCount',
         '--json'
     ], environment);
-    assert.equal(receiptCount.error, undefined, diagnostic(receiptCount));
-    assert.equal(receiptCount.status, 0, diagnostic(receiptCount));
+    assert.equal(finalizationCounts.error, undefined, diagnostic(finalizationCounts));
+    assert.equal(finalizationCounts.status, 0, diagnostic(finalizationCounts));
 
-    const countResult = parseWranglerJson(receiptCount);
-    assert.equal(countResult[0].success, true, diagnostic(receiptCount));
+    const countResult = parseWranglerJson(finalizationCounts);
+    assert.equal(countResult[0].success, true, diagnostic(finalizationCounts));
+    assert.equal(countResult[0].results[0].operationCount, 0);
     assert.equal(countResult[0].results[0].receiptCount, 0);
 
     console.log('Gallery D1 expression-depth parity tests passed.');

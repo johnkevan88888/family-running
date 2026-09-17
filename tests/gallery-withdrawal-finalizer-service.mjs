@@ -21,7 +21,8 @@ const migrationNames = [
     '0011_photo_review_invalidation.sql',
     '0012_owner_withdrawal_exclusion_receipts.sql',
     '0013_withdrawal_finalization.sql',
-    '0014_pre_candidate_promotion_abandonment.sql'
+    '0014_pre_candidate_promotion_abandonment.sql',
+    '0015_withdrawal_finalization_operation_depth.sql'
 ];
 const migrations = await Promise.all(migrationNames.map(name => readFile(
     new URL(`../gallery-admin/migrations/${name}`, import.meta.url),
@@ -29,7 +30,7 @@ const migrations = await Promise.all(migrationNames.map(name => readFile(
 )));
 
 const sqlite = new DatabaseSync(':memory:');
-for (const migration of migrations.slice(0, -2)) sqlite.exec(migration);
+for (const migration of migrations.slice(0, -3)) sqlite.exec(migration);
 
 // The earlier migration suites already prove their own admission paths. This
 // fixture temporarily removes and then restores those exact triggers so it can
@@ -51,6 +52,7 @@ const athleteExclusion = seedReviewedPhoto(sqlite, {
     withdrawalKind: 'athlete-exclusion'
 });
 restoreTriggers(sqlite, suspendedTriggers);
+sqlite.exec(migrations.at(-3));
 sqlite.exec(migrations.at(-2));
 sqlite.exec(migrations.at(-1));
 

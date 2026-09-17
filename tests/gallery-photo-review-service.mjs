@@ -26,7 +26,8 @@ const migrationNames = [
     '0011_photo_review_invalidation.sql',
     '0012_owner_withdrawal_exclusion_receipts.sql',
     '0013_withdrawal_finalization.sql',
-    '0014_pre_candidate_promotion_abandonment.sql'
+    '0014_pre_candidate_promotion_abandonment.sql',
+    '0015_withdrawal_finalization_operation_depth.sql'
 ];
 const migrations = await Promise.all(migrationNames.map(name => readFile(
     new URL(`../gallery-admin/migrations/${name}`, import.meta.url),

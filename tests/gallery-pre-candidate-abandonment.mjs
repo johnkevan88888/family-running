@@ -34,7 +34,8 @@ const migrationNames = [
     '0011_photo_review_invalidation.sql',
     '0012_owner_withdrawal_exclusion_receipts.sql',
     '0013_withdrawal_finalization.sql',
-    '0014_pre_candidate_promotion_abandonment.sql'
+    '0014_pre_candidate_promotion_abandonment.sql',
+    '0015_withdrawal_finalization_operation_depth.sql'
 ];
 const sqlite = new DatabaseSync(':memory:');
 for (const migrationName of migrationNames) {
