@@ -134,7 +134,10 @@ try {
             '(SELECT COUNT(*) FROM draft_withdrawal_finalization_operations) ' +
                 'AS operationCount, ' +
             '(SELECT COUNT(*) FROM gallery_withdrawal_completion_receipts) ' +
-                'AS receiptCount',
+                'AS receiptCount, ' +
+            '(SELECT sql FROM sqlite_schema WHERE type = \'trigger\' ' +
+                'AND name = \'draft_transition_receipts_no_replace_guard\') ' +
+                'AS transitionReplacementGuard',
         '--json'
     ], environment);
     assert.equal(finalizationCounts.error, undefined, diagnostic(finalizationCounts));
@@ -144,6 +147,8 @@ try {
     assert.equal(countResult[0].success, true, diagnostic(finalizationCounts));
     assert.equal(countResult[0].results[0].operationCount, 0);
     assert.equal(countResult[0].results[0].receiptCount, 0);
+    assert.match(countResult[0].results[0].transitionReplacementGuard,
+        /existing\.idempotency_key = NEW\.idempotency_key OR\s+existing\.expected_state_version = NEW\.expected_state_version/);
 
     console.log('Gallery D1 expression-depth parity tests passed.');
 } finally {
