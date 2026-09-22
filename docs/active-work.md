@@ -2,6 +2,84 @@
 
 ## Current task: unblock exact legacy synthetic Gallery cleanup
 
+### Status — `0016` repository release approved, 22 September 2026
+
+John explicitly approved releasing the tested five-file correction through a
+Pull Request and required checks, with merge and normal Pages deployment
+conditional on unchanged public output and two empty Gallery manifests.
+The current main baseline remains `cf3b4ef3ba8b41ad29938c76f8d65fafc96e6971`.
+The diff qualifies for the existing `[skip netlify]` no-visual-change pathway;
+the full required check and responsive screenshots still run. Verify the
+exact approved head, merge, Pages artifact, and live public files before
+reporting release complete. Remote application of `0016`, withdrawal retry,
+Worker deployment, purge, real-media use, and Gallery publication remain
+outside this approval. The earlier local-validation evidence below still
+applies; only this approval/handoff text changed after those tests.
+
+### Status — transition-receipt guard repair prepared locally, 22 September 2026
+
+The isolated branch `codex/gallery-transition-receipt-guard-0016` starts from
+current `main` commit `cf3b4ef3ba8b41ad29938c76f8d65fafc96e6971`, including the
+newer race-data exports. This task is local preparation and testing only.
+
+The retained 19 September non-production readback records migration `0015`
+applied and both finalizer INSERTs compiling without executing them. It also
+identified a pre-existing mismatch: the state-version unique index exists,
+but `draft_transition_receipts_no_replace_guard` still has migration `0001`'s
+idempotency-only predicate. This dated readback is not a fresh remote check.
+No evidence of an overwritten receipt was found or is asserted by this task.
+
+New forward migration `0016_transition_receipt_replacement_guard.sql` restores
+exactly migration `0006`'s existing guard: reject either a reused request key
+or an existing source state version for the same draft before insertion.
+It changes only that trigger; applied migrations, the unique index, all other
+schema objects, stored rows, Worker code, and public files remain untouched.
+In particular, SQLite `INSERT OR REPLACE` must not erase a winning receipt
+when recursive delete triggers are disabled.
+
+The focused regression passes against both a populated legacy-rule fixture
+and the already-correct schema after migrations `0001`–`0015`. It reproduces
+and rolls back the old replacement gap, proves every application row and
+non-target schema object survives the repair unchanged, rejects duplicate
+request/state-version receipts with ordinary INSERT and REPLACE, preserves
+update/delete and committed-state guards, and admits a valid next receipt and
+independent Family/Everyone drafts. Schema SQL comparisons normalize checkout
+line endings only; stored application-row comparisons remain exact.
+
+Validation completed successfully on Node `24.18.0` with the existing installed
+dependencies (no install or lockfile change):
+
+- `node tests/gallery-transition-receipt-migration.mjs` passes both legacy and
+  canonical populated-schema cases.
+- `node tests/gallery-d1-expression-depth.mjs` passes on pinned Wrangler
+  `4.126.0` / local workerd. It applies the entire chain through `0016`, reads
+  back the restored two-conflict guard, independently compiles both finalizer
+  INSERTs, and proves zero operation/receipt writes from those probes.
+- `node scripts/run-all-tests.mjs` passes all 55 check groups, including safety,
+  vendor, both-mode CSV/Gallery, privacy/lifecycle, artifact, owner-upload and
+  public browser checks. It produced 51 ignored screenshots. Representative
+  Family/Everyone desktop/mobile, owner-upload, and populated Gallery views
+  were inspected with no layout regression. `git diff --check` also passes.
+- Independent canonical-Git builds of the base and the five-file local
+  correction match byte-for-byte for all 114 public files. Both Gallery
+  manifests contain zero items. The path/hash inventory SHA-256 is
+  `daaa4efebde6f8a0ebaee6f3f403471e9cc041fdc21ce0d2048f672b24941b0b`.
+
+Ignored evidence is in this worktree's
+`test-artifacts/0016-validation/full-suite.log`, `public-identity.json`, and
+`test-artifacts/screenshots/`. This is local implementation/build evidence,
+not a live deployment or fresh remote schema verification. The release diff
+contains only this handoff, migration `0016`, the focused regression test,
+its full-suite registration, and the local D1 guard-readback assertion.
+
+Next approval gate: repository release of this correction, with required
+checks and an unchanged public artifact / empty Gallery manifests. Remote
+application of `0016` and any withdrawal retry remain separately unapproved.
+Do not replay completed cleanup or host verification, purge retained originals,
+use real media, or publish Gallery items. No commit, push, Pull Request, merge,
+remote D1 operation, deployment, credential change, or workflow dispatch was
+performed in this local preparation task.
+
 ### Status — operation-depth correction ready for approved repository release, 17 September 2026
 
 Pull Request #108 merged as exact `main` commit
