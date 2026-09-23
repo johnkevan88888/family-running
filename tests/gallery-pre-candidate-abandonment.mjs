@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 import {
     abandonPhotoReviewCandidate,
@@ -15,7 +17,7 @@ import {
     readPhotoProcessingEligibility
 } from
     '../gallery-admin/src/processing-service.js';
-import { finalizeGalleryWithdrawal } from
+import { finalizeGalleryWithdrawal, withdrawalFinalizerTestHooks } from
     '../gallery-admin/src/withdrawal-finalizer-service.js';
 import { initiateDraftWithdrawal } from
     '../gallery-admin/src/withdrawal-service.js';
@@ -35,10 +37,30 @@ const migrationNames = [
     '0012_owner_withdrawal_exclusion_receipts.sql',
     '0013_withdrawal_finalization.sql',
     '0014_pre_candidate_promotion_abandonment.sql',
-    '0015_withdrawal_finalization_operation_depth.sql'
+    '0015_withdrawal_finalization_operation_depth.sql',
+    '0016_transition_receipt_replacement_guard.sql'
 ];
+const legacyIntake = process.argv.includes('--legacy-intake');
 const sqlite = new DatabaseSync(':memory:');
+let legacyProcessingOnly;
 for (const migrationName of migrationNames) {
+    if (legacyIntake && migrationName.startsWith('0010_')) {
+        // Seed under the actual old schema, then migrate normally. Never rewrite
+        // the immutable intake marker/digest to manufacture a legacy upload.
+        const historicalTriggers = sqlite.prepare(
+            "SELECT name, sql FROM sqlite_schema WHERE type = 'trigger'"
+        ).all();
+        for (const trigger of historicalTriggers) {
+            sqlite.exec(`DROP TRIGGER ${trigger.name}`);
+        }
+        legacyProcessingOnly = seedPreCandidate('processing-only', 4, {
+            includePromotion: false,
+            legacyUpload: true,
+            processingVersion: 19,
+            ownerActorHash: hash('subject:owner@example.test')
+        });
+        for (const trigger of historicalTriggers) sqlite.exec(trigger.sql);
+    }
     sqlite.exec(await readFile(
         new URL(`../gallery-admin/migrations/${migrationName}`, import.meta.url),
         'utf8'
@@ -105,8 +127,9 @@ const ownerIdentity = { type: 'browser', subject: 'owner@example.test' };
 const stranded = seedPreCandidate('stranded', 1);
 const inexact = seedPreCandidate('inexact', 2, { mismatchTarget: true });
 const ownerRace = seedPreCandidate('owner-race', 3);
-const processingOnly = seedPreCandidate('processing-only', 4, {
+const processingOnly = legacyProcessingOnly || seedPreCandidate('processing-only', 4, {
     includePromotion: false,
+    processingVersion: 19,
     ownerActorHash: hash(`subject:${ownerIdentity.subject}`)
 });
 const processingOnlyWrongOwner = seedPreCandidate(
@@ -114,6 +137,27 @@ const processingOnlyWrongOwner = seedPreCandidate(
     5,
     { includePromotion: false }
 );
+
+const originalUpload = sqlite.prepare(
+    'SELECT * FROM draft_upload_sessions WHERE draft_id = ?'
+).get(processingOnly.draftId);
+assert.equal(originalUpload.synthetic_only_confirmed, 1);
+assert.equal(originalUpload.real_photo_intake_confirmed, legacyIntake ? 0 : 1);
+assert.equal(originalUpload.declared_sha256,
+    legacyIntake ? null : originalUpload.completed_sha256);
+assert.throws(() => sqlite.prepare(`
+    UPDATE draft_upload_sessions SET real_photo_intake_confirmed = ?
+    WHERE draft_id = ?
+`).run(legacyIntake ? 1 : 0, processingOnly.draftId), /commitment is immutable/);
+assert.throws(() => sqlite.prepare(`
+    UPDATE draft_upload_sessions SET declared_sha256 = ? WHERE draft_id = ?
+`).run(hash('different-commitment'), processingOnly.draftId), /commitment is immutable/);
+assert.throws(() => sqlite.prepare(`
+    INSERT INTO draft_upload_sessions (
+        object_key, real_photo_intake_confirmed, declared_sha256,
+        file_extension, declared_content_type
+    ) VALUES (?, 0, NULL, 'jpg', 'image/jpeg')
+`).run(originalUpload.object_key), /requires an exact photo intake commitment/);
 
 const eligibility = await readPhotoProcessingEligibility(
     processingEnv,
@@ -401,7 +445,7 @@ const processingOnlyWithdrawal = await initiateDraftWithdrawal(
     processingOnly.draftId,
     'editorial-removal',
     {
-        expectedStateVersion: 4,
+        expectedStateVersion: 19,
         idempotencyKey: 'processing-only-withdrawal-0001'
     },
     fixedNow + 7000
@@ -418,8 +462,8 @@ assert.equal(
     processingOnlyReceipt.recovery.processingRunId,
     processingOnly.processingRunId
 );
-assert.equal(processingOnlyReceipt.recovery.expectedStateVersion, 4);
-assert.equal(processingOnlyReceipt.recovery.cleanupStateVersion, 5);
+assert.equal(processingOnlyReceipt.recovery.expectedStateVersion, 19);
+assert.equal(processingOnlyReceipt.recovery.cleanupStateVersion, 20);
 assert.deepEqual(Object.keys(processingOnlyReceipt).sort(), [
     'ok', 'processingCleanup', 'receiptKind', 'recovery', 'replayed', 'status'
 ]);
@@ -427,7 +471,7 @@ const deliveryEpoch = insertCurrentDeliveryEpoch();
 const zeroGenerationHost = insertZeroGenerationWithdrawalHostReceipt(
     processingOnly,
     deliveryEpoch,
-    5
+    20
 );
 sqlite.prepare(`
     UPDATE draft_publication_references
@@ -494,14 +538,76 @@ assert.equal(sqlite.prepare(`
     SELECT COUNT(*) AS count
     FROM gallery_complete_photo_withdrawal_cleanups
     WHERE draft_id = ? AND processing_run_id = ?
-      AND promotion_id IS NULL AND cleanup_state_version = 5
+      AND promotion_id IS NULL AND cleanup_state_version = 20
       AND withdrawal_kind = 'editorial-removal'
 `).get(processingOnly.draftId, processingOnly.processingRunId).count, 1);
+
+const completedEvidenceBefore = readPreservedEvidence();
+const finalizerStorageCalls = [];
+const forbiddenOriginals = Object.fromEntries(['head', 'get', 'delete', 'list'].map(
+    method => [method, async () => {
+        finalizerStorageCalls.push(method);
+        throw new Error('Retained withdrawal must not touch private originals.');
+    }]
+));
+const contextFaults = legacyIntake ? [
+    { syntheticOnlyConfirmed: 0 }, { syntheticOnlyConfirmed: null },
+    { syntheticOnlyConfirmed: '1' }, { realPhotoIntakeConfirmed: null },
+    { realPhotoIntakeConfirmed: '0' }, { realPhotoIntakeConfirmed: 2 },
+    { declaredSha256: hash('not-a-legacy-null') }, { declaredSha256: undefined },
+    { uploadSessionId: 'upload_' + '0'.repeat(32) },
+    { stateVersion: 19 }, { draftId: stranded.draftId },
+    { originalSha256: hash('mismatched-original') },
+    { activeConsentRevision: 'different-consent' },
+    { consentWithdrawnAt: '2026-09-11T02:00:00.000Z' },
+    { mediaDeliveryEpochIdHash: hash('stale-epoch') },
+    { hostExpectedStateVersion: 19 },
+    { generationCount: 1, targetCount: 2 },
+    { generationCount: 0, targetCount: 1 },
+    { withdrawalKind: 'consent-withdrawal' },
+    { withdrawalKind: 'athlete-exclusion' }
+] : [{ realPhotoIntakeConfirmed: 0 }];
+for (const fault of contextFaults) {
+    const denied = await finalizeGalleryWithdrawal({
+        DB: createSqliteD1(sqlite, (sql, row) =>
+            sql.includes('AS realPhotoIntakeConfirmed') && row
+                ? { ...row, ...fault } : row),
+        PRIVATE_ORIGINALS: forbiddenOriginals
+    }, identity, processingOnly.draftId, withdrawalRequest);
+    assert.deepEqual(denied, { ok: false, status: 409, code: 'conflict' },
+        JSON.stringify(fault));
+}
+if (legacyIntake) {
+    const query = withdrawalFinalizerTestHooks.legacyProcessingOnlyCleanupSelect;
+    for (const bindings of [
+        [stranded.draftId, 20, originalUpload.upload_session_id],
+        [processingOnly.draftId, 19, originalUpload.upload_session_id],
+        [processingOnly.draftId, 20, 'upload_' + '0'.repeat(32)]
+    ]) assert.equal(sqlite.prepare(query).get(...bindings).cleanupCount, 0);
+    for (const cleanupCount of [0, 2, null, '1', undefined]) {
+        const denied = await finalizeGalleryWithdrawal({
+            DB: createSqliteD1(sqlite, (sql, row) =>
+                sql === query ? { cleanupCount } : row),
+            PRIVATE_ORIGINALS: forbiddenOriginals
+        }, identity, processingOnly.draftId, withdrawalRequest);
+        assert.deepEqual(denied, { ok: false, status: 409, code: 'conflict' });
+    }
+}
+assert.equal(sqlite.prepare(`
+    SELECT COUNT(*) AS count FROM draft_withdrawal_finalization_operations
+    WHERE draft_id = ?
+`).get(processingOnly.draftId).count, 0);
+assert.equal(sqlite.prepare(`
+    SELECT COUNT(*) AS count FROM gallery_withdrawal_completion_receipts
+    WHERE draft_id_hash = ?
+`).get(hash(`draft-id:${processingOnly.draftId}`)).count, 0);
+assert.deepEqual(readPreservedEvidence(), completedEvidenceBefore);
+assert.deepEqual(finalizerStorageCalls, []);
 
 const finalizationResult = await finalizeGalleryWithdrawal(
     {
         DB: d1,
-        PRIVATE_ORIGINALS: unavailableStorage
+        PRIVATE_ORIGINALS: forbiddenOriginals
     },
     identity,
     processingOnly.draftId,
@@ -532,13 +638,40 @@ assert.deepEqual({ ...sqlite.prepare(`
     processingOnly.draftId
 ) }, {
     state: 'withdrawn',
-    stateVersion: 6,
+    stateVersion: 21,
     uploadStatus: 'complete',
     privateDeleted: 0,
     generationCount: 0,
     targetCount: 0,
     finalReceiptHash: zeroGenerationHost.finalReceiptHash
 });
+
+assert.deepEqual(readPreservedEvidence(), completedEvidenceBefore,
+    'Attestations, completed cleanup and host proof must not be rewritten.');
+assert.deepEqual(await finalizeGalleryWithdrawal({
+    DB: d1, PRIVATE_ORIGINALS: forbiddenOriginals
+}, identity, processingOnly.draftId, withdrawalRequest), {
+    ok: true, status: 200, code: 'withdrawn', replayed: true
+});
+const retained = sqlite.prepare(`
+    SELECT withdrawn_at, retention_eligible_at FROM gallery_withdrawal_completion_receipts
+    WHERE draft_id_hash = ?
+`).get(hash(`draft-id:${processingOnly.draftId}`));
+assert.equal(Date.parse(retained.retention_eligible_at) - Date.parse(retained.withdrawn_at),
+    30 * 24 * 60 * 60 * 1000);
+assert.deepEqual(await finalizeGalleryWithdrawal({
+    DB: d1, PRIVATE_ORIGINALS: forbiddenOriginals
+}, identity, processingOnly.draftId, {
+    idempotencyKey: `gallery-purge-${hash(`gallery-purge:${processingOnly.draftId}`).slice(0, 32)}`
+}), {
+    ok: true, status: 202, code: 'retention-pending',
+    eligibleAt: retained.retention_eligible_at, replayed: false
+});
+assert.equal(sqlite.prepare(`
+    SELECT COUNT(*) AS count FROM draft_withdrawal_finalization_operations
+    WHERE draft_id = ? AND action = 'purge'
+`).get(processingOnly.draftId).count, 0);
+assert.deepEqual(finalizerStorageCalls, []);
 
 assert.equal(sqlite.prepare('PRAGMA foreign_key_check').all().length, 0);
 assert.equal(sqlite.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
@@ -548,12 +681,22 @@ console.log(
     'Gallery pre-candidate abandonment: exact stale D1 lineage, no stale-byte ' +
     'read, receipt and partial-cleanup recovery, owner-withdrawal race handling, ' +
     'truthful processing transition reuse, processing-only owner recovery, ' +
-    'zero-generation finalization, and mismatched-target fail-closed behavior passed.'
+    `zero-generation finalization (${legacyIntake ? 'pre-0010 synthetic' : 'current intake'}), ` +
+    'immutable attestations, preserved evidence, retention and fail-closed behavior passed.'
 );
+if (!legacyIntake) {
+    const legacy = spawnSync(process.execPath, [
+        fileURLToPath(import.meta.url), '--legacy-intake'
+    ], { encoding: 'utf8', windowsHide: true });
+    assert.equal(legacy.status, 0, legacy.stdout + legacy.stderr);
+    console.log(legacy.stdout.trim());
+}
 
 function seedPreCandidate(label, ordinal, {
     mismatchTarget = false,
     includePromotion = true,
+    legacyUpload = false,
+    processingVersion = 4,
     ownerActorHash = null
 } = {}) {
     const draftId = `draft_${uuid(`draft:${label}`)}`;
@@ -580,7 +723,7 @@ function seedPreCandidate(label, ordinal, {
             original_object_key, original_detected_type, original_byte_count,
             original_sha256, upload_complete, verified_owner_identity_hash,
             created_at, updated_at
-        ) VALUES (?, ?, 'processing', 4, '["family"]', ?, ?, ?, ?, 'photo',
+        ) VALUES (?, ?, 'processing', ${processingVersion}, '["family"]', ?, ?, ?, ?, 'photo',
             '2026-09-01', 'Historical synthetic race', '5 km', '[]',
             'Historical synthetic photo', 'Generated test data only.',
             'Generated test image.', 0, ?, 'jpeg', 1024, ?, 1, ?, ?, ?)
@@ -618,10 +761,10 @@ function seedPreCandidate(label, ordinal, {
             initiation_idempotency_key, initiation_payload_fingerprint,
             completion_idempotency_key, completion_payload_fingerprint,
             completion_started_at, created_at, updated_at, expires_at,
-            completed_at, declared_sha256, real_photo_intake_confirmed
+            completed_at${legacyUpload ? '' : ', declared_sha256, real_photo_intake_confirmed'}
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'jpg', 'image/jpeg', 1024,
             5242880, 1, 2, 1024, 'jpeg', 'complete', ?, ?, ?, 1, ?, ?, ?, ?,
-            ?, ?, ?, ?, '2026-10-01T00:00:00.000Z', ?, ?, 1)
+            ?, ?, ?, ?, '2026-10-01T00:00:00.000Z', ?${legacyUpload ? '' : ', ?, 1'})
     `).run(
         uploadSessionId,
         draftId,
@@ -644,7 +787,7 @@ function seedPreCandidate(label, ordinal, {
         timestamp,
         timestamp,
         timestamp,
-        originalSha256
+        ...(legacyUpload ? [] : [originalSha256])
     );
     sqlite.prepare(`
         INSERT INTO draft_processing_runs (
@@ -659,7 +802,7 @@ function seedPreCandidate(label, ordinal, {
             result_idempotency_key, result_payload_fingerprint,
             result_toolchain_json, created_at, updated_at, completed_at
         ) VALUES (?, ?, 'family', 'photo', ?, ?, ?, ?, ?, ?, ?, 'jpeg',
-            'image/jpeg', 1024, ?, ?, ?, 3, 4, ?, ?, ?, 'staged', ?, ?,
+            'image/jpeg', 1024, ?, ?, ?, ${processingVersion - 1}, ${processingVersion}, ?, ?, ?, 'staged', ?, ?,
             '{"sharp":"0.35.2","libvips":"8.18.3","webp":"1.6.0",' ||
             '"png":"1.6.58","exiftool":"13.40","videoEnabled":false}',
             ?, ?, ?)
@@ -689,7 +832,7 @@ function seedPreCandidate(label, ordinal, {
         INSERT INTO gallery_audit_events (
             audit_event_id, subject_reference_hash, event_type, state_version,
             actor_identity_hash, payload_hash, occurred_at
-        ) VALUES (?, ?, 'processing-staged', 4, ?, ?, ?)
+        ) VALUES (?, ?, 'processing-staged', ${processingVersion}, ?, ?, ?)
     `).run(
         `audit_processing_staged_${identifierHex(label)}`,
         hash(`draft:${draftId}`),
@@ -1027,7 +1170,20 @@ function insertZeroGenerationWithdrawalHostReceipt(fixture, epoch, stateVersion)
     return host;
 }
 
-function createSqliteD1(database) {
+function readPreservedEvidence() {
+    return {
+        upload: sqlite.prepare('SELECT * FROM draft_upload_sessions WHERE draft_id = ?')
+            .all(processingOnly.draftId),
+        consent: sqlite.prepare('SELECT * FROM draft_consent_attestations WHERE draft_id = ?')
+            .all(processingOnly.draftId),
+        cleanups: sqlite.prepare('SELECT * FROM draft_processing_cleanups WHERE draft_id = ?')
+            .all(processingOnly.draftId),
+        tombstones: sqlite.prepare('SELECT * FROM gallery_processing_cleanup_tombstones').all(),
+        host: sqlite.prepare('SELECT * FROM gallery_public_host_absence_receipts').all()
+    };
+}
+
+function createSqliteD1(database, mapFirst = (_sql, row) => row) {
     class Statement {
         constructor(sql, bindings = []) {
             this.sql = sql;
@@ -1037,7 +1193,8 @@ function createSqliteD1(database) {
             return new Statement(this.sql, bindings);
         }
         async first(columnName) {
-            const row = database.prepare(this.sql).get(...this.bindings) ?? null;
+            const row = mapFirst(this.sql,
+                database.prepare(this.sql).get(...this.bindings) ?? null);
             return columnName === undefined || row === null ? row : row[columnName];
         }
         async all() {
