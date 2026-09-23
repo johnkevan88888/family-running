@@ -1,6 +1,108 @@
 # Active Work
 
-## Current task: local processing-only recovery response correction
+## Current task: local legacy-synthetic withdrawal intake compatibility
+
+### Status — correction release approved; finalizer deployment and retry excluded, 23 September 2026
+
+John approved synchronization/retest, push/PR, required checks and merge, with
+normal Pages permitted only for unchanged public output and two empty Gallery
+manifests. Fresh `origin/main` remains the tested baseline
+`e652fa42f761f93c82378b578845f1e8e811fbc0`; no code synchronization is needed.
+The four-file correction is eligible for the existing no-visual-change review
+path. The prior full local suite and 51 screenshot results remain applicable;
+focused recovery (legacy abandonment, finalizer service, Worker and bridge) and
+canonical-public-output checks passed again before release: the same 114 public
+files are byte-identical and both manifests remain empty. The full required
+GitHub check must pass on the exact PR head.
+The release comparison additionally checks every built byte against canonical
+Git blobs. Windows archive extraction required explicit `core.autocrlf=false`
+and `core.eol=lf`; the corrected canonical inventory hash is recorded below.
+The earlier CRLF comparison proved equality between its two local copies only,
+not equality to Pages bytes. The canonical check now proves both.
+This supersedes only the earlier release gate below. Finalizer deployment,
+version-20 retry, all other Cloudflare/D1/R2 or credential changes, purge,
+real-media use and Gallery publication remain outside this approval. Do not
+replay completed cleanup or still-current host verification.
+
+### Status — local correction tested; release/deployment/retry not authorized, 23 September 2026
+
+John approved preparation and testing only: no deployment or live retry. The
+isolated release checkout began clean at PR #115 merge
+`e652fa42f761f93c82378b578845f1e8e811fbc0`.
+No push, PR, merge, credentials, remote D1/R2 mutation, real media or publication
+is included. The parent checkout's earlier operational notes remain preserved.
+
+The prior authorized sequence released #115 and deployed only promotion version
+`f229e756-79a5-4505-8ed6-5eca7acd66f4`. Cleanup run `35861734847` completed the
+two staged derivatives for `draft_9130f621-e72b-4277-b80f-1e5f793b33f8`.
+Finalization run `35861945343` recorded current public-host absence evidence but
+stopped before an operation or receipt. Last remote readback: withdrawal-pending
+version 20; immutable synthetic marker 1, newer intake marker 0. These are prior
+remote observations, not a new remote check or retry in this local turn.
+
+The finalizer now recognizes only the documented pre-0010 synthetic defaults
+(`synthetic_only_confirmed = 1`, intake marker 0, null declared digest), for
+editorial withdrawal with zero public generations/targets. It additionally reads
+the existing exact completed processing-only cleanup view, bound to the draft,
+version and upload, and requires exactly one match. Every common context, host,
+consent, original hash/format/provider identity and database write guard remains.
+The normal intake-marker-1 branch is unchanged. No attestation is relabelled,
+no applied migration is edited, and no new migration, endpoint, storage binding
+or authority is added. This exception does not enable legacy consent deletion,
+athlete-exclusion finalization or post-retention purge; those unsupported legacy
+paths remain fail-closed, while existing normal-photo paths remain covered.
+
+The regression seeds a synthetic record before migration 0010 and applies the
+real chain through 0016 without changing its attestations afterward. It failed
+with the observed 409 before the fix and now completes the real operation and
+receipt writes from version 20 to 21 locally. The modern fixture also passes.
+Tests cover immutable marker/digest enforcement, refusal of new uncommitted v1
+uploads, missing/malformed synthetic evidence, wrong draft/version/upload,
+wrong consent/hash/epoch/host version, nonzero or mixed public counts, wrong
+withdrawal kinds and missing/ambiguous cleanup evidence. Completed evidence is
+byte-for-byte equivalent as database rows before/after finalization; no original
+storage call occurs. Deterministic replay succeeds, SQL-owned 30-day retention
+is exact, and early purge stops without reserving an operation or touching R2.
+
+The exact new SELECT compiles in the pinned local Wrangler/workerd D1 runtime
+alongside both independent operation/receipt INSERT probes. Credentials are
+removed for this disposable local test; no remote D1 command is used. Focused
+legacy-recovery, finalizer-service, Worker and bridge suites pass.
+Validation completed locally:
+
+- `node scripts/run-all-tests.mjs`: all 55 check groups passed, including
+  repository/vendor/CSV/Gallery validation, metadata/consent/suppression/review
+  contracts, normal-photo withdrawal and purge tests, artifact safety, and both
+  site modes' browser tests. Log: `test-artifacts/legacy-intake-validation/full-suite.log`.
+- All 51 responsive screenshots were regenerated. The owner mobile upload form,
+  Family mobile and Everyone desktop empty Gallery, and populated Gallery
+  desktop/mobile fixtures were visually reviewed without a layout regression.
+- Canonical artifact comparison against `e652fa42f761f93c82378b578845f1e8e811fbc0`:
+  all 114 public files byte-identical; Family and Everyone manifest item counts
+  both zero. Inventory SHA-256:
+  `5a39471349761f08bccf5b449180910d482884b3f51694ea414bb56fb31a666d`.
+  Ignored comparison helper/result: `test-artifacts/legacy-intake-validation/`.
+- `git diff --check` passes. No dependency, configuration, workflow, migration,
+  published asset, CSV, manifest or suppression change. Exactly four release
+  files changed: this handoff, `gallery-admin/src/withdrawal-finalizer-service.js`
+  (40 added lines/one replacement), `tests/gallery-pre-candidate-abandonment.mjs`,
+  and `tests/gallery-d1-expression-depth.mjs`.
+
+Cloudflare review guidance was applied as an exact, parameter-bound database
+evidence check using the existing completed-cleanup view, kept separate from
+the larger context query to preserve D1 expression-depth compatibility. No
+unrelated platform/configuration changes were introduced. No local blocker
+remains; these results are implementation evidence, not live completion.
+
+Next approval after local validation: release this correction through current-main
+synchronization/retest, PR, required checks and merge, with normal Pages strictly
+conditional on unchanged public bytes and empty manifests. Deployment of only
+the corrected withdrawal-finalizer Worker and checkpoint-bound recovery remain
+separately gated. Reuse version 20 and its deterministic key after rechecking
+current evidence; never replay completed staging cleanup or still-current host
+proof. No fresh synthetic rehearsal or real-photo pilot is authorized here.
+
+## Previous task: local processing-only recovery response correction
 
 ### Status — corrective release, promotion-only deployment and checkpoint recovery approved, 23 September 2026
 

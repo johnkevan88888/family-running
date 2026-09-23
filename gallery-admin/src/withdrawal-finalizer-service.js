@@ -19,6 +19,17 @@ const WITHDRAWAL_KINDS = new Set([
 const INPUT_KEYS = Object.freeze(['idempotencyKey']);
 const MAX_ORIGINAL_BYTES = 25 * 1024 * 1024;
 const MAX_LIST_PAGES = 10_000;
+const LEGACY_PROCESSING_ONLY_CLEANUP_SELECT = `
+    SELECT COUNT(*) AS cleanupCount
+    FROM gallery_complete_processing_only_withdrawal_cleanups AS cleanup
+    JOIN draft_processing_runs AS run
+      ON run.processing_run_id = cleanup.processing_run_id
+     AND run.draft_id = cleanup.draft_id
+    WHERE cleanup.draft_id = ?1
+      AND cleanup.cleanup_state_version = ?2
+      AND cleanup.withdrawal_kind = 'editorial-removal'
+      AND run.upload_session_id = ?3
+`;
 
 /**
  * Converge one of two D1-derived actions. A key first used while the draft is
@@ -358,6 +369,8 @@ async function readFinalizationContext(database, draftId, action, hostReceipt) {
             upload.source_revision AS uploadSourceRevision,
             upload.suppression_revision AS uploadSuppressionRevision,
             upload.real_photo_intake_confirmed AS realPhotoIntakeConfirmed,
+            upload.synthetic_only_confirmed AS syntheticOnlyConfirmed,
+            upload.declared_sha256 AS declaredSha256,
             upload.created_at AS uploadCreatedAt,
             upload.completed_at AS uploadCompletedAt,
             consent.withdrawn_at AS consentWithdrawnAt
@@ -392,7 +405,29 @@ async function readFinalizationContext(database, draftId, action, hostReceipt) {
         ORDER BY upload_session_id ASC
     `, draftId);
     row.privatePrefixes = derivePrivatePrefixes(prefixes, draftId);
+    if (legacySyntheticWithdrawal(row, action)) {
+        row.legacyProcessingOnlyCleanupCount = (await queryFirst(
+            database,
+            LEGACY_PROCESSING_ONLY_CLEANUP_SELECT,
+            draftId,
+            action.expectedStateVersion,
+            row.uploadSessionId
+        ))?.cleanupCount;
+    }
     return row;
+}
+
+function legacySyntheticWithdrawal(context, action) {
+    // Migration 0010 preserved these immutable pre-bridge defaults, but rejects
+    // them on every new v1 upload. This is withdrawal-only compatibility, not
+    // permission to admit new media, relabel attestations, or delete originals.
+    return action.name === 'withdrawal' &&
+        context.withdrawalKind === 'editorial-removal' &&
+        context.realPhotoIntakeConfirmed === 0 &&
+        context.syntheticOnlyConfirmed === 1 &&
+        context.declaredSha256 === null &&
+        context.generationCount === 0 &&
+        context.targetCount === 0;
 }
 
 function validContext(context, state, action) {
@@ -434,7 +469,10 @@ function validContext(context, state, action) {
                 ? 'deleted'
                 : 'complete'
         ) &&
-        context.realPhotoIntakeConfirmed === 1 &&
+        (context.realPhotoIntakeConfirmed === 1 || (
+            legacySyntheticWithdrawal(context, action) &&
+            context.legacyProcessingOnlyCleanupCount === 1
+        )) &&
         ['jpeg', 'png'].includes(context.originalDetectedType) &&
         context.uploadDetectedFormat === context.originalDetectedType &&
         originalUploadFormatMatches(context) &&
@@ -1770,6 +1808,7 @@ function canonicalJson(value) {
 class FinalizationConflict extends Error {}
 
 export const withdrawalFinalizerTestHooks = Object.freeze({
+    legacyProcessingOnlyCleanupSelect: LEGACY_PROCESSING_ONLY_CLEANUP_SELECT,
     buildRequestEvidence,
     derivePrivatePrefixes,
     validContext

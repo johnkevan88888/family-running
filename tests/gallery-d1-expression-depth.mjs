@@ -5,6 +5,8 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { withdrawalFinalizerTestHooks } from
+    '../gallery-admin/src/withdrawal-finalizer-service.js';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -121,6 +123,24 @@ try {
     assert.equal(receiptCompileResult.length, 1, diagnostic(receiptCompile));
     assert.equal(receiptCompileResult[0].success, true, diagnostic(receiptCompile));
     assert.ok(receiptCompileResult[0].results.length > 0, diagnostic(receiptCompile));
+
+    // Compile the exact new legacy-evidence SELECT in the same depth-limited
+    // engine. Its underlying view is intentionally not nested in the already
+    // large context SELECT or either write guard.
+    const legacyQuery = withdrawalFinalizerTestHooks.legacyProcessingOnlyCleanupSelect
+        .replaceAll('?1', "'draft_00000000-0000-4000-8000-000000000000'")
+        .replaceAll('?2', '20')
+        .replaceAll('?3', "'upload_00000000000040008000000000000000'");
+    const legacyCompile = runWrangler([
+        'd1', 'execute', ...commonArguments,
+        '--command', `EXPLAIN ${legacyQuery}`, '--json'
+    ], environment);
+    assert.equal(legacyCompile.error, undefined, diagnostic(legacyCompile));
+    assert.equal(legacyCompile.status, 0, diagnostic(legacyCompile));
+    const legacyCompileResult = parseWranglerJson(legacyCompile);
+    assert.equal(legacyCompileResult.length, 1);
+    assert.equal(legacyCompileResult[0].success, true);
+    assert.ok(legacyCompileResult[0].results.length > 0);
 
     // Keep a direct non-mutation assertion beside the compile check. Even if a
     // future Wrangler release changes its EXPLAIN output, this test must never
