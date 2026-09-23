@@ -527,6 +527,17 @@ function reviewResultResponse(result, route) {
 
 function reviewRecoveryResultResponse(result, route) {
     if (result.replayed !== true) return adminFailure(503);
+    if (result.receiptKind === 'processing-only') {
+        if (!validProcessingOnlyRecoveryResult(result, route.draftId)) {
+            return adminFailure(503);
+        }
+        return adminJson(200, {
+            receiptKind: 'processing-only',
+            recovery: result.recovery,
+            processingCleanup: result.processingCleanup,
+            replayed: true
+        });
+    }
     if (result.receiptKind === 'review') {
         if (
             !plainObjectWithExactKeys(result, [
@@ -559,6 +570,30 @@ function reviewRecoveryResultResponse(result, route) {
         processingCleanup: result.processingCleanup,
         replayed: true
     });
+}
+
+function validProcessingOnlyRecoveryResult(result, expectedDraftId) {
+    const value = result.recovery;
+    return result.status === 200 &&
+        plainObjectWithExactKeys(result, [
+            'ok', 'processingCleanup', 'receiptKind', 'recovery', 'replayed', 'status'
+        ]) &&
+        plainObjectWithExactKeys(value, [
+            'cleanupStateVersion', 'draftId', 'expectedStateVersion',
+            'processingRunId', 'schemaVersion', 'status'
+        ]) &&
+        value.schemaVersion === '1.0' &&
+        value.draftId === expectedDraftId &&
+        typeof value.processingRunId === 'string' &&
+        Number.isSafeInteger(value.expectedStateVersion) &&
+        value.expectedStateVersion >= 1 &&
+        Number.isSafeInteger(value.cleanupStateVersion) &&
+        value.cleanupStateVersion === value.expectedStateVersion + 1 &&
+        value.status === 'withdrawal-pending' &&
+        validProcessingCleanupPackage(result.processingCleanup) &&
+        typeof result.processingCleanup.idempotencyKey === 'string' &&
+        result.processingCleanup.processingRunId === value.processingRunId &&
+        result.processingCleanup.expectedStateVersion === value.cleanupStateVersion;
 }
 
 function validAbandonmentResult(result, expectedDraftId) {

@@ -1,6 +1,88 @@
 # Active Work
 
-## Current task: unblock exact legacy synthetic Gallery cleanup
+## Current task: local processing-only recovery response correction
+
+### Status — corrective release, promotion-only deployment and checkpoint recovery approved, 23 September 2026
+
+John approved the bounded sequence: push/open the corrective PR, pass required
+checks and merge; allow normal Pages only with unchanged public bytes and empty
+Gallery manifests; deploy only the corrected promotion Worker; then recheck and
+resume synthetic `draft_9130f621-e72b-4277-b80f-1e5f793b33f8` from version 20 with
+its existing cleanup key and completed evidence preserved. No new credentials,
+migrations, other Worker deployments, purge, real media or Gallery publication.
+The preceding local-only gate is superseded for those exact steps. Stop on live
+checkpoint drift; do not replay the version-19 owner request or older completed
+withdrawals. Fresh main remains `c76e3865bb4ae9ae50c1214296def3f484f00dd7`.
+The unchanged three-file correction uses the eligible `[skip netlify]` review
+path, with required CI and the recorded full local suite, screenshots and exact
+114-file artifact comparison. Record actual release/deployment/recovery outcomes
+separately; this approval is not evidence that they have completed.
+
+### Status — local correction tested; release and deployment not authorized, 22 September 2026
+
+John approved only the smallest local correction and tests. No remote mutation,
+commit, push, PR, merge, deployment, migration, credentials, cleanup retry,
+real-media use, purge or publication is included in this turn.
+
+The existing isolated `gallery-0016-repair` worktree was clean before this work;
+its HEAD `fda72e4` has exactly the same Git tree as last verified main
+`c76e3865bb4ae9ae50c1214296def3f484f00dd7`. No remote synchronization was performed.
+The older parent checkout and its accumulated operational handoff are preserved.
+
+The promotion Worker's invalidation response boundary now accepts the existing
+`processing-only` service response. It requires exactly the allowed envelope,
+recovery and cleanup fields, read status 200, replay true, schema 1.0, the exact
+requested draft, matching valid run IDs, safe positive source/next-state versions,
+withdrawal-pending status and the existing staging-cleanup key grammar. It returns
+only the established response fields and preserves the service-owned cleanup key.
+Existing review/abandonment branches, authorization, storage capabilities,
+consent/suppression checks, retention, finalization and public-host proof are unchanged.
+No generic passthrough, database migration, new endpoint or new capability was added.
+
+The regression failed before the fix (503 instead of 200), then passed. Tests
+exercise exact replay, malformed/mixed/extra/private fields, unsafe or mismatched
+versions, wrong draft/run/key, and the real service -> Worker -> strict invalidation
+bridge. The latter permits only the expected staging-cleanup request with the
+unchanged state version/key; storage writes, promotion and GitHub are forbidden.
+Focused Worker, invalidation-bridge and legacy-recovery suites pass.
+
+Validation completed locally:
+
+- `node scripts/run-all-tests.mjs`: all 55 check groups passed, including
+  repository/vendor/CSV/Gallery validation, D1 expression-depth parity,
+  withdrawal/finalization/privacy contracts, artifact safety, owner administration
+  and public browser tests in both site modes.
+- All 51 desktop/mobile screenshots were regenerated; representative owner,
+  Family/Everyone empty Gallery and populated Gallery desktop/mobile screenshots
+  were visually inspected without a layout regression.
+- Canonical Git-byte artifact comparison against `c76e3865bb4ae9ae50c1214296def3f484f00dd7`:
+  all 114 public files byte-identical, both Gallery manifests empty. Inventory
+  SHA-256: `daaa4efebde6f8a0ebaee6f3f403471e9cc041fdc21ce0d2048f672b24941b0b`.
+- `git diff --check` passes. Ignored evidence is under
+  `test-artifacts/processing-only-validation/` (`full-suite.log`,
+  `public-identity.json`, and the canonical comparison helper).
+
+Exactly three release files changed: this handoff,
+`gallery-admin/src/promotion-worker.js` (35 added lines), and
+`tests/gallery-photo-promotion-worker.mjs`. Cloudflare Workers review guidance
+was applied as strict response validation, not a generic passthrough.
+No local implementation blocker remains. Next approval is synchronization with
+current main, retesting if needed, commit/push/PR, required checks and merge;
+normal Pages deployment must remain conditional on unchanged public bytes and
+empty manifests. Deployment of only the corrected promotion Worker and the
+checkpoint-bound retry require explicit authority; neither occurred here.
+
+Retained remote checkpoint from the preceding operational turn (not refreshed
+here): Phase D `draft_9130f621-e72b-4277-b80f-1e5f793b33f8` is withdrawal-pending
+version 20. Run `35763335967` failed before cleanup reservation/deletion.
+`draft_89f37a84-f587-403b-9ccb-de006dadcf9e` remains processing version 4.
+Both earlier completed withdrawals and five earlier Phase D cleanup records
+must remain untouched. Do not repeat the version-19 owner withdrawal transition.
+After separate release/deployment approval, resume the version-20 processing-only
+cleanup using its existing deterministic key, then finalize with normal retention.
+The fresh Family synthetic rehearsal remains conditional on both recoveries verifying.
+
+## Previous task: unblock exact legacy synthetic Gallery cleanup
 
 ### Status — `0016` repository release approved, 22 September 2026
 

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import promotionWorker, {
     handlePromotionRequest
 } from '../gallery-admin/src/promotion-worker.js';
+import { runPhotoReviewInvalidationBridge } from '../scripts/gallery-media/photo-review-invalidation-bridge.mjs';
 
 const promotionOrigin = 'https://synthetic-gallery-promotion.example';
 const approvedMediaOrigin = 'https://synthetic-gallery-media.example';
@@ -420,6 +421,171 @@ assert.equal((await requestPromotion({
         };
     }
 })).status, 503);
+
+const processingOnlyResult = {
+    ok: true,
+    status: 200,
+    receiptKind: 'processing-only',
+    recovery: {
+        schemaVersion: '1.0',
+        draftId,
+        processingRunId,
+        expectedStateVersion: 19,
+        cleanupStateVersion: 20,
+        status: 'withdrawal-pending'
+    },
+    processingCleanup: {
+        processingRunId,
+        expectedStateVersion: 20,
+        idempotencyKey: `photo-review-staging-${'a'.repeat(32)}`
+    },
+    replayed: true
+};
+const processingOnlyBody = {
+    receiptKind: processingOnlyResult.receiptKind,
+    recovery: processingOnlyResult.recovery,
+    processingCleanup: processingOnlyResult.processingCleanup,
+    replayed: true
+};
+const processingOnlyRead = {
+    method: 'GET',
+    url: `${promotionOrigin}${reviewInvalidationPath}`,
+    body: undefined
+};
+const processingOnlyDependencies = {
+    ...validDependencies,
+    readPhotoReviewInvalidation: async () => structuredClone(processingOnlyResult)
+};
+for (let replay = 0; replay < 2; replay += 1) {
+    const response = await requestPromotion(
+        processingOnlyRead, environment, processingOnlyDependencies
+    );
+    assert.equal(response.status, 200, 'Exact processing-only recovery must cross the Worker boundary.');
+    assert.deepEqual(await response.json(), processingOnlyBody);
+    assert.equal(response.headers.get('Cache-Control'), 'no-store');
+    assert.equal(response.headers.get('X-Robots-Tag'), 'noindex, nofollow, noarchive');
+}
+
+const invalidProcessingOnlyResults = [
+    ['wrong kind', value => { value.receiptKind = 'unknown'; }],
+    ['not a replay', value => { value.replayed = false; }],
+    ['non-boolean replay', value => { value.replayed = 'true'; }],
+    ['not successful', value => { value.ok = false; }],
+    ['created instead of read', value => { value.status = 201; }],
+    ['missing recovery', value => { delete value.recovery; }],
+    ['null recovery', value => { value.recovery = null; }],
+    ['array recovery', value => { value.recovery = []; }],
+    ['wrong schema', value => { value.recovery.schemaVersion = '2.0'; }],
+    ['wrong draft', value => { value.recovery.draftId = 'draft_22222222-2222-4222-8222-222222222222'; }],
+    ['malformed run', value => { value.recovery.processingRunId = 'run_invalid'; }],
+    ['coerced run', value => { value.recovery.processingRunId = [processingRunId]; }],
+    ['wrong state', value => { value.recovery.status = 'withdrawn'; }],
+    ['zero source version', value => { value.recovery.expectedStateVersion = 0; value.recovery.cleanupStateVersion = 1; value.processingCleanup.expectedStateVersion = 1; }],
+    ['string source version', value => { value.recovery.expectedStateVersion = '19'; }],
+    ['fractional source version', value => { value.recovery.expectedStateVersion = 19.5; }],
+    ['unsafe next version', value => { value.recovery.expectedStateVersion = Number.MAX_SAFE_INTEGER; value.recovery.cleanupStateVersion = Number.MAX_SAFE_INTEGER + 1; value.processingCleanup.expectedStateVersion = Number.MAX_SAFE_INTEGER + 1; }],
+    ['skipped version', value => { value.recovery.cleanupStateVersion = 21; value.processingCleanup.expectedStateVersion = 21; }],
+    ['missing cleanup', value => { delete value.processingCleanup; }],
+    ['null cleanup', value => { value.processingCleanup = null; }],
+    ['array cleanup', value => { value.processingCleanup = []; }],
+    ['wrong cleanup run', value => { value.processingCleanup.processingRunId = 'run_22222222222242228222222222222222'; }],
+    ['stale cleanup version', value => { value.processingCleanup.expectedStateVersion = 19; }],
+    ['string cleanup version', value => { value.processingCleanup.expectedStateVersion = '20'; }],
+    ['wrong key purpose', value => { value.processingCleanup.idempotencyKey = `photo-review-cleanup-${'a'.repeat(32)}`; }],
+    ['short key', value => { value.processingCleanup.idempotencyKey = 'photo-review-staging-a'; }],
+    ['non-hex key', value => { value.processingCleanup.idempotencyKey = `photo-review-staging-${'z'.repeat(32)}`; }],
+    ['coerced key', value => { value.processingCleanup.idempotencyKey = [value.processingCleanup.idempotencyKey]; }],
+    ['mixed review', value => { value.review = review; }],
+    ['mixed abandonment', value => { value.abandonment = abandonmentReceipt; }],
+    ['approved cleanup', value => { value.cleanup = cleanupPackage; }],
+    ['private field', value => { value.privateOriginal = 'must-not-cross-worker-boundary'; }]
+];
+for (const section of ['recovery', 'processingCleanup']) {
+    for (const key of Object.keys(processingOnlyResult[section])) {
+        invalidProcessingOnlyResults.push([
+            `missing ${section}.${key}`, value => { delete value[section][key]; }
+        ]);
+    }
+    invalidProcessingOnlyResults.push([
+        `extra ${section} field`, value => { value[section].private = 'must-not-cross-worker-boundary'; }
+    ]);
+}
+for (const [label, mutate] of invalidProcessingOnlyResults) {
+    const value = structuredClone(processingOnlyResult);
+    mutate(value);
+    const response = await requestPromotion(processingOnlyRead, environment, {
+        ...validDependencies,
+        readPhotoReviewInvalidation: async () => value
+    });
+    assert.equal(response.status, 503, label);
+    assert.deepEqual(await response.json(), { error: 'service-unavailable' }, label);
+}
+
+// Exercise the real service -> Worker -> strict bridge boundary, not just a
+// hand-written success response. Storage/GitHub writes here are forbidden.
+const processingOrigin = 'https://synthetic-gallery-processing.example';
+let recoveryReads = 0;
+let forbiddenCalls = 0;
+const forbiddenOperation = () => { forbiddenCalls += 1; throw new Error('Unexpected side effect'); };
+const recoveryEnvironment = createEnvironment();
+for (const binding of ['APPROVED_MEDIA', 'DERIVATIVE_STAGING']) {
+    for (const name of Object.keys(recoveryEnvironment[binding])) {
+        recoveryEnvironment[binding][name] = forbiddenOperation;
+    }
+}
+recoveryEnvironment.DB = {
+    prepare(sql) {
+        return { bind(id) {
+            assert.equal(id, draftId);
+            return { async first() {
+                recoveryReads += 1;
+                if (sql.includes('gallery_processing_only_editorial_withdrawal_sources')) {
+                    return {
+                        draftId, processingRunId, draftState: 'withdrawal-pending',
+                        currentStateVersion: 20, runStatus: 'staged',
+                        withdrawalKind: 'editorial-removal', expectedStateVersion: 19,
+                        cleanupStateVersion: 20, transitionPayloadFingerprint: 'a'.repeat(64)
+                    };
+                }
+                assert.ok(sql.includes('FROM draft_photo_review_receipts') ||
+                    sql.includes('FROM draft_photo_review_abandonment_receipts'));
+                return null;
+            } };
+        } };
+    },
+    batch: forbiddenOperation
+};
+const bridgeRequests = [];
+const bridgeResult = await runPhotoReviewInvalidationBridge({
+    draftId,
+    githubToken: 'synthetic-unused-github-token',
+    promotion: { origin: promotionOrigin, clientId: 'synthetic-id', clientSecret: 'synthetic-secret' },
+    processing: { origin: processingOrigin, clientId: 'synthetic-id', clientSecret: 'synthetic-secret' },
+    reconcileReview: forbiddenOperation,
+    async fetchImpl(url, options) {
+        bridgeRequests.push([url, options.method]);
+        if (url === processingOnlyRead.url) {
+            assert.equal(options.method, 'GET');
+            return handlePromotionRequest(new Request(url, options), recoveryEnvironment, {
+                verifyAccessIdentity: validDependencies.verifyAccessIdentity
+            });
+        }
+        assert.equal(url, `${processingOrigin}/api/service/processing-runs/${processingRunId}/cleanup`);
+        assert.equal(options.method, 'POST');
+        assert.deepEqual(JSON.parse(options.body), {
+            expectedStateVersion: 20,
+            idempotencyKey: processingOnlyResult.processingCleanup.idempotencyKey
+        });
+        return Response.json({ processingRunId, status: 'cleaned' });
+    }
+});
+assert.equal(recoveryReads, 3);
+assert.equal(forbiddenCalls, 0);
+assert.equal(bridgeRequests.length, 2);
+assert.deepEqual(bridgeResult, {
+    schemaVersion: '1.0', draftId, recoveryStatus: 'withdrawal-pending',
+    approvedMediaStatus: 'not-created', stagingStatus: 'cleaned', branchState: 'no-reviewed-pr'
+});
 
 const invalidationStartInput = {
     expectedStateVersion: 20,
