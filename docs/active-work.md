@@ -14,6 +14,11 @@ focused recovery (legacy abandonment, finalizer service, Worker and bridge) and
 canonical-public-output checks passed again before release: the same 114 public
 files are byte-identical and both manifests remain empty. The full required
 GitHub check must pass on the exact PR head.
+The release comparison additionally checks every built byte against canonical
+Git blobs. Windows archive extraction required explicit `core.autocrlf=false`
+and `core.eol=lf`; the corrected canonical inventory hash is recorded below.
+The earlier CRLF comparison proved equality between its two local copies only,
+not equality to Pages bytes. The canonical check now proves both.
 This supersedes only the earlier release gate below. Finalizer deployment,
 version-20 retry, all other Cloudflare/D1/R2 or credential changes, purge,
 real-media use and Gallery publication remain outside this approval. Do not
@@ -75,7 +80,7 @@ Validation completed locally:
 - Canonical artifact comparison against `e652fa42f761f93c82378b578845f1e8e811fbc0`:
   all 114 public files byte-identical; Family and Everyone manifest item counts
   both zero. Inventory SHA-256:
-  `daaa4efebde6f8a0ebaee6f3f403471e9cc041fdc21ce0d2048f672b24941b0b`.
+  `5a39471349761f08bccf5b449180910d482884b3f51694ea414bb56fb31a666d`.
   Ignored comparison helper/result: `test-artifacts/legacy-intake-validation/`.
 - `git diff --check` passes. No dependency, configuration, workflow, migration,
   published asset, CSV, manifest or suppression change. Exactly four release
