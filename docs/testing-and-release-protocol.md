@@ -1310,7 +1310,21 @@ Before approving a Pull Request:
   inserts with `EXPLAIN`, then prove operation and receipt counts are unchanged.
   Retry the cleaned pre-candidate's same deterministic finalizer request; do
   not rerun its durable abandonment, cleanup, or current host proof.
-- In a synthetic finalization rehearsal, prove the finalizer is called first,
+- For read-only finalizer authentication, do not use a real draft. The separately
+  approved `gallery-finalizer-access-probe.yml` is a manual, main-only probe in
+  the existing owner-protected `gallery-finalization` environment. It accepts no
+  inputs and sends only GET requests to the fixed finalizer origin/all-zero
+  dummy draft route. Require 401 for anonymous and invalid credentials, and
+  exact JSON 405 with `Allow: POST` for the valid service token; all responses
+  must be no-store and non-redirecting. That 405 proves the identity and binding
+  checks but not withdrawal completion, host absence or storage deletion. Its
+  local regression uses the actual Worker route with forbidden D1/R2/service
+  methods and proves zero capability calls. Run it locally with
+  `node tests/gallery-finalizer-access-probe.mjs`; the full suite includes it.
+  Probe preparation, repository release and live protected dispatch remain
+  separate approvals; a passing probe never authorizes version-20 recovery.
+- In the separately approved synthetic finalization rehearsal, prove the
+  finalizer is called first,
   any verifier request is bound to the current state version and delivery
   epoch, and the same action key is retried. Verify consent deletes the exact
   private original before withdrawal and is immediately purge-eligible;

@@ -1,5 +1,86 @@
 # Active Work
 
+## Current task: prepare a protected GET-only finalizer access probe
+
+### Status — repository release and one protected GET-only dispatch approved, 24 September 2026
+
+John approved synchronization/retest, the standard-path PR and required checks,
+merge with normal Pages conditional on unchanged public output and both empty
+manifests, then one protected GET-only access-probe dispatch. A fresh fetch
+confirms `origin/main` still equals the tested PR #116 baseline `a497c72`.
+No synchronization changes are needed. Existing GitHub authentication and the
+owner-protected environment remain usable; no credential or setting changes
+are needed. This supersedes the preparation-only release/dispatch restriction
+below, but not the separate version-20 recovery gate. No Worker deployment,
+withdrawal/host-proof replay, D1/R2 change, real media, purge or Gallery
+publication is included. Record the exact PR, checks, Pages identity and probe
+outcome in the parent handoff after execution; do not infer live success from
+the local mocked 401/401/405 results.
+
+The fresh release retest passed all 56 groups with 301 tracked paths checked
+and all 51 responsive screenshots regenerated. Both-mode desktop/mobile
+Gallery images were reviewed. The canonical 114-file artifact comparison
+passed again, both manifests remain empty, and a pre-merge read-only live
+verification found the same 114 bytesets and expected data bundle in both
+rendered modes. Evidence: `test-artifacts/finalizer-access-probe-validation/`
+(`release-full-suite.log`, `public-identity.json`). No product-code changes
+were needed during release preparation.
+
+### Status — local preparation approved; release and execution excluded, 23 September 2026
+
+John approved preparing the probe only. Work starts from clean merged PR #116
+`a497c72f146d9cf988a2a21ebec52ecfdcb5a9f5` in the existing isolated checkout.
+The preceding finalizer-only deployment installed version
+`b0037a7a-6d51-4474-8ed3-3bea261a5c0d`; deployed bytes and denial probes passed,
+but the existing service secret is available only inside the owner-protected
+`gallery-finalization` environment. This preparation does not access that secret
+or perform a remote probe. The parent handoff retains the deployment evidence.
+
+The new manual, main-only `gallery-finalizer-access-probe.yml` uses that existing
+environment, read-only repository permission, SHA-pinned checkout/setup-node,
+no persisted checkout credential, no dependency install and only the three
+existing finalizer secrets. It accepts no inputs. Its dedicated runner pins the
+existing finalizer origin and an all-zero dummy draft ID, issues GET only and
+requires anonymous 401, invalid-credential 401, then exact authenticated 405 with
+`Allow: POST`, no redirect, no-store and the precise method-not-allowed JSON.
+Failure stops immediately: no retries, fallback, verifier or actual-draft call.
+Response size/time are bounded and logs contain fixed non-identifying results.
+
+Local tests cover the actual Worker GET route with every D1/R2/service capability
+set to fail on use; the expected 405 occurs with zero capability calls. They
+also cover unsafe origin/input rejection, redirect and response faults,
+timeouts/oversized bodies, workflow scope and redacted CLI success/failure.
+No Worker, database, migration, credential, original, manifest or public runtime
+code changes.
+
+Validation completed locally on 23 September 2026:
+
+- All 56 groups in `node scripts/run-all-tests.mjs` passed, including repository,
+  vendor, both-mode CSV/Gallery, D1 compatibility, preview safety and browser
+  checks. The dedicated probe test passed again after replacing a rejected
+  draft-input fixture with an entirely fictitious identifier.
+- All 51 responsive screenshots were regenerated. Family/Everyone Gallery
+  desktop/mobile images were visually reviewed without overflow or regression.
+- The candidate's 114 public files are byte-identical to the canonical Git
+  blobs at `a497c72f146d9cf988a2a21ebec52ecfdcb5a9f5`; both Gallery manifests
+  still contain zero items. This is local build proof, not a live deployment.
+- Evidence stays ignored under `test-artifacts/finalizer-access-probe-validation/`
+  (`full-suite.log`, `public-identity.json`) and `test-artifacts/screenshots/`.
+
+The exact six-file slice is the new workflow, probe runner and regression test,
+plus `scripts/run-all-tests.mjs`, this handoff and the testing/release protocol.
+No local blocker remains. Positive live authentication is still unproven:
+the probe has not been released or dispatched. A next explicit approval may
+cover synchronization/retest, PR/required checks/merge and one protected GET-only
+dispatch, with normal Pages conditional on unchanged public output and empty
+manifests. No Worker deployment is needed for this probe.
+
+No commit, push, PR, merge, deployment or workflow dispatch is authorized here.
+Version-20 withdrawal recovery remains a separate explicit approval. Preserve
+completed cleanup and still-current host evidence; never replay them as an
+authentication test. Because this adds a workflow, a future release must use
+the standard review pathway (not `[skip netlify]`) under the existing gate.
+
 ## Current task: local legacy-synthetic withdrawal intake compatibility
 
 ### Status — correction release approved; finalizer deployment and retry excluded, 23 September 2026
