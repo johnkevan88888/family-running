@@ -18,6 +18,7 @@ const checks = [
     ['Gallery photo-only review bridge tests', ['tests/gallery-photo-review-bridge.mjs']],
     ['Gallery photo review invalidation bridge tests', ['tests/gallery-photo-review-invalidation-bridge.mjs']],
     ['Gallery withdrawal finalization bridge tests', ['tests/gallery-withdrawal-finalization-bridge.mjs']],
+    ['Gallery finalizer read-only access probe tests', ['tests/gallery-finalizer-access-probe.mjs']],
     ['Gallery withdrawal finalization migration tests', ['tests/gallery-withdrawal-finalization-migration.mjs']],
     ['Gallery withdrawal finalizer service tests', ['tests/gallery-withdrawal-finalizer-service.mjs']],
     ['Gallery withdrawal finalizer Worker tests', ['tests/gallery-withdrawal-finalizer-worker.mjs']],

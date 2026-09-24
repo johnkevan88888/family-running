@@ -1,0 +1,36 @@
+name: Gallery finalizer read-only access probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gallery-finalizer-read-only-access-probe
+  cancel-in-progress: false
+
+jobs:
+  access-probe:
+    if: github.repository == 'johnkevan88888/family-running' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: gallery-finalization
+    timeout-minutes: 5
+    steps:
+      - name: Check out the exact approved main revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Verify GET-only denial and authenticated method boundary
+        env:
+          GALLERY_WITHDRAWAL_FINALIZER_ORIGIN: ${{ secrets.GALLERY_WITHDRAWAL_FINALIZER_ORIGIN }}
+          GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_ID }}
+          GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_SECRET: ${{ secrets.GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_SECRET }}
+        run: node scripts/probe-gallery-finalizer-access.mjs
