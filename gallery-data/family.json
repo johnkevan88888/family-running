@@ -1,4 +1,19 @@
 {
   "schemaVersion": "1.0",
-  "items": []
+  "items": [
+    {
+      "id": "synthetic-family-rehearsal-20260925",
+      "type": "photo",
+      "title": "Synthetic Family rehearsal 25 September 2026",
+      "caption": "Generated geometric test image for the photo-only upload-to-review rehearsal. No real people or race photograph. Not for publication.",
+      "alt": "Synthetic test card with white rehearsal text, a yellow circle and a teal curve on a blue background; no people.",
+      "raceDate": "2026-09-19",
+      "raceEvent": "Golden Beach Parkrun",
+      "raceDistance": "5 km",
+      "sourceUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v1/5a67305e5318e5caa1952f63b7d885c74d2f861799cdae4e0f2f964c0a760ade/display.webp",
+      "thumbnailUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v1/bcbb9018d25704d40777027179200e6632a280a7dfbceeca0edba8376ddf410c/thumbnail.webp",
+      "featured": false,
+      "athleteIds": []
+    }
+  ]
 }
