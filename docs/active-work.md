@@ -4,6 +4,15 @@
 
 ### Status — UI/data release approved, 25 September 2026
 
+John reconfirmed proceeding with this release separately from the new protected
+all-athlete tagging/reversible-visibility feature. PR #120's initial CI run
+`36118421953` failed the new suppression test with a late media request crossing
+shared-page scenarios. The local test-only correction uses fresh pages and
+independent counters, preserving zero-card/media/result-request assertions; its
+repeated focused checks passed. Runtime files and exported data are unchanged
+by this correction. Required CI must pass on the corrected head before merge.
+New private tagging work stays local and does not enter this UI/data release.
+
 John explicitly approved the complete 72-file age-enabled export promotion,
 matching schema activation, catalogue regeneration, synchronization/retest,
 standard visual-preview PR, required checks and merge with normal Pages.

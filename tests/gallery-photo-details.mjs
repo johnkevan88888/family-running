@@ -66,28 +66,32 @@ try {
             const context = await browser.newContext(mobile
                 ? {viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:3}
                 : {viewport:{width:1440,height:1000}});
-            const page = await context.newPage();
-            let hidden = [], brokenSuppression = false, stale = false, mediaRequests = 0, resultRequests = 0;
-            await page.route('**/gallery-data/*.json', route => {
-                const file = new URL(route.request().url()).pathname.split('/').pop();
-                assert.ok([`${site}.json`,'hidden-athlete-ids.json'].includes(file));
-                return route.fulfill({contentType:'application/json',body:JSON.stringify(file === 'hidden-athlete-ids.json'
-                    ? (brokenSuppression ? {} : {schemaVersion:'1.0',hiddenAthleteIds:hidden})
-                    : {schemaVersion:'1.0',items:[item]})});
-            });
-            await page.route('**/data/**/*.csv', route => {
-                const file = new URL(route.request().url()).pathname.slice(1);
-                if (file === `data/${site}/siteinfo.csv`) return route.continue();
-                assert.ok(['data/athlete_results.csv','data/export_manifest.csv',`data/${site}/age_grade_standards.csv`].includes(file));
-                resultRequests++;
-                const rows = file === 'data/athlete_results.csv' ? structuredClone(source)
-                    : file === 'data/export_manifest.csv' ? manifest(site) : roster;
-                if (stale && file === 'data/athlete_results.csv') rows[1][9] = 'stale';
-                return route.fulfill({contentType:'text/csv',body:csv(rows)});
-            });
-            await page.route('https://media.example.com/**', route => {
-                mediaRequests++; return route.fulfill({contentType:'image/svg+xml',body:svg});
-            });
+            async function scenario({hidden = [], brokenSuppression = false, stale = false} = {}) {
+                const page = await context.newPage();
+                let mediaRequests = 0, resultRequests = 0;
+                await page.route('**/gallery-data/*.json', route => {
+                    const file = new URL(route.request().url()).pathname.split('/').pop();
+                    assert.ok([`${site}.json`,'hidden-athlete-ids.json'].includes(file));
+                    return route.fulfill({contentType:'application/json',body:JSON.stringify(file === 'hidden-athlete-ids.json'
+                        ? (brokenSuppression ? {} : {schemaVersion:'1.0',hiddenAthleteIds:hidden})
+                        : {schemaVersion:'1.0',items:[item]})});
+                });
+                await page.route('**/data/**/*.csv', route => {
+                    const file = new URL(route.request().url()).pathname.slice(1);
+                    if (file === `data/${site}/siteinfo.csv`) return route.continue();
+                    assert.ok(['data/athlete_results.csv','data/export_manifest.csv',`data/${site}/age_grade_standards.csv`].includes(file));
+                    resultRequests++;
+                    const rows = file === 'data/athlete_results.csv' ? structuredClone(source)
+                        : file === 'data/export_manifest.csv' ? manifest(site) : roster;
+                    if (stale && file === 'data/athlete_results.csv') rows[1][9] = 'stale';
+                    return route.fulfill({contentType:'text/csv',body:csv(rows)});
+                });
+                await page.route('https://media.example.com/**', route => {
+                    mediaRequests++; return route.fulfill({contentType:'image/svg+xml',body:svg});
+                });
+                return {page, requests: () => ({mediaRequests, resultRequests})};
+            }
+            const {page} = await scenario();
             const url = `${server.baseUrl}/gallery.html?site=${site}`;
             await page.goto(url);
             await page.locator('.gallery-photo-athlete').last().waitFor();
@@ -105,17 +109,21 @@ try {
             assert.deepEqual(await page.locator('#gallery-viewer-copy dd').allTextContents(), await copy.locator('dd').allTextContents());
             assert.doesNotMatch(await page.locator('#gallery-viewer-copy').innerText(), /editorial/);
             await page.keyboard.press('Escape');
-            stale = true;
-            await page.goto(url); await page.locator('.gallery-photo-athlete').last().waitFor();
-            assert.ok((await page.locator('.gallery-photo-athlete dd').allTextContents()).every(text => text === 'Unavailable'));
+            await page.close();
+            const {page: stalePage} = await scenario({stale:true});
+            await stalePage.goto(url); await stalePage.locator('.gallery-photo-athlete').last().waitFor();
+            assert.ok((await stalePage.locator('.gallery-photo-athlete dd').allTextContents()).every(text => text === 'Unavailable'));
+            await stalePage.close();
             for (const bad of [false,true]) {
-                hidden = ['runner-one']; brokenSuppression = bad;
-                mediaRequests = 0; resultRequests = 0;
-                await page.goto(url);
-                await page.locator(bad ? '.gallery-status.is-error' : '.gallery-status.is-empty').waitFor();
-                assert.equal(await page.locator('.gallery-card').count(),0);
-                assert.equal(mediaRequests,0, 'suppress before constructing/requesting media');
-                assert.equal(resultRequests,0, 'no result reads for suppressed photos');
+                // Fresh page and counters: late lazy-image requests from a previous
+                // unsuppressed document must not contaminate this privacy assertion.
+                const isolated = await scenario({hidden:['runner-one'],brokenSuppression:bad});
+                await isolated.page.goto(url);
+                await isolated.page.locator(bad ? '.gallery-status.is-error' : '.gallery-status.is-empty').waitFor();
+                assert.equal(await isolated.page.locator('.gallery-card').count(),0);
+                assert.equal(isolated.requests().mediaRequests,0, 'suppress before constructing/requesting media');
+                assert.equal(isolated.requests().resultRequests,0, 'no result reads for suppressed photos');
+                await isolated.page.close();
             }
             await context.close();
         }
