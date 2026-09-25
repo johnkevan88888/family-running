@@ -20,6 +20,14 @@ pnpm exec playwright install chromium
 
 ## Local Commands
 
+`node tests/gallery-admin-browser.mjs` also checks automatic opaque photo IDs:
+no editable ID field, distinct IDs for new forms, no weak fallback without Web
+Crypto, stable IDs on uncertain retries, saved-form duplicate prevention,
+fresh consent after **Start another photo**, and read-only recovery by opening
+the committed draft after a lost usable save reply. Existing draft IDs are not
+rewritten. Both inherited areas and desktop/mobile layouts are exercised.
+These are local browser fixtures, not evidence of deployed uploader behavior.
+
 Run all automated checks:
 
 ```bash
