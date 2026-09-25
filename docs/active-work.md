@@ -1,6 +1,51 @@
 # Active Work
 
-## Current task: prepare a protected GET-only finalizer access probe
+## Current task: Gallery whole-photo thumbnails and exported race details
+
+### Status — UI/data release approved, 25 September 2026
+
+John explicitly approved the complete 72-file age-enabled export promotion,
+matching schema activation, catalogue regeneration, synchronization/retest,
+standard visual-preview PR, required checks and merge with normal Pages.
+This approval makes exported race-day ages public. Photo candidate PR #119
+remains unmerged; no photo publication, Worker deployment, credential change,
+real-media processing or lifecycle operation is included.
+
+The release branch starts at current main `8f0fcfb`. Photo cards and enlarged
+viewers show race, distance/date and each tagged athlete's name, exported time,
+AG and exact age at race. Whole-photo thumbnails use contain without hover
+zoom. Results are joined by exact public athlete ID/event/distance/date after
+suppression, with selected-mode roster and bundle checks; ambiguous or missing
+values are unavailable. Excel remains the calculation authority. See
+`docs/gallery-result-details.md` for the presentation and data contract.
+
+The workbook was backed up before its previously approved additive export
+change. The new bundle `20260925T082403338Z-7D903CFF` contains all 72 CSVs and
+212 result rows. Reconciliation against current main found only the additive
+`AgeAtRace` field as a meaningful data change; all old result fields and row
+order are unchanged. All 72 staged files were hash-checked before complete
+bundle promotion. The guarded promotion retained the prior bundle under
+`test-artifacts/workbook-export-promotion/20260925090415897/previous-data`.
+
+The active schema fingerprint is
+`8DB4735B1F2D7BF2F363C5A4F4B33E1955B205E7A3E58DC77D3D776471793806`.
+The unchanged updater launcher will again agree with the saved workbook once
+this coordinated release reaches main. The generated service catalogue is
+updated in the repository only; live Worker alignment remains separately gated.
+
+The full pre-promotion suite passed on final UI code. Post-promotion focused
+schema and updater tests passed. The combined release then passed all 59 groups
+in `node scripts/run-all-tests.mjs`: 306 tracked paths, both-mode CSV/Gallery,
+all lifecycle/recovery tests, updater/release checks, safe 115-file build and
+both-mode browser smoke. All 59 responsive screenshots were regenerated; the
+four new photo-details mode/device views were visually reviewed. A read-only
+Windows PowerShell Excel preflight passed against the active schema (the first
+sandbox attempt could not initialize Excel; the approved host-context retry
+succeeded without editing or exporting the workbook). Record exact PR/check/
+Pages/live evidence in the parent handoff. Both public Gallery manifests remain
+empty and unchanged.
+
+## Previous task: protected GET-only finalizer access probe
 
 ### Status — repository release and one protected GET-only dispatch approved, 24 September 2026
 

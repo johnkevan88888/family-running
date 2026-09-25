@@ -67,8 +67,14 @@ export async function buildGalleryAdminCatalog(root = repoRoot) {
     const athleteResultsCsv = parseExactCsv(
         sourceTexts.get(athleteResultsRelativePath),
         athleteResultsRelativePath,
-        athleteResultHeaders
+        parseCsv(sourceTexts.get(athleteResultsRelativePath))[0]?.includes('AgeAtRace')
+            ? [...athleteResultHeaders.slice(0, -1), 'AgeAtRace', 'ExportBundleID']
+            : athleteResultHeaders
     );
+    if (athleteResultsCsv.headers.includes('AgeAtRace') && athleteResultsCsv.rows.some(row =>
+        !/^(?:0|[1-9][0-9]{0,2})$/.test(row.AgeAtRace) || Number(row.AgeAtRace) > 130)) {
+        throw new Error('AgeAtRace must be an exported integer from 0 to 130.');
+    }
     validateManifestInput(
         manifestContract,
         athleteResultsRelativePath,

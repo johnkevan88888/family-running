@@ -188,6 +188,12 @@ const athleteRows = readCsvRequired('data/athlete_results.csv', [
     'TimeClass'
 ]);
 const athleteObjects = toObjects(athleteRows, 'data/athlete_results.csv');
+const resultHeaders = ['AthleteID', 'Participant', 'Date', 'Distance', 'Time',
+    'AgeGrade', 'Event', 'TimeClass', 'ExportBundleID'];
+if (![resultHeaders, [...resultHeaders.slice(0, -1), 'AgeAtRace', 'ExportBundleID']]
+    .some(headers => JSON.stringify(headers) === JSON.stringify(athleteRows[0]))) {
+    addError('data/athlete_results.csv', 1, 'Unsupported athlete results schema; expected legacy or AgeAtRace extension.');
+}
 const athleteIds = new Set();
 const officialNewsObjectsBySite = new Map();
 
@@ -199,6 +205,12 @@ for (const row of athleteObjects) {
     validateDate(row.Date, 'data/athlete_results.csv', rowNumber, 'Date', { required: true });
     validateTime(row.Time, 'data/athlete_results.csv', rowNumber, 'Time', { required: true });
     validatePercent(row.AgeGrade, 'data/athlete_results.csv', rowNumber, 'AgeGrade', { required: true });
+    // Legacy bundles remain readable until separately approved whole-bundle
+    // promotion. Once present, every age must be an authoritative whole year.
+    if (athleteRows[0].includes('AgeAtRace') &&
+        (!/^(?:0|[1-9][0-9]{0,2})$/.test(row.AgeAtRace) || Number(row.AgeAtRace) > 130)) {
+        addError('data/athlete_results.csv', rowNumber, 'AgeAtRace must be an exported integer from 0 to 130.');
+    }
 
     if (row.AthleteID) {
         // Multiple rows per athlete are expected, so only the first sighting of

@@ -49,8 +49,13 @@ Preserve the selected `site` parameter when navigating between championship page
   nor browser display may replace the more precise News value with that rounded
   public value or coerce it to whole seconds.
 - `gallery.html` is the owner-curated photo and video gallery. `gallery.js`
-  loads only `gallery-data/<site>.json` plus the shared
-  `gallery-data/hidden-athlete-ids.json` list, renders media through native
+  loads media only from `gallery-data/<site>.json` plus the shared
+  `gallery-data/hidden-athlete-ids.json` list. On the Gallery page, photo details
+  also read shared `athlete_results.csv`, the selected mode's public roster from
+  `age_grade_standards.csv`, and `export_manifest.csv` through `gallery-results.js`.
+  These are display-only exact-result lookups: age, time and AG remain exported
+  workbook values, never browser calculations. See `docs/gallery-result-details.md`.
+  It renders media through native
   browser elements, supplies featured Race moments panels on championship,
   Overview, and athlete pages, and decorates exported championship podiums with
   approved athlete-tagged media. Any item carrying a listed athlete tag must be

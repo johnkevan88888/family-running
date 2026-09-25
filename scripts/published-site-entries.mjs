@@ -34,6 +34,7 @@ export const publishedSiteEntries = [
     'news.js',
     'gallery.css',
     'gallery-contract.js',
+    'gallery-results.js',
     'gallery.js',
     'calculator.css',
     'calculator.js',
