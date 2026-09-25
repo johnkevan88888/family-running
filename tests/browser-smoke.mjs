@@ -3793,8 +3793,8 @@ async function runGalleryEdgeCaseTests(browserInstance) {
         await expectText(
             page,
             '#gallery-viewer-title',
-            'Finish-line smile',
-            'gallery edge case viewer title'
+            'Summer 5 km',
+            'gallery edge case photo viewer race name'
         );
         if (await page.locator('#gallery-viewer-media img').count() !== 1) {
             failures.push('gallery edge case: opening a photo did not render its large image.');

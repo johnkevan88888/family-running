@@ -5,6 +5,7 @@
         ['video', 'Videos']
     ];
     let galleryItems = [];
+    let photoResults = null;
     let activeFilter = 'all';
     let previouslyFocusedElement = null;
 
@@ -50,6 +51,20 @@
 
             galleryItems = contract.filterSuppressedGalleryItems(data.items, suppressionData);
             if (grid) {
+                // Suppression is resolved first. Optional result failures never invent facts
+                // and cannot bypass the media/suppression contract above.
+                if (galleryItems.some(item => item.type === 'photo' && item.athleteIds.length)) {
+                    try {
+                        const rows = await Promise.all([
+                            fetchCSV('data/athlete_results.csv'),
+                            fetchCSV(`data/${selectedSite()}/age_grade_standards.csv`),
+                            fetchCSV('data/export_manifest.csv')
+                        ]);
+                        photoResults = window.galleryResults.buildIndex(...rows, selectedSite(), csvRowsToObjects);
+                    } catch {
+                        photoResults = null;
+                    }
+                }
                 renderGallery();
             }
             renderHighlights();
@@ -144,10 +159,17 @@
         type.className = `gallery-card-type ${item.type}`;
         type.textContent = item.type;
 
-        opener.append(image, type);
+        opener.append(image);
+        if (item.type !== 'photo') opener.append(type);
 
         const copy = document.createElement('div');
         copy.className = 'gallery-card-copy';
+
+        if (item.type === 'photo') {
+            appendPhotoDetails(copy, item);
+            article.append(opener, copy);
+            return article;
+        }
 
         const event = document.createElement('p');
         event.className = 'gallery-card-event';
@@ -174,6 +196,47 @@
 
         article.append(opener, copy);
         return article;
+    }
+
+    function appendPhotoDetails(container, item, includeEvent = true) {
+        if (includeEvent) {
+            const event = document.createElement('h3');
+            event.className = 'gallery-card-title';
+            event.textContent = item.raceEvent;
+            container.append(event);
+        }
+        const meta = document.createElement('p');
+        meta.className = 'gallery-card-meta';
+        const date = window.dateDisplay?.format?.(item.raceDate) || item.raceDate;
+        meta.textContent = `${formatRaceDistance(item.raceDistance)} · ${date}`;
+        container.append(meta);
+        const athletes = photoResults?.forPhoto(item) || item.athleteIds.map(() => ({
+            name: 'Athlete unavailable', time: 'Unavailable', ageGrade: 'Unavailable', age: 'Unavailable'
+        }));
+        if (!athletes.length) {
+            const unavailable = document.createElement('p');
+            unavailable.className = 'gallery-card-meta';
+            unavailable.textContent = 'Athletes: unavailable';
+            container.append(unavailable);
+        }
+        for (const athlete of athletes) {
+            const person = document.createElement('section');
+            person.className = 'gallery-photo-athlete';
+            const name = document.createElement('h4');
+            name.textContent = athlete.name;
+            const fields = document.createElement('dl');
+            for (const [label, value] of [['Time', athlete.time], ['AG', athlete.ageGrade], ['Age at race', athlete.age]]) {
+                const group = document.createElement('div');
+                const term = document.createElement('dt');
+                const detail = document.createElement('dd');
+                term.textContent = label;
+                detail.textContent = value;
+                group.append(term, detail);
+                fields.append(group);
+            }
+            person.append(name, fields);
+            container.append(person);
+        }
     }
 
     function renderHighlights() {
@@ -313,20 +376,24 @@
         }
 
         previouslyFocusedElement = opener;
-        title.textContent = item.title;
+        title.textContent = item.type === 'photo' ? item.raceEvent : item.title;
         media.replaceChildren(createViewerMedia(item));
         copy.replaceChildren();
 
-        if (item.caption) {
-            const caption = document.createElement('p');
-            caption.textContent = item.caption;
-            copy.append(caption);
-        }
+        if (item.type === 'photo') {
+            appendPhotoDetails(copy, item, false);
+        } else {
+            if (item.caption) {
+                const caption = document.createElement('p');
+                caption.textContent = item.caption;
+                copy.append(caption);
+            }
 
-        const meta = document.createElement('p');
-        const date = window.dateDisplay?.format?.(item.raceDate) || item.raceDate;
-        meta.textContent = `${formatRaceLabel(item)} · ${date}`;
-        copy.append(meta);
+            const meta = document.createElement('p');
+            const date = window.dateDisplay?.format?.(item.raceDate) || item.raceDate;
+            meta.textContent = `${formatRaceLabel(item)} · ${date}`;
+            copy.append(meta);
+        }
 
         if (typeof viewer.showModal === 'function') {
             viewer.showModal();

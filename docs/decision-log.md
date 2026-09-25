@@ -3,6 +3,44 @@
 This log records durable architectural decisions, not proposed features.
 Unknown historical details are labelled rather than inferred.
 
+## 2026-09-25 — Review refresh preserves an immutable origin, not a rewritten receipt
+
+For the locally approved photo-review correction, keep the original D1 review,
+consent and derivative-generation evidence unchanged. A separate protected
+refresh operation may append only a verified two-parent synchronization commit
+on that review's existing branch, retaining identical manifest bytes. Prove
+each synchronization against forward main history and the original candidate,
+not merely an ancestor check or an arbitrary changed head. Withdrawal uses the
+same verifier and hashes the observed closing head while retaining the original
+open identity. New intake still requires an exact current export bundle; only
+existing review refresh separately validates historical byte evidence and
+current public eligibility. This avoids a migration, Worker deployment or
+reprocessing solely because unrelated website code/data advanced. Local
+implementation approval is not authority to release or refresh a live PR.
+
+## 2026-09-25 — Gallery item IDs are automatic, not editorial input
+
+John approved removing the manual Gallery item ID field. New forms generate
+an opaque `photo-<UUID>` through Web Crypto, without athlete/race/title/filename
+content. Failed saves retain that ID in page memory; confirmed saves block
+resubmission until the owner explicitly starts another photo. The new form
+clears consent answers. Opening an existing draft never regenerates its ID.
+Server validation, duplicate rejection, draft IDs, storage keys and public
+manifest contracts are unchanged. This identifier is not authorization.
+No database migration is needed. Deployment remains a separate release gate.
+
+## 2026-09-25 — Gallery displays workbook-owned exact race-day age
+
+Photo cards and their enlarged viewer display race context and per-tagged-athlete
+name, time, AG and exact age at the race. Age category/privacy preferences are
+future work, not an age-grade calculation input change. The existing workbook
+`Age on Day` value is exported as `AgeAtRace`; no DOB or browser age/AG calculation
+is introduced. Matching is by athlete ID plus exact race date/event/distance,
+with selected-mode roster and bundle checks. Missing or ambiguous data is
+unavailable, not borrowed from another result. Editorial captions/titles stay in
+the manifest contract but do not add visible photo copy. See
+[the photo-details contract](gallery-result-details.md).
+
 ## Finalizer reservation and completion are separate D1 compilation gates
 
 - **Date:** 16 September 2026

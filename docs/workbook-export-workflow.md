@@ -5,6 +5,14 @@ website-data bundle in a fresh ignored staging folder. Repository tooling then
 validates and compares that bundle. Promotion to tracked `data/` is a separate,
 explicit action after human review.
 
+The 25 September 2026 schema adds workbook-owned `AgeAtRace` immediately before
+`ExportBundleID` in the shared athlete-results export. It is the existing age
+on race day, not an age category or a browser calculation. The active schema
+fingerprint and the saved workbook were released together as a complete
+72-file bundle; `update-website-data.cmd` retains its strict preflight and usual
+staging/review workflow. See `gallery-result-details.md` for the public-age
+disclosure and Gallery matching rules.
+
 The existing core workbook entry point is:
 
 `ExportWebsiteDataIncludingCrownStandards`

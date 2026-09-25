@@ -210,6 +210,12 @@ candidate-media Pull Request, merge, or publication.
 
 ## Public And Private Boundaries
 
+Gallery photo cards/viewers may display exact workbook-exported result details
+under [the photo details contract](gallery-result-details.md). These read-only
+lookups do not change the editorial manifest or media lifecycle. The age-enabled
+export is a separately reviewed full-bundle schema transition, not permission
+to publish a candidate photograph or disclose DOBs.
+
 - The private Excel workbook remains the source of championship calculations
   and is not involved in gallery publishing.
 - `gallery-data/family.json` and `gallery-data/everyone.json` are the public
