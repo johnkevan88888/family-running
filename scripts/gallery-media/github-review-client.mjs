@@ -265,11 +265,7 @@ export async function reconcileStoredGalleryReview(storedReview, options = {}) {
         }
         return storedTerminalResult(review, 'no-pr-created', null, null);
     }
-    if (review.headSha !== null && review.headSha !== branchSha) {
-        throw new Error('Stored Gallery review branch changed after its open receipt.');
-    }
-
-    await verifyStoredCandidateBranch(github, review, branchSha);
+    await verifyStoredCandidateHistory(github, review, branchSha);
     const pulls = await listOperationPullRequests(github, review.branchRef);
     if (pulls.length > 1) {
         throw new Error('Stored Gallery review operation has more than one Pull Request.');
@@ -307,7 +303,183 @@ export async function reconcileStoredGalleryReview(storedReview, options = {}) {
     } catch (verificationError) {
         throw closeRequestError || verificationError;
     }
+    if (await readRequiredRef(github, `heads/${review.branchRef}`, 'candidate branch') !== branchSha) {
+        throw new Error('Stored Gallery review branch changed during closure.');
+    }
     return storedTerminalResult(review, 'closed-unmerged', branchSha, pullAfter);
+}
+
+/**
+ * Synchronize only an existing unmerged candidate. The immutable receipt is
+ * the history anchor; it is never rewritten. No new PR, main update, merge,
+ * force push, media operation or database mutation is available here.
+ * readEligibleCandidate must perform fresh protected-service and current-
+ * catalogue validation on every call, including after the ref update.
+ */
+export async function refreshStoredGalleryReview(storedReview, options = {}) {
+    const review = validateStoredReview(storedReview);
+    requireExactKeys(options,
+        ['expectedBaseSha', 'token', 'fetchImpl', 'readEligibleCandidate'],
+        'Gallery review refresh options');
+    const baseSha = validateCommitSha(options.expectedBaseSha, 'refresh base SHA');
+    const github = createFixedGitHubClient(validateFetch(options.fetchImpl), validateToken(options.token));
+    if (!review.headSha || !review.pullRequest || typeof options.readEligibleCandidate !== 'function') {
+        throw new Error('Gallery refresh requires an open recorded review and fresh eligibility reader.');
+    }
+    const checkEligibility = async () => {
+        const candidate = validateCandidateResult(await options.readEligibleCandidate());
+        if (candidate.receipt.operationId !== review.promotionId ||
+            candidate.itemId !== review.itemId ||
+            candidate.targetRelativePath !== review.targetRelativePath ||
+            candidate.manifestSha256 !== review.manifestSha256) {
+            throw new Error('Gallery refresh must preserve the exact recorded candidate.');
+        }
+        return candidate;
+    };
+    await assertBaseStillCurrent(github, baseSha);
+    const priorSha = await readRequiredRef(github, `heads/${review.branchRef}`, 'candidate branch');
+    const history = await verifyStoredCandidateHistory(github, review, priorSha);
+    const pulls = await listOperationPullRequests(github, review.branchRef);
+    if (pulls.length !== 1) throw new Error('Gallery refresh requires exactly one owned Pull Request.');
+    validateStoredPullRequest(pulls[0], review, priorSha, ['open']);
+    const candidate = await checkEligibility();
+    await proveCandidateIsOneAddition(github, candidate, baseSha);
+    await requireMainDescendant(github, history.baseSha, baseSha);
+    if (history.baseSha === baseSha) {
+        await assertBaseStillCurrent(github, baseSha);
+        await checkEligibility();
+        await assertRefreshReadback(github, review, priorSha, baseSha);
+        return refreshResult(review, priorSha, baseSha, true);
+    }
+    if (history.refreshCount >= 16) throw new Error('Gallery refresh history limit reached.');
+    const baseCommit = await github.request('GET', `/git/commits/${baseSha}`);
+    const blob = await github.request('POST', '/git/blobs', {
+        content: Buffer.from(candidate.manifestText, 'utf8').toString('base64'), encoding: 'base64'
+    });
+    const tree = await github.request('POST', '/git/trees', {
+        base_tree: validateCommitSha(baseCommit?.tree?.sha, 'refresh base tree'),
+        tree: [{ path: review.targetRelativePath, mode: '100644', type: 'blob',
+            sha: validateCommitSha(blob?.sha, 'refresh blob') }]
+    });
+    const commit = await github.request('POST', '/git/commits', {
+        message: refreshMessage(review, baseSha),
+        tree: validateCommitSha(tree?.sha, 'refresh tree'), parents: [priorSha, baseSha]
+    });
+    const proposedSha = validateCommitSha(commit?.sha, 'refresh commit');
+    await verifyStoredCandidateHistory(github, review, proposedSha);
+    // Repeat all changing inputs immediately before the only ref mutation.
+    await checkEligibility();
+    await assertBaseStillCurrent(github, baseSha);
+    if (await readRequiredRef(github, `heads/${review.branchRef}`, 'candidate branch') !== priorSha) {
+        throw new Error('Gallery review branch changed before refresh.');
+    }
+    validateStoredPullRequest(await github.request('GET', `/pulls/${review.pullRequest.number}`),
+        review, priorSha, ['open']);
+    let updateError;
+    try {
+        await github.request('PATCH', `/git/refs/heads/${review.branchRef}`, {
+            sha: proposedSha, force: false
+        });
+    } catch (error) {
+        updateError = error;
+    }
+    const observedSha = await readRequiredRef(github, `heads/${review.branchRef}`, 'candidate branch');
+    if (observedSha !== proposedSha) {
+        throw updateError || new Error('Gallery refresh ref readback did not match.');
+    }
+    await verifyStoredCandidateHistory(github, review, observedSha);
+    validateStoredPullRequest(await github.request('GET', `/pulls/${review.pullRequest.number}`),
+        review, observedSha, ['open']);
+    try {
+        await assertBaseStillCurrent(github, baseSha);
+        await checkEligibility();
+        await assertRefreshReadback(github, review, observedSha, baseSha);
+    } catch (error) {
+        // Stop review, without altering consent or deleting/reprocessing media.
+        // Normal separately authorized withdrawal can consume this exact closed
+        // PR using the unchanged receipt and verified synchronization history.
+        await reconcileStoredGalleryReview(review, { token: options.token, fetchImpl: options.fetchImpl });
+        throw new Error('Refreshed Gallery review closed after its final eligibility check failed.', { cause: error });
+    }
+    return refreshResult(review, observedSha, baseSha, false);
+}
+
+async function assertRefreshReadback(github, review, headSha, baseSha) {
+    await assertBaseStillCurrent(github, baseSha);
+    if (await readRequiredRef(github, `heads/${review.branchRef}`, 'candidate branch') !== headSha) {
+        throw new Error('Gallery review branch changed during final refresh readback.');
+    }
+    validateStoredPullRequest(await github.request('GET', `/pulls/${review.pullRequest.number}`),
+        review, headSha, ['open']);
+}
+
+function refreshResult(review, headSha, baseSha, replayed) {
+    return deepFreeze({ schemaVersion: '1.0', repository: repositoryFullName,
+        branchRef: review.branchRef, originalHeadSha: review.headSha, headSha,
+        baseSha, manifestSha256: review.manifestSha256,
+        pullRequest: review.pullRequest, replayed });
+}
+
+function refreshMessage(review, baseSha) {
+    return `Refresh approved Gallery review ${review.headSha} onto ${baseSha}`;
+}
+
+async function requireMainDescendant(github, ancestor, descendant) {
+    if (ancestor === descendant) return;
+    const comparison = await github.request('GET', `/compare/${ancestor}...${descendant}`);
+    if (comparison?.status !== 'ahead' || comparison?.behind_by !== 0 ||
+        comparison?.merge_base_commit?.sha !== ancestor) {
+        throw new Error('Gallery refresh base is not a forward main revision.');
+    }
+}
+
+async function verifyStoredCandidateHistory(github, review, branchSha) {
+    const anchor = review.headSha || branchSha;
+    let cursor = branchSha;
+    const refreshes = [];
+    const seen = new Set();
+    while (cursor !== anchor) {
+        if (refreshes.length >= 16 || seen.has(cursor)) {
+            throw new Error('Stored Gallery review branch changed after its open receipt: invalid refresh history.');
+        }
+        seen.add(cursor);
+        const commit = await github.request('GET', `/git/commits/${cursor}`);
+        const parents = commit?.parents;
+        if (!Array.isArray(parents) || parents.length !== 2 ||
+            !commitShaPattern.test(parents[0]?.sha || '') ||
+            !commitShaPattern.test(parents[1]?.sha || '') ||
+            parents[0].sha === parents[1].sha ||
+            commit.message !== refreshMessage(review, parents[1].sha)) {
+            throw new Error('Stored Gallery review branch changed after its open receipt: unrecognized refresh commit.');
+        }
+        refreshes.push({ head: cursor, base: parents[1].sha });
+        cursor = parents[0].sha;
+    }
+    await verifyStoredCandidateBranch(github, review, anchor);
+    if (refreshes.length === 0) return { baseSha: review.baseSha, refreshCount: 0 };
+    const currentMain = await readRequiredRef(github, 'heads/main', 'base branch');
+    let precedingBase = review.baseSha;
+    for (const refresh of refreshes.reverse()) {
+        await requireMainDescendant(github, precedingBase, refresh.base);
+        await requireMainDescendant(github, refresh.base, currentMain);
+        const diff = await github.request('GET', `/compare/${refresh.base}...${refresh.head}`);
+        if (diff?.status !== 'ahead' || diff?.behind_by !== 0 ||
+            diff?.merge_base_commit?.sha !== refresh.base ||
+            !Array.isArray(diff.files) || diff.files.length !== 1 ||
+            diff.files[0].filename !== review.targetRelativePath ||
+            diff.files[0].status !== 'modified' || diff.files[0].previous_filename !== undefined) {
+            throw new Error('Gallery refresh must differ from its base by only the inherited manifest.');
+        }
+        const contents = await github.request('GET',
+            `/contents/${review.targetRelativePath}?ref=${refresh.head}`);
+        const manifestText = decodeRepositoryFile(contents, review.targetRelativePath, 'refresh manifest');
+        if (sha256Revision(manifestText) !== review.manifestSha256) {
+            throw new Error('Gallery refresh changed the recorded manifest bytes.');
+        }
+        await proveCandidateIsOneAddition(github, { ...storedCandidate(review), manifestText }, refresh.base);
+        precedingBase = refresh.base;
+    }
+    return { baseSha: precedingBase, refreshCount: refreshes.length };
 }
 
 export function createGalleryReviewOpenEvidenceHash(reviewResult) {
@@ -572,7 +744,7 @@ async function verifyStoredCandidateBranch(github, review, branchSha) {
 
     const contents = await github.request(
         'GET',
-        `/contents/${review.targetRelativePath}?ref=${encodeURIComponent(review.branchRef)}`
+        `/contents/${review.targetRelativePath}?ref=${branchSha}`
     );
     const manifestText = decodeRepositoryFile(
         contents,
@@ -611,7 +783,7 @@ function storedTerminalResult(review, terminalKind, branchSha, pullRequest) {
     };
     const openEvidenceHash = pullEvidence === null
         ? null
-        : hashOpenPullIdentity(pullEvidence);
+        : hashOpenPullIdentity({ ...pullEvidence, headSha: review.headSha || branchSha });
     const closeEvidenceHash = pullEvidence === null
         ? null
         : sha256Hex(JSON.stringify({
@@ -642,7 +814,9 @@ function storedTerminalResult(review, terminalKind, branchSha, pullRequest) {
         repository: repositoryFullName,
         branchRef: review.branchRef,
         branchState: branchSha === null ? 'absent' : 'retained-for-reviewed-cleanup',
-        headSha: branchSha,
+        // D1 retains the original open identity. The close/readback/terminal
+        // hashes above bind the separately verified actual branch head too.
+        headSha: review.headSha || branchSha,
         terminalKind,
         terminalEvidenceHash,
         openEvidenceHash,
@@ -980,6 +1154,17 @@ function assertAllowedApiRequest(method, relativePath, body) {
     }
     if (
         method === 'PATCH' &&
+        /^\/git\/refs\/heads\/gallery-media\/candidate-[a-f0-9]{32}$/.test(relativePath) &&
+        isPlainObject(body)
+    ) {
+        requireExactKeys(body, ['sha', 'force'], 'Gallery refresh ref request');
+        if (body.force !== false || !commitShaPattern.test(body.sha || '')) {
+            throw new Error('Gallery refresh requires a non-forced candidate update.');
+        }
+        return;
+    }
+    if (
+        method === 'PATCH' &&
         /^\/pulls\/[1-9][0-9]*$/.test(relativePath) &&
         isPlainObject(body)
     ) {
@@ -1023,8 +1208,10 @@ function validateMutationBody(relativePath, body) {
             typeof body.message !== 'string' ||
             !commitShaPattern.test(stringValue(body.tree)) ||
             !Array.isArray(body.parents) ||
-            body.parents.length !== 1 ||
-            !commitShaPattern.test(stringValue(body.parents[0]))
+            !([1, 2].includes(body.parents.length)) ||
+            body.parents.some(sha => !commitShaPattern.test(stringValue(sha))) ||
+            (body.parents.length === 2 &&
+                !/^Refresh approved Gallery review [a-f0-9]{40} onto [a-f0-9]{40}$/.test(body.message))
         ) {
             throw new Error('Git commit request is invalid.');
         }

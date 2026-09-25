@@ -1,5 +1,77 @@
 # Active Work
 
+## Current release: Gallery review refresh — 25 September 2026
+
+John first approved local preparation and testing, then explicitly approved
+synchronization/retest, a corrective PR, required checks and merge. Normal
+Pages is permitted only with unchanged public bytes and both manifests empty.
+PR #119 refresh is NOT included and requires separate approval after release.
+No Worker deployment, migration, credentials, media processing or publication
+is included. The correction is isolated on
+`codex/gallery-review-refresh` in `test-artifacts/gallery-review-refresh`, based
+on main commit `a8031c07d1b0a232c5a6c501ffd954d4b1e83468`. A fresh fetch and
+GitHub readback confirm this is still current main; no synchronization changes
+are needed. The existing strict required check and main-update rules remain
+active. Record the exact release/check/Pages evidence in the parent handoff
+after completion; local test results below are not live refresh evidence.
+
+The original photo, consent, derivative bindings and immutable open-review
+receipt are preserved. The new protected refresh entry point independently
+rechecks current catalogue eligibility and can append only a non-forced,
+one-file synchronization commit with the identical recorded manifest bytes.
+Every refresh must remain anchored to the original candidate and forward main
+history. Withdrawal verifies this bounded history and retains the original
+database identity while hashing the actual closing head. The cross-layer
+SQLite/service test accepts that terminal evidence and its lost-response replay
+without changing the schema. No Worker change or migration is needed.
+
+Validation: all 59 groups in `node scripts/run-all-tests.mjs` passed, including
+repository/vendor/CSV/Gallery contracts, processing/metadata stripping,
+consent/exclusion, withdrawal/retention/purge, local D1 compatibility, release
+and updater checks, artifact safety and both-mode browser smoke. The final
+versions of the four changed focused suites also passed independently after
+adding repeated-refresh and cross-layer terminal-proof cases. They cover
+unchanged original evidence, current eligibility, invalid histories, a 16-step
+refresh limit, lost responses, base/ref races, post-update failure closure and
+withdrawal replay. All remote interactions in these tests are synthetic.
+
+All 59 responsive screenshots were generated; the four synthetic Gallery
+details views (both modes, desktop/mobile) were inspected. All 115 public build
+files byte-match the verified uploader-release checkout baseline; both Gallery
+manifests remain empty. No public runtime/data/manifest files changed.
+`git diff --check` passed. A new cross-layer test initially used a deliberately
+nonconforming token placeholder; replacing it with a valid synthetic App-token
+shape made that test pass without relaxing token validation. Existing pinned
+dependencies are linked locally; canonical Git text bytes avoid the known
+fresh-Windows-checkout line-ending assertion issue.
+
+Exact release file set (13):
+
+- `.github/workflows/gallery-media-review-refresh.yml`
+- `scripts/run-gallery-photo-review-refresh.mjs`
+- `scripts/gallery-media/candidate-manifest.mjs`
+- `scripts/gallery-media/github-review-client.mjs`
+- `scripts/gallery-media/photo-review-bridge.mjs`
+- `tests/gallery-github-review-client.mjs`
+- `tests/gallery-manifest-candidate.mjs`
+- `tests/gallery-photo-review-bridge.mjs`
+- `tests/gallery-photo-review-service.mjs`
+- `docs/active-work.md`
+- `docs/decision-log.md`
+- `docs/gallery-upload-architecture.md`
+- `docs/testing-and-release-protocol.md`
+
+No local test blocker remains. The approved next steps are the full retest and
+release through a PR, required checks and merge, allowing normal Pages only if
+public bytes remain identical and both manifests stay empty.
+Use the existing standard release path; do not infer a no-preview exception.
+After that release, separately approve a protected refresh of the existing
+pilot review, fresh candidate checks/preview and a stop at unmerged PR #119.
+Live eligibility is not proven by these local fixtures. Candidate merge and
+photo publication remain separate. The unfinished protected all-athlete archive
+work is untouched; whether to defer it for the first-photo pilot remains an
+owner decision, not an implicit change to the launch requirement.
+
 ## Current release: automatic Gallery item IDs — 25 September 2026
 
 John approved an uploader-only PR, required checks and merge, then deployment

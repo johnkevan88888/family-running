@@ -69,6 +69,17 @@ export const galleryManifestPublicItemFields = publicItemFields;
  * service. The only possible target is derived from draft.siteModes[0].
  */
 export function prepareGalleryManifestCandidate(candidatePackage, currentState) {
+    return prepareCandidate(candidatePackage, currentState, false);
+}
+
+// A review refresh is not a new intake or a rewrite of historical byte evidence.
+// Validate the original publication binding first, then independently require
+// that the unchanged item is still eligible against the new public catalogue.
+export function prepareGalleryReviewRefreshCandidate(candidatePackage, currentState) {
+    return prepareCandidate(candidatePackage, currentState, true);
+}
+
+function prepareCandidate(candidatePackage, currentState, refresh) {
     validateCandidatePackageShape(candidatePackage);
     validateCurrentStateShape(currentState);
 
@@ -109,7 +120,11 @@ export function prepareGalleryManifestCandidate(candidatePackage, currentState) 
     const otherSite = targetSite === 'family' ? 'everyone' : 'family';
     const targetRelativePath = targetPaths[targetSite];
 
-    validateFreshCatalog(candidatePackage, currentState.catalogSnapshot, targetSite);
+    if (refresh) {
+        validateRefreshCatalog(candidatePackage, currentState.catalogSnapshot);
+    } else {
+        validateFreshCatalog(candidatePackage, currentState.catalogSnapshot, targetSite);
+    }
 
     const manifestsBySite = cloneAndValidateManifests(currentState.manifestsBySite);
     validateExistingSharedItems(manifestsBySite);
@@ -211,6 +226,33 @@ export function prepareGalleryManifestCandidate(candidatePackage, currentState) 
             manifestSha256
         )
     });
+}
+
+function validateRefreshCatalog(candidatePackage, snapshot) {
+    if (snapshot?.schemaVersion !== schemaVersion ||
+        !isPlainObject(snapshot.sites) ||
+        !isPlainObject(snapshot.sites.family?.catalog) ||
+        !isPlainObject(snapshot.sites.everyone?.catalog)) {
+        throw new Error('The current Gallery refresh catalog snapshot is unavailable.');
+    }
+    // This temporary approval view is never persisted or used as derivative
+    // evidence. Original revision-bound derivatives were validated above.
+    const draft = {
+        ...candidatePackage.draft,
+        exportBundleId: snapshot.exportBundleId,
+        sourceRevision: snapshot.sourceRevision,
+        suppressionRevision: snapshot.suppressionRevision
+    };
+    const context = {
+        ...candidatePackage.context,
+        suppressionRevision: snapshot.suppressionRevision,
+        suppressionDocument: snapshot.suppressionDocument,
+        siteCatalogs: Object.fromEntries(siteModes.map(site => [site, snapshot.sites[site].catalog]))
+    };
+    const problems = uploadContract.validateGalleryUploadApproval(draft, context);
+    if (problems.length) {
+        throw new Error(`Gallery review refresh is no longer eligible: ${problems.join(' ')}`);
+    }
 }
 
 export function renderCanonicalGalleryManifest(documentValue) {
