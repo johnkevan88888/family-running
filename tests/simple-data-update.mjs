@@ -93,7 +93,7 @@ const schemaFingerprint = createHash('sha256')
 
 assert.equal(contractDefinition.version, 1);
 assert.equal(csvFiles.length, contractDefinition.publicCsvCount);
-assert.equal(Buffer.byteLength(descriptor, 'utf8'), 14901);
+assert.equal(Buffer.byteLength(descriptor, 'utf8'), 14911);
 assert.equal(schemaFingerprint, contractDefinition.schemaFingerprintSha256);
 assert.equal(
     expectedWorkbookSignature,

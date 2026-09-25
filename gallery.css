@@ -175,6 +175,13 @@
     transform: scale(1.025);
 }
 
+/* Preserve the complete photo, including on hover; keep video posters unchanged. */
+.gallery-card[data-gallery-type="photo"] .gallery-card-image {
+    object-fit: contain;
+    object-position: center;
+    transform: none;
+}
+
 .gallery-card-type {
     background: rgba(15, 36, 56, 0.88);
     border-radius: 999px;
@@ -225,6 +232,18 @@
     font-size: 0.8rem;
     font-weight: 750;
 }
+
+.gallery-photo-athlete {
+    border-top: 1px solid #dde3e8;
+    margin-top: 12px;
+    padding-top: 10px;
+    overflow-wrap: anywhere;
+}
+
+.gallery-photo-athlete h4 { margin: 0 0 8px; }
+.gallery-photo-athlete dl { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 0; }
+.gallery-photo-athlete dt { color: #52616e; font-size: 0.75rem; }
+.gallery-photo-athlete dd { font-weight: 750; margin: 2px 0 0; }
 
 .gallery-viewer {
     background: #ffffff;

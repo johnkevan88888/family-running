@@ -3,6 +3,18 @@
 This log records durable architectural decisions, not proposed features.
 Unknown historical details are labelled rather than inferred.
 
+## 2026-09-25 — Gallery displays workbook-owned exact race-day age
+
+Photo cards and their enlarged viewer display race context and per-tagged-athlete
+name, time, AG and exact age at the race. Age category/privacy preferences are
+future work, not an age-grade calculation input change. The existing workbook
+`Age on Day` value is exported as `AgeAtRace`; no DOB or browser age/AG calculation
+is introduced. Matching is by athlete ID plus exact race date/event/distance,
+with selected-mode roster and bundle checks. Missing or ambiguous data is
+unavailable, not borrowed from another result. Editorial captions/titles stay in
+the manifest contract but do not add visible photo copy. See
+[the photo-details contract](gallery-result-details.md).
+
 ## Finalizer reservation and completion are separate D1 compilation gates
 
 - **Date:** 16 September 2026
