@@ -4,11 +4,12 @@ import path from 'node:path';
 
 import { buildGalleryAdminCatalog } from '../build-gallery-admin-catalog.mjs';
 import { repoRoot } from '../export-bundle-tools.mjs';
-import { prepareGalleryManifestCandidate } from './candidate-manifest.mjs';
+import { prepareGalleryManifestCandidate, prepareGalleryReviewRefreshCandidate } from './candidate-manifest.mjs';
 import {
     createGalleryReviewOpenEvidenceHash,
     createOrReconcileGalleryReview,
-    reconcileStoredGalleryReview
+    reconcileStoredGalleryReview,
+    refreshStoredGalleryReview
 } from './github-review-client.mjs';
 import { processGalleryPhoto } from './processor.mjs';
 
@@ -56,6 +57,71 @@ const optionKeys = Object.freeze([
     'createReview',
     'reconcileReview'
 ]);
+
+// Separate from intake: only protected candidate/review GETs are used. The
+// stored receipt, consent, source bytes and derivative bindings are unchanged.
+export async function runPhotoReviewRefreshBridge(options) {
+    const keys = ['draftId', 'expectedBaseSha', 'githubToken', 'promotion', 'fetchImpl', 'root', 'refreshReview'];
+    if (!plainObject(options) || Object.keys(options).some(key => !keys.includes(key)) ||
+        !draftIdPattern.test(options.draftId || '') ||
+        !commitShaPattern.test(options.expectedBaseSha || '') ||
+        !safeSecret(options.githubToken) ||
+        (options.refreshReview !== undefined && typeof options.refreshReview !== 'function')) {
+        throw new Error('The Gallery review refresh configuration is invalid.');
+    }
+    validateService(options.promotion);
+    const fetchImpl = options.fetchImpl || globalThis.fetch;
+    if (typeof fetchImpl !== 'function') throw new Error('The Gallery refresh transport is invalid.');
+    const client = serviceClient(options.promotion, fetchImpl);
+    const root = path.resolve(options.root || repoRoot);
+    const currentState = {
+        catalogSnapshot: await buildGalleryAdminCatalog(root),
+        manifestsBySite: await readCurrentManifests(root),
+        replayReceipt: null
+    };
+    let originalCandidate;
+    let originalReview;
+    const readEligibleCandidate = async () => {
+        const prefix = `/api/service/drafts/${encodeURIComponent(options.draftId)}`;
+        const candidate = exactCandidate((await client.json('GET', `${prefix}/photo-candidate`))?.candidate);
+        const response = await client.json('GET', `${prefix}/photo-review-invalidation`);
+        if (!exactKeys(response, ['receiptKind', 'review', 'invalidation', 'replayed']) ||
+            response.receiptKind !== 'review' || response.replayed !== true || response.invalidation !== null) {
+            throw new Error('The stored Gallery review is no longer eligible for refresh.');
+        }
+        const review = response.review;
+        exactReviewReceipt(review, originalReview || review, ['open']);
+        const prepared = prepareGalleryReviewRefreshCandidate(candidate, currentState);
+        if (candidate.draft.draftId !== options.draftId ||
+            review.draftId !== options.draftId || review.promotionId !== candidate.operationId ||
+            review.candidateStateVersion !== candidate.draft.stateVersion ||
+            review.candidatePayloadHash !== createHash('sha256').update(JSON.stringify(candidate)).digest('hex') ||
+            review.itemId !== prepared.itemId || review.targetRelativePath !== prepared.targetRelativePath ||
+            review.manifestSha256 !== prepared.manifestSha256 ||
+            createGalleryReviewOpenEvidenceHash({ ...review, pullRequest: {
+                number: review.pullRequestNumber, url: review.pullRequestUrl
+            } }) !== review.openEvidenceHash) {
+            throw new Error('Gallery refresh candidate does not match the immutable open review.');
+        }
+        if (originalCandidate) {
+            assertSameCandidate(originalCandidate, candidate);
+            if (JSON.stringify(originalReview) !== JSON.stringify(review)) {
+                throw new Error('The stored Gallery review changed during refresh.');
+            }
+        } else {
+            originalCandidate = structuredClone(candidate);
+            originalReview = structuredClone(review);
+        }
+        return prepared;
+    };
+    await readEligibleCandidate();
+    return (options.refreshReview || refreshStoredGalleryReview)(storedReviewEvidence(originalReview), {
+        expectedBaseSha: options.expectedBaseSha,
+        token: options.githubToken,
+        fetchImpl,
+        readEligibleCandidate
+    });
+}
 
 /**
  * Turn one already-approved private photo draft into one unmerged Gallery PR.

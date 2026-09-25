@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
+import { createGalleryReviewOpenEvidenceHash, reconcileStoredGalleryReview }
+    from '../scripts/gallery-media/github-review-client.mjs';
 
 import {
     abandonPhotoReviewCandidate,
@@ -76,10 +78,18 @@ const candidateReader = async () => ({
         }
     }
 });
+const refreshManifestText = `${JSON.stringify({ schemaVersion: '1.0', items: [{
+    id: 'photo-review-service-1', type: 'photo', title: 'Synthetic review title',
+    caption: 'Generated test data only.', alt: 'Generated test image.',
+    raceDate: '2026-09-02', raceEvent: 'Synthetic race', raceDistance: '5 km',
+    sourceUrl: `https://media.example.com/media/v1/${'1'.repeat(64)}/display.webp`,
+    thumbnailUrl: `https://media.example.com/media/v1/${'2'.repeat(64)}/thumbnail.webp`,
+    featured: false, athleteIds: []
+}] }, null, 2)}\n`;
 const reserveInput = {
     expectedStateVersion: 6,
     baseSha: 'a'.repeat(40),
-    manifestSha256: `sha256:${hash('manifest-one')}`,
+    manifestSha256: `sha256:${hash(refreshManifestText)}`,
     workflowRunReference:
         'https://github.com/johnkevan88888/family-running/actions/runs/101/attempts/1',
     idempotencyKey: 'review-reserve-service-0001'
@@ -140,6 +150,10 @@ const openInput = {
     openEvidenceHash: hash('open-evidence-one'),
     idempotencyKey: 'review-open-service-0001'
 };
+openInput.openEvidenceHash = createGalleryReviewOpenEvidenceHash({
+    ...reserved.review, headSha: openInput.headSha,
+    pullRequest: { number: openInput.pullRequestNumber, url: openInput.pullRequestUrl }
+});
 const opened = await recordPhotoReviewOpened(
     env,
     identity,
@@ -163,12 +177,84 @@ assert.equal(openedReadback.review.status, 'open');
 assert.equal(openedReadback.review.pullRequestNumber, 71);
 assert.equal(openedReadback.invalidation, null);
 
+// Use actual refreshed-history reconciliation output, not fabricated terminal
+// hashes, at the real immutable SQLite/service boundary.
+const stored = opened.review;
+const refreshedHead = 'd'.repeat(40);
+const refreshedBase = 'c'.repeat(40);
+const pull = {
+    number: openInput.pullRequestNumber, html_url: openInput.pullRequestUrl,
+    state: 'open', merged_at: null, draft: false,
+    title: `Add approved Gallery photo: ${stored.itemId}`,
+    body: [
+        `<!-- family-running-gallery-candidate:${stored.operationMarkerHash} -->`,
+        '## Approved Gallery candidate', '',
+        `- Manifest: \`${stored.targetRelativePath}\``,
+        `- Public item ID: \`${stored.itemId}\``,
+        `- Manifest SHA-256: \`${stored.manifestSha256}\``,
+        `- Candidate branch: \`${stored.branchRef}\``, '',
+        'This automated Pull Request is for review only. It does not authorize merge, deployment, or publication.'
+    ].join('\n'),
+    base: { ref: 'main', repo: { full_name: stored.repository } },
+    head: { ref: stored.branchRef, sha: refreshedHead, repo: { full_name: stored.repository } }
+};
+const reconciled = await reconcileStoredGalleryReview({
+    schemaVersion: '1.0', promotionId: stored.promotionId, repository: stored.repository,
+    baseRef: stored.baseRef, baseSha: stored.baseSha, branchRef: stored.branchRef,
+    headSha: stored.headSha, targetRelativePath: stored.targetRelativePath,
+    itemId: stored.itemId, manifestSha256: stored.manifestSha256,
+    operationMarkerHash: stored.operationMarkerHash,
+    pullRequest: { number: openInput.pullRequestNumber, url: openInput.pullRequestUrl, state: 'open' }
+}, {
+    token: 'ghs_synthetic_installation_token_123456789', fetchImpl: async (url, request) => {
+        const parsed = new URL(url);
+        assert.equal(parsed.origin, 'https://api.github.com');
+        const pathname = parsed.pathname.replace(`/repos/${stored.repository}`, '');
+        let value;
+        if (request.method === 'PATCH') {
+            assert.equal(pathname, `/pulls/${pull.number}`);
+            assert.deepEqual(JSON.parse(request.body), { state: 'closed' });
+            pull.state = 'closed';
+            value = pull;
+        } else {
+            assert.equal(request.method, 'GET');
+            if (pathname.startsWith('/git/ref/')) value = { object: {
+                sha: pathname.endsWith('/main') ? refreshedBase : refreshedHead
+            } };
+            else if (pathname === `/git/commits/${refreshedHead}`) value = {
+                message: `Refresh approved Gallery review ${stored.headSha} onto ${refreshedBase}`,
+                parents: [{ sha: stored.headSha }, { sha: refreshedBase }]
+            };
+            else if (pathname === `/git/commits/${stored.headSha}`) value = {
+                message: `Add approved Gallery photo ${stored.itemId}`, parents: [{ sha: stored.baseSha }]
+            };
+            else if (pathname.startsWith('/compare/')) value = {
+                status: 'ahead', behind_by: 0, ahead_by: 1, total_commits: 1,
+                merge_base_commit: { sha: pathname.slice('/compare/'.length).split('...')[0] },
+                files: [{ filename: stored.targetRelativePath, status: 'modified' }]
+            };
+            else if (pathname.startsWith('/contents/')) value = {
+                type: 'file', path: stored.targetRelativePath, encoding: 'base64',
+                content: Buffer.from(parsed.searchParams.get('ref') === refreshedBase
+                    ? '{"schemaVersion":"1.0","items":[]}' : refreshManifestText).toString('base64')
+            };
+            else if (pathname === '/pulls') value = [pull];
+            else if (pathname === `/pulls/${pull.number}`) value = pull;
+            else assert.fail(`Unexpected synthetic GitHub path: ${pathname}`);
+        }
+        return { ok: true, status: 200, json: async () => structuredClone(value) };
+    }
+});
+assert.equal(reconciled.headSha, stored.headSha);
+assert.equal(reconciled.openEvidenceHash, stored.openEvidenceHash);
+assert.equal(pull.head.sha, refreshedHead);
+assert.equal(pull.state, 'closed');
 const terminalInput = {
     terminalKind: 'closed-unmerged',
-    terminalEvidenceHash: hash('terminal-one'),
-    closeEvidenceHash: hash('close-one'),
-    readbackEvidenceHash: hash('readback-one'),
-    headSha: openInput.headSha,
+    terminalEvidenceHash: reconciled.terminalEvidenceHash,
+    closeEvidenceHash: reconciled.closeEvidenceHash,
+    readbackEvidenceHash: reconciled.readbackEvidenceHash,
+    headSha: reconciled.headSha,
     pullRequestNumber: openInput.pullRequestNumber,
     pullRequestUrl: openInput.pullRequestUrl,
     idempotencyKey: 'review-terminal-service-0001'

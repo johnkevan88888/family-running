@@ -20,6 +20,25 @@ pnpm exec playwright install chromium
 
 ## Local Commands
 
+The review-refresh correction extends the existing manifest, GitHub-client and
+photo-review-bridge suites (already part of `pnpm test`). They require original
+evidence preservation, a separate current-catalogue eligibility check, exact
+one-file/unchanged-manifest synchronization, non-forced candidate-only updates,
+lost-response replay, base/ref races, post-update failure closure, and anchored
+withdrawal replay. Refresh service requests are GET-only; originals are never
+read and no media is uploaded or processed. Synthetic fixtures exercise the
+future protected workflow, not the live PR or database.
+
+The locally prepared `gallery-media-review-refresh.yml` is a separately approved
+workflow dispatch, never a side effect of code release. It uses the existing
+protected environment, pinned actions, exact main checkout and one opaque
+draft ID, with no destination, branch, PR, manifest or credential input. Before
+dispatch, review and release this correction first. Successful dispatch still
+requires fresh candidate PR checks and responsive preview review; it cannot
+merge or publish. Do not rewrite historical D1 review fields to make a branch
+update pass. A failure closed PR still requires normal separately authorized
+withdrawal/host-verification when applicable; closure is not media absence.
+
 `node tests/gallery-admin-browser.mjs` also checks automatic opaque photo IDs:
 no editable ID field, distinct IDs for new forms, no weak fallback without Web
 Crypto, stable IDs on uncertain retries, saved-form duplicate prevention,
