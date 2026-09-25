@@ -1,5 +1,40 @@
 # Active Work
 
+## Current release: automatic Gallery item IDs — 25 September 2026
+
+John approved an uploader-only PR, required checks and merge, then deployment
+of only the admin Worker with existing bindings and Access settings preserved.
+Normal Pages is conditional on byte-identical public output and both Gallery
+manifests remaining empty. No private-storage feature, migration, other Worker,
+credential change, real media or photo publication is included; PR #119 stays
+unmerged. The unfinished private archive work is preserved in its own checkout.
+
+Release branch `codex/gallery-automatic-item-ids` starts from freshly verified
+main `049e482a8c47ca7c689e0e4fc0878c9ceb917554`. Only private admin assets,
+their browser regressions and four documentation files are included. New IDs
+are opaque and stable across uncertain retries; existing IDs are unchanged.
+Validation on this isolated release: all 59 full-suite groups passed, including
+repository/vendor/CSV/Gallery checks, metadata stripping, consent, suppression,
+withdrawal/purge, local D1 parity, uploader regressions and both-mode public
+browser smoke. All 59 responsive screenshots were refreshed; the four changed
+uploader layouts and representative public layouts were reviewed. The initial
+fresh-checkout run exposed a missing dependency link and a CRLF-sensitive
+existing workflow assertion; restoring canonical Git bytes and linking the
+existing pinned dependencies resolved these without changing tests or contracts.
+
+All 115 built public files byte-match baseline `049e482`, with both Gallery
+manifests empty. The exact six-file diff qualifies as `no-visual-change` under
+the existing release classifier. Wrangler 4.126.0 admin-only dry run passed;
+existing D1/R2 bindings, Worker settings and owner Access policy were inspected.
+Anonymous shell/auth GETs both redirected to Access (302); the existing owner
+browser session and deployment login remain usable. No credentials changed.
+
+Next approved steps: push/open this PR, require passing GitHub checks, merge,
+verify the exact normal Pages artifact/live bytes, deploy only the admin Worker
+and perform read-only authenticated/anonymous checks. No live draft write is
+part of verification. Deployment completion must be recorded separately from
+these local checks; unfinished private archive work remains inactive.
+
 ## Current task: Gallery whole-photo thumbnails and exported race details
 
 ### Status — UI/data release approved, 25 September 2026
