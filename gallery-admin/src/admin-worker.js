@@ -1,6 +1,8 @@
 import catalogSnapshot from '../generated/catalog-snapshot.js';
 
 import { verifyWorkerAccessIdentity } from './access.js';
+import { readPrivateGalleryRoster } from './private-gallery-roster-service.js';
+import { reservePrivateGalleryAsset, readPrivateGalleryAsset } from './private-gallery-asset-service.js';
 import {
     adminClientScript,
     adminShellDocument,
@@ -44,6 +46,7 @@ const ADMIN_SCRIPT_PATH = '/admin.js';
 const BROWSER_HEALTH_PATH = '/api/browser/health';
 const BROWSER_SESSION_PATH = '/api/browser/session';
 const BROWSER_CATALOG_PATH = '/api/browser/catalog';
+const BROWSER_PRIVATE_ROSTER_PATH = '/api/browser/private-roster';
 const BROWSER_DRAFTS_PATH = '/api/browser/drafts';
 const BROWSER_ATHLETE_EXCLUSIONS_PATH = '/api/browser/athlete-exclusions';
 const SYNTHETIC_RECORDS_PATH = '/api/browser/synthetic-records';
@@ -226,6 +229,24 @@ async function handleBrowserRoute(
         mutation
     )) {
         return adminFailure(403);
+    }
+
+    if (route.kind === 'private-roster') {
+        if (request.method !== 'GET') {
+            return adminFailure(405, { Allow: 'GET' });
+        }
+        return serviceResultResponse(await readPrivateGalleryRoster(env, siteMode));
+    }
+
+    if (route.kind === 'private-assets') {
+        if (request.method !== 'POST') return adminFailure(405, { Allow: 'POST' });
+        const parsed = await readBoundedJson(request);
+        if (!parsed.ok) return adminFailure(parsed.status);
+        return serviceResultResponse(await reservePrivateGalleryAsset(env, identity, siteMode, parsed.value));
+    }
+    if (route.kind === 'private-asset') {
+        if (request.method !== 'GET') return adminFailure(405, { Allow: 'GET' });
+        return serviceResultResponse(await readPrivateGalleryAsset(env, identity, siteMode, route.assetId));
     }
 
     if (route.kind === 'catalog') {
@@ -477,6 +498,12 @@ async function createSyntheticRecord(request, env, identity, now) {
 }
 
 function matchPhaseCRoute(pathname) {
+    if (pathname === '/api/browser/private-assets') return { kind: 'private-assets' };
+    const assetMatch = /^\/api\/browser\/private-assets\/(asset_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/.exec(pathname);
+    if (assetMatch) return { kind: 'private-asset', assetId: assetMatch[1] };
+    if (pathname === BROWSER_PRIVATE_ROSTER_PATH) {
+        return { kind: 'private-roster' };
+    }
     if (pathname === BROWSER_CATALOG_PATH) {
         return { kind: 'catalog' };
     }

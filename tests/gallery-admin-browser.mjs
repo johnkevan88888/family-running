@@ -88,6 +88,7 @@ const viewports = [
     { name: 'mobile', width: 390, height: 844, isMobile: true }
 ];
 const observedApiRequests = [];
+const generatedItemIds = new Set();
 
 await fs.mkdir(screenshotsDirectory, { recursive: true });
 const server = createAdminServer(observedApiRequests);
@@ -196,15 +197,61 @@ async function checkViewport(browserInstance, adminOrigin, viewport, area) {
         await page.locator('#editorial-withdrawal').click();
         assert.match(confirmationText, /stay withdrawal pending|protected verification/i);
 
-        await page.locator('#item-id').fill(`synthetic-${area.siteMode}-${viewport.name}`);
+        assert.equal(await page.locator('#item-id').count(), 0);
+        assert.equal(await page.getByText('Gallery item ID', { exact: true }).count(), 0);
+        assert.equal(await page.locator('#new-photo').isVisible(), false);
+        const createAttempts = [];
+        let committedDraft = null;
+        const createRoute = url => url.pathname === '/api/browser/drafts';
+        await page.route(createRoute, async route => {
+            if (route.request().method() !== 'POST') {
+                if (committedDraft) return route.fulfill({ status: 200, contentType: 'application/json',
+                    body: JSON.stringify({ drafts: [draftFixture(area.siteMode), committedDraft] }) });
+                return route.continue();
+            }
+            createAttempts.push(route.request().postDataJSON());
+            if (createAttempts.length === 1) {
+                // Uncertain/malformed response must not cause a new generated ID.
+                return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+            }
+            if (createAttempts.length === 3) {
+                // Server commit succeeds but no usable receipt reaches the owner.
+                const saved = await route.fetch();
+                assert.equal(saved.status(), 201);
+                committedDraft = (await saved.json()).draft;
+                return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+            }
+            return route.continue();
+        });
         await page.locator('#item-title').fill(`${area.label} synthetic test`);
         await page.locator('#item-alt').fill('A generated shape used only to test the private upload form.');
         await page.locator('#public-use-confirmed').check();
         await page.locator('input[name="contains-minors"][value="no"]').check();
+        await page.evaluate(() => Object.defineProperty(crypto, 'randomUUID', {
+            configurable: true, value: undefined
+        }));
+        await page.locator('#create-draft').click();
+        await page.locator('#error-summary').waitFor({ state: 'visible' });
+        assert.equal(createAttempts.length, 0, 'No insecure fallback ID or request without Web Crypto.');
+        await page.evaluate(() => { delete crypto.randomUUID; });
+        await page.locator('#create-draft').click();
+        await page.locator('#error-summary').filter({
+            hasText: 'The server did not return the saved draft.'
+        }).waitFor();
+        assert.equal(await page.locator('#new-photo').isVisible(), false);
         await page.locator('#create-draft').click();
         await page.locator('#app-status').filter({
             hasText: 'The private draft was saved.'
         }).waitFor();
+        assert.equal(createAttempts.length, 2);
+        assert.deepEqual(createAttempts[0], createAttempts[1]);
+        const generatedId = createAttempts[1].itemInput.id;
+        assert.match(generatedId, /^photo-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+        assert.equal(generatedItemIds.has(generatedId), false);
+        generatedItemIds.add(generatedId);
+        assert.equal(await page.locator('#create-draft').isDisabled(), true);
+        await page.locator('#draft-form').dispatchEvent('submit');
+        assert.equal(createAttempts.length, 2, 'A saved form must not create a second draft.');
 
         const testPhoto = Buffer.from(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC' +
@@ -277,6 +324,38 @@ async function checkViewport(browserInstance, adminOrigin, viewport, area) {
             fullPage: true,
             scale: 'css'
         });
+        await page.locator('#new-photo').click();
+        assert.equal(await page.locator('#item-title').inputValue(), '');
+        assert.equal(await page.locator('#item-alt').inputValue(), '');
+        assert.equal(await page.locator('#race-date').inputValue(), '');
+        assert.equal(await page.locator('#public-use-confirmed').isChecked(), false);
+        assert.equal(await page.locator('input[name="contains-minors"]:checked').count(), 0);
+        assert.equal(await page.locator('#photo-file').inputValue(), '');
+        assert.equal(await page.locator('#draft-workspace').isVisible(), false);
+        await page.locator('#race-date').selectOption(area.raceDate);
+        await page.locator('#race-choice').selectOption({ index: 1 });
+        await page.locator('#item-title').fill('Another synthetic photo');
+        await page.locator('#item-alt').fill('Another generated shape');
+        await page.locator('#create-draft').click();
+        await page.locator('#error-summary').filter({ hasText: 'Complete the required fields' }).waitFor();
+        assert.equal(createAttempts.length, 2, 'Consent must be confirmed again for another photo.');
+        await page.locator('#public-use-confirmed').check();
+        await page.locator('input[name="contains-minors"][value="no"]').check();
+        await page.locator('#create-draft').click();
+        await page.locator('#error-summary').filter({ hasText: 'The server did not return the saved draft.' }).waitFor();
+        assert.equal(createAttempts.length, 3);
+        assert.notEqual(createAttempts[2].itemInput.id, generatedId);
+        assert.match(createAttempts[2].itemInput.id, /^photo-[0-9a-f-]{36}$/);
+        assert.equal(await page.locator('#new-photo').isVisible(), false);
+        await page.locator('#refresh-drafts').click();
+        await page.locator('#app-status').filter({ hasText: 'Saved drafts were refreshed.' }).waitFor();
+        await page.locator('.draft-card .button').last().click();
+        await page.locator('#app-status').filter({ hasText: 'The private draft is open.' }).waitFor();
+        assert.equal(await page.locator('#create-draft').isDisabled(), true);
+        assert.equal(await page.locator('#new-photo').isVisible(), true);
+        assert.equal(createAttempts.length, 3, 'Read-only recovery must not create or rename a draft.');
+        assert.equal(committedDraft.itemInput.id, createAttempts[2].itemInput.id);
+        assert.deepEqual(browserErrors, []);
     } finally {
         await context.close();
     }

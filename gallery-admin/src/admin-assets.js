@@ -125,14 +125,7 @@ const ADMIN_DOCUMENT = String.raw`<!doctype html>
 
                     <fieldset class="form-section">
                         <legend>Public description</legend>
-                        <div class="field-grid two-columns">
-                            <label class="form-field" for="item-id">
-                                <span>Gallery item ID</span>
-                                <input id="item-id" name="item-id" type="text" required maxlength="120"
-                                    pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-                                    aria-describedby="item-id-help" autocomplete="off">
-                                <small id="item-id-help">Lowercase words joined with hyphens, such as summer-5k-finish-line.</small>
-                            </label>
+                        <div class="field-grid">
                             <div class="form-field">
                                 <span>Media type</span>
                                 <strong>Photo</strong>
@@ -209,6 +202,9 @@ const ADMIN_DOCUMENT = String.raw`<!doctype html>
                     <div class="form-actions">
                         <button id="create-draft" class="button button-primary" type="submit">
                             Save private draft
+                        </button>
+                        <button id="new-photo" class="button button-secondary" type="button" hidden>
+                            Start another photo
                         </button>
                     </div>
                 </form>
@@ -1053,6 +1049,8 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         activeDraft: null,
         upload: null,
         selectedFile: null,
+        newItemId: '',
+        formSaved: false,
         busy: false
     };
 
@@ -1134,6 +1132,7 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         elements.guardianWrap = byId('guardian-confirmation');
         elements.guardianApproved = byId('guardian-approved');
         elements.createDraft = byId('create-draft');
+        elements.newPhoto = byId('new-photo');
         elements.draftWorkspace = byId('draft-workspace');
         elements.reviewSummary = byId('review-summary');
         elements.draftFacts = byId('draft-facts');
@@ -1160,6 +1159,7 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
     function bindEvents() {
         elements.refreshDrafts.addEventListener('click', refreshDrafts);
         elements.form.addEventListener('submit', createDraft);
+        elements.newPhoto.addEventListener('click', startAnotherPhoto);
         elements.raceDate.addEventListener('change', onDateChanged);
         elements.raceChoice.addEventListener('change', renderAthleteChoices);
         elements.photoFile.addEventListener('change', onPhotoSelected);
@@ -1470,6 +1470,9 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
 
     async function createDraft(event) {
         event.preventDefault();
+        if (state.busy || state.formSaved) {
+            return;
+        }
         clearError();
         updateGuardianRequirement();
 
@@ -1489,7 +1492,6 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
 
         var body = {
             itemInput: {
-                id: byId('item-id').value.trim(),
                 type: byId('media-type').value,
                 title: byId('item-title').value.trim(),
                 caption: byId('item-caption').value.trim(),
@@ -1509,19 +1511,53 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
         };
 
         await withBusy(elements.createDraft, 'Saving…', async function () {
+            // One opaque ID per form, retained on all failed/uncertain retries.
+            // It is not an authorization token or an R2 key; the server still
+            // validates it and rejects duplicates under the existing contract.
+            if (!state.newItemId) {
+                state.newItemId = 'photo-' + crypto.randomUUID();
+            }
+            body.itemInput.id = state.newItemId;
             var response = await api('/api/browser/drafts', {
                 method: 'POST',
                 body: body
             });
-            state.activeDraft = extractDraft(response);
-            if (!state.activeDraft) {
+            var savedDraft = extractDraft(response);
+            if (!savedDraft || !savedDraft.itemInput ||
+                savedDraft.itemInput.id !== state.newItemId) {
                 throw new Error('The server did not return the saved draft.');
             }
+            state.activeDraft = savedDraft;
+            state.formSaved = true;
+            elements.newPhoto.hidden = false;
             await refreshDrafts(false);
             renderActiveDraft();
             setStatus('The private draft was saved. It has not been published.', 'success');
             elements.draftWorkspace.scrollIntoView({ block: 'start', behavior: preferredScrollBehavior() });
         });
+        elements.createDraft.disabled = state.formSaved;
+    }
+
+    function startAnotherPhoto() {
+        if (state.busy || !state.formSaved) {
+            return;
+        }
+        state.newItemId = '';
+        state.formSaved = false;
+        elements.form.reset();
+        clearError();
+        populateDateChoices();
+        updateGuardianRequirement();
+        state.activeDraft = null;
+        state.selectedFile = null;
+        state.upload = null;
+        elements.photoFile.value = '';
+        removeChildren(elements.previewMedia);
+        renderActiveDraft();
+        elements.createDraft.disabled = false;
+        elements.newPhoto.hidden = true;
+        setStatus('Ready for another photo. Your saved drafts are unchanged.', 'success');
+        elements.raceDate.focus();
     }
 
     async function refreshDrafts(announce) {
@@ -1579,6 +1615,14 @@ const ADMIN_CLIENT_SCRIPT = String.raw`(function () {
             state.activeDraft = extractDraft(await api('/api/browser/drafts/' + encodeURIComponent(draftId)));
             if (!state.activeDraft) {
                 throw new Error('The selected draft could not be read.');
+            }
+            // An owner can recover a saved draft after a lost create response.
+            // Opening a legacy draft never generates or replaces its item ID.
+            if (state.newItemId && state.activeDraft.itemInput &&
+                state.activeDraft.itemInput.id === state.newItemId) {
+                state.formSaved = true;
+                elements.createDraft.disabled = true;
+                elements.newPhoto.hidden = false;
             }
             state.selectedFile = null;
             elements.photoFile.value = '';

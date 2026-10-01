@@ -1,5 +1,293 @@
 # Active Work
 
+## Current checkpoint — automatic Gallery item IDs, 25 September 2026
+
+Active checkout remains `test-artifacts/gallery-0016-repair`, branch
+`codex/gallery-private-roster-storage`, base
+`049e482a8c47ca7c689e0e4fc0878c9ceb917554`. John approved the local uploader
+change, not push, PR, merge, deployment, remote migration or real-media use.
+
+The manual Gallery item ID field is removed. The browser creates an opaque
+Web Crypto `photo-<UUID>` once per new form and sends it through the unchanged
+server ID validator/duplicate guard. No names, dates, filenames or tags are
+encoded. Failed/uncertain save replies retain the ID; a confirmed matching
+receipt blocks duplicate submission. **Start another photo** explicitly resets
+the form, consent answers and local file selection before the next ID is made.
+Opening an existing draft preserves its ID and resolves a matching uncertain
+save through read-only recovery. IDs are page-memory state only: after reload,
+check Saved drafts before creating another copy. No draft/API/schema/manifest
+migration or storage-key change was added.
+
+Exact files changed in this continuation (6): `gallery-admin/src/admin-assets.js`,
+`tests/gallery-admin-browser.mjs`, `docs/gallery-upload-architecture.md`,
+`docs/testing-and-release-protocol.md`, `docs/decision-log.md`, and this file.
+The cumulative local branch now has 22 changed files. The parent active-work
+file is updated only as a navigation note; older prototype edits are preserved.
+
+Validation: focused Family/Everyone desktop/mobile uploader tests passed,
+including secure-generator failure (no request), stable uncertain-retry ID,
+distinct next-photo ID, reset consent, duplicate-submit guard and recovery of a
+committed draft whose usable response was lost. Module syntax and diff checks
+passed. An earlier repeat encountered a Playwright visibility/stability timeout
+on the pre-existing exclusion button after an unusually long tool delay; an
+unchanged rerun passed. No timeout was increased or assertion weakened.
+`node scripts/run-all-tests.mjs` passed all 63 groups, exit 0, including data
+updater/export regressions, existing Gallery safety/cleanup contracts, local
+D1/R2 tests and both modes' desktop/mobile browser smoke. All 59 screenshots
+were refreshed; the four revised Family/Everyone uploader desktop/mobile
+layouts were visually reviewed with no new issue. The canonical-input fixture
+was refreshed with all 22 branch changes: all 115 public artifact files remain
+byte-identical to base `049e482a8c47ca7c689e0e4fc0878c9ceb917554`, and both Gallery
+manifests remain empty. Repository safety includes 318 files. These are local
+checks, not live verification.
+
+No live uploader change, publication or PR #119 action occurred. Next external
+gate remains an explicitly scoped release/deployment approval. This UI change
+does not activate the incomplete private-archive/Hide-Allow work below.
+
+## Previous checkpoint — internal private archive quarantine/removal, 25 September 2026
+
+Continue in `test-artifacts/gallery-0016-repair`, branch
+`codex/gallery-private-roster-storage`, base
+`049e482a8c47ca7c689e0e4fc0878c9ceb917554`. This continuation is local only:
+no push, PR, merge, remote migration, deployment, credential change, real roster,
+workbook or media use. Photo candidate PR #119 remains untouched.
+
+Forward migration `0019` and an internal service now record explicit private
+retention permission separately from public-use consent, check bounded JPEG/PNG
+bytes against their declared size/hash/signature, and read back the exact stored
+object before recording quarantine. Complete private tags remain attached.
+Quarantine is NOT successful decoding, metadata stripping or public approval.
+The module is deliberately not imported by any Worker route or workflow; the
+existing uploader and normal photo-intake checks are unchanged.
+
+Terminal owner-delete/consent-withdrawal requests block admission first. Cleanup
+then closes the one durably registered multipart writer before deleting the
+exact original and verifying its absence. A delayed upload cannot reopen that
+writer. Failed or uncertain closure/absence remains pending; retries preserve
+completed evidence. This is private-original removal only, not public-host
+verification, metadata purge or a change to old draft retention/withdrawal.
+No archive intake may be activated until the remaining lifecycle is complete.
+
+Changed this continuation (10 files):
+
+- `gallery-admin/migrations/0019_private_archive_intake.sql` (new)
+- `gallery-admin/src/private-archive-service.js` (new)
+- `tests/gallery-private-archive.mjs` (new)
+- `tests/gallery-d1-expression-depth.mjs`
+- `tests/gallery-withdrawal-finalizer-service.mjs`
+- `scripts/run-all-tests.mjs`
+- `docs/gallery-private-tagging-plan.md`
+- `docs/decision-log.md`
+- `docs/testing-and-release-protocol.md`
+- `docs/active-work.md`
+
+The cumulative local branch now has 19 changed files. The parent worktree's
+active-work file receives a navigation note only; its older prototype is preserved.
+
+Validation in this continuation:
+
+- Focused archive, private-asset, private-roster storage and existing finalizer
+  suites passed. Generated JPEG/PNG bytes and fictional people only were used.
+- Failure injection covers both upload/deletion race orders, delayed writer
+  registration, lost database responses, stale roster revisions, SQL-owned
+  expiry, altered replays, oversized/readback-mismatched bytes, ambiguous aborts,
+  append-only SQL fences and deletion retries without repeating writer closure.
+- The same quarantine/readback/delete path passed with the pinned local R2
+  runtime. A closed upload cannot subsequently complete. Actual local D1 tested
+  the service intake statement and compiled the new lifecycle statements within
+  its expression-depth limit. These are local proofs, not live Cloudflare proof.
+- Repository safety includes 318 tracked/intent-to-add files. New service syntax
+  and `git diff --check` passed.
+- `node scripts/run-all-tests.mjs`: all 63 groups passed, exit 0, including
+  existing metadata/consent/withdrawal/purge contracts, D1 parity, updater/export
+  regressions, artifact safety and both areas' desktop/mobile browser smoke.
+  All 59 screenshots were refreshed. Eight fresh whole-photo Gallery/admin
+  screenshots (Family/Everyone, desktop/mobile) were reviewed with no new
+  layout problem. No code correction was needed during the full run.
+- A disposable canonical-input source fixture containing all 19 changed files
+  built 115 public artifact files, each byte-identical to base main above. Both
+  Gallery manifests remain empty; no tracked public file changed.
+- Initial local R2 test setup used an older constructor shape; the fixture now
+  uses the pinned runtime's documented compatibility adapter. No dependency,
+  binding, storage resource or credential was changed.
+
+Remaining local work: connect the archive to decoding/metadata-stripped
+processing; implement audited tag correction and archive metadata purge; add
+stable private-roster import/owner selector; enforce current consent/visibility
+through processing, promotion and review; implement whole-photo hiding with
+fixed-host AND manifest convergence, then fresh checked re-inclusion. Original
+retention permission must never imply public-use permission. Completed old
+withdrawal work must not be replayed; R2 absence is not public-host absence.
+
+The next explicit external gate remains a named release/activation proposal
+after those paths are tested, listing the exact PR, migrations, Workers and
+synthetic rehearsal. Current permission allows continued local preparation;
+no new login, credentials or real photograph is needed now.
+
+## Previous checkpoint — private asset/tag reservations, 25 September 2026
+
+Continue in `test-artifacts/gallery-0016-repair`, branch
+`codex/gallery-private-roster-storage`, base
+`049e482a8c47ca7c689e0e4fc0878c9ceb917554`. No push, PR, merge, deployment,
+remote migration, real-roster/workbook access or real-media use is authorized by
+this local continuation. Photo candidate PR #119 was not accessed or changed.
+
+The next local slice now reserves independent private assets and complete
+ordered person tags. Forward migration `0018` adds the parent/tag tables,
+server-key constraints and atomic SQL admission guards. It has no draft
+ownership/cascade link and cannot reuse an old draft-owned object key. The
+owner-only POST/GET routes retain the existing Access, area-session, same-origin
+and CSRF boundary. Missing, unknown, duplicate, wrong-area or stale private
+tags fail closed. Concurrent roster edits abort the whole write. A committed
+write with a lost response replays the same reservation without duplication.
+Stored tags survive removal of public mappings or area membership; reads never
+silently filter them. None of that confers current publication eligibility.
+
+All new records remain `awaiting-original`: no photo bytes are accepted or
+verified, no uploader UI is switched, no archive media can enter processing,
+promotion or a candidate, and no new consent claim exists. SQL temporarily
+blocks reservation/tag edits and deletion until audited revision and
+archive-specific consent/deletion cleanup are implemented. That preparatory
+fence must not be activated for real intake or mistaken for permanent retention.
+Old draft consent withdrawal, 30-day retention, purge and receipts are unchanged.
+
+Changed this continuation (12 files):
+
+- `gallery-admin/migrations/0018_private_gallery_asset_reservations.sql` (new)
+- `gallery-admin/src/private-gallery-asset-service.js` (new)
+- `gallery-admin/src/private-gallery-roster-service.js`
+- `gallery-admin/src/admin-worker.js`
+- `tests/gallery-private-assets.mjs` (new)
+- `tests/gallery-d1-expression-depth.mjs`
+- `tests/gallery-withdrawal-finalizer-service.mjs`
+- `scripts/run-all-tests.mjs`
+- `docs/active-work.md`
+- `docs/decision-log.md`
+- `docs/gallery-private-tagging-plan.md`
+- `docs/testing-and-release-protocol.md`
+
+Together with the prior slice below, the branch has 16 changed files. The parent
+worktree's `docs/active-work.md` is also updated only as a navigation/handoff note;
+its older code/prototype changes remain preserved.
+
+Validation in this continuation:
+
+- Focused private-asset, private-roster storage and withdrawal-finalizer suites
+  passed. Tests use fictional identities only. Failure injection covers an edit
+  between roster read and actual SQL insert, partial tag-trigger failure,
+  lost response after commit, altered replay, broken association and direct SQL
+  replacement attempts. Both areas' signed owner POST/GET routes are exercised.
+- The exact new service statements passed in the pinned local D1 runtime,
+  including the write-time revision race; the full suite repeated that proof.
+- Existing finalizer tests now include a separate private reservation/tag row
+  and synthetic sentinel bytes. Old consent-original deletion and parent purge
+  still complete; the independent fixture remains untouched. This proves
+  cleanup isolation, NOT validated archive photo intake or reversible hiding.
+- Repository safety includes all nine new files (315 total); `git diff --check`
+  and all three touched Worker-module syntax checks passed.
+- `node scripts/run-all-tests.mjs`: all 62 groups passed, exit 0, including
+  media/consent/withdrawal/purge contracts, D1 parity, updater/export regressions,
+  artifact safety and both areas' desktop/mobile browser smoke. All 59 screenshot
+  files were refreshed; eight fresh Gallery/admin screenshots (Family/Everyone,
+  desktop/mobile) were reviewed with no new layout problem.
+- The canonical-input disposable source fixture was refreshed with all 16
+  changes and rebuilt. All 115 public artifact files exactly match base main
+  `049e482a8c47ca7c689e0e4fc0878c9ceb917554`; both Gallery manifests remain empty.
+  No tracked public file changed. This is local proof, not live verification.
+- Initial focused test setup used the wrong historical migration filename and
+  expected 415 rather than the existing JSON-reader's 400 for a wrong content
+  type. Those test expectations/fixture references were corrected; no request
+  validation was relaxed. The subsequent focused and full runs passed.
+
+Remaining local implementation: archive photo intake with hash/metadata checks,
+audited tag correction and stronger consent/deletion lifecycle; roster import
+with stable private identities; owner selector integration; SQL-owned visibility
+and consent checks throughout processing/promotion/review; whole-photo hiding
+with fixed-host AND manifest convergence; fresh checked re-inclusion. Completed
+old withdrawal work must not be replayed and R2 absence is not host absence.
+
+Next approval gate is external release/activation only after these missing
+paths are tested: name the exact PR, migrations, affected Workers and synthetic
+rehearsal before requesting it. The current preparation approval permits further
+local work; no additional sign-in, credentials or real photo is needed now.
+
+## Previous checkpoint — protected roster storage/read slice, 25 September 2026
+
+Active local branch: `codex/gallery-private-roster-storage`, based on current
+main `049e482a8c47ca7c689e0e4fc0878c9ceb917554`, in the clean isolated checkout
+`test-artifacts/gallery-0016-repair`. Preserve the parent worktree's earlier
+uncommitted prototype/history. This local work has not been pushed or deployed.
+
+The UI/data release in PR #120 is complete (merge `049e482`, required CI
+`36141223846`, Pages `36141983640`). Previous-turn verification found all 115
+artifact/live files byte-identical to the merge and both Gallery manifests empty.
+The normal updater checkout was fast-forwarded and its workbook preflight passed.
+Those are recorded release results, not a new live verification in this turn.
+The previous UI/data release notes below are historical, superseded by that merge.
+Photo candidate PR #119 remains outside this work and must not be changed/merged.
+
+Implemented locally with fictional people only:
+
+- Forward migration `0017` adds empty private people/revision tables. Stable
+  opaque private IDs and nullable public mappings allow non-public people.
+  Every edit advances the revision; existing consent, draft, withdrawal, purge,
+  retention and object-key contracts are untouched.
+- A bounded, single-query protected reader validates the whole roster before
+  filtering its inherited area and derives the revision on the server. Missing
+  or corrupt data fails closed without partial results or public-data fallback.
+- GET-only owner route `/api/browser/private-roster?site=family|everyone` uses
+  existing verified owner identity and signed area sessions, no-store headers,
+  no automation access, no credential/config changes and no new bindings.
+- Contract and SQL/storage/route tests are in the complete runner; the existing
+  local D1 runtime suite also exercises the exact new service query.
+
+Files changed in this branch (12): `docs/active-work.md`, `docs/decision-log.md`,
+`docs/gallery-private-tagging-plan.md`, `docs/testing-and-release-protocol.md`,
+`gallery-admin/migrations/0017_private_gallery_roster.sql`,
+`gallery-admin/src/admin-worker.js`, `gallery-admin/src/private-gallery-roster.js`,
+`gallery-admin/src/private-gallery-roster-service.js`, `scripts/run-all-tests.mjs`,
+`tests/gallery-private-roster.mjs`, `tests/gallery-private-roster-storage.mjs`,
+`tests/gallery-d1-expression-depth.mjs`.
+
+Validation completed on 25 September 2026:
+
+- `node scripts/run-all-tests.mjs`: all 61 groups passed, exit 0, including the
+  new focused suites, actual local D1 migration/query parity, existing media,
+  promotion/withdrawal/privacy gates, updater/export regressions, artifact
+  safety, both site modes and desktop/mobile browser smoke. 59 screenshots
+  generated; fresh Family/Everyone Gallery desktop/mobile screenshots reviewed.
+- Repository safety rerun includes all six new files: 312 files passed.
+  `git diff --check` and Worker syntax checks passed.
+- Canonical-input build with the 12 local changes overlaid: all 115 artifact
+  files byte-identical to main `049e482a8c47ca7c689e0e4fc0878c9ceb917554`;
+  both Gallery manifests empty. Raw Windows/source-archive attempts initially
+  differed because of checkout line endings. All 114 public inputs were checked
+  against raw Git blobs, permitting only verified UTF-8 CRLF/LF differences;
+  106 such conversions were removed in the disposable source fixture only.
+  Its built artifact then passed the strict byte-for-byte comparison. No
+  tracked public source, Git configuration or live output was changed.
+- Ignored proof: `test-artifacts/private-roster-canonical-lf/test-artifacts/preview-site`,
+  `test-artifacts/normalize-gallery-canonical-fixture.mjs`, and
+  `test-artifacts/verify-gallery-ui-release.mjs`. This is local build evidence,
+  not a new deployment or live verification. Changes remain uncommitted/local.
+
+Remaining local work: approved-source atomic roster import with stable identity
+mapping; independently retained archive/photo/tag ownership; owner selection
+and tag-write integration; SQL concurrency/consent/visibility gates across
+processing/promotion/review; reversible whole-photo hiding with fixed-host and
+manifest convergence; fresh re-inclusion. No roster write/import endpoint or UI
+switch exists yet, so today's uploader still uses its current public roster.
+The new route is a private reader, not permission to publish or a completed
+all-athlete tagging feature. Do not turn an old withdrawn/purged draft into an
+archive or treat R2 absence as public-host absence.
+
+Continue the remaining local work under the existing preparation approval.
+The next external approval gate must identify the tested release PR, exact
+migrations/affected Workers and synthetic rehearsal; no push/PR/merge, remote
+migration/deployment, real roster/workbook import, media use or publication is
+included here. No extra login, credentials or real photo are needed now.
+
 ## Current task: Gallery whole-photo thumbnails and exported race details
 
 ### Status — UI/data release approved, 25 September 2026

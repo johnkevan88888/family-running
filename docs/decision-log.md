@@ -3,6 +3,56 @@
 This log records durable architectural decisions, not proposed features.
 Unknown historical details are labelled rather than inferred.
 
+## 2026-09-25 — Gallery item IDs are automatic, not editorial input
+
+John approved removing the manual Gallery item ID field. New forms generate
+an opaque `photo-<UUID>` through Web Crypto, without athlete/race/title/filename
+content. Failed saves retain that ID in page memory; confirmed saves block
+resubmission until the owner explicitly starts another photo. The new form
+clears consent answers. Opening an existing draft never regenerates its ID.
+Server validation, duplicate rejection, draft IDs, storage keys and public
+manifest contracts are unchanged. This identifier is not authorization.
+No database migration or deployment is implied by this local UI change.
+
+## 2026-09-25 — Complete Gallery tags belong in protected storage
+
+John accepted a private all-athlete catalogue and retained photo/tag history,
+not a public repository roster. Public-result membership, private tagging and
+permission to publish are separate facts. A hidden person blocks the whole
+group photo; later opt-in permits fresh checked publication, never automatic
+publication or reuse of retired generations. The uploader remains owner-only.
+
+Reversible visibility must be separate from terminal withdrawal/deletion and
+existing 30-day retention. No withdrawn/purged draft may be reclassified as an
+archive or have completed cleanup replayed. Private identities/tags, originals
+and evidence remain outside Git/public artifacts. Real roster/workbook access,
+release, remote migration/deployment and publication need their explicit gates.
+
+The first local storage slice adds an empty private catalogue and owner-only
+GET route, using the existing D1 binding and signed area session. It deliberately
+does not widen the public uploader/tag validator before archive, consent and
+publication integration exists. Future imports must preserve opaque person IDs
+and be atomic; catalogue revision checks cannot substitute for consent checks.
+See `docs/gallery-private-tagging-plan.md` for the remaining work.
+
+The next local slice reserves independent private assets and complete tags in
+one revision-checked SQL write. Archive keys use a separate `private-archive/v1/`
+namespace and no draft ownership link, so an old draft's terminal purge cannot
+claim them. Owner request replay returns the existing reservation only. This
+does not accept bytes or confer consent/publication rights: all records stay
+`awaiting-original` until a separately tested archive intake, tag-revision and
+consent/deletion lifecycle is implemented. Existing draft retention is unchanged.
+
+Internal archive intake now distinguishes private-retention consent from
+public-use consent and stops at byte-checked quarantine. It uses one immutable
+multipart writer registered before any bytes, rather than unconditional object
+PUTs which could arrive after cleanup. Terminal private removal is committed
+first, then the exact multipart writer is closed, the original deleted and
+absence checked. Retrying cannot create a replacement writer. No public route
+is enabled until decoder/processing, tag correction, archive purge and complete
+visibility/publication safeguards are integrated. Old draft lifecycle rules are
+unchanged; private original removal is not public-host or purge proof.
+
 ## 2026-09-25 — Gallery displays workbook-owned exact race-day age
 
 Photo cards and their enlarged viewer display race context and per-tagged-athlete

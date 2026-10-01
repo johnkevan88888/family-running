@@ -503,9 +503,20 @@ verified. Applying the migration did not authorize real uploads.
 4. Tag people by public athlete ID. Show selected-race runners first, followed by
    the remaining public roster. Re-read the global suppression list and block
    approval if any selected athlete is currently hidden.
-5. Enter title, caption, alt text, featured choice, and the proposed URL-safe
-   item ID. The server validates these fields using the same accepted values as
-   the public Gallery contract.
+5. Enter title, caption, alt text and featured choice. The uploader automatically
+   generates an opaque URL-safe `photo-<UUID>` item ID using Web Crypto; there is
+   no editable ID field. The ID stays fixed for this form, including failed or
+   uncertain save retries. A confirmed save locks resubmission; **Start another
+   photo** clears the form and consent answers before generating a new ID on its
+   next save. Existing drafts retain their original IDs. The server's existing
+   ID validation and duplicate rejection remain unchanged; this ID is neither
+   an authorization credential nor a storage path. This is local preparation,
+   not evidence that the deployed uploader has changed.
+
+   If a create response is lost, use Saved drafts to open the committed draft;
+   opening the matching draft resolves the current form without another write.
+   The pending form ID is held only in page memory, not cookies/local storage:
+   after a page reload, inspect Saved drafts before starting another copy.
 6. Confirm public-use consent for all depicted people, confirm guardian consent
    when a child appears, and optionally add a private evidence reference. The
    workflow does not attempt face recognition or infer consent.

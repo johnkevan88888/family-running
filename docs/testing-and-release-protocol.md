@@ -20,6 +20,49 @@ pnpm exec playwright install chromium
 
 ## Local Commands
 
+`node tests/gallery-admin-browser.mjs` also checks automatic opaque photo IDs:
+no editable ID field, distinct IDs for new forms, no weak fallback without Web
+Crypto, stable IDs on uncertain retries, saved-form duplicate prevention,
+fresh consent after **Start another photo**, and read-only recovery by opening
+the committed draft after a lost usable save reply. Existing draft IDs are not
+rewritten. Both inherited areas and desktop/mobile layouts are exercised.
+These are local browser fixtures, not evidence of deployed uploader behavior.
+
+Protected all-athlete roster preparation is local-only. Run
+`node tests/gallery-private-roster.mjs` and
+`node tests/gallery-private-roster-storage.mjs` for fictional-identity contract,
+full SQLite migration-chain, private persistence/read and owner API tests.
+Both are included in the full runner. They do not authorize or prove a real
+roster import, archived photo/tag ownership, reversible hiding, re-inclusion,
+consent/publication integration or live activation. Missing private schema or
+invalid roster data must fail closed without a public-roster fallback. See
+`docs/gallery-private-tagging-plan.md` for the remaining acceptance matrix.
+
+Run `node tests/gallery-private-assets.mjs` for independent asset reservations,
+complete ordered private tags, revision-race rejection at SQL write, atomic
+rollback, lost-response idempotency and owner/session/area/CSRF boundaries.
+`tests/gallery-d1-expression-depth.mjs` executes the real statements in the
+pinned local D1 runtime. `tests/gallery-withdrawal-finalizer-service.mjs` also
+proves an independent reservation/tag record and synthetic sentinel object
+survive old-draft consent deletion and purge. These are included in the full
+runner. They do not verify retained photo intake or reversible visibility:
+every reservation remains `awaiting-original` and performs no object I/O.
+Archive-specific consent/deletion and tag-correction workflows must be complete
+before enabling actual intake; immutable preparatory records are not permission
+for indefinite retention. No existing withdrawal or purge check is relaxed.
+
+`node tests/gallery-private-archive.mjs` now tests the internal pre-publication
+quarantine/removal slice: separate private/guardian retention consent, exact
+bounded byte/hash/signature checks, conditional storage readback, immutable
+writer registration, stale/expired intake, completion/deletion races, writer
+closure, lost responses, pending cleanup and terminal replay. It uses generated
+JPEG/PNG fixtures, full local SQL migrations and an actual local R2 runtime.
+It is in the full runner; D1 parity also executes intake and compiles every new
+cleanup write. Passing does not approve decoder eligibility, metadata stripping,
+public use, hiding, metadata purge, real intake or live activation. The module
+is not wired to an HTTP endpoint. Before exposing it, complete the remaining
+archive safeguards in `docs/gallery-private-tagging-plan.md`.
+
 Run all automated checks:
 
 ```bash

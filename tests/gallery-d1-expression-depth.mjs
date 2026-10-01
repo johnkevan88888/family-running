@@ -7,6 +7,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { withdrawalFinalizerTestHooks } from
     '../gallery-admin/src/withdrawal-finalizer-service.js';
+import { readPrivateGalleryRoster } from
+    '../gallery-admin/src/private-gallery-roster-service.js';
+import { reservePrivateGalleryAsset, readPrivateGalleryAsset } from '../gallery-admin/src/private-gallery-asset-service.js';
+import { preparePrivateArchiveIntake } from '../gallery-admin/src/private-archive-service.js';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -170,7 +174,90 @@ try {
     assert.match(countResult[0].results[0].transitionReplacementGuard,
         /existing\.idempotency_key = NEW\.idempotency_key OR\s+existing\.expected_state_version = NEW\.expected_state_version/);
 
-    console.log('Gallery D1 expression-depth parity tests passed.');
+    // Exercise the new private reader through the actual pinned D1 runtime,
+    // not just Node SQLite. This disposable database contains fictitious data.
+    const personId = 'person_00000000-0000-4000-8000-000000000001';
+    const seedRoster = runWrangler([
+        'd1', 'execute', ...commonArguments, '--command',
+        `INSERT INTO private_gallery_people
+            (person_id, display_name, public_athlete_id, family, everyone)
+         VALUES ('${personId}', 'Synthetic D1 Private Runner', NULL, 1, 0)`,
+        '--json'
+    ], environment);
+    assert.equal(seedRoster.status, 0, diagnostic(seedRoster));
+    const roster = await readPrivateGalleryRoster({ DB: { prepare(sql) {
+        return { async all() {
+            const query = runWrangler([
+                'd1', 'execute', ...commonArguments, '--command', sql, '--json'
+            ], environment);
+            assert.equal(query.status, 0, diagnostic(query));
+            const results = parseWranglerJson(query);
+            assert.equal(results.length, 1);
+            return results[0];
+        } };
+    } } }, 'family');
+    assert.equal(roster.ok, true);
+    assert.deepEqual(roster.people, [{ personId, displayName: 'Synthetic D1 Private Runner', publicAthleteId: null }]);
+    assert.match(roster.revision, /^sha256:[0-9a-f]{64}$/);
+
+    // Execute the real prepared service statements against disposable local D1.
+    // Wrangler has no binding arguments: literalize ONLY these synthetic test
+    // values, with quote escaping and no credentials/media/real-person data.
+    let beforeAssetWrite;
+    const assetEnv = { DB: { prepare(sql) {
+        let bindings = [];
+        const execute = () => {
+            const command = sql.replace(/\?(\d+)/g, (_, index) => {
+                const value = bindings[Number(index) - 1];
+                if (Number.isSafeInteger(value)) return String(value);
+                assert.equal(typeof value, 'string');
+                return `'${value.replaceAll("'", "''")}'`;
+            });
+            const query = runWrangler(['d1', 'execute', ...commonArguments, '--command', command, '--json'], environment);
+            if (query.status !== 0) throw new Error(diagnostic(query));
+            const results = parseWranglerJson(query);
+            assert.equal(results.length, 1);
+            return results[0];
+        };
+        return { bind(...values) { bindings = values; return this; }, async all() { return execute(); },
+            async first() { return execute().results[0] ?? null; },
+            async run() { const hook = beforeAssetWrite; beforeAssetWrite = undefined; hook?.(); return execute(); } };
+    } } };
+    const owner = {type:'browser',subject:'synthetic-d1-owner'};
+    const reservationInput = {idempotencyKey:crypto.randomUUID(), originalFormat:'jpg',
+        personIds:[personId], rosterRevision:roster.revision};
+    const reservation = await reservePrivateGalleryAsset(assetEnv, owner, 'family', reservationInput);
+    assert.equal(reservation.status, 201, JSON.stringify(reservation));
+    assert.deepEqual((await readPrivateGalleryAsset(assetEnv, owner, 'family', reservation.asset.assetId)).asset, reservation.asset);
+    assert.equal((await reservePrivateGalleryAsset(assetEnv, owner, 'family', reservationInput)).replayed, true);
+    beforeAssetWrite = () => {
+        const edit = runWrangler(['d1', 'execute', ...commonArguments, '--command',
+            `UPDATE private_gallery_people SET display_name = 'Synthetic D1 Changed Runner' WHERE person_id = '${personId}'`, '--json'], environment);
+        assert.equal(edit.status, 0, diagnostic(edit));
+    };
+    const raced = await reservePrivateGalleryAsset(assetEnv, owner, 'family', {...reservationInput,idempotencyKey:crypto.randomUUID()});
+    assert.equal(raced.status,409);
+    const counts = runWrangler(['d1','execute',...commonArguments,'--command',
+        'SELECT (SELECT count(*) FROM private_gallery_assets) AS assets, (SELECT count(*) FROM private_gallery_asset_tags) AS tags', '--json'],environment);
+    assert.equal(counts.status,0,diagnostic(counts));
+    assert.deepEqual(parseWranglerJson(counts)[0].results,[{assets:1,tags:1}]);
+
+    const currentRoster = await readPrivateGalleryRoster(assetEnv,'family');
+    const intake = await preparePrivateArchiveIntake(assetEnv,owner,'family',reservation.asset.assetId,{
+        byteCount:100,sha256:'a'.repeat(64),declaredMimeType:'image/jpeg',
+        privateRetentionConfirmed:true,containsMinors:false,guardianApprovalConfirmed:false,
+        rosterRevision:currentRoster.revision
+    });
+    assert.equal(intake.status,201,JSON.stringify(intake));
+    for (const table of ['private_archive_multipart_uploads','private_archive_original_receipts',
+        'private_archive_deletion_requests','private_archive_writer_closures','private_archive_deletion_receipts']) {
+        const compiled = runWrangler(['d1','execute',...commonArguments,'--command',
+            `EXPLAIN INSERT INTO ${table} DEFAULT VALUES`,'--json'],environment);
+        assert.equal(compiled.status,0,diagnostic(compiled));
+        assert.ok(parseWranglerJson(compiled)[0].results.length>0);
+    }
+
+    console.log('Gallery D1 expression-depth parity, private roster, asset reservations and archive intake/cleanup compilation passed.');
 } finally {
     const resolvedTemporaryRoot = await fs.realpath(temporaryRoot);
     assert.equal(path.dirname(resolvedTemporaryRoot), temporaryParent);

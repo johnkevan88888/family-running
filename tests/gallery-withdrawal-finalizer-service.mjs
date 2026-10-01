@@ -5,6 +5,8 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { finalizeGalleryWithdrawal } from
     '../gallery-admin/src/withdrawal-finalizer-service.js';
+import { reservePrivateGalleryAsset, readPrivateGalleryAsset } from '../gallery-admin/src/private-gallery-asset-service.js';
+import { readPrivateGalleryRoster } from '../gallery-admin/src/private-gallery-roster-service.js';
 
 const APPROVED_ORIGIN = 'https://media.synthetic.example';
 const migrationNames = [
@@ -55,6 +57,10 @@ restoreTriggers(sqlite, suspendedTriggers);
 sqlite.exec(migrations.at(-3));
 sqlite.exec(migrations.at(-2));
 sqlite.exec(migrations.at(-1));
+for (const name of ['0016_transition_receipt_replacement_guard.sql', '0017_private_gallery_roster.sql',
+    '0018_private_gallery_asset_reservations.sql', '0019_private_archive_intake.sql']) {
+    sqlite.exec(await readFile(new URL(`../gallery-admin/migrations/${name}`, import.meta.url), 'utf8'));
+}
 
 assert.equal(sqlite.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);
 assert.deepEqual(sqlite.prepare('PRAGMA foreign_key_check').all(), []);
@@ -75,6 +81,19 @@ originals.seed(athleteExclusion.objectKey, athleteExclusion.bytes, {
     etag: athleteExclusion.providerEtag
 });
 const env = { DB: d1, PRIVATE_ORIGINALS: originals };
+// Independently reserved archive ownership cannot be reached by an old draft's
+// consent deletion or later purge. Sentinel bytes are NOT validated photo intake.
+const archiveOwner = { type: 'browser', subject: 'synthetic-archive-owner' };
+const archivePerson = 'person_00000000-0000-4000-8000-000000000001';
+sqlite.prepare('INSERT INTO private_gallery_people VALUES (?, ?, NULL, 1, 0)')
+    .run(archivePerson, 'Synthetic Retained Runner');
+const archive = await reservePrivateGalleryAsset(env, archiveOwner, 'family', {
+    idempotencyKey: crypto.randomUUID(), originalFormat: 'jpg', personIds: [archivePerson],
+    rosterRevision: (await readPrivateGalleryRoster(env, 'family')).revision
+});
+assert.equal(archive.status, 201, JSON.stringify(archive));
+const archiveRow = sqlite.prepare('SELECT * FROM private_gallery_assets WHERE asset_id = ?').get(archive.asset.assetId);
+originals.seed(archiveRow.private_object_key, new Uint8Array([1, 2, 3]), { version: 'synthetic-archive', etag: 'synthetic-archive' });
 const identity = {
     type: 'service',
     subject: '0123456789abcdef0123456789abcdef.access'
@@ -461,6 +480,10 @@ for (const table of sqlite.prepare(`
     );
 }
 
+assert.equal(originals.has(archiveRow.private_object_key), true);
+assert.deepEqual((await readPrivateGalleryAsset(env, archiveOwner, 'family', archive.asset.assetId)).asset, archive.asset);
+assert.deepEqual(sqlite.prepare('SELECT * FROM private_gallery_assets WHERE asset_id = ?').get(archive.asset.assetId), archiveRow);
+assert.equal(originals.calls.some(call => (call.key || call.prefix || '').startsWith('private-archive/')), false);
 assert.deepEqual(sqlite.prepare('PRAGMA foreign_key_check').all(), []);
 assert.equal(sqlite.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
 sqlite.close();
@@ -1201,6 +1224,7 @@ function createSqliteD1(database) {
                 }
             };
         }
+        async run() { return this.runSynchronously(); }
     }
     const api = {
         lastError: null,
