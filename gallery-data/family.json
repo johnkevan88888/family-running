@@ -1,4 +1,21 @@
 {
   "schemaVersion": "1.0",
-  "items": []
+  "items": [
+    {
+      "id": "john-kevan-budapest-parkrun-20260822",
+      "type": "photo",
+      "title": "John at Budapest Park parkrun",
+      "caption": "Budapest Park, Toronto — 5 km parkrun, 22 August 2026.",
+      "alt": "John running along a wooden boardwalk in a black shirt and shorts, wearing sunglasses and giving two thumbs up.",
+      "raceDate": "2026-08-22",
+      "raceEvent": "Budapest Park, Toronto - Parkrun",
+      "raceDistance": "5 km",
+      "sourceUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v1/ff746d7961ebaf378c2c2f6ddc2fd1f8239737159dc193b3bc50020f36ba6a09/display.webp",
+      "thumbnailUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v1/1de82554cce5437690af14f0323707a1be9a297db1fedbb2a8564c9c86cb162c/thumbnail.webp",
+      "featured": false,
+      "athleteIds": [
+        "john-kevan"
+      ]
+    }
+  ]
 }

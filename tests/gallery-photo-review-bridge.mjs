@@ -6,7 +6,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { buildGalleryAdminCatalog } from '../scripts/build-gallery-admin-catalog.mjs';
-import { runPhotoReviewBridge } from '../scripts/gallery-media/photo-review-bridge.mjs';
+import { runPhotoReviewBridge, runPhotoReviewRefreshBridge } from '../scripts/gallery-media/photo-review-bridge.mjs';
+import { prepareGalleryReviewRefreshCandidate } from '../scripts/gallery-media/candidate-manifest.mjs';
+import { createGalleryReviewOpenEvidenceHash } from '../scripts/gallery-media/github-review-client.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 await using fixture = await fs.mkdtempDisposable(
@@ -454,6 +456,79 @@ assert.deepEqual(
     fixtureManifestsBefore,
     'The bridge must prepare its one-item addition in memory without editing either fixture manifest.'
 );
+
+const historicalCandidate = structuredClone(candidate);
+historicalCandidate.draft.exportBundleId = 'older-bundle';
+historicalCandidate.draft.sourceRevision = 'older-source';
+historicalCandidate.context.approvedDerivatives.exportBundleId = 'older-bundle';
+historicalCandidate.context.approvedDerivatives.sourceRevision = 'older-source';
+for (const value of Object.values(historicalCandidate.context.siteCatalogs)) {
+    value.exportBundleId = 'older-bundle';
+    value.sourceRevision = 'older-source';
+}
+const refreshPrepared = prepareGalleryReviewRefreshCandidate(historicalCandidate, {
+    catalogSnapshot: catalog,
+    manifestsBySite: Object.fromEntries(await Promise.all(['family', 'everyone'].map(async site =>
+        [site, JSON.parse(await fs.readFile(path.join(fixtureRoot, 'gallery-data', `${site}.json`), 'utf8'))])))
+});
+const refreshReceipt = {
+    ...reservedReview({ manifestSha256: refreshPrepared.manifestSha256 }), status: 'open',
+    candidatePayloadHash: sha256(Buffer.from(JSON.stringify(historicalCandidate))),
+    headSha, pullRequestNumber, pullRequestUrl,
+    openEvidenceHash: createGalleryReviewOpenEvidenceHash(reviewResult(refreshPrepared))
+};
+for (const mode of ['valid', 'withdrawal', 'consent', 'wrong-draft', 'wrong-hash', 'second-read']) {
+    let reads = 0;
+    let enteredRefresh = false;
+    const opts = {
+        draftId, expectedBaseSha: '1'.repeat(40), githubToken: 'synthetic-token',
+        promotion: { origin: promotionOrigin, ...access }, root: fixtureRoot,
+        fetchImpl: async (url, request) => {
+            assert.equal(request.method, 'GET', 'Refresh must never mutate a protected service.');
+            assert.equal(new URL(url).origin, promotionOrigin);
+            assert.equal(request.redirect, 'error');
+            assert.equal(new Headers(request.headers).get('CF-Access-Client-Secret'), access.clientSecret);
+            if (url.endsWith('/photo-candidate')) {
+                reads += 1;
+                const copy = structuredClone(historicalCandidate);
+                if (mode === 'consent' || (mode === 'second-read' && reads === 2)) copy.draft.consent.publicUseConfirmed = false;
+                if (mode === 'wrong-draft') copy.draft.draftId = 'draft_99999999-1234-4123-8123-1234567890ab';
+                return jsonResponse(200, { candidate: copy });
+            }
+            assert.ok(url.endsWith('/photo-review-invalidation'));
+            return jsonResponse(200, { receiptKind: 'review', replayed: true,
+                review: { ...refreshReceipt,
+                    ...(mode === 'wrong-hash' ? { manifestSha256: `sha256:${'f'.repeat(64)}` } : {}) },
+                invalidation: mode === 'withdrawal' ? { withdrawalKind: 'editorial-removal' } : null });
+        },
+        refreshReview: async (stored, settings) => {
+            enteredRefresh = true;
+            assert.equal(stored.headSha, headSha);
+            assert.deepEqual(await settings.readEligibleCandidate(), refreshPrepared);
+            assert.deepEqual(await settings.readEligibleCandidate(), refreshPrepared);
+            return { replayed: false };
+        }
+    };
+    if (mode === 'valid') {
+        assert.deepEqual(await runPhotoReviewRefreshBridge(opts), { replayed: false });
+        assert.equal(reads, 3);
+    } else {
+        await assert.rejects(runPhotoReviewRefreshBridge(opts));
+        assert.equal(enteredRefresh, mode === 'second-read');
+    }
+}
+assert.equal(historicalCandidate.draft.exportBundleId, 'older-bundle');
+assert.equal(historicalCandidate.context.approvedDerivatives.exportBundleId, 'older-bundle');
+const refreshWorkflow = await fs.readFile(path.join(root, '.github/workflows/gallery-media-review-refresh.yml'), 'utf8');
+assert.match(refreshWorkflow, /environment: gallery-processing/);
+assert.match(refreshWorkflow, /group: gallery-photo-\$\{\{ inputs.draft_id \}\}/);
+assert.match(refreshWorkflow, /github.ref == 'refs\/heads\/main'/);
+assert.match(refreshWorkflow, /ref: \$\{\{ github.sha \}\}/);
+assert.match(refreshWorkflow, /persist-credentials: false/);
+assert.doesNotMatch(refreshWorkflow, /GALLERY_PROCESSING_|git push|wrangler|uses:\s+[^\s]+@v\d/);
+assert.deepEqual([...refreshWorkflow.matchAll(/\n      ([a-z_]+):\n/g)].map(match => match[1]), ['draft_id']);
+const refreshRunner = await fs.readFile(path.join(root, 'scripts/run-gallery-photo-review-refresh.mjs'), 'utf8');
+assert.ok(refreshRunner.indexOf('await verifyGalleryReviewBoundary') < refreshRunner.indexOf('await runPhotoReviewRefreshBridge'));
 
 console.log(
     'Gallery photo-only review bridge: immutable reservation, lost-response replay, ' +

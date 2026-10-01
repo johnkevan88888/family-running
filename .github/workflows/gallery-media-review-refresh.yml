@@ -1,0 +1,62 @@
+name: Gallery photo review refresh
+
+on:
+  workflow_dispatch:
+    inputs:
+      draft_id:
+        description: Opaque Gallery draft with an existing open photo review
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gallery-photo-${{ inputs.draft_id }}
+  cancel-in-progress: false
+
+jobs:
+  review-refresh:
+    if: github.repository == 'johnkevan88888/family-running' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: gallery-processing
+    timeout-minutes: 10
+    steps:
+      - name: Create short-lived review token
+        id: review-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.GALLERY_REVIEW_APP_ID }}
+          private-key: ${{ secrets.GALLERY_REVIEW_APP_PRIVATE_KEY }}
+          owner: johnkevan88888
+          repositories: family-running
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Check out the exact default-branch revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install pinned dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Refresh one existing photo review
+        env:
+          GALLERY_DRAFT_ID: ${{ inputs.draft_id }}
+          GALLERY_BASE_SHA: ${{ github.sha }}
+          GALLERY_GITHUB_APP_TOKEN: ${{ steps.review-token.outputs.token }}
+          GALLERY_PROMOTION_ORIGIN: ${{ secrets.GALLERY_PROMOTION_ORIGIN }}
+          GALLERY_PROMOTION_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_PROMOTION_ACCESS_CLIENT_ID }}
+          GALLERY_PROMOTION_ACCESS_CLIENT_SECRET: ${{ secrets.GALLERY_PROMOTION_ACCESS_CLIENT_SECRET }}
+        run: node scripts/run-gallery-photo-review-refresh.mjs

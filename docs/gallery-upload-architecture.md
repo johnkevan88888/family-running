@@ -1,5 +1,50 @@
 # Owner-Authenticated Gallery Upload Architecture
 
+## Review-refresh correction — 25 September 2026
+
+The separate `gallery-media-review-refresh.yml` workflow accepts only an opaque
+draft ID and uses the existing owner-protected `gallery-processing` environment.
+Its repository release is approved; live dispatch still requires separate
+approval. It has no upload, processing,
+promotion, database-write, migration, deployment, main-update or publication
+operation. The existing intake workflow and stale-bundle checks are unchanged.
+
+Refresh reads the protected candidate and open review receipt, checks their
+exact payload/manifest/identity binding and repeats those reads around the Git
+mutation. Historical consent and revision-bound sanitized derivative evidence
+must still pass the original publication validator. Separately, the unchanged
+item must pass the current exported race/public-roster and suppression gates,
+including pending exclusions. A temporary current-catalogue approval view is
+never persisted and never relabels the historical derivative evidence.
+
+The only branch update is a non-forced fast-forward inside the deterministic
+candidate namespace. A refresh commit has exactly two parents: the preceding
+candidate head and the pinned current main revision. Its tree is the current
+main tree with only the identical recorded manifest substituted. Each commit
+in a bounded (maximum 16) refresh chain must preserve that hash and one-file
+diff, retain the original receipt's commit as its first-parent anchor, and use
+forward bases belonging to main history. Existing manifest entries/order and
+cross-area uniqueness remain enforced; a changed manifest on main that cannot
+retain the recorded candidate bytes stops the refresh rather than editing it.
+Unknown commits, rebases, extra changes, altered PR identity, closed/merged PRs,
+base/ref races and missing evidence fail closed. A lost ref-update response is
+accepted only after exact head readback and complete validation.
+
+Withdrawal reconciliation accepts only the same narrowly verified history.
+The original D1 head/base and open-identity evidence remain immutable; terminal
+`headSha` continues to identify that original open receipt. Close/readback and
+terminal hashes bind the actual observed refreshed head as well. No database
+schema or Worker change is needed. Public-host absence verification and all
+existing media cleanup, retention and purge gates remain separate and unchanged.
+
+If the final eligibility/base check fails after a successful refresh, the exact
+owned PR is closed and verified, without altering consent or deleting media.
+This is not completed withdrawal: normal owner-authorized privacy-first cleanup
+and public-host verification must still run when withdrawal/exclusion applies.
+If exact closure cannot be established, refresh fails and requires recovery;
+it never reports readiness. Success stops at the unmerged PR for fresh required
+checks and a current preview, followed by separate publication approval.
+
 ## Status
 
 - **Accepted for implementation:** 25 August 2026

@@ -10,7 +10,8 @@ assert.deepEqual(
         'createGalleryReviewOpenEvidenceHash',
         'createOrReconcileGalleryReview',
         'invalidateGalleryReview',
-        'reconcileStoredGalleryReview'
+        'reconcileStoredGalleryReview',
+        'refreshStoredGalleryReview'
     ],
     'The module must expose only review creation and exact review invalidation/reconciliation.'
 );
@@ -19,7 +20,8 @@ const {
     createGalleryReviewOpenEvidenceHash,
     createOrReconcileGalleryReview,
     invalidateGalleryReview,
-    reconcileStoredGalleryReview
+    reconcileStoredGalleryReview,
+    refreshStoredGalleryReview
 } = reviewClientModule;
 const reviewClientSource = await fs.readFile(
     new URL('../scripts/gallery-media/github-review-client.mjs', import.meta.url),
@@ -672,7 +674,161 @@ await assert.rejects(
     /client options must contain exactly/
 );
 
-console.log('Gallery GitHub review client tests passed.');
+// Append-only synchronization keeps the original receipt and photo bytes.
+const sync = await refreshFixture();
+const immutableReceipt = JSON.stringify(sync.stored);
+const refreshed = await refreshStoredGalleryReview(sync.stored, sync.options());
+assert.equal(refreshed.originalHeadSha, sync.originalHead);
+assert.equal(refreshed.headSha, sync.state.branchSha);
+assert.equal(refreshed.baseSha, sync.state.mainSha);
+assert.equal(refreshed.replayed, false);
+assert.equal(JSON.stringify(sync.stored), immutableReceipt);
+assert.equal(sync.eligibilityReads(), 3);
+assert.deepEqual(sync.updates(), [{ sha: refreshed.headSha, force: false }]);
+const replay = await refreshStoredGalleryReview(sync.stored, sync.options());
+assert.equal(replay.replayed, true);
+assert.equal(sync.updates().length, 1);
+const terminal = await reconcileStoredGalleryReview(sync.stored, { token, fetchImpl: sync.fetch });
+assert.equal(terminal.headSha, sync.originalHead, 'D1 identity stays anchored to the original open receipt.');
+assert.equal(terminal.openEvidenceHash, createGalleryReviewOpenEvidenceHash(sync.created));
+assert.equal(terminal.terminalKind, 'closed-unmerged');
+assert.equal(sync.state.pullRequests[0].head.sha, refreshed.headSha);
+const terminalReplay = await reconcileStoredGalleryReview(sync.stored, { token, fetchImpl: sync.fetch });
+assert.deepEqual(terminalReplay, terminal);
+
+const lostRefresh = await refreshFixture({ loseUpdateResponse: true });
+await refreshStoredGalleryReview(lostRefresh.stored, lostRefresh.options());
+assert.equal(lostRefresh.updates().length, 1);
+
+for (const mode of ['extra-file', 'wrong-bytes', 'wrong-parent', 'backward-main',
+    'wrong-pr', 'closed-pr', 'changed-manifest-base', 'ref-race']) {
+    const fixture = await refreshFixture({ mode });
+    await assert.rejects(refreshStoredGalleryReview(fixture.stored, fixture.options()));
+    assert.equal(fixture.updates().length, 0, `${mode} must not update the ref.`);
+}
+for (const failAt of [1, 2, 3]) {
+    const fixture = await refreshFixture({ failAt });
+    await assert.rejects(refreshStoredGalleryReview(fixture.stored, fixture.options()));
+    assert.equal(fixture.updates().length, failAt === 3 ? 1 : 0);
+    assert.equal(fixture.state.pullRequests[0].state, failAt === 3 ? 'closed' : 'open');
+}
+const movedMain = await refreshFixture({ moveMainAfterUpdate: true });
+await assert.rejects(refreshStoredGalleryReview(movedMain.stored, movedMain.options()), /closed after/);
+assert.equal(movedMain.state.pullRequests[0].state, 'closed');
+const deniedUpdate = await refreshFixture({ denyUpdate: true });
+await assert.rejects(refreshStoredGalleryReview(deniedUpdate.stored, deniedUpdate.options()), /422/);
+assert.equal(deniedUpdate.state.branchSha, deniedUpdate.originalHead);
+const changedCandidate = await refreshFixture();
+await assert.rejects(refreshStoredGalleryReview(changedCandidate.stored, {
+    ...changedCandidate.options(), readEligibleCandidate: async () => candidateForDocument({
+        ...manifestDocument, items: [{ ...manifestDocument.items[0], title: 'Different photo text' }]
+    })
+}), /preserve the exact recorded candidate/);
+assert.equal(changedCandidate.updates().length, 0);
+
+const repeated = await refreshFixture();
+for (let index = 0; index < 16; index += 1) {
+    repeated.state.mainSha = (100 + index).toString(16).padStart(40, '0');
+    await refreshStoredGalleryReview(repeated.stored, repeated.options());
+}
+assert.equal(repeated.updates().length, 16);
+repeated.state.mainSha = 'f'.repeat(40);
+await assert.rejects(refreshStoredGalleryReview(repeated.stored, repeated.options()), /history limit reached/);
+const repeatedTerminal = await reconcileStoredGalleryReview(repeated.stored, { token, fetchImpl: repeated.fetch });
+assert.equal(repeatedTerminal.headSha, repeated.originalHead);
+
+const tamperedHistory = await refreshFixture();
+await refreshStoredGalleryReview(tamperedHistory.stored, tamperedHistory.options());
+tamperedHistory.commits.get(tamperedHistory.state.branchSha).parents[0].sha = tamperedHistory.state.branchSha;
+await assert.rejects(reconcileStoredGalleryReview(tamperedHistory.stored,
+    { token, fetchImpl: tamperedHistory.fetch }), /invalid refresh history/);
+assert.equal(tamperedHistory.state.pullRequests[0].state, 'open', 'Never close an unowned history.');
+
+console.log('Gallery GitHub review client tests passed, including refresh, replay, races and anchored withdrawal.');
+
+async function refreshFixture(settings = {}) {
+    const mock = createMockGitHub();
+    const created = await createOrReconcileGalleryReview(candidate, {
+        expectedBaseSha: baseSha, token, fetchImpl: mock.fetch
+    });
+    const stored = storedReviewFrom(created);
+    const originalHead = created.headSha;
+    const oldCommit = { ...deepClone(mock.state.createdCommit), sha: originalHead,
+        parents: mock.state.createdCommit.parents.map(sha => ({ sha })) };
+    const commits = new Map([[originalHead, oldCommit]]);
+    const newMain = '1'.repeat(40);
+    mock.state.mainSha = newMain;
+    if (settings.mode === 'wrong-pr') mock.state.pullRequests[0].body += 'changed';
+    if (settings.mode === 'closed-pr') mock.state.pullRequests[0].state = 'closed';
+    const extraRequests = [];
+    let reads = 0;
+    let commitNumber = 200;
+    const fetch = async (url, request = {}) => {
+        const parsed = new URL(url);
+        const p = parsed.pathname.replace('/repos/johnkevan88888/family-running', '');
+        const method = request.method || 'GET';
+        const body = request.body && JSON.parse(request.body);
+        extraRequests.push({ method, p, body });
+        assert.equal(parsed.origin, 'https://api.github.com');
+        if (method === 'GET' && p.startsWith('/git/commits/')) {
+            const sha = p.split('/').at(-1);
+            if (commits.has(sha)) return response(200, commits.get(sha));
+        }
+        if (method === 'GET' && p.startsWith('/compare/')) {
+            const [base, head] = p.slice('/compare/'.length).split('...');
+            if (head === originalHead) return response(200, {
+                status: 'ahead', ahead_by: 1, total_commits: 1,
+                files: [{ filename: candidate.targetRelativePath, status: 'modified' }]
+            });
+            if (commits.has(head)) return response(200, {
+                status: 'ahead', behind_by: 0, merge_base_commit: { sha: base },
+                files: [{ filename: candidate.targetRelativePath, status: 'modified' },
+                    ...(settings.mode === 'extra-file' ? [{ filename: 'index.html', status: 'modified' }] : [])]
+            });
+            return response(200, { status: settings.mode === 'backward-main' ? 'diverged' : 'ahead',
+                behind_by: 0, merge_base_commit: { sha: base } });
+        }
+        if (method === 'GET' && p === `/contents/${candidate.targetRelativePath}`) {
+            const ref = parsed.searchParams.get('ref');
+            const isCandidate = commits.has(ref);
+            const text = isCandidate ? (settings.mode === 'wrong-bytes' && ref !== originalHead
+                ? `${candidate.manifestText} ` : candidate.manifestText)
+                : settings.mode === 'changed-manifest-base' ? candidate.manifestText : emptyManifestText;
+            return response(200, { type: 'file', path: candidate.targetRelativePath,
+                encoding: 'base64', content: Buffer.from(text).toString('base64') });
+        }
+        if (method === 'POST' && p === '/git/commits') {
+            const sha = (++commitNumber).toString(16).padStart(40, '0');
+            commits.set(sha, { sha, message: body.message, tree: { sha: body.tree },
+                parents: body.parents.map(sha => ({ sha })) });
+            if (settings.mode === 'wrong-parent') commits.get(sha).parents = [{ sha: newMain }];
+            return response(201, { sha });
+        }
+        if (method === 'PATCH' && p.startsWith('/git/refs/')) {
+            assert.equal(p, `/git/refs/heads/${stored.branchRef}`);
+            assert.equal(body.force, false);
+            if (settings.denyUpdate) return response(422, {});
+            mock.state.branchSha = body.sha;
+            mock.state.pullRequests[0].head.sha = body.sha;
+            if (settings.moveMainAfterUpdate) mock.state.mainSha = '3'.repeat(40);
+            if (settings.loseUpdateResponse) throw new Error('Lost successful response');
+            return response(200, { object: { sha: body.sha } });
+        }
+        return mock.fetch(url, request);
+    };
+    return { state: mock.state, stored, created, originalHead, fetch, commits,
+        eligibilityReads: () => reads,
+        updates: () => extraRequests.filter(r => r.method === 'PATCH' && r.p.startsWith('/git/refs/')).map(r => r.body),
+        options: () => ({ expectedBaseSha: mock.state.mainSha, token, fetchImpl: fetch,
+            readEligibleCandidate: async () => {
+                reads += 1;
+                if (reads === settings.failAt) throw new Error('Consent or eligibility changed');
+                if (reads === 2 && settings.mode === 'ref-race') mock.state.branchSha = '9'.repeat(40);
+                return deepClone(candidate);
+            }
+        })
+    };
+}
 
 function storedReviewFrom(review, { reserved = false } = {}) {
     return {
@@ -790,7 +946,7 @@ function createMockGitHub(options = {}) {
                     content: Buffer.from(state.baseManifestText, 'utf8').toString('base64')
                 });
             }
-            assert.match(ref || '', /^gallery-media\/candidate-[a-f0-9]{32}$/);
+            assert.ok(ref === state.branchSha || /^gallery-media\/candidate-[a-f0-9]{32}$/.test(ref || ''));
             return response(200, {
                 type: 'file',
                 path: candidate.targetRelativePath,

@@ -3,6 +3,21 @@
 This log records durable architectural decisions, not proposed features.
 Unknown historical details are labelled rather than inferred.
 
+## 2026-09-25 — Review refresh preserves an immutable origin, not a rewritten receipt
+
+For the locally approved photo-review correction, keep the original D1 review,
+consent and derivative-generation evidence unchanged. A separate protected
+refresh operation may append only a verified two-parent synchronization commit
+on that review's existing branch, retaining identical manifest bytes. Prove
+each synchronization against forward main history and the original candidate,
+not merely an ancestor check or an arbitrary changed head. Withdrawal uses the
+same verifier and hashes the observed closing head while retaining the original
+open identity. New intake still requires an exact current export bundle; only
+existing review refresh separately validates historical byte evidence and
+current public eligibility. This avoids a migration, Worker deployment or
+reprocessing solely because unrelated website code/data advanced. Local
+implementation approval is not authority to release or refresh a live PR.
+
 ## 2026-09-25 — Gallery item IDs are automatic, not editorial input
 
 John approved removing the manual Gallery item ID field. New forms generate

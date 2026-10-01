@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 import {
     galleryManifestPublicItemFields,
-    prepareGalleryManifestCandidate
+    prepareGalleryManifestCandidate,
+    prepareGalleryReviewRefreshCandidate
 } from '../scripts/gallery-media/candidate-manifest.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -146,6 +147,46 @@ function currentItem(id) {
 
 // One inherited area, exact public projection, and canonical bytes.
 const familyResult = prepare();
+
+// Refresh validates historical derivative evidence AND a separate current
+// catalogue view, without overwriting any of the historical revisions.
+const newerCatalog = clone(catalogSnapshot);
+newerCatalog.exportBundleId = 'newer-export-bundle';
+newerCatalog.sourceRevision = 'newer-source-revision';
+for (const site of ['family', 'everyone']) {
+    newerCatalog.sites[site].catalog.exportBundleId = newerCatalog.exportBundleId;
+    newerCatalog.sites[site].catalog.sourceRevision = newerCatalog.sourceRevision;
+}
+const historical = JSON.stringify(candidatePackage);
+const refreshState = { catalogSnapshot: newerCatalog, manifestsBySite: emptyManifests };
+assert.throws(() => prepare(candidatePackage, refreshState), /export bundle is stale/);
+assert.deepEqual(prepareGalleryReviewRefreshCandidate(candidatePackage, refreshState), familyResult);
+assert.equal(JSON.stringify(candidatePackage), historical);
+for (const alter of [
+    value => { value.sites.family.catalog.athleteIds = []; },
+    value => { value.sites.family.catalog.races = []; },
+    value => { value.suppressionDocument.hiddenAthleteIds = ['carolyn-kevan']; },
+    value => { value.suppressionDocument = null; },
+    value => { value.sites.family.catalog.exportBundleId = 'mismatched-bundle'; }
+]) {
+    const snapshot = clone(newerCatalog);
+    alter(snapshot);
+    assert.throws(() => prepareGalleryReviewRefreshCandidate(candidatePackage,
+        { ...refreshState, catalogSnapshot: snapshot }), /refresh.*eligible/i);
+}
+for (const alter of [
+    value => { value.draft.consent.publicUseConfirmed = false; },
+    value => { value.draft.consent.containsMinors = true; },
+    value => { value.context.pendingHiddenAthleteIds = ['carolyn-kevan']; },
+    value => { value.context.approvedDerivatives.sourceRevision = 'wrong-binding'; },
+    value => { value.context.approvedDerivativeOrigin = 'https://wrong.example'; },
+    value => { value.draft.state = 'withdrawn'; },
+    value => { value.draft.siteModes = ['family', 'everyone']; }
+]) {
+    const changed = clone(candidatePackage);
+    alter(changed);
+    assert.throws(() => prepareGalleryReviewRefreshCandidate(changed, refreshState));
+}
 assert.equal(familyResult.changed, true);
 assert.equal(familyResult.targetRelativePath, 'gallery-data/family.json');
 assert.equal(familyResult.itemId, itemInput.id);
