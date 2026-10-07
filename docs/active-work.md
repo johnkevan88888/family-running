@@ -1,5 +1,37 @@
 # Active Work
 
+## Local updater repair and separate PR — 7 October 2026
+
+The routine update on `data/refresh-20261007-185923` stopped at local tests,
+with saved phase `promoted` and bundle `20261007T185926282Z-2BFB6180` retained.
+The Gallery review-refresh input assertion assumed LF workflow line endings;
+Windows CRLF made it report no inputs instead of the required `draft_id`.
+The finalizer access-probe workflow assertions had the same problem.
+Both focused suites now explicitly exercise LF and CRLF without relaxing
+their workflow input or permission boundaries. Only two test files are repaired;
+the existing 72 CSV changes and generated admin catalogue belong to the saved
+data update and are preserved. No workbook access, saved-state modification,
+commit, push, PR, merge or publication was performed during this repair.
+
+Both focused suites and the repository/vendor/CSV/Gallery, export regression,
+updater, and artifact checks passed in the full run. The complete
+`node scripts/run-all-tests.mjs` finished successfully, including both-mode
+desktop/mobile browser checks and responsive screenshots. Representative
+desktop/mobile Gallery screenshots were inspected; `git diff --check` passed.
+The routine updater deliberately rejects unrelated source/doc
+changes, so do not resume it with this repair mixed into its working tree.
+Release the test correction separately through the approved code-review path,
+then reconcile the saved data branch and resume the complete routine checks.
+Do not bypass its file-set gate or manually advance the saved update state.
+
+John approved pushing and opening the correction PR, with a stop before merge.
+The isolated branch `codex/windows-updater-test-repair` is based on current main
+`0f36915d8d3e5e6d65b3c4c47c836260fd94389b`. The complete local suite also passed
+there using the unchanged main data bundle; both-mode responsive screenshots
+were generated and representative desktop/mobile views inspected. The exact
+three-file test/documentation diff has no public runtime/data changes. Merge
+and subsequent data publication require separate approval.
+
 ## Current release: Gallery review refresh — 25 September 2026
 
 John first approved local preparation and testing, then explicitly approved
