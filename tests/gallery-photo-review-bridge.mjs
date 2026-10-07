@@ -526,7 +526,11 @@ assert.match(refreshWorkflow, /github.ref == 'refs\/heads\/main'/);
 assert.match(refreshWorkflow, /ref: \$\{\{ github.sha \}\}/);
 assert.match(refreshWorkflow, /persist-credentials: false/);
 assert.doesNotMatch(refreshWorkflow, /GALLERY_PROCESSING_|git push|wrangler|uses:\s+[^\s]+@v\d/);
-assert.deepEqual([...refreshWorkflow.matchAll(/\n      ([a-z_]+):\n/g)].map(match => match[1]), ['draft_id']);
+// Git checkouts may use LF or Windows CRLF; both must enforce the same input boundary.
+for (const newline of ['\n', '\r\n']) {
+    const workflowWithNewlines = refreshWorkflow.replace(/\r?\n/g, newline);
+    assert.deepEqual([...workflowWithNewlines.matchAll(/\r?\n      ([a-z_]+):\r?\n/g)].map(match => match[1]), ['draft_id']);
+}
 const refreshRunner = await fs.readFile(path.join(root, 'scripts/run-gallery-photo-review-refresh.mjs'), 'utf8');
 assert.ok(refreshRunner.indexOf('await verifyGalleryReviewBoundary') < refreshRunner.indexOf('await runPhotoReviewRefreshBridge'));
 
