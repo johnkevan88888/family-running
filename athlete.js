@@ -106,6 +106,7 @@ spanGaps: true
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             parsing: false,
             plugins: {
                 tooltip: {

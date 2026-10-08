@@ -5010,6 +5010,88 @@ async function assertProgressionChart(page, mode, viewport) {
     if (outcome.points < 1) {
         failures.push(`${context}: progression chart plotted no exported age-grade points.`);
     }
+
+    await assertProgressionSizing(page, mode, viewport);
+    // Canvas animation is not a CSS animation, so screenshot() does not wait
+    // for it. Check that the visible points have reached their exported values.
+    const pointsSettled = await page.waitForFunction(() => {
+        const chart = Chart.getChart(document.getElementById('age-grade-chart'));
+        return chart.data.datasets.every((dataset, datasetIndex) =>
+            chart.getDatasetMeta(datasetIndex).data.every((point, pointIndex) => {
+                const exported = dataset.data[pointIndex];
+                return Math.abs(point.x - chart.scales.x.getPixelForValue(exported.x)) <= 0.5
+                    && Math.abs(point.y - chart.scales.y.getPixelForValue(exported.y)) <= 0.5;
+            })
+        );
+    }, null, { timeout: 5000 }).then(() => true).catch(() => false);
+    if (!pointsSettled) {
+        failures.push(`${context}: visible progression points did not settle at their exported values.`);
+    }
+    await progression.screenshot({
+        path: path.join(artifactsDir, `${mode}-progression-${viewport.name}.png`),
+        scale: 'css'
+    });
+}
+
+async function assertProgressionSizing(page, mode, viewport) {
+    const readData = () => page.evaluate(() => {
+        const chart = Chart.getChart(document.getElementById('age-grade-chart'));
+        return JSON.stringify({
+            datasets: chart.data.datasets.map(dataset => dataset.data),
+            yMin: chart.scales.y.min,
+            yMax: chart.scales.y.max,
+            xMin: chart.scales.x.min,
+            xMax: chart.scales.x.max
+        });
+    });
+    const originalData = await readData();
+    const originalViewport = page.viewportSize();
+    // Reproduce the reported resize path without reloading: narrow, intermediate,
+    // then wide. A fresh navigation alone misses a chart that gets stuck small.
+    const widths = viewport.name === 'desktop' ? [390, 768, 1440] : [originalViewport.width];
+
+    try {
+        for (const width of widths) {
+            await page.setViewportSize({ width, height: originalViewport.height });
+            const fits = await page.waitForFunction(() => {
+                const canvas = document.getElementById('age-grade-chart');
+                const section = document.getElementById('progression');
+                const chart = Chart.getChart(canvas);
+                const rect = canvas.getBoundingClientRect();
+                const style = getComputedStyle(section);
+                const availableWidth = section.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+                const ratio = window.devicePixelRatio;
+                return Math.abs(rect.width - availableWidth) <= 2
+                    && rect.height >= 279 && rect.height <= 521
+                    && Math.abs(chart.width - rect.width) <= 2
+                    && Math.abs(chart.height - rect.height) <= 2
+                    && Math.abs(canvas.width - rect.width * ratio) <= 3
+                    && Math.abs(canvas.height - rect.height * ratio) <= 3;
+            }, null, { timeout: 5000 }).then(() => true).catch(() => false);
+
+            if (!fits) {
+                failures.push(`${mode}/${viewport.name}: progression chart did not fit its available width or readable height at ${width}px.`);
+            }
+            // Allow subsequent resize notifications to settle; fitting for one
+            // frame must not hide a canvas that keeps shrinking or growing.
+            await page.waitForTimeout(250);
+            const stable = await page.evaluate(() => {
+                const chart = Chart.getChart(document.getElementById('age-grade-chart'));
+                const section = document.getElementById('progression');
+                const style = getComputedStyle(section);
+                const availableWidth = section.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+                return Math.abs(chart.width - availableWidth) <= 2 && chart.height >= 279 && chart.height <= 521;
+            });
+            if (!stable) {
+                failures.push(`${mode}/${viewport.name}: progression chart size did not remain stable at ${width}px.`);
+            }
+            if (await readData() !== originalData) {
+                failures.push(`${mode}/${viewport.name}: resizing changed progression points or axis bounds at ${width}px.`);
+            }
+        }
+    } finally {
+        await page.setViewportSize(originalViewport);
+    }
 }
 
 // Checked explicitly rather than inferred from the overflow assertion: a page

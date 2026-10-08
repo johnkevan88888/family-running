@@ -1,5 +1,39 @@
 # Active Work
 
+## Athlete progression chart sizing — 7 October 2026
+
+John reported automatic scaling on athlete pages. Local browser reproduction
+found a layout defect: after resizing from 1440px to 390px and back, the canvas
+remained 314px wide inside a 1152px available area. The old canvas-only
+`max-height` and default Chart.js aspect-ratio sizing left the drawing size
+dependent on its own layout. A dedicated relative container now owns the width
+and a responsive 280–520px height; Chart.js fills that container without enforcing
+its default aspect ratio. The existing percentage/date bounds, exported points,
+Official/Unofficial styling, tooltip data and both site modes are preserved.
+John's follow-up screenshot confirms a compressed graph at the left of a wide
+panel, on Laura Foster's page. The percentage axis continues to fit the exported
+results; no change to that existing scale behaviour is needed for this defect.
+
+The direct reproduction now returns to 1152px by 520px on desktop and uses
+314px by 280px on mobile. Browser smoke coverage checks the narrow/intermediate/
+wide resize path in both modes, stable geometry, high-DPI canvas resolution and
+unchanged data/axis bounds. It also captures both-mode desktop/mobile progression
+screenshots. The full repository suite passed, including both-mode browser
+checks and the 115-file artifact build. A screenshot inspection caught an
+unfinished canvas animation in one mobile capture; browser coverage now waits
+for visible points to settle at the exported coordinates before capturing them.
+The amended browser suite passed; all four completed progression captures were
+inspected. `git diff --check` and the final repository safety check passed.
+Laura's exact page was also checked
+on desktop/mobile in both modes, including narrowing and widening without
+reloading, with all seven points and the original 45–65% axis preserved.
+Changes are on `codex/athlete-chart-sizing`. On 8 October John explicitly
+requested publication of the reviewed fix, authorizing its standard PR and
+production release after the required checks and both-mode preview review.
+Local validation passed before that approval. The release must preserve all
+exported data and wait for the exact Pages commit before live resize verification.
+No private workbook was accessed.
+
 ## Local updater repair and separate PR — 7 October 2026
 
 The routine update on `data/refresh-20261007-185923` stopped at local tests,
