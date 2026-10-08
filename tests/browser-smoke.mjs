@@ -119,6 +119,7 @@ try {
         }
     }
 
+    await runProgressionYearEndTests(browser);
     await runNewsPageTests(browser);
     await runNewsIntermediateLayoutTests(browser);
     await runNewsEmptyAndUnavailableTests(browser);
@@ -4950,6 +4951,57 @@ async function assertAthleteHeaderLayout(page, mode, viewport) {
 // The chart library is vendored and same-origin, so unlike the previous CDN
 // build it is reachable under the cross-origin blocking above and this path can
 // actually be exercised.
+async function runProgressionYearEndTests(browserInstance) {
+    for (const mode of modes) {
+        for (const viewport of viewports) {
+            const label = `${mode}/${viewport.name} progression year-end`;
+            const context = await browserInstance.newContext(viewport.contextOptions);
+            const page = await context.newPage();
+            await context.route('**/*', route => isSameOrigin(route.request().url()) ? route.continue() : route.abort());
+            try {
+                await page.clock.setFixedTime(new Date('2030-06-15T12:00:00Z'));
+                const rows = await readCsvObjects('data/athlete_results.csv');
+                await page.goto(`${preview.baseUrl}/athlete.html?id=${encodeURIComponent(rows[0].AthleteID)}&site=${mode}`);
+                await page.waitForFunction(() => window.Chart?.getChart(document.getElementById('age-grade-chart')));
+                const cases = [
+                    { date: '06/10/2025', year: 2030 },
+                    { date: '04/10/2030', year: 2030 },
+                    { date: '31/12/2030', year: 2030 },
+                    { date: '12/11/2032', year: 2032 },
+                    { date: '04/10/2030', year: 2031, now: '2031-01-01T12:00:00Z' }
+                ];
+                for (const scenario of cases) {
+                    if (scenario.now) await page.clock.setFixedTime(new Date(scenario.now));
+                    const result = await page.evaluate(({date, year}) => {
+                        Chart.getChart(document.getElementById('age-grade-chart')).destroy();
+                        buildProgressionChart([{ Date: date, AgeGrade: '60%', TimeClass: 'Official', Event: 'Chart fixture', Distance: '5km', Time: '00:25:00' }]);
+                        const chart = Chart.getChart(document.getElementById('age-grade-chart'));
+                        const points = chart.data.datasets.flatMap(dataset => dataset.data);
+                        const end = new Date(year, 11, 31, 23, 59, 59, 999).getTime();
+                        return {
+                            max: chart.scales.x.max, end,
+                            endLabel: chart.scales.x.ticks.at(-1)?.label,
+                            points: points.length, score: points[0]?.y,
+                            datePreserved: Number(points[0]?.x) === parseDate(date).getTime(),
+                            dateVisible: Number(points[0]?.x) >= chart.scales.x.min && Number(points[0]?.x) <= chart.scales.x.max
+                        };
+                    }, scenario);
+                    if (result.max !== result.end || result.endLabel !== `31 Dec ${scenario.year}`) {
+                        failures.push(`${label}: ${scenario.date} did not end at the expected visible 31 Dec ${scenario.year} boundary.`);
+                    }
+                    if (result.points !== 1 || result.score !== 60 || !result.datePreserved || !result.dateVisible) {
+                        failures.push(`${label}: ${scenario.date} was changed, clipped or given an invented point.`);
+                    }
+                }
+            } catch (error) {
+                failures.push(`${label}: ${error.message}`);
+            } finally {
+                await context.close();
+            }
+        }
+    }
+}
+
 async function assertProgressionChart(page, mode, viewport) {
     const context = `${mode}/${viewport.name}`;
     const progression = page.locator('#progression');
@@ -5011,6 +5063,17 @@ async function assertProgressionChart(page, mode, viewport) {
         failures.push(`${context}: progression chart plotted no exported age-grade points.`);
     }
 
+    const yearEnd = await page.evaluate(() => {
+        const chart = Chart.getChart(document.getElementById('age-grade-chart'));
+        const newest = Math.max(...chart.data.datasets.flatMap(d => d.data.map(p => Number(p.x))));
+        const year = Math.max(new Date().getFullYear(), new Date(newest).getFullYear());
+        return { expected: new Date(year, 11, 31, 23, 59, 59, 999).getTime(),
+            actual: chart.scales.x.max, label: chart.scales.x.ticks.at(-1)?.label, year };
+    });
+    if (yearEnd.actual !== yearEnd.expected || yearEnd.label !== `31 Dec ${yearEnd.year}`) {
+        failures.push(`${context}: progression chart did not retain a visible year-end boundary.`);
+    }
+
     await assertProgressionSizing(page, mode, viewport);
     // Canvas animation is not a CSS animation, so screenshot() does not wait
     // for it. Check that the visible points have reached their exported values.
@@ -5048,7 +5111,7 @@ async function assertProgressionSizing(page, mode, viewport) {
     const originalViewport = page.viewportSize();
     // Reproduce the reported resize path without reloading: narrow, intermediate,
     // then wide. A fresh navigation alone misses a chart that gets stuck small.
-    const widths = viewport.name === 'desktop' ? [390, 768, 1440] : [originalViewport.width];
+    const widths = viewport.name === 'desktop' ? [390, 768, 1920, 2560, 1440] : [originalViewport.width];
 
     try {
         for (const width of widths) {
@@ -5084,6 +5147,12 @@ async function assertProgressionSizing(page, mode, viewport) {
             });
             if (!stable) {
                 failures.push(`${mode}/${viewport.name}: progression chart size did not remain stable at ${width}px.`);
+            }
+            if (width >= 1920) {
+                const canvasWidth = await page.locator('#age-grade-chart').evaluate(canvas => canvas.getBoundingClientRect().width);
+                if (canvasWidth < Math.min(width - 100, 2150)) {
+                    failures.push(`${mode}/${viewport.name}: progression chart remained unnecessarily narrow at ${width}px (${canvasWidth}px canvas).`);
+                }
             }
             if (await readData() !== originalData) {
                 failures.push(`${mode}/${viewport.name}: resizing changed progression points or axis bounds at ${width}px.`);

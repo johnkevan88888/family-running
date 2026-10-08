@@ -1,5 +1,34 @@
 # Active Work
 
+## Athlete graph width and year-end spacing — 8 October 2026
+
+After the sizing release in PR #125 (merge `71de566`), John confirmed that
+scrolling/resizing was fixed and requested full-width use and the current year's
+end on the date axis. Laura Foster's live page fills its graph frame, but the
+athlete-only 1200px body cap leaves the whole panel at 1200px on both 1920px and
+2560px screens. Removing that narrower cap lets athlete pages inherit the shared
+2200px maximum, keeping their sections aligned. The stable relative graph frame
+and readable responsive height remain in place.
+
+The display-only date axis now ends at 31 December of the current year, or the
+latest exported result's year when later, without clipping any result. An explicit
+year-end tick stays visible on mobile; interior annual labels are spaced to fit.
+No race point, exported age grade or percentage bound is changed or invented.
+Browser checks cover large screens, both modes, mobile, historical/single-result
+profiles, a December result, a future exported date and January year rollover.
+The complete local suite passed, including repository/vendor/CSV/Gallery
+validation, artifact safety, the 115-file build and both-mode browser checks.
+All four progression captures and Laura's both-mode desktop/mobile/wide-screen
+views were inspected. Her seven points and 45–65% scale are preserved; the graph
+uses 1824px on a 1920px screen and 2152px on a 2560px screen, returning correctly
+after narrowing/widening. The visible right label is `31 Dec 2026`, updating with
+the calendar year. Year-rollover and later exported-date fixtures passed.
+`git diff --check` passed. Changes are on `codex/athlete-chart-year-end`.
+John approved implementation after reviewing the local correction on 8 October;
+proceed through the standard visual PR pathway, successful required checks and
+both-mode preview review, then verify the exact Pages commit and live graph.
+No private workbook was accessed and no CSV changed.
+
 ## Athlete progression chart sizing — 7 October 2026
 
 John reported automatic scaling on athlete pages. Local browser reproduction
