@@ -47,6 +47,13 @@ function buildProgressionChart(results) {
         return;
     }
 
+    // This is display spacing only: results and age grades remain exported.
+    // Extend historical profiles through this year, without clipping a later
+    // exported date if the workbook already contains one.
+    const lastResultDate = parseDate(chartResults[chartResults.length - 1].Date);
+    const chartEndYear = Math.max(new Date().getFullYear(), lastResultDate.getFullYear());
+    const chartEnd = new Date(chartEndYear, 11, 31, 23, 59, 59, 999);
+
     const officialResults = chartResults.filter(row =>
         clean(row.TimeClass) === 'official'
     );
@@ -148,7 +155,21 @@ spanGaps: true
                 x: {
                     type: 'time',
                     min: chartResults[0].Date ? parseDate(chartResults[0].Date) : undefined,
-                    max: chartResults[chartResults.length - 1].Date ? parseDate(chartResults[chartResults.length - 1].Date) : undefined,
+                    max: chartEnd.getTime(),
+                    afterBuildTicks: function(scale) {
+                        // Keep both boundary labels, including year-end, on
+                        // narrow screens. Space interior year labels to fit.
+                        const labelWidth = 100;
+                        const budget = Math.max(2, Math.floor(scale.maxWidth / labelWidth));
+                        const stride = Math.max(1, Math.ceil((scale.ticks.length + 1) / (budget - 1)));
+                        const span = scale.max - scale.min;
+                        const interior = scale.ticks.filter((tick, index) =>
+                            (index + 1) % stride === 0 &&
+                            (tick.value - scale.min) / span * scale.maxWidth >= labelWidth &&
+                            (scale.max - tick.value) / span * scale.maxWidth >= labelWidth
+                        );
+                        scale.ticks = [{ value: scale.min }, ...interior, { value: scale.max }];
+                    },
                     time: {
                         unit: 'year',
                         tooltipFormat: 'd MMMM yyyy',
@@ -158,8 +179,13 @@ spanGaps: true
                     },
                     ticks: {
                         source: 'auto',
-                        autoSkip: true,
-                        maxRotation: 0
+                        autoSkip: false,
+                        maxRotation: 0,
+                        callback: function(value) {
+                            return value === chartEnd.getTime()
+                                ? `31 Dec ${chartEndYear}`
+                                : String(new Date(value).getFullYear());
+                        }
                     },
                     title: {
                         display: true,

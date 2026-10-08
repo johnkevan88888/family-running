@@ -59,6 +59,11 @@ that it fills the available width, retains readable/stable height and correct
 high-DPI drawing resolution, and preserves every plotted result and axis bound.
 The visible points must settle at their exported values before separate
 desktop/mobile chart screenshots are captured alongside the normal page views.
+The resize path includes 1920px and 2560px screens so a narrow athlete-only page
+cap cannot pass merely because the canvas fills that capped panel. Date-axis
+fixtures cover historical and single-result profiles, December dates, later
+exported dates and January rollover, preserving a visible 31 December endpoint
+and every original point without adding synthetic results to the public data.
 
 Run repository safety validation only:
 
