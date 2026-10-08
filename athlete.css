@@ -1,6 +1,5 @@
 body {
     font-family: Segoe UI, Arial, sans-serif;
-    max-width: 1200px;
     margin: auto;
     padding: 24px;
     background: #f4f6f8;
@@ -15,8 +14,10 @@ body {
     margin-bottom: 40px;
 }
 
-#age-grade-chart {
-    max-height: 520px;
+.progression-chart-frame {
+    position: relative;
+    width: 100%;
+    height: clamp(280px, 42vw, 520px);
 }
 
 .pb-table th[colspan="2"] {

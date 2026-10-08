@@ -386,6 +386,101 @@ The next external approval gate must identify the tested release PR, exact
 migrations/affected Workers and synthetic rehearsal; no push/PR/merge, remote
 migration/deployment, real roster/workbook import, media use or publication is
 included here. No extra login, credentials or real photo are needed now.
+## Athlete graph width and year-end spacing — 8 October 2026
+
+After the sizing release in PR #125 (merge `71de566`), John confirmed that
+scrolling/resizing was fixed and requested full-width use and the current year's
+end on the date axis. Laura Foster's live page fills its graph frame, but the
+athlete-only 1200px body cap leaves the whole panel at 1200px on both 1920px and
+2560px screens. Removing that narrower cap lets athlete pages inherit the shared
+2200px maximum, keeping their sections aligned. The stable relative graph frame
+and readable responsive height remain in place.
+
+The display-only date axis now ends at 31 December of the current year, or the
+latest exported result's year when later, without clipping any result. An explicit
+year-end tick stays visible on mobile; interior annual labels are spaced to fit.
+No race point, exported age grade or percentage bound is changed or invented.
+Browser checks cover large screens, both modes, mobile, historical/single-result
+profiles, a December result, a future exported date and January year rollover.
+The complete local suite passed, including repository/vendor/CSV/Gallery
+validation, artifact safety, the 115-file build and both-mode browser checks.
+All four progression captures and Laura's both-mode desktop/mobile/wide-screen
+views were inspected. Her seven points and 45–65% scale are preserved; the graph
+uses 1824px on a 1920px screen and 2152px on a 2560px screen, returning correctly
+after narrowing/widening. The visible right label is `31 Dec 2026`, updating with
+the calendar year. Year-rollover and later exported-date fixtures passed.
+`git diff --check` passed. Changes are on `codex/athlete-chart-year-end`.
+John approved implementation after reviewing the local correction on 8 October;
+proceed through the standard visual PR pathway, successful required checks and
+both-mode preview review, then verify the exact Pages commit and live graph.
+No private workbook was accessed and no CSV changed.
+
+## Athlete progression chart sizing — 7 October 2026
+
+John reported automatic scaling on athlete pages. Local browser reproduction
+found a layout defect: after resizing from 1440px to 390px and back, the canvas
+remained 314px wide inside a 1152px available area. The old canvas-only
+`max-height` and default Chart.js aspect-ratio sizing left the drawing size
+dependent on its own layout. A dedicated relative container now owns the width
+and a responsive 280–520px height; Chart.js fills that container without enforcing
+its default aspect ratio. The existing percentage/date bounds, exported points,
+Official/Unofficial styling, tooltip data and both site modes are preserved.
+John's follow-up screenshot confirms a compressed graph at the left of a wide
+panel, on Laura Foster's page. The percentage axis continues to fit the exported
+results; no change to that existing scale behaviour is needed for this defect.
+
+The direct reproduction now returns to 1152px by 520px on desktop and uses
+314px by 280px on mobile. Browser smoke coverage checks the narrow/intermediate/
+wide resize path in both modes, stable geometry, high-DPI canvas resolution and
+unchanged data/axis bounds. It also captures both-mode desktop/mobile progression
+screenshots. The full repository suite passed, including both-mode browser
+checks and the 115-file artifact build. A screenshot inspection caught an
+unfinished canvas animation in one mobile capture; browser coverage now waits
+for visible points to settle at the exported coordinates before capturing them.
+The amended browser suite passed; all four completed progression captures were
+inspected. `git diff --check` and the final repository safety check passed.
+Laura's exact page was also checked
+on desktop/mobile in both modes, including narrowing and widening without
+reloading, with all seven points and the original 45–65% axis preserved.
+Changes are on `codex/athlete-chart-sizing`. On 8 October John explicitly
+requested publication of the reviewed fix, authorizing its standard PR and
+production release after the required checks and both-mode preview review.
+Local validation passed before that approval. The release must preserve all
+exported data and wait for the exact Pages commit before live resize verification.
+No private workbook was accessed.
+
+## Local updater repair and separate PR — 7 October 2026
+
+The routine update on `data/refresh-20261007-185923` stopped at local tests,
+with saved phase `promoted` and bundle `20261007T185926282Z-2BFB6180` retained.
+The Gallery review-refresh input assertion assumed LF workflow line endings;
+Windows CRLF made it report no inputs instead of the required `draft_id`.
+The finalizer access-probe workflow assertions had the same problem.
+Both focused suites now explicitly exercise LF and CRLF without relaxing
+their workflow input or permission boundaries. Only two test files are repaired;
+the existing 72 CSV changes and generated admin catalogue belong to the saved
+data update and are preserved. No workbook access, saved-state modification,
+commit, push, PR, merge or publication was performed during this repair.
+
+Both focused suites and the repository/vendor/CSV/Gallery, export regression,
+updater, and artifact checks passed in the full run. The complete
+`node scripts/run-all-tests.mjs` finished successfully, including both-mode
+desktop/mobile browser checks and responsive screenshots. Representative
+desktop/mobile Gallery screenshots were inspected; `git diff --check` passed.
+The routine updater deliberately rejects unrelated source/doc
+changes, so do not resume it with this repair mixed into its working tree.
+Release the test correction separately through the approved code-review path,
+then reconcile the saved data branch and resume the complete routine checks.
+Do not bypass its file-set gate or manually advance the saved update state.
+
+John approved pushing and opening the correction PR, with a stop before merge.
+The isolated branch `codex/windows-updater-test-repair` is based on current main
+`0f36915d8d3e5e6d65b3c4c47c836260fd94389b`. The complete local suite also passed
+there using the unchanged main data bundle; both-mode responsive screenshots
+were generated and representative desktop/mobile views inspected. The exact
+three-file test/documentation diff has no public runtime/data changes. Merge
+and subsequent data publication require separate approval.
+
 ## Current release: Gallery review refresh — 25 September 2026
 
 John first approved local preparation and testing, then explicitly approved

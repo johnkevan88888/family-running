@@ -126,9 +126,12 @@ assert.equal(bodyCalls, 3);
 
 const workflow = await fs.readFile(new URL(
     '../.github/workflows/gallery-finalizer-access-probe.yml', import.meta.url), 'utf8');
-assert.match(workflow, /^on:\s*\n  workflow_dispatch:\s*\n\npermissions:/m);
+for (const newline of ['\n', '\r\n']) {
+    const workflowWithNewlines = workflow.replace(/\r?\n/g, newline);
+    assert.match(workflowWithNewlines, /^on:\s*\r?\n  workflow_dispatch:\s*\r?\n\r?\npermissions:/m);
+    assert.match(workflowWithNewlines, /permissions:\s*\r?\n  contents: read\s*\r?\n\r?\n/);
+}
 assert.doesNotMatch(workflow, /inputs:|workflow_call:|push:|pull_request:|schedule:|repository_dispatch:/);
-assert.match(workflow, /permissions:\s*\n  contents: read\s*\n\n/);
 assert.doesNotMatch(workflow, /write|secrets:\s*inherit|continue-on-error|always\(\)/);
 assert.match(workflow, /github.repository == 'johnkevan88888\/family-running' && github.ref == 'refs\/heads\/main'/);
 assert.match(workflow, /environment: gallery-finalization/);
