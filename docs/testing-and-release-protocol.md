@@ -20,6 +20,20 @@ pnpm exec playwright install chromium
 
 ## Local Commands
 
+Private tagging continuation adds `tests/gallery-private-visibility.mjs`,
+`tests/gallery-private-library-browser.mjs` and
+`tests/gallery-photo-generation-keys.mjs` to the full runner. They use fictional
+identities and local SQLite/virtual owner browser transport, checking private
+creation/replay, SQL revision races, complete-group visibility, non-public tag
+retention/projection, public suppression/exclusion precedence, Access/session/
+CSRF/area denial, safe literal names and four desktop/mobile screenshots.
+Generation-key tests preserve v1 delivery and prove strict opaque photo-only v2
+addresses, exact range reads and rejection before storage access. These tests
+do NOT prove v2 SQL promotion/retirement or complete archive-to-review/hide/
+restore integration. Intake remains unrouted and the preparation UI must not
+be activated as a completed privacy workflow. Public-output comparisons now
+preserve the one published Family pilot, not an obsolete empty Family manifest.
+
 The review-refresh correction extends the existing manifest, GitHub-client and
 photo-review-bridge suites (already part of `pnpm test`). They require original
 evidence preservation, a separate current-catalogue eligibility check, exact

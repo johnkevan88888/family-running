@@ -3,6 +3,31 @@
 This log records durable architectural decisions, not proposed features.
 Unknown historical details are labelled rather than inferred.
 
+## 2026-10-01 — Private visibility is a versioned preference, not publication consent
+
+New protected Gallery people start hidden. Owner preference events are
+append-only and compare-and-set at the SQL write, including the current roster
+generation and inherited area. Hide/allow cycles invalidate older eligibility
+even when the final preference matches an earlier value. Complete private tags
+remain independent of public roster membership; projection emits only exact
+current mapped public athlete IDs, never private person IDs/names. Public
+suppression and unresolved exclusions cannot be overridden by private allow.
+The preparatory preference UI must distinguish a preference from completed
+public removal or a reviewed publication attempt.
+
+## 2026-10-01 — Restored photos need new opaque addresses without altered image bytes
+
+John approved preparing an additive photo-only address format locally:
+`media/v2/<server-generated-v4-UUID>/<verified-sha256>/display.webp` or
+`thumbnail.webp`. It carries no private identity, original filename or race.
+Both derivatives in one future attempt must share a durable generation ID;
+new attempts need a new ID, even for identical stripped bytes. Existing v1
+formats and permanent URL retirement remain unchanged. No image watermark,
+metadata salt or quality/pixel variation is introduced solely to escape
+retirement. Builder/delivery tests are not proof of lifecycle integration:
+forward SQL admission, cleanup, host verification and review integration are
+required before any v2 promotion. Deployment remains separately approved.
+
 ## 2026-09-25 — Review refresh preserves an immutable origin, not a rewritten receipt
 
 For the locally approved photo-review correction, keep the original D1 review,

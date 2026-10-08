@@ -228,6 +228,14 @@ withdrawal/deletion keeps irreversible priority and its existing stronger rules.
 
 ## Required evidence before activation
 
+Local continuation on 1 October 2026 added explicit private-person creation,
+initially hidden revisioned preferences, complete-tag projection and a protected
+preparation UI. These do not complete hide/restore or grant public consent.
+John also approved locally preparing photo-only generation-specific v2 URLs,
+without relaxing any v1 retirement rule. Builder/delivery support is tested;
+SQL promotion/cleanup/host-proof and review integration remains fail-closed and
+unfinished. No v2 processing workflow or private archive upload route is active.
+
 | Fixture/action | Required outcome |
 | --- | --- |
 | Tag a person absent from public results | Visible in owner selector; private tag persisted; no public identity/age leakage |
@@ -247,4 +255,6 @@ Use fictitious identities and generated media throughout local preparation.
 Read/import of a real all-athlete roster, any private workbook exporter changes,
 live migrations, deployments, credentials, synthetic remote rehearsal and photo
 publication need the applicable explicit approval. No such action is implied by
-this plan. Existing PR #119 remains separate and unmerged.
+this plan. PR #119 was separately approved, merged and its single-photo Family
+pilot verified live on 30 September 2026. This new feature must preserve that
+published pilot and byte-identical public output; Everyone remains empty.

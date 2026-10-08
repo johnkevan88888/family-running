@@ -519,7 +519,7 @@ for (const mode of ['valid', 'withdrawal', 'consent', 'wrong-draft', 'wrong-hash
 }
 assert.equal(historicalCandidate.draft.exportBundleId, 'older-bundle');
 assert.equal(historicalCandidate.context.approvedDerivatives.exportBundleId, 'older-bundle');
-const refreshWorkflow = await fs.readFile(path.join(root, '.github/workflows/gallery-media-review-refresh.yml'), 'utf8');
+const refreshWorkflow = (await fs.readFile(path.join(root, '.github/workflows/gallery-media-review-refresh.yml'), 'utf8')).replace(/\r\n/g, '\n');
 assert.match(refreshWorkflow, /environment: gallery-processing/);
 assert.match(refreshWorkflow, /group: gallery-photo-\$\{\{ inputs.draft_id \}\}/);
 assert.match(refreshWorkflow, /github.ref == 'refs\/heads\/main'/);

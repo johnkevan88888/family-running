@@ -1,5 +1,104 @@
 # Active Work
 
+## Current continuation — protected people/preferences, 1 October 2026
+
+John approved continuing local private tagging preparation, then explicitly
+approved an additive generation-specific photo URL design locally. No push,
+PR, merge, migration application, Worker deployment, real roster/workbook/photo
+use or publication is authorized. The single-photo Family pilot is already
+published on main `0f36915d8d3e5e6d65b3c4c47c836260fd94389b`; this feature is
+additional work, not another launch prerequisite.
+
+Active checkout: `test-artifacts/gallery-0016-repair`, branch
+`codex/gallery-private-roster-storage`. Existing 22-file preparation was
+preserved in local checkpoint `c6e866d`; local merge `87ceaff` incorporates
+current main and retains both documentation histories. The root prototype and
+review-refresh checkout were not overwritten. Automatic IDs and review refresh
+are now inherited released behavior, not new changes in this feature.
+
+This continuation adds forward-only local migration `0020`, explicit owner
+creation of private people (not a workbook import/name join), initially hidden
+preferences, append-only versioned Hide/Allow preferences, exact SQL revision
+and area guards, and a complete-tag public-ID projection/eligibility read.
+Public suppression and unresolved exclusions still win. All pictured private
+IDs are retained; a non-public person's name/ID is never copied to public tags.
+Changing preferences does not attest public consent, perform public removal,
+create a draft or publish anything. Owner routes retain Access, area session,
+same-origin, CSRF, bounded JSON and no-store responses. `/private-gallery`
+offers these preparation controls without a destination selector; eligibility
+is refreshed after changes rather than leaving an old allowed message visible.
+
+The separately approved photo-only `media/v2/<opaque-generation-UUID>/<sha256>/`
+format has strict builders/parsers and additive media delivery handling. It
+keeps source bytes and metadata stripping independent of address uniqueness.
+Existing v1 URLs, witness/binding proof and retirement records are unchanged.
+This is NOT promotion/cleanup integration: existing SQL/public-upload contracts
+still reject v2 promotion, and no processing/review workflow uses v2 yet.
+
+Focused private visibility, roster, asset, archive and generation-key tests
+pass. The new browser test drives the real owner handler and SQLite services
+with fictional people, both areas, desktop/mobile, literal text rendering,
+complete tags and committed-save/lost-response recovery. Playwright's virtual
+transport supplies fetch-metadata only for the exact synthetic same origin;
+independent route tests still reject missing/cross-site/CSRF/service access.
+Four new screenshots are ignored under `test-artifacts/screenshots/`.
+
+Exact feature-checkout files changed in this continuation (15):
+
+- `docs/active-work.md`
+- `docs/decision-log.md`
+- `docs/gallery-private-tagging-plan.md`
+- `docs/testing-and-release-protocol.md`
+- `gallery-admin/migrations/0020_private_gallery_visibility.sql`
+- `gallery-admin/src/admin-worker.js`
+- `gallery-admin/src/media-worker.js`
+- `gallery-admin/src/photo-generation-keys.js`
+- `gallery-admin/src/private-gallery-assets.js`
+- `gallery-admin/src/private-gallery-visibility-service.js`
+- `scripts/run-all-tests.mjs`
+- `tests/gallery-photo-generation-keys.mjs`
+- `tests/gallery-photo-review-bridge.mjs`
+- `tests/gallery-private-library-browser.mjs`
+- `tests/gallery-private-visibility.mjs`
+
+The root checkout's `docs/active-work.md` is the sole additional edited file
+(navigation/handoff only). The earlier private foundations are preserved in the
+local checkpoint, not regenerated or remotely applied in this continuation.
+
+Validation completed: all 66 groups in `node scripts/run-all-tests.mjs`
+passed, including safety/vendor/CSV/Gallery, pinned photo stripping, original
+processing/review/invalidation/finalization/purge contracts, local D1 migration
+parity, updater/bundle/artifact safety and both public browser modes. Final
+private-screen bulk preference loading and SQL guard tightening were separately
+rechecked through seven focused suites; the whole-roster corruption/global-area
+unit checks and safety/diff checks were repeated after the final test additions.
+63 ignored screenshots exist, including four new private-library views; desktop
+and mobile previews were inspected. `git diff --check` and changed Worker
+syntax checks pass.
+
+The fresh 115-file public artifact matches current main byte-for-byte, including
+one Family pilot and empty Everyone. Main was independently reread as `0f36915`.
+105 published source files needed Windows-only CRLF-to-LF normalization to match
+the canonical Linux/main artifact; each normalized file was verified against
+its main blob before writing. No substantive public input changed. The initial
+CRLF-sensitive workflow-input test was corrected by normalizing test input
+newlines, without editing the workflow. An earlier in-progress bundle fixture
+read straddled that line-ending normalization; the stable focused bundle test
+and repeated full run passed. No failure was waived or live run retried.
+
+Remaining local work before an activation proposal: audited tag corrections
+and archive retention/purge boundaries; archive-to-fresh-attempt linkage with
+fresh complete-person consent; SQL visibility fences throughout processing,
+promotion and review; generation-specific storage/promotion/cleanup/host-proof
+integration; and resumable hide/restore orchestration stopping at an unmerged
+one-file candidate. Existing private archive byte intake remains internal and
+unrouted. Do not activate this preparatory UI or treat a preference as completed
+removal. R2 absence alone is never public-host absence.
+
+No release/activation approval is requested for this unfinished implementation.
+The eventual explicit gate must identify the tested PR, exact forward
+migrations/Workers/lifecycle requirements and a synthetic-only rehearsal.
+
 ## Current checkpoint — automatic Gallery item IDs, 25 September 2026
 
 Active checkout remains `test-artifacts/gallery-0016-repair`, branch
