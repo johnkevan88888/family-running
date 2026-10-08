@@ -53,6 +53,13 @@ Run all automated checks:
 pnpm test
 ```
 
+Athlete progression browser checks resize an already-rendered desktop chart
+through phone, intermediate and desktop widths in both site modes. They verify
+that it fills the available width, retains readable/stable height and correct
+high-DPI drawing resolution, and preserves every plotted result and axis bound.
+The visible points must settle at their exported values before separate
+desktop/mobile chart screenshots are captured alongside the normal page views.
+
 Run repository safety validation only:
 
 ```bash

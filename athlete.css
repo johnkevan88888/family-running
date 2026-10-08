@@ -15,8 +15,10 @@ body {
     margin-bottom: 40px;
 }
 
-#age-grade-chart {
-    max-height: 520px;
+.progression-chart-frame {
+    position: relative;
+    width: 100%;
+    height: clamp(280px, 42vw, 520px);
 }
 
 .pb-table th[colspan="2"] {
