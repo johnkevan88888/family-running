@@ -1,7 +1,67 @@
 # Decision Log
 
+## Archive generations close before cleanup and restoration never reopens them — 10 October 2026
+
+Connect retained-photo reservations to the existing pinned processor and narrow
+review client through an internal archive-specific lifecycle, not manufactured
+legacy drafts or a transfer of original ownership. The new ledger checks current
+complete tag/visibility versions, consent, exclusions, source receipt and delivery
+epoch at durable writes. Mutable permission changes close affected attempts before
+cleanup. Immutable output keys/writers/receipts remain available for recovery;
+GitHub outages cannot hold up public-byte removal. Originals and private tags
+survive reversible hiding, while terminal consent deletion remains stronger.
+
+Storage absence is not public-host absence. New v2 proof uses the existing strict
+fixed-origin witness/target protocol, checks the complete historical target set
+and current epoch, and leaves v1 withdrawal/purge untouched. Manifest convergence
+requires a current fixed-main read and separately reviewed removal. A read-only
+acknowledgement may recognize an independently owner-merged candidate, never merge
+one. Allow is not consent: restoration requires fresh explicit consent, completed
+prior removal and a new generation even when stripped image bytes are identical.
+Historical manifest receipts cannot substitute for a current main read: new
+attempt admission first reconciles all earlier generations, and main movement
+during a removal-receipt write remains pending. Later reappearance of a retired
+item/URL blocks restoration without replaying completed cleanup or original I/O.
+The internal runner stops at an unmerged one-file review and is not activated by
+HTTP, workflow or UI; production processing/promotion capability separation,
+protected orchestration and archive metadata retention/purge remain prerequisites.
+
+## Retained-photo review preparation has fresh consent and separate ownership — 10 October 2026
+
+Keep each retained private asset independent of legacy processing drafts and
+their terminal retention/purge. Local `0022` reservations attach new complete-
+person public-use/minor/guardian consent to the current tag and visibility
+versions, source catalogue and quarantined original receipt. They never copy
+old consent, reactivate a withdrawn draft, transfer original ownership or treat
+private retention as public permission. Server-generated prospective item and
+generation UUIDs reserve new identities without admitting a public generation.
+Until archive-source processing, v2 promotion/cleanup/host verification and
+hide/restore orchestration are complete, the module remains unrouted and cannot
+start processing, create a candidate or publish. Expired or stale reservations
+remain immutable history, not current authorization. Existing public manifests,
+media retirement, metadata stripping and withdrawal/purge contracts are intact.
+
+
 This log records durable architectural decisions, not proposed features.
 Unknown historical details are labelled rather than inferred.
+
+## 2026-10-08 — Tag corrections append evidence instead of rewriting permission
+
+Complete private photo-tag sets are versioned independently of the immutable
+initial asset reservation. Each correction appends the previous and new
+ordered sets, actor, current roster generation and fresh complete-person
+private-retention/guardian attestations; associations are written atomically.
+Current reads and eligibility use the latest complete revision and include its
+version, preventing a return to the same people from reviving older approval.
+Original tags, photo bytes, original intake permission and receipts stay intact.
+
+Unfinished original intake and terminal deletion block correction. New intake
+after correction requires an explicit current tag version at the owner/service
+boundary and SQL write; legacy version-one intake fingerprints remain unchanged.
+Private retention is not public permission: any future publication attempt
+still requires fresh complete-person public consent, current visibility and
+all existing processing/stripping/review gates. No metadata purge, retention
+extension, draft resurrection or automatic publication follows from correction.
 
 ## 2026-10-01 — Private visibility is a versioned preference, not publication consent
 

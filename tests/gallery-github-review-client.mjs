@@ -10,6 +10,9 @@ assert.deepEqual(
         'createGalleryReviewOpenEvidenceHash',
         'createOrReconcileGalleryReview',
         'invalidateGalleryReview',
+        'readExistingGalleryReview',
+        'readGalleryReviewMain',
+        'readMergedGalleryReview',
         'reconcileStoredGalleryReview',
         'refreshStoredGalleryReview'
     ],

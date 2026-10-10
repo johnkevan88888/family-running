@@ -7,9 +7,10 @@ const person = /^person_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
 const fields = ['idempotencyKey', 'originalFormat', 'personIds', 'rosterRevision'];
 const unavailable = () => ({ ok: false, status: 503, code: 'private-asset-unavailable' });
 const conflict = () => ({ ok: false, status: 409, code: 'private-asset-conflict' });
-const readSql = `SELECT a.*, t.person_id, t.ordinal, p.person_id AS existing_person_id
+const readSql = `SELECT a.*, s.tag_version, s.current_person_ids_json, t.person_id, t.ordinal, p.person_id AS existing_person_id
     FROM private_gallery_assets a
-    LEFT JOIN private_gallery_asset_tags t ON t.asset_id = a.asset_id
+    JOIN private_gallery_current_tag_sets s ON s.asset_id = a.asset_id
+    LEFT JOIN private_gallery_current_asset_tags t ON t.asset_id = a.asset_id
     LEFT JOIN private_gallery_people p ON p.person_id = t.person_id
     WHERE a.owner_identity_hash = ?1 AND a.site_mode = ?2 AND `;
 
@@ -33,15 +34,17 @@ async function readStored(env, owner, site, field, value) {
         .bind(owner, site, value).all();
     if (result?.success !== true || !Array.isArray(result.results)) throw new Error('Unavailable');
     if (result.results.length === 0) return null;
-    const row = result.results[0], ids = JSON.parse(row.person_ids_json);
+    const row = result.results[0], ids = JSON.parse(row.current_person_ids_json);
     if (!validPersonIds(ids) || result.results.length !== ids.length ||
+        !Number.isSafeInteger(row.tag_version) || row.tag_version < 1 ||
         !uuid.test(row.asset_id?.slice(6)) || !row.asset_id.startsWith('asset_') ||
         row.site_mode !== site || row.owner_identity_hash !== owner ||
         !['jpg', 'png'].includes(row.original_format) || row.state !== 'awaiting-original' ||
         row.private_object_key !== `private-archive/v1/${site}/${row.asset_id}/original.${row.original_format}` ||
         !/^[0-9a-f]{64}$/.test(row.request_hash) ||
         result.results.some((tag, index) => tag.asset_id !== row.asset_id || tag.ordinal !== index ||
-            tag.person_id !== ids[index] || tag.existing_person_id !== ids[index])) throw new Error('Incomplete');
+            tag.person_id !== ids[index] || tag.existing_person_id !== ids[index] ||
+            tag.tag_version !== row.tag_version || tag.current_person_ids_json !== row.current_person_ids_json)) throw new Error('Incomplete');
     return { requestHash: row.request_hash, asset: {
         assetId: row.asset_id, siteMode: site, state: row.state, personIds: ids
     } };

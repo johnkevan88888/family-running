@@ -20,6 +20,66 @@ pnpm exec playwright install chromium
 
 ## Local Commands
 
+`node tests/gallery-private-photo-lifecycle.mjs` exercises the internal `0023`
+archive-source lifecycle with the actual pinned photo processor, complete forward
+SQLite migrations, fake fixed-repository GitHub transport and actual local
+workerd/R2 multipart storage. It tests both inherited areas, public-ID-only
+one-file review, read-only replay, complete-group hiding, retained original/tag
+identity, fresh-consent restoration with new URLs, revocation during byte/review
+I/O, interrupted cleanup, uncertain GitHub/provider replies, public-host fault
+responses, epoch races and terminal archive deletion priority. Main movement
+and retired-URL reappearance at restoration are explicitly tested.
+No new source or public bytes may be admitted on historical manifest proof alone.
+Fixture owner merges and removals are explicit synthetic state changes, never
+runner capabilities.
+Host proof must use the real media handler's witness/target HEAD/GET protocol,
+not infer absence from storage. Direct empty SQL host receipts are rejected.
+The actual R2 fixture uses the normal 5-second proof deadline; deterministic
+timeout-fault fixtures retain shorter limits. No real media or remote API is used.
+
+This group also applies `0023` through the pinned Wrangler SQL splitter: equivalent
+`iif` predicates avoid the provider's CASE/trigger splitting incompatibility
+without changing guards. Local D1 parity applies all forward migrations and
+compiles all new ledger writes under its actual expression-depth limit. The full
+runner now includes 69 groups. Internal runner proof is NOT proof that protected
+Workers/workflow/UI are connected or that a live host has removed anything.
+Before activation, finish protected orchestration, the reviewed manifest-removal
+adapter, archive metadata retention/purge and prefix-specific multipart
+containment review. No resource/binding/credential change, workflow dispatch,
+PR mutation, merge, deployment or publication is authorized by these local tests.
+Face-framing remains separate.
+
+`node tests/gallery-private-attempts.mjs` tests the internal, unrouted fresh
+public-consent reservation against an independently retained private photo.
+It uses fictional people, full forward SQLite migrations and generated JPEGs;
+requires current complete tags, owner/inherited area, current catalogue race,
+every visibility version, public-ID-only projection, fresh public/minor/guardian
+answers and the exact retained original receipt. SQL race hooks must themselves
+complete valid competing writes before claiming rejection. It covers rollback,
+lost replies, post-commit revocation, 24-hour replay expiry and unchanged older
+attestations/bytes/provider identity. The full runner includes it, and local
+D1 parity executes and compiles the real `0022` reservation INSERT. It does NOT
+admit a processing draft, prove decoding/stripping, create preview media or a
+PR, expose an HTTP path, complete hide/restore, or authorize release/deployment.
+The internal `0023` runner now tests archive-to-processing/review, v2 cleanup/host
+proof and hide/restore; protected activation and archive metadata purge remain
+unfinished. Face-framing stays a separate follow-up.
+
+`node tests/gallery-private-tags.mjs` tests local migration 0021 and audited
+complete-tag corrections through actual SQLite and owner routes. It requires
+historical tags/attestations/receipts to remain intact, explicit fresh retention
+and guardian answers, versioned complete sets, roster/area/owner/CSRF boundaries,
+lost-response recovery and write-time tag/intake/deletion race refusal. Corrected
+intake must explicitly name its current tag version; old version-one fingerprints
+remain replayable without writes. The local R2 archive suite proves exact photo
+bytes and provider identity survive correction, and D1 parity executes the real
+correction/intake and compiles new write guards. These checks are in the full
+runner, not permission to activate archive intake or publish. Tag-edit UI,
+protected activation of archive-to-fresh-public-consent, hide/restore and v2
+lifecycle remain unfinished; the internal implementations are tested above.
+Existing old-draft withdrawal and purge isolation is retested with
+the full forward schema. Face-framing remains a separately scoped follow-up.
+
 Private tagging continuation adds `tests/gallery-private-visibility.mjs`,
 `tests/gallery-private-library-browser.mjs` and
 `tests/gallery-photo-generation-keys.mjs` to the full runner. They use fictional

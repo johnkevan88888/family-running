@@ -132,13 +132,15 @@ export async function readPrivateGalleryAssetEligibility(env,identity,site,asset
         if (!saved.ok) return saved;
         const {document} = await loadPrivateGalleryRoster(env,site);
         const people = resolvePrivateGalleryTags(document,site,saved.asset.personIds,document.revision);
-        const result = await env.DB.prepare(`SELECT t.person_id,t.ordinal,v.version,v.preference
-            FROM private_gallery_asset_tags t LEFT JOIN private_gallery_current_visibility v ON v.person_id = t.person_id
+        const result = await env.DB.prepare(`SELECT t.person_id,t.ordinal,v.version,v.preference,s.tag_version
+            FROM private_gallery_current_asset_tags t JOIN private_gallery_current_tag_sets s ON s.asset_id = t.asset_id
+            LEFT JOIN private_gallery_current_visibility v ON v.person_id = t.person_id
             WHERE t.asset_id = ?1 ORDER BY t.ordinal LIMIT 101`).bind(assetId).all();
         const rows = result?.results;
         if (result?.success !== true || !Array.isArray(rows) || rows.length !== people.length ||
             rows.some((row,index)=>row.person_id !== people[index].personId || row.ordinal !== index ||
-                !Number.isSafeInteger(row.version) || row.version < 1 || !['hidden','allowed'].includes(row.preference))) return failure(503);
+                !Number.isSafeInteger(row.version) || row.version < 1 || !['hidden','allowed'].includes(row.preference) ||
+                !Number.isSafeInteger(row.tag_version) || row.tag_version < 1 || row.tag_version !== rows[0].tag_version)) return failure(503);
         const publicRoster = catalog?.sites?.[site]?.catalog?.athleteIds;
         const hidden = catalog?.suppressionDocument?.hiddenAthleteIds;
         if (!Array.isArray(publicRoster) || globalThis.galleryContract?.validateGallerySuppressionDocument(catalog.suppressionDocument).length !== 0 ||
@@ -152,7 +154,7 @@ export async function readPrivateGalleryAssetEligibility(env,identity,site,asset
         const blocked = people.some((person,index)=>rows[index].preference !== 'allowed' || blockedIds.has(person.publicAthleteId));
         const finalRoster = await loadPrivateGalleryRoster(env,site);
         if (finalRoster.document.revision !== document.revision) return failure(409);
-        const revision = `sha256:${await fingerprint([document.revision,rows.map(row=>[row.person_id,row.version,row.preference]),
+        const revision = `sha256:${await fingerprint([document.revision,rows[0].tag_version,rows.map(row=>[row.person_id,row.version,row.preference]),
             catalog.sourceRevision,catalog.suppressionRevision,[...blockedIds].sort()])}`;
         return {ok:true,status:200,assetId,revision,visibilityEligible:!blocked,
             publicAthleteIds:people.flatMap(person=>person.publicAthleteId === null ? [] : [person.publicAthleteId]),

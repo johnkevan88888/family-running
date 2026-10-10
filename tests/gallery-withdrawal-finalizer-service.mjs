@@ -58,7 +58,8 @@ sqlite.exec(migrations.at(-3));
 sqlite.exec(migrations.at(-2));
 sqlite.exec(migrations.at(-1));
 for (const name of ['0016_transition_receipt_replacement_guard.sql', '0017_private_gallery_roster.sql',
-    '0018_private_gallery_asset_reservations.sql', '0019_private_archive_intake.sql']) {
+    '0018_private_gallery_asset_reservations.sql', '0019_private_archive_intake.sql',
+    '0020_private_gallery_visibility.sql', '0021_private_gallery_tag_revisions.sql']) {
     sqlite.exec(await readFile(new URL(`../gallery-admin/migrations/${name}`, import.meta.url), 'utf8'));
 }
 

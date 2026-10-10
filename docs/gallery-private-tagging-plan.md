@@ -2,8 +2,11 @@
 
 Status: accepted product/storage direction; local protected-roster storage,
 owner reads, atomic private asset/tag reservations and internal pre-publication
-archive quarantine/removal implemented. End-to-end
-photo intake/tagging/visibility is not implemented.
+archive quarantine/removal, audited complete-tag correction and internal
+fresh-consent attempt reservation and internal archive-source processing/review,
+whole-photo hide/restore and fixed-origin removal proof implemented locally.
+Protected HTTP/workflow/UI activation and archive metadata retention/purge are
+not implemented; this is not yet an owner-operable or deployed feature.
 Not deployed, and not part of the UI/data release in PR #120.
 
 Local components: `gallery-admin/src/private-gallery-roster.js` validates an
@@ -62,9 +65,10 @@ person's public mapping or area eligibility does not erase saved tags.
 The reservation endpoints remain `awaiting-original`. They accept no bytes; no upload
 or publication route accepts these records, and no image/hash/consent claim is
 made. This is a future ownership reservation, NOT a verified retained photo.
-Records and tags are immutable in this preparatory slice; archive-specific
-audited tag revisions and consent/deletion cleanup require a forward migration
-before real intake is enabled. This temporary fence does not extend old draft
+Initial records and tags remain immutable; the separately documented 0021
+correction appends new versions rather than rewriting them. Complete archive
+consent/deletion/purge integration is still required before real intake is
+enabled. This temporary fence does not extend old draft
 retention or grant permanent retention against future consent withdrawal.
 
 `tests/gallery-private-assets.mjs` covers actual SQL writes and authenticated
@@ -104,7 +108,8 @@ use generic octet-stream/no-store headers, never browser filenames or identities
 `quarantined` means only that original bytes match the declared intake. It does
 NOT mean the pinned image decoder accepted the image, dimensions/transparency
 passed, metadata was stripped, publication consent exists, or anything is public.
-That inspection/processing bridge is still required before review/publication.
+The internal 0023 bridge below now performs that inspection/processing; its
+protected activation is still required for an owner-operable review path.
 Private originals may retain metadata by the established storage contract;
 public derivatives still require the existing full stripping/scanner gates.
 
@@ -126,10 +131,11 @@ the documented multipart terminal operations, not absence alone, to fence a
 delayed completion. See [R2 multipart API](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/#r2multipartupload-definition).
 
 This is private-original removal only, not public-host absence, manifest
-convergence, full consent-withdrawal completion or metadata purge. No archive
-publication link exists yet. Before activation, implement and test the decoder/
-processing bridge, audited tag correction, archive metadata retention/purge and
-visibility/consent orchestration. Recheck orphan-multipart containment for the
+convergence, full consent-withdrawal completion or metadata purge by itself.
+The 0023 integration below links public generations and blocks premature original
+deletion completion. Before activation, finish archive metadata retention/purge
+and protected visibility/consent orchestration, using the audited correction below.
+Recheck orphan-multipart containment for the
 new archive prefix as part of separately approved deployment preparation; no
 bucket lifecycle setting is changed by local code or assumed from an old prefix.
 
@@ -141,6 +147,184 @@ resumable cleanup and immutable receipts. It also performs actual multipart
 upload/readback/removal in the pinned local R2 runtime. The D1 suite exercises
 the real intake service and compiles every new cleanup write under its expression
 depth limit. These local results are not evidence of live storage cleanup.
+
+### Audited complete-tag correction — local only, 8 October 2026
+
+Migration `0021_private_gallery_tag_revisions.sql` preserves the initial asset,
+ordered tags and original intake/retention/guardian receipts. The protected
+GET/POST `/api/browser/private-assets/{id}/tags` boundary appends a new complete
+tag set with expected tag version, current roster revision, idempotency key,
+explicit complete-person/private-retention confirmation and fresh minor/guardian
+answers. No names, object keys, destination, old draft or public-use permission
+are accepted in this request. New ordered associations and their audit parent
+are one atomic SQL operation. Current private reads and eligibility projection
+use the current complete set; a tag ABA cycle changes the eligibility digest.
+
+Corrections are denied during unfinished/uncertain intake and after archive
+deletion/consent withdrawal. SQL rechecks owner, inherited area, roster, previous
+version/complete set and terminal state after application validation. An unknown
+or missing tag fails the whole operation. A lost response can recover only the
+same committed current revision, not overwrite later edits or resume deletion.
+An owner confirming complete tags is an attestation, not automated recognition
+of everyone pictured; it must be presented clearly in a future editing UI.
+
+Corrected original intake requires the explicitly selected current tag version,
+fenced again at SQL admission, writer registration and original receipt. Older
+version-one callers remain valid only for uncorrected tags. Pre-0021 original
+intake fingerprints are preserved for exact no-write replay. Retagging a retained
+original leaves its bytes, provider version/ETag and old receipts unchanged;
+the new private-retention answers attach to the new tag revision only. They do
+not confer public consent or permit processing, promotion or a candidate PR.
+
+`tests/gallery-private-tags.mjs` checks actual SQLite and protected owner routes,
+upgrade of a previously retained original, append-only/complete associations,
+fresh retention/guardian validation, ABA, current-tag projection, roster/tag/
+intake/deletion races, atomic rollback, lost-response recovery and corrupted
+association refusal. The local R2 archive suite additionally proves a tag edit
+leaves exact generated photo bytes, provider version/ETag and receipts unchanged.
+The local D1 suite executes the real correction and corrected-tag intake and
+compiles all new writes under the provider's expression-depth limit. No real
+identities/media, HTTP byte route, tag-edit UI or remote activation is included.
+
+Championship face-framing is agreed as a separate small follow-up. Its future
+position/zoom controls should belong to the particular photo/person, not change
+private identity, permission or original bytes. No placeholder crop fields,
+automatic face recognition or public thumbnail change is added here.
+
+### Internal fresh-consent attempt reservation — local only, 10 October 2026
+
+Forward migration `0022_private_gallery_attempt_reservations.sql` and internal
+`private-gallery-attempt-service.js` reserve a distinct attempt against the
+independently retained archive asset. They do not create or revive a legacy
+draft, extend old retention, or copy an earlier public-consent attestation.
+The current complete tag version and all people's exact visibility versions,
+current roster generation, public-ID projection, catalogue/suppression revision,
+server-selected race tuple and exact quarantined original receipt are saved
+with fresh complete-person public-use/minor/guardian answers. Private names and
+unmapped person IDs never become public athlete IDs. An earlier recorded child
+declaration cannot be silently downgraded in the new public-use request.
+
+The caller selects only a race index under the exact current catalogue revision;
+the service derives date/event/distance and the inherited area. It accepts no
+destination, supplied public IDs, old draft, object key, URL or generation.
+New attempt, prospective public-item and prospective v2 generation identifiers
+are server-generated v4 UUIDs. These are reservations, not public generation
+admissions or URLs. A future public manifest still contains only its existing
+fields, never these private tags/permissions/source receipts.
+
+Shallow SQL guards recheck current owner/area, roster, complete current tag set,
+all visibility versions, exact projection, pending exclusions, retained original
+receipt and terminal archive removal after service validation. Lost replies
+recover only the same immutable record while all facts are still current.
+Hide/Allow or tag ABA cycles invalidate old approval; changed consent inputs
+conflict. Reservations expire after 24 hours for current-success replay without
+rewriting old evidence or deleting retained originals. Later processing must
+repeat these fences and the fresh-consent lifetime, not trust a saved reservation.
+
+This module is not imported by any Worker/router/workflow/UI. It performs no
+R2/GitHub/network operation and reports processing/publication disabled.
+Quarantine remains byte-match evidence, not decoder acceptance or metadata
+stripping. No source ownership transfer, active processing draft, preview object,
+PR, hide/restore completion, metadata purge or public-host proof exists here.
+The prospective v2 identifier cannot enter the still-v1-only promotion path.
+The following internal lifecycle consumes this checked reservation; this
+reservation service itself remains database-only and does not grant admission.
+
+`tests/gallery-private-attempts.mjs` exercises full forward SQLite migrations,
+fresh consent, both inherited areas, generated retained JPEG bytes, private-only
+tags, minors, source/race/permission conflicts, all write-time roster/tag/
+visibility/deletion/exclusion races, atomic rollback, lost replies, post-commit
+revocation and expiry. Race hooks must prove the competing valid write happened,
+not merely fail on a malformed fixture. Existing photo bytes/provider identity,
+old intake and original receipts remain unchanged, and no legacy draft is made.
+The local D1 parity suite executes this exact service INSERT and compiles its
+guards under the pinned provider depth limit. Full local checks and unchanged
+public-artifact comparison remain required; no live action is implied.
+
+### Internal archive-to-review and reversible hiding — local only, 10 October 2026
+
+Forward `0023_private_gallery_photo_lifecycle.sql` adds a separate append-only
+admission/output/writer/review/removal ledger for `0022` attempts. Every byte and
+review write rechecks complete current tags, exact visibility versions, roster,
+pending public exclusions, fresh consent lifetime, the original receipt and the
+current delivery epoch. Preference, tag, roster, exclusion or archive-deletion
+changes close affected attempts immediately. Closed attempts never reopen.
+Old draft ownership, consent, original retention and v1 URL retirement remain
+untouched; no old draft is manufactured to reach the existing processor.
+
+`scripts/gallery-media/private-photo-lifecycle.mjs` connects the reservation to
+the existing pinned Sharp/Exiftool processor and narrow GitHub review client.
+The binding service conditionally reads the retained original, hashes its
+bounded stream, and independently verifies stripped static WebP bytes, dimensions,
+exact generic metadata and provider identity in staging and approved storage.
+Each server-derived v2 output has one immutable multipart writer registered
+before bytes. An approved output must match its verified staging counterpart.
+The one-file candidate contains only the existing public manifest fields,
+server-derived race values and mapped public athlete IDs, never private tags,
+names, consent or source receipts. Review replay is read-only; uncertain review
+responses retain intent evidence for exact recovery rather than creating another PR.
+
+`hideArchivePhotoPerson` commits the visibility block first, then reconciles all
+historical affected tag sets, including group photos. It closes writers before
+removing exact staging/approved outputs, preserves completed receipts, and checks
+fully paginated generation-prefix absence. GitHub failure cannot prevent this
+byte cleanup. Private originals, provider identity and complete tags are retained.
+Terminal archive-consent deletion still wins; its original may be removed promptly,
+but a completion receipt cannot be recorded until linked public generations converge.
+This does not claim metadata purge or extend legacy retention.
+
+Public-host proof is independent of storage absence. A v2-only wrapper reuses
+the established verifier with the fixed current origin/version/contract and
+canonical witness HEAD/GET before and after all historical target HEAD/GET,
+followed by final target HEAD. Redirects, cached/live responses, generic 404s,
+wrong witnesses/versions, bodies and timeouts remain failures. SQL requires
+the exact historical key set and current-epoch witness/target evidence; an
+epoch race or forged empty receipt cannot mark removal complete. Legacy
+verifier purposes, SQL, routes and v1 withdrawal/purge are unchanged.
+
+Open reviews are closed through the existing exact-review client. Separately
+owner-merged reviews can only be acknowledged read-only after identity, exact
+manifest content and main ancestry checks; this adds no merge capability.
+The runner rereads fixed-repository main and both manifests. A still-published
+photo produces an exact one-file removal proposal and remains pending until
+the separately reviewed change is actually merged. It does not create or merge
+that removal PR automatically. Recorded removal status is evidence, not an
+independent claim that current external main has been read; the resume runner
+performs that read on every completion check.
+Main movement during the durable manifest-receipt write stays pending. Before
+any new attempt is admitted, the runner reconciles every earlier admitted
+generation against current main, reusing only still-current host evidence and
+completed storage cleanup. A later reappearance of an old item/URL therefore
+blocks restoration before any new source read or public byte write.
+
+Allow alone never restores a photo. `restoreArchivePhotoReview` requires fresh
+explicit public/minor/guardian consent, a new checked attempt and proven removal
+of every previous generation. All people must still be allowed and otherwise
+eligible. Reprocessing the retained original may produce identical stripped
+bytes, but the new generation uses different public URLs. Restoration ends at
+an unmerged one-file candidate; no merge or publication function exists here.
+
+`tests/gallery-private-photo-lifecycle.mjs` runs both areas with fictitious
+people, generated metadata-bearing JPEGs, real pinned processing, full forward
+SQLite migrations and the existing GitHub client against a bounded fake API.
+It also exercises actual local workerd/R2 multipart storage, real media-serving
+responses, write/I/O revocation races, lost provider/GitHub replies, host faults,
+epoch races, complete-group hiding, fresh restoration and unchanged retained
+bytes/tags, main movement at receipt insertion and retired-URL reappearance.
+Owner publication and manifest removal are explicit fixture actions,
+not actions by the runner or evidence of any live GitHub/Cloudflare operation.
+The pinned Wrangler SQL splitter is tested because a CASE inside a trigger was
+incorrectly split; equivalent `iif` predicates preserve the guards. Local D1
+applies the complete chain and compiles every new write under its depth limit.
+
+The local runner requires explicit injected bindings/owner context and network
+adapters. It has no command-line entry point, credential discovery, ambient
+network adapter, protected Worker route, workflow dispatch or uploader control.
+Do not deploy a combined all-bucket Worker: activation must preserve the existing
+separate processing and promotion capabilities. Remaining work is protected
+service/owner orchestration and UI, the reviewed manifest-removal adapter, archive
+metadata retention/purge and prefix-specific multipart containment checks. Those
+are implementation prerequisites, not extra live approvals requested here.
 
 ## Outcome
 
@@ -233,8 +417,9 @@ initially hidden revisioned preferences, complete-tag projection and a protected
 preparation UI. These do not complete hide/restore or grant public consent.
 John also approved locally preparing photo-only generation-specific v2 URLs,
 without relaxing any v1 retirement rule. Builder/delivery support is tested;
-SQL promotion/cleanup/host-proof and review integration remains fail-closed and
-unfinished. No v2 processing workflow or private archive upload route is active.
+The internal `0023` runner now tests promotion/cleanup/host proof, review and
+hide/restore locally. No v2 protected processing workflow or private archive
+upload route is active; the remaining activation prerequisites are listed above.
 
 | Fixture/action | Required outcome |
 | --- | --- |

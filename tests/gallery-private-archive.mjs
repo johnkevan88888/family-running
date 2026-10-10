@@ -8,6 +8,7 @@ import {preparePrivateArchiveIntake,storePrivateArchiveOriginal,deletePrivateArc
 import {reservePrivateGalleryAsset,readPrivateGalleryAsset} from '../gallery-admin/src/private-gallery-asset-service.js';
 import {readPrivateGalleryRoster} from '../gallery-admin/src/private-gallery-roster-service.js';
 import {handleAdminRequest} from '../gallery-admin/src/admin-worker.js';
+import {correctPrivateGalleryTags} from '../gallery-admin/src/private-gallery-tag-service.js';
 
 const db = new DatabaseSync(':memory:');
 const dir = new URL('../gallery-admin/migrations/',import.meta.url);
@@ -224,6 +225,19 @@ try {
     assert.equal((await store(actual)).state,'quarantined');
     const object=await env.PRIVATE_ORIGINALS.get(key(actual));
     assert.deepEqual(Buffer.from(await object.arrayBuffer()),photo);
+    const originalReceipt=db.prepare('SELECT * FROM private_archive_original_receipts WHERE asset_id=?').get(actual.id);
+    const intakeReceipt=db.prepare('SELECT * FROM private_archive_intakes WHERE asset_id=?').get(actual.id);
+    assert.equal((await correctPrivateGalleryTags(env,owner,'family',actual.id,{
+        idempotencyKey:crypto.randomUUID(),expectedVersion:1,rosterRevision:(await readPrivateGalleryRoster(env,'family')).revision,
+        personIds:[...people].reverse(),completeTagsConfirmed:true,privateRetentionConfirmed:true,
+        containsMinors:false,guardianApprovalConfirmed:false
+    })).status,201);
+    const retainedObject=await env.PRIVATE_ORIGINALS.get(key(actual));
+    assert.deepEqual(Buffer.from(await retainedObject.arrayBuffer()),photo);
+    assert.equal(retainedObject.version,object.version);
+    assert.equal(retainedObject.etag,object.etag);
+    assert.deepEqual(db.prepare('SELECT * FROM private_archive_original_receipts WHERE asset_id=?').get(actual.id),originalReceipt);
+    assert.deepEqual(db.prepare('SELECT * FROM private_archive_intakes WHERE asset_id=?').get(actual.id),intakeReceipt);
     const uploadId=db.prepare('SELECT provider_upload_id FROM private_archive_multipart_uploads WHERE asset_id=?').get(actual.id).provider_upload_id;
     assert.equal((await remove(actual)).state,'private-original-deleted');
     assert.equal(await env.PRIVATE_ORIGINALS.head(key(actual)),null);

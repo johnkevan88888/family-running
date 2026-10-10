@@ -11,6 +11,9 @@ import { readPrivateGalleryRoster } from
     '../gallery-admin/src/private-gallery-roster-service.js';
 import { reservePrivateGalleryAsset, readPrivateGalleryAsset } from '../gallery-admin/src/private-gallery-asset-service.js';
 import { preparePrivateArchiveIntake } from '../gallery-admin/src/private-archive-service.js';
+import { correctPrivateGalleryTags } from '../gallery-admin/src/private-gallery-tag-service.js';
+import { reservePrivateGalleryAttempt } from '../gallery-admin/src/private-gallery-attempt-service.js';
+import { readPrivateGalleryAssetEligibility,changePrivateGalleryVisibility } from '../gallery-admin/src/private-gallery-visibility-service.js';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -243,21 +246,54 @@ try {
     assert.deepEqual(parseWranglerJson(counts)[0].results,[{assets:1,tags:1}]);
 
     const currentRoster = await readPrivateGalleryRoster(assetEnv,'family');
+    const tagCorrection = await correctPrivateGalleryTags(assetEnv,owner,'family',reservation.asset.assetId,{
+        idempotencyKey:crypto.randomUUID(),expectedVersion:1,rosterRevision:currentRoster.revision,
+        personIds:[personId],completeTagsConfirmed:true,privateRetentionConfirmed:true,
+        containsMinors:false,guardianApprovalConfirmed:false
+    });
+    assert.equal(tagCorrection.status,201,JSON.stringify(tagCorrection));
+    assert.equal(tagCorrection.tagVersion,2);
     const intake = await preparePrivateArchiveIntake(assetEnv,owner,'family',reservation.asset.assetId,{
         byteCount:100,sha256:'a'.repeat(64),declaredMimeType:'image/jpeg',
         privateRetentionConfirmed:true,containsMinors:false,guardianApprovalConfirmed:false,
-        rosterRevision:currentRoster.revision
+        rosterRevision:currentRoster.revision,tagVersion:2
     });
     assert.equal(intake.status,201,JSON.stringify(intake));
-    for (const table of ['private_archive_multipart_uploads','private_archive_original_receipts',
-        'private_archive_deletion_requests','private_archive_writer_closures','private_archive_deletion_receipts']) {
+    // Fictitious retained-source evidence for the actual attempt INSERT. R2
+    // byte integrity is exercised separately with generated JPEG fixtures.
+    const originalSeed = runWrangler(['d1','execute',...commonArguments,'--command',
+        `INSERT INTO private_archive_multipart_uploads VALUES ('${reservation.asset.assetId}','synthetic-d1-writer');
+         INSERT INTO private_archive_original_receipts (asset_id,byte_count,sha256,provider_version,provider_etag)
+         VALUES ('${reservation.asset.assetId}',100,'${'a'.repeat(64)}','synthetic-d1-version','synthetic-d1-etag')`, '--json'],environment);
+    assert.equal(originalSeed.status,0,diagnostic(originalSeed));
+    const allowed = await changePrivateGalleryVisibility(assetEnv,owner,'family',personId,{
+        expectedVersion:1,idempotencyKey:crypto.randomUUID(),preference:'allowed'});
+    assert.equal(allowed.ok,true,JSON.stringify(allowed));
+    const attemptCatalog={exportBundleId:'synthetic-d1-bundle',sourceRevision:`sha256:${'a'.repeat(64)}`,
+        suppressionRevision:`sha256:${'b'.repeat(64)}`,suppressionDocument:{schemaVersion:'1.0',hiddenAthleteIds:[]},
+        sites:{family:{catalog:{exportBundleId:'synthetic-d1-bundle',sourceRevision:`sha256:${'a'.repeat(64)}`,
+            races:[{raceDate:'2026-01-01',raceEvent:'Synthetic D1 Race',raceDistance:'5 km'}],athleteIds:[]}}}};
+    const eligible = await readPrivateGalleryAssetEligibility(assetEnv,owner,'family',reservation.asset.assetId,attemptCatalog);
+    assert.equal(eligible.visibilityEligible,true,JSON.stringify(eligible));
+    const attempt=await reservePrivateGalleryAttempt(assetEnv,owner,'family',reservation.asset.assetId,{
+        idempotencyKey:crypto.randomUUID(),tagVersion:2,eligibilityRevision:eligible.revision,
+        sourceRevision:attemptCatalog.sourceRevision,suppressionRevision:attemptCatalog.suppressionRevision,
+        raceIndex:0,completeTagsConfirmed:true,publicUseConfirmed:true,containsMinors:false,guardianApprovalConfirmed:false
+    },attemptCatalog);
+    assert.equal(attempt.status,201,JSON.stringify(attempt));
+    assert.equal(attempt.processingEnabled,false);assert.equal(attempt.publicationEnabled,false);
+    for (const table of ['private_gallery_tag_revisions','private_gallery_revision_tags','private_archive_intakes',
+        'private_archive_multipart_uploads','private_archive_original_receipts',
+        'private_archive_deletion_requests','private_archive_writer_closures','private_archive_deletion_receipts','private_gallery_attempts',
+        ...['admissions','closures','outputs','writers','byte_receipts','review_intents','reviews','review_closures',
+            'object_removals','host_receipts','manifest_receipts'].map(name=>`private_gallery_pipeline_${name}`)]) {
         const compiled = runWrangler(['d1','execute',...commonArguments,'--command',
             `EXPLAIN INSERT INTO ${table} DEFAULT VALUES`,'--json'],environment);
         assert.equal(compiled.status,0,diagnostic(compiled));
         assert.ok(parseWranglerJson(compiled)[0].results.length>0);
     }
 
-    console.log('Gallery D1 expression-depth parity, private roster, asset reservations and archive intake/cleanup compilation passed.');
+    console.log('Gallery D1 expression-depth parity, private roster, tag correction, archive intake/cleanup and fresh-consent attempt reservation passed.');
 } finally {
     const resolvedTemporaryRoot = await fs.realpath(temporaryRoot);
     assert.equal(path.dirname(resolvedTemporaryRoot), temporaryParent);

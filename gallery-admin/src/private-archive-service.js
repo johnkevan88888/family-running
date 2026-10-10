@@ -22,12 +22,13 @@ async function context(env, identity, site, assetId) {
     if (!selected.ok) throw Object.assign(new Error('Unavailable'), {status:selected.status});
     const owner = await hashIdentity(identity);
     const row = await env.DB.prepare(`SELECT a.original_format, a.private_object_key,
-        i.request_hash, i.roster_generation, i.byte_count, i.sha256,
+        i.request_hash, i.roster_generation, i.byte_count, i.sha256, s.tag_version, s.current_person_ids_json,
         (unixepoch(i.created_at) + 86400 > unixepoch('now')) AS unexpired,
         (i.roster_generation = v.generation) AS roster_current,
         u.provider_upload_id, o.provider_version, o.provider_etag,
         d.reason AS deletion_reason, c.proof AS closure_proof, r.original_absent
         FROM private_gallery_assets a
+        JOIN private_gallery_current_tag_sets s ON s.asset_id = a.asset_id
         LEFT JOIN private_archive_intakes i ON i.asset_id = a.asset_id
         LEFT JOIN private_archive_multipart_uploads u ON u.asset_id = a.asset_id
         LEFT JOIN private_archive_original_receipts o ON o.asset_id = a.asset_id
@@ -37,7 +38,8 @@ async function context(env, identity, site, assetId) {
         LEFT JOIN private_gallery_roster_version v ON v.singleton = 1
         WHERE a.asset_id = ?1 AND a.owner_identity_hash = ?2 AND a.site_mode = ?3`)
         .bind(assetId,owner,site).first();
-    if (!row || !['jpg','png'].includes(row.original_format) ||
+    if (!row || !Number.isSafeInteger(row.tag_version) || row.tag_version < 1 ||
+        row.current_person_ids_json !== JSON.stringify(selected.asset.personIds) || !['jpg','png'].includes(row.original_format) ||
         row.private_object_key !== `private-archive/v1/${site}/${assetId}/original.${row.original_format}` ||
         (row.provider_upload_id !== null && !safeProvider(row.provider_upload_id,1024))) throw new Error('Unavailable');
     return {...row,owner,personIds:selected.asset.personIds};
@@ -56,23 +58,33 @@ export async function preparePrivateArchiveIntake(env, identity, site, assetId, 
         const row = await context(env,identity,site,assetId);
         if (row.deletion_reason) return failure(409);
         const mime = row.original_format === 'jpg' ? 'image/jpeg' : 'image/png';
+        // Existing version-one callers remain valid only for uncorrected tags.
+        // A corrected set requires the owner's explicit current tag version.
+        const tagVersion = input?.tagVersion ?? 1;
+        const inputFields = input && Object.hasOwn(input,'tagVersion') ? [...intakeFields,'tagVersion'].sort() : intakeFields;
         if (!input || typeof input !== 'object' || Array.isArray(input) ||
-            Object.keys(input).sort().join('|') !== intakeFields.join('|') ||
+            Object.keys(input).sort().join('|') !== inputFields.join('|') ||
+            !Number.isSafeInteger(tagVersion) || tagVersion < 1 ||
             !Number.isSafeInteger(input.byteCount) || input.byteCount < 1 || input.byteCount > maximumBytes ||
             typeof input.sha256 !== 'string' || !hex.test(input.sha256) || input.declaredMimeType !== mime ||
             input.privateRetentionConfirmed !== true || typeof input.containsMinors !== 'boolean' ||
             input.guardianApprovalConfirmed !== input.containsMinors ||
             typeof input.rosterRevision !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(input.rosterRevision)) return failure(422);
-        const fingerprint = await sha256Hex(new TextEncoder().encode(JSON.stringify(intakeFields.map(key=>input[key]))));
+        if (tagVersion !== row.tag_version) return failure(409);
+        const attestation = intakeFields.map(key=>input[key]);
+        // Preserve the exact v1 fingerprint for pre-0021 intake replays; an
+        // additive corrected-tag fingerprint must never rewrite old evidence.
+        const fingerprint = await sha256Hex(new TextEncoder().encode(JSON.stringify(
+            tagVersion === 1 ? attestation : [tagVersion,...attestation])));
         if (row.request_hash) return row.request_hash === fingerprint ? response(200,state(row)) : failure(409);
         const {document,generation} = await loadPrivateGalleryRoster(env,site);
         try { resolvePrivateGalleryTags(document,site,row.personIds,input.rosterRevision); }
         catch { return failure(409); }
         try {
             await run(env,`INSERT INTO private_archive_intakes
-                (asset_id,roster_generation,request_hash,byte_count,sha256,private_retention_confirmed,contains_minors,guardian_approval_confirmed)
-                VALUES (?1,?2,?3,?4,?5,1,?6,?7)`,assetId,generation,fingerprint,input.byteCount,input.sha256,
-                Number(input.containsMinors),Number(input.guardianApprovalConfirmed));
+                (asset_id,roster_generation,request_hash,byte_count,sha256,private_retention_confirmed,contains_minors,guardian_approval_confirmed,tag_version)
+                VALUES (?1,?2,?3,?4,?5,1,?6,?7,?8)`,assetId,generation,fingerprint,input.byteCount,input.sha256,
+                Number(input.containsMinors),Number(input.guardianApprovalConfirmed),row.tag_version);
         } catch {
             const recovered = await context(env,identity,site,assetId);
             if (recovered.deletion_reason) return failure(409);

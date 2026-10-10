@@ -73,6 +73,71 @@ const galleryContract = globalThis.galleryContract;
  * paths are fixed in this module. The only injected capabilities are an HTTPS
  * fetch implementation and a short-lived repository-scoped GitHub App token.
  */
+// Read-only inputs for the archive lifecycle. No caller-selected repository,
+// path, branch or destination; both manifests are read at one pinned main SHA.
+export async function readGalleryReviewMain(options = {}) {
+    requireExactKeys(options,['token','fetchImpl'],'Gallery main read options');
+    const github=createFixedGitHubClient(validateFetch(options.fetchImpl),validateToken(options.token));
+    const baseSha=await readRequiredRef(github,'heads/main','base branch');
+    const manifestsBySite={};
+    for(const site of ['family','everyone']) {
+        const path=`gallery-data/${site}.json`;
+        const text=decodeRepositoryFile(await github.request('GET',`/contents/${path}?ref=${baseSha}`),path,'base manifest');
+        const document=JSON.parse(text);
+        if(galleryContract.validateGalleryDocument(document).length) throw new Error('Invalid current Gallery manifest.');
+        manifestsBySite[site]=document;
+    }
+    await assertBaseStillCurrent(github,baseSha);
+    return deepFreeze({baseSha,manifestsBySite});
+}
+
+// Recover an uncertain create response without creating a branch or PR. Missing
+// evidence is pending, never proof that an in-flight GitHub request cannot land.
+export async function readExistingGalleryReview(candidateResult, options = {}) {
+    const candidate=validateCandidateResult(candidateResult);
+    requireExactKeys(options,['expectedBaseSha','token','fetchImpl'],'Gallery existing review options');
+    const baseSha=validateCommitSha(options.expectedBaseSha,'expectedBaseSha');
+    const github=createFixedGitHubClient(validateFetch(options.fetchImpl),validateToken(options.token));
+    const branchRef=deriveOwnedBranch(candidate.receipt.operationId);
+    const headSha=await readOptionalRef(github,`heads/${branchRef}`);
+    const pulls=await listOperationPullRequests(github,branchRef);
+    if(!headSha || pulls.length!==1) throw new Error('Review creation is still uncertain.');
+    const title=`Add approved Gallery photo: ${candidate.itemId}`,body=pullRequestBody(candidate,branchRef);
+    await verifyOwnedCandidateBranch(github,{candidate,branchRef,branchSha:headSha,baseSha,
+        commitMessage:`Add approved Gallery photo ${candidate.itemId}`});
+    const pull=validateOpenPullRequest(pulls[0],{branchRef,branchSha:headSha,baseSha,title,body});
+    return deepFreeze({schemaVersion:'1.0',replayed:true,repository:repositoryFullName,baseRef,baseSha,branchRef,headSha,
+        targetRelativePath:candidate.targetRelativePath,itemId:candidate.itemId,manifestSha256:candidate.manifestSha256,
+        pullRequest:{number:pull.number,url:pull.html_url,state:'open'}});
+}
+
+// Read-only acknowledgement of a separately owner-merged historical review.
+// This is NOT a merge operation and is unavailable to normal invalidation.
+export async function readMergedGalleryReview(candidateResult,reviewResult,options={}) {
+    const candidate=validateCandidateResult(candidateResult);
+    requireExactKeys(options,['expectedBaseSha','token','fetchImpl'],'Merged review read options');
+    const baseSha=validateCommitSha(options.expectedBaseSha,'expectedBaseSha');
+    const review=validateReviewResult(reviewResult,candidate,baseSha);
+    const github=createFixedGitHubClient(validateFetch(options.fetchImpl),validateToken(options.token));
+    const pull=await github.request('GET',`/pulls/${review.pullRequest.number}`);
+    if(pull?.state!=='closed' || typeof pull.merged_at!=='string' || Number.isNaN(Date.parse(pull.merged_at)) ||
+        !commitShaPattern.test(pull.merge_commit_sha||'') || pull.draft!==false ||
+        pull.number!==review.pullRequest.number || pull.html_url!==review.pullRequest.url ||
+        pull.title!==`Add approved Gallery photo: ${candidate.itemId}` || pull.body!==pullRequestBody(candidate,review.branchRef) ||
+        pull.head?.sha!==review.headSha || pull.head?.ref!==review.branchRef || pull.base?.ref!==baseRef ||
+        pull.head?.repo?.full_name!==repositoryFullName || pull.base?.repo?.full_name!==repositoryFullName) throw new Error('Unverified merged review.');
+    const mergedText=decodeRepositoryFile(await github.request('GET',`/contents/${candidate.targetRelativePath}?ref=${pull.merge_commit_sha}`),
+        candidate.targetRelativePath,'merged manifest');
+    const merged=JSON.parse(mergedText),expected=JSON.parse(candidate.manifestText).items.find(i=>i.id===candidate.itemId);
+    if(galleryContract.validateGalleryDocument(merged).length || JSON.stringify(merged.items.find(i=>i.id===candidate.itemId))!==JSON.stringify(expected))
+        throw new Error('Merged manifest differs.');
+    const main=await readRequiredRef(github,'heads/main','base branch');
+    const comparison=await github.request('GET',`/compare/${pull.merge_commit_sha}...${main}`);
+    if(!['identical','ahead'].includes(comparison.status)) throw new Error('Merge does not belong to current main.');
+    await assertBaseStillCurrent(github,main);
+    return deepFreeze({state:'merged-by-owner',pullRequestNumber:pull.number,mergeSha:pull.merge_commit_sha,mainSha:main,headSha:review.headSha});
+}
+
 export async function createOrReconcileGalleryReview(candidateResult, options = {}) {
     const candidate = validateCandidateResult(candidateResult);
     requireExactKeys(

@@ -3,6 +3,7 @@ import catalogSnapshot from '../generated/catalog-snapshot.js';
 import { verifyWorkerAccessIdentity } from './access.js';
 import { readPrivateGalleryRoster } from './private-gallery-roster-service.js';
 import { reservePrivateGalleryAsset, readPrivateGalleryAsset } from './private-gallery-asset-service.js';
+import { readPrivateGalleryTags, correctPrivateGalleryTags } from './private-gallery-tag-service.js';
 import { createPrivateGalleryPerson, readPrivateGalleryVisibility, readPrivateGalleryPreferences, changePrivateGalleryVisibility,
     readPrivateGalleryAssetEligibility } from './private-gallery-visibility-service.js';
 import { privateGalleryDocument, privateGalleryScript } from './private-gallery-assets.js';
@@ -273,6 +274,13 @@ async function handleBrowserRoute(
         return serviceResultResponse(await readPrivateGalleryAssetEligibility(env,identity,siteMode,route.assetId,catalogSnapshot));
     }
 
+    if (route.kind === 'private-tags') {
+        if (request.method === 'GET') return serviceResultResponse(await readPrivateGalleryTags(env,identity,siteMode,route.assetId));
+        if (request.method !== 'POST') return adminFailure(405, {Allow:'GET, POST'});
+        const parsed = await readBoundedJson(request);
+        if (!parsed.ok) return adminFailure(parsed.status);
+        return serviceResultResponse(await correctPrivateGalleryTags(env,identity,siteMode,route.assetId,parsed.value));
+    }
     if (route.kind === 'private-assets') {
         if (request.method !== 'POST') return adminFailure(405, { Allow: 'POST' });
         const parsed = await readBoundedJson(request);
@@ -537,6 +545,8 @@ function matchPhaseCRoute(pathname) {
     if (pathname === '/api/browser/private-people') return {kind:'private-people'};
     const visibilityMatch = /^\/api\/browser\/private-people\/(person_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/visibility$/.exec(pathname);
     if (visibilityMatch) return {kind:'private-visibility',personId:visibilityMatch[1]};
+    const tagsMatch = /^\/api\/browser\/private-assets\/(asset_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/tags$/.exec(pathname);
+    if (tagsMatch) return {kind:'private-tags',assetId:tagsMatch[1]};
     const eligibilityMatch = /^\/api\/browser\/private-assets\/(asset_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/eligibility$/.exec(pathname);
     if (eligibilityMatch) return {kind:'private-eligibility',assetId:eligibilityMatch[1]};
     if (pathname === '/api/browser/private-assets') return { kind: 'private-assets' };
