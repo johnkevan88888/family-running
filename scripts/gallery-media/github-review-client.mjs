@@ -73,8 +73,197 @@ const galleryContract = globalThis.galleryContract;
  * paths are fixed in this module. The only injected capabilities are an HTTPS
  * fetch implementation and a short-lived repository-scoped GitHub App token.
  */
+// Read-only inputs for the archive lifecycle. No caller-selected repository,
+// path, branch or destination; both manifests are read at one pinned main SHA.
+export async function readGalleryReviewMain(options = {}) {
+    requireExactKeys(options,['token','fetchImpl'],'Gallery main read options');
+    const github=createFixedGitHubClient(validateFetch(options.fetchImpl),validateToken(options.token));
+    const baseSha=await readRequiredRef(github,'heads/main','base branch');
+    const manifestsBySite={};
+    for(const site of ['family','everyone']) {
+        const path=`gallery-data/${site}.json`;
+        const text=decodeRepositoryFile(await github.request('GET',`/contents/${path}?ref=${baseSha}`),path,'base manifest');
+        const document=JSON.parse(text);
+        if(galleryContract.validateGalleryDocument(document).length) throw new Error('Invalid current Gallery manifest.');
+        manifestsBySite[site]=document;
+    }
+    await assertBaseStillCurrent(github,baseSha);
+    return deepFreeze({baseSha,manifestsBySite});
+}
+
+// Recover an uncertain create response without creating a branch or PR. Missing
+// evidence is pending, never proof that an in-flight GitHub request cannot land.
+export async function readExistingGalleryReview(candidateResult, options = {}) {
+    const candidate=validateCandidateResult(candidateResult);
+    requireExactKeys(options,['expectedBaseSha','token','fetchImpl'],'Gallery existing review options');
+    const baseSha=validateCommitSha(options.expectedBaseSha,'expectedBaseSha');
+    const github=createFixedGitHubClient(validateFetch(options.fetchImpl),validateToken(options.token));
+    const branchRef=deriveOwnedBranch(candidate.receipt.operationId);
+    const headSha=await readOptionalRef(github,`heads/${branchRef}`);
+    const pulls=await listOperationPullRequests(github,branchRef);
+    if(!headSha || pulls.length!==1) throw new Error('Review creation is still uncertain.');
+    const title=`Add approved Gallery photo: ${candidate.itemId}`,body=pullRequestBody(candidate,branchRef);
+    await verifyOwnedCandidateBranch(github,{candidate,branchRef,branchSha:headSha,baseSha,
+        commitMessage:`Add approved Gallery photo ${candidate.itemId}`});
+    const pull=validateOpenPullRequest(pulls[0],{branchRef,branchSha:headSha,baseSha,title,body});
+    return deepFreeze({schemaVersion:'1.0',replayed:true,repository:repositoryFullName,baseRef,baseSha,branchRef,headSha,
+        targetRelativePath:candidate.targetRelativePath,itemId:candidate.itemId,manifestSha256:candidate.manifestSha256,
+        pullRequest:{number:pull.number,url:pull.html_url,state:'open'}});
+}
+
+// Read-only acknowledgement of a separately owner-merged historical review.
+// This is NOT a merge operation and is unavailable to normal invalidation.
+export async function readMergedGalleryReview(candidateResult,reviewResult,options={}) {
+    const candidate=validateCandidateResult(candidateResult);
+    requireExactKeys(options,['expectedBaseSha','token','fetchImpl'],'Merged review read options');
+    const baseSha=validateCommitSha(options.expectedBaseSha,'expectedBaseSha');
+    const review=validateReviewResult(reviewResult,candidate,baseSha);
+    const github=createFixedGitHubClient(validateFetch(options.fetchImpl),validateToken(options.token));
+    const pull=await github.request('GET',`/pulls/${review.pullRequest.number}`);
+    if(pull?.state!=='closed' || typeof pull.merged_at!=='string' || Number.isNaN(Date.parse(pull.merged_at)) ||
+        !commitShaPattern.test(pull.merge_commit_sha||'') || pull.draft!==false ||
+        pull.number!==review.pullRequest.number || pull.html_url!==review.pullRequest.url ||
+        pull.title!==`Add approved Gallery photo: ${candidate.itemId}` || pull.body!==pullRequestBody(candidate,review.branchRef) ||
+        pull.head?.sha!==review.headSha || pull.head?.ref!==review.branchRef || pull.base?.ref!==baseRef ||
+        pull.head?.repo?.full_name!==repositoryFullName || pull.base?.repo?.full_name!==repositoryFullName) throw new Error('Unverified merged review.');
+    const mergedText=decodeRepositoryFile(await github.request('GET',`/contents/${candidate.targetRelativePath}?ref=${pull.merge_commit_sha}`),
+        candidate.targetRelativePath,'merged manifest');
+    const merged=JSON.parse(mergedText),expected=JSON.parse(candidate.manifestText).items.find(i=>i.id===candidate.itemId);
+    if(galleryContract.validateGalleryDocument(merged).length || JSON.stringify(merged.items.find(i=>i.id===candidate.itemId))!==JSON.stringify(expected))
+        throw new Error('Merged manifest differs.');
+    const main=await readRequiredRef(github,'heads/main','base branch');
+    const comparison=await github.request('GET',`/compare/${pull.merge_commit_sha}...${main}`);
+    if(!['identical','ahead'].includes(comparison.status) || comparison.behind_by!==0 || comparison.merge_base_commit?.sha!==pull.merge_commit_sha)
+        throw new Error('Merge does not belong to current main.');
+    await assertBaseStillCurrent(github,main);
+    return deepFreeze({state:'merged-by-owner',pullRequestNumber:pull.number,mergeSha:pull.merge_commit_sha,mainSha:main,headSha:review.headSha});
+}
+
 export async function createOrReconcileGalleryReview(candidateResult, options = {}) {
     const candidate = validateCandidateResult(candidateResult);
+    return createOrReconcileExactReview(candidate, options, false);
+}
+
+// Archive workflows record a one-way SQL admission immediately before the
+// first PR POST. A closed generation can never admit a delayed PR creator.
+// Keep the legacy client and its exact options unchanged.
+export async function createOrReconcileArchiveGalleryReview(candidateResult, options = {}) {
+    requireExactKeys(options,['expectedBaseSha','token','fetchImpl','admitPullRequest'],'Archive review options');
+    if(typeof options.admitPullRequest!=='function') throw new Error('PR admission required.');
+    const {admitPullRequest,...fixed}=options;
+    return createOrReconcileExactReview(validateCandidateResult(candidateResult),fixed,false,admitPullRequest);
+}
+
+// Separate removal-only capability. Never accepted by the addition entry point.
+// The entire public item is supplied by the closed generation's stored evidence,
+// not private identities/reasons or arbitrary caller-selected deletion targets.
+export async function createOrReconcileGalleryRemoval(removal, options = {}) {
+    return createOrReconcileExactReview(validateRemoval(removal), options, true);
+}
+
+export async function createOrReconcileArchiveGalleryRemoval(removal,options={}) {
+    requireExactKeys(options,['expectedBaseSha','token','fetchImpl','admitPullRequest'],'Archive removal options');
+    if(typeof options.admitPullRequest!=='function') throw new Error('PR admission required.');
+    const {admitPullRequest,...fixed}=options;
+    return createOrReconcileExactReview(validateRemoval(removal),fixed,true,admitPullRequest);
+}
+
+function validateRemoval(removal) {
+    requireExactKeys(removal, ['operationId','targetRelativePath','item','manifestText','manifestSha256'], 'Gallery removal');
+    if (!/^removal_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(removal.operationId || '') ||
+        !allowedManifestPaths.has(removal.targetRelativePath) || removal.item?.type !== 'photo' ||
+        galleryContract.validateGalleryDocument({schemaVersion:'1.0',items:[removal.item]}).length ||
+        ![removal.item.sourceUrl,removal.item.thumbnailUrl].every(url=>/^https:\/\/[a-z0-9.-]+\/media\/v2\/[0-9a-f-]{36}\/[0-9a-f]{64}\/(display|thumbnail)\.webp$/.test(url || '')) ||
+        typeof removal.manifestText !== 'string' || Buffer.byteLength(removal.manifestText,'utf8') > maximumManifestBytes ||
+        sha256Revision(removal.manifestText) !== removal.manifestSha256) throw new Error('Invalid exact photo removal.');
+    const document=JSON.parse(removal.manifestText);
+    if (galleryContract.validateGalleryDocument(document).length || canonicalManifest(document) !== removal.manifestText ||
+        document.items.some(item=>item.id===removal.item.id)) throw new Error('Invalid removal document.');
+    const candidate=deepFreeze({targetRelativePath:removal.targetRelativePath,itemId:removal.item.id,
+        manifestText:removal.manifestText,manifestSha256:removal.manifestSha256,
+        receipt:{operationId:removal.operationId},removedItem:cloneJson(removal.item)});
+    return candidate;
+}
+
+// Checked terminal evidence, including a request interrupted BEFORE PR
+// admission. No-PR is only an observation here: the SQL ledger separately
+// requires that no PR POST was ever admitted. An uncertain POST stays pending.
+export async function reconcileArchiveGalleryReview(value, options={}) {
+    requireExactKeys(options,['expectedBaseSha','token','fetchImpl','kind'],'Archive reconciliation options');
+    if(!['addition','removal'].includes(options.kind)) throw new Error('Invalid review kind.');
+    const removalOnly=options.kind==='removal';
+    const candidate=removalOnly?validateRemoval(value):validateCandidateResult(value);
+    const baseSha=validateCommitSha(options.expectedBaseSha,'terminal base');
+    const github=createFixedGitHubClient(validateFetch(options.fetchImpl),validateToken(options.token));
+    const branchRef=deriveOwnedBranch(candidate.receipt.operationId);
+    const headSha=await readOptionalRef(github,`heads/${branchRef}`);
+    const pulls=await listOperationPullRequests(github,branchRef);
+    if(pulls.length>1 || !headSha && pulls.length) throw new Error('Uncertain review identity.');
+    if(headSha) await verifyOwnedCandidateBranch(github,{candidate,branchRef,branchSha:headSha,baseSha,
+        commitMessage:`${removalOnly?'Remove retired':'Add approved'} Gallery photo ${candidate.itemId}`});
+    const evidence={schemaVersion:'1.0',repository:repositoryFullName,baseRef,baseSha,branchRef,headSha,
+        targetRelativePath:candidate.targetRelativePath,itemId:candidate.itemId,manifestSha256:candidate.manifestSha256,
+        state:'no-pr-created',pullRequest:null,mergeSha:null,mainSha:null};
+    if(!pulls.length) {
+        if(await readOptionalRef(github,`heads/${branchRef}`)!==headSha || (await listOperationPullRequests(github,branchRef)).length)
+            throw new Error('Review changed during reconciliation.');
+        return deepFreeze(evidence);
+    }
+    const validate= pull => {
+        if(!['open','closed'].includes(pull?.state) || !Number.isSafeInteger(pull?.number) || pull.number<1 ||
+            pull.html_url!==`https://github.com/${repositoryFullName}/pull/${pull.number}` || pull.draft!==false ||
+            pull.title!==`${removalOnly?'Remove retired':'Add approved'} Gallery photo: ${candidate.itemId}` ||
+            pull.body!==pullRequestBody(candidate,branchRef) || pull.head?.sha!==headSha || pull.head?.ref!==branchRef ||
+            pull.head?.repo?.full_name!==repositoryFullName || pull.base?.ref!==baseRef ||
+            pull.base?.repo?.full_name!==repositoryFullName) throw new Error('Changed or unowned review.');
+        return pull;
+    };
+    let pull=validate(await github.request('GET',`/pulls/${validate(pulls[0]).number}`));
+    if(pull.merged_at===null && pull.state==='open') {
+        try {await github.request('PATCH',`/pulls/${pull.number}`,{state:'closed'});} catch { /* readback required */ }
+        pull=validate(await github.request('GET',`/pulls/${pull.number}`));
+    }
+    if(pull.state!=='closed') throw new Error('Review not terminal.');
+    evidence.pullRequest={number:pull.number,url:pull.html_url,state:'closed'};
+    if(pull.merged_at===null) evidence.state='closed-unmerged';
+    else {
+        if(typeof pull.merged_at!=='string' || Number.isNaN(Date.parse(pull.merged_at)) || !commitShaPattern.test(pull.merge_commit_sha||''))
+            throw new Error('Unverified merge.');
+        const document=JSON.parse(decodeRepositoryFile(await github.request('GET',
+            `/contents/${candidate.targetRelativePath}?ref=${pull.merge_commit_sha}`),candidate.targetRelativePath,'merged review'));
+        if(galleryContract.validateGalleryDocument(document).length || canonicalManifest(document)!==candidate.manifestText)
+            throw new Error('Merged bytes differ from reviewed manifest.');
+        const main=await readRequiredRef(github,'heads/main','main');
+        const compare=await github.request('GET',`/compare/${pull.merge_commit_sha}...${main}`);
+        if(!['identical','ahead'].includes(compare?.status) || compare.behind_by!==0 ||
+            compare.merge_base_commit?.sha!==pull.merge_commit_sha) throw new Error('Merge outside current main.');
+        await assertBaseStillCurrent(github,main);
+        evidence.state='merged-by-owner';evidence.mergeSha=pull.merge_commit_sha;evidence.mainSha=main;
+    }
+    if(await readRequiredRef(github,`heads/${branchRef}`,'review branch')!==headSha) throw new Error('Review branch changed.');
+    return deepFreeze(evidence);
+}
+
+const canonicalManifest = document => `${JSON.stringify(document,null,2)}\n`;
+
+async function proveCandidateIsOneRemoval(github,candidate,baseSha) {
+    const site=candidate.targetRelativePath==='gallery-data/family.json'?'family':'everyone';
+    const documents={};
+    for (const area of ['family','everyone']) {
+        const path=`gallery-data/${area}.json`;
+        documents[area]=JSON.parse(decodeRepositoryFile(await github.request('GET',`/contents/${path}?ref=${baseSha}`),path,'removal base'));
+        if (galleryContract.validateGalleryDocument(documents[area]).length) throw new Error('Invalid removal base.');
+    }
+    const item=candidate.removedItem,own=documents[site],other=documents[site==='family'?'everyone':'family'];
+    const usesTarget=value=>value.id===item.id || [value.sourceUrl,value.thumbnailUrl,value.posterUrl].some(url=>
+        [item.sourceUrl,item.thumbnailUrl].includes(url));
+    if (own.items.filter(usesTarget).length!==1 || other.items.some(usesTarget) ||
+        JSON.stringify(own.items.find(value=>value.id===item.id))!==JSON.stringify(item) ||
+        canonicalManifest({schemaVersion:'1.0',items:own.items.filter(value=>value.id!==item.id)})!==candidate.manifestText)
+        throw new Error('Removal must remove exactly its recorded photo and preserve all other items and order.');
+}
+
+async function createOrReconcileExactReview(candidate, options, removalOnly, admitPullRequest) {
     requireExactKeys(
         options,
         ['expectedBaseSha', 'token', 'fetchImpl'],
@@ -85,16 +274,17 @@ export async function createOrReconcileGalleryReview(candidateResult, options = 
     const fetchImpl = validateFetch(options.fetchImpl);
     const github = createFixedGitHubClient(fetchImpl, token);
     const branchRef = deriveOwnedBranch(candidate.receipt.operationId);
-    const title = `Add approved Gallery photo: ${candidate.itemId}`;
+    const title = `${removalOnly?'Remove retired':'Add approved'} Gallery photo: ${candidate.itemId}`;
     const body = pullRequestBody(candidate, branchRef);
-    const commitMessage = `Add approved Gallery photo ${candidate.itemId}`;
+    const commitMessage = `${removalOnly?'Remove retired':'Add approved'} Gallery photo ${candidate.itemId}`;
 
     const currentBaseSha = await readRequiredRef(github, `heads/${baseRef}`, 'base branch');
     if (currentBaseSha !== expectedBaseSha) {
         throw new Error('Gallery review base branch is stale; regenerate the candidate from current main.');
     }
 
-    await proveCandidateIsOneAddition(github, candidate, expectedBaseSha);
+    const prove = removalOnly ? proveCandidateIsOneRemoval : proveCandidateIsOneAddition;
+    await prove(github, candidate, expectedBaseSha);
 
     let existingPulls = await listOperationPullRequests(github, branchRef);
     if (existingPulls.length > 1) {
@@ -144,6 +334,7 @@ export async function createOrReconcileGalleryReview(candidateResult, options = 
         });
         pullReplayed = true;
     } else {
+        if(admitPullRequest) await admitPullRequest();
         pullRequest = await createOrRecoverPullRequest(github, {
             branchRef,
             branchSha,
@@ -165,6 +356,7 @@ export async function createOrReconcileGalleryReview(candidateResult, options = 
     });
     await assertBaseStillCurrent(github, expectedBaseSha);
 
+    await prove(github, candidate, expectedBaseSha);
     return deepFreeze({
         schemaVersion: '1.0',
         replayed: branchReplayed || pullReplayed,

@@ -8,6 +8,7 @@ import {
     MEDIA_DELIVERY_VERSION_HEADER
 } from './media-delivery-contract.js';
 import { hashIdentity } from './session.js';
+import { parseV2PhotoDerivativeKey } from './photo-generation-keys.js';
 
 const textEncoder = new TextEncoder();
 const INPUT_KEYS = Object.freeze(['expectedStateVersion', 'idempotencyKey']);
@@ -1039,6 +1040,26 @@ function reservationMatchesLineage(row, target, attempt) {
         SHA256_PATTERN.test(row.reservationIdempotencyKeyHash || '') &&
         SHA256_PATTERN.test(row.reservedByIdentityHash || '') &&
         validIsoTime(row.reservedAt);
+}
+
+// Shared network proof only. The archive lifecycle separately owns admission,
+// retirement, complete target snapshots and the current-epoch receipt commit.
+// Legacy withdrawal SQL/purpose/lineage and its v1-only input are unchanged.
+export async function proveArchivePhotoHostAbsence(fetcher, config, targets, requestedTimeout) {
+    if (typeof fetcher !== 'function' || normalizeOrigin(config?.mediaOrigin) !== config?.mediaOrigin ||
+        config.mediaContract !== MEDIA_DELIVERY_CONTRACT_VALUE || !MEDIA_VERSION_PATTERN.test(config.mediaVersion || '') ||
+        config.witnessKey !== MEDIA_BINDING_WITNESS_KEY || config.witnessSha256 !== MEDIA_BINDING_WITNESS_SHA256 ||
+        config.witnessByteCount !== MEDIA_BINDING_WITNESS_SIZE || config.witnessContentType !== MEDIA_BINDING_WITNESS_CONTENT_TYPE ||
+        !Array.isArray(targets) || targets.length > 2 || new Set(targets.map(t=>t.approvedObjectKey)).size !== targets.length ||
+        targets.some(t=>!parseV2PhotoDerivativeKey(t?.approvedObjectKey) || !SHA256_PATTERN.test(t?.approvedObjectKeyHash || ''))) {
+        return unverifiable();
+    }
+    for(const target of targets) {
+        if(target.approvedObjectKeyHash!==await sha256Text(`approved-object-key:${target.approvedObjectKey}`) ||
+            parseV2PhotoDerivativeKey(target.approvedObjectKey).generationId!==parseV2PhotoDerivativeKey(targets[0].approvedObjectKey).generationId)
+            return unverifiable();
+    }
+    return proveHostAbsence(fetcher,config,targets,requestedTimeout);
 }
 
 async function proveHostAbsence(fetcher, config, targets, requestedTimeout) {

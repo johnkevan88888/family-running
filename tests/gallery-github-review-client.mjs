@@ -8,12 +8,19 @@ assert.deepEqual(
     Object.keys(reviewClientModule),
     [
         'createGalleryReviewOpenEvidenceHash',
+        'createOrReconcileArchiveGalleryRemoval',
+        'createOrReconcileArchiveGalleryReview',
+        'createOrReconcileGalleryRemoval',
         'createOrReconcileGalleryReview',
         'invalidateGalleryReview',
+        'readExistingGalleryReview',
+        'readGalleryReviewMain',
+        'readMergedGalleryReview',
+        'reconcileArchiveGalleryReview',
         'reconcileStoredGalleryReview',
         'refreshStoredGalleryReview'
     ],
-    'The module must expose only review creation and exact review invalidation/reconciliation.'
+    'The module must expose only addition/removal review creation and exact review invalidation/reconciliation.'
 );
 
 const {
@@ -65,6 +72,20 @@ const candidate = deepClone({
     }
 });
 const emptyManifestText = `${JSON.stringify({ schemaVersion: '1.0', items: [] }, null, 2)}\n`;
+
+for(const name of ['createOrReconcileArchiveGalleryReview','createOrReconcileArchiveGalleryRemoval'])
+    await assert.rejects(reviewClientModule[name](candidate,{expectedBaseSha:baseSha,token,
+        fetchImpl:()=>assert.fail('Missing PR gate must stop before network'),admitPullRequest:null}),/PR admission required/);
+const archiveGitHub=createMockGitHub();let archiveAdmissions=0;
+const archiveOptions={expectedBaseSha:baseSha,token,fetchImpl:archiveGitHub.fetch,admitPullRequest:async()=>{
+    assert.equal(archiveGitHub.state.requests.some(r=>r.method==='POST'&&r.path==='/pulls'),false);
+    archiveAdmissions++;
+}};
+await reviewClientModule.createOrReconcileArchiveGalleryReview(candidate,archiveOptions);
+assert.equal(archiveAdmissions,1,'Archive PR POST requires exactly one preceding admission');
+await reviewClientModule.createOrReconcileArchiveGalleryReview(candidate,{...archiveOptions,
+    admitPullRequest:()=>assert.fail('Exact open-review replay must not readmit a POST')});
+assert.equal(archiveGitHub.state.requests.filter(r=>r.method==='POST'&&r.path==='/pulls').length,1);
 
 const freshGitHub = createMockGitHub();
 const created = await createOrReconcileGalleryReview(candidate, {

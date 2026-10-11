@@ -1,7 +1,199 @@
 # Decision Log
 
+## Archive review recovery and owner job coordination — 11 October 2026
+
+Local `0027` distinguishes review intents from one-way PR POST admission. Checked
+no-PR observations can settle only closed requests without admitted POSTs/recorded
+PRs. A timeout after admission is uncertainty, not absence; exact closed/owner-
+merged PR evidence is required. Upgrade conservatively fences historical intents
+without rewriting consent or reviews. All removal reviews need their own terminal
+ledger, independently of byte cleanup, current host proof and current-main absence.
+
+Local `0028` chooses operations through owner/session/CSRF/inherited-area private
+jobs, not arbitrary workflow inputs. Split service identities and the existing two
+protected environments keep credentials separate. Manual main-only workflows take
+one opaque job ID and cannot dispatch, merge, deploy or create resources.
+
+A non-expiring global D1 claim and shared Actions concurrency serialize supported
+jobs. Publication preparation holds its claim across the separate owner merge,
+until checked observation or terminal cancellation. Purge has a separate owner-
+confirmed proof/key and cannot overlap it. Failure recovers in the SAME Actions
+run, not through expiry or cancellation. Atomic purge consumes private jobs/claims
+and keeps hash-only immutable replay evidence; people/unrelated archives survive.
+
+GitHub/D1 still have no shared transaction. The owner must use this publication
+path; code cannot restrict arbitrary owner merges outside it. Existing App/main
+restrictions and owner environments need separately approved live verification.
+This local design grants no live media, purge, deployment or publication authority.
+
+## Terminal archive metadata purge is atomic and separate from Hide — 10 October 2026
+
+John explicitly approved this local-only slice after the earlier broader approval
+was insufficient to replace no-delete guards. `0026` grants deletion only inside
+one bound INSERT after exact terminal owner request/original absence and all
+attempts' current storage, fixed-host, main and addition-review proofs. It retires
+opaque identities/keys and deletes only owned operational rows atomically. The
+grant consumes itself; interruption cannot leave partial deletion or retirement.
+Only hash-only immutable audit/retirement and server time survive. Shared private
+people/preferences, unrelated assets and legacy retention remain unchanged.
+Hide retains metadata; original deletion is not metadata purge. Every reservation,
+including one never admitted to processing, must be reconciled. No public-host
+proof is fabricated from an empty storage inventory.
+
+The internal DB-only service has no byte/network capability. Its fixed-client
+wrapper rereads both current-main manifests and refuses intervening changes,
+but GitHub and D1 cannot share a transaction. A future protected owner/CSRF path
+must serialize publication/purge; there is no live purge route or workflow now.
+Unresolved pre-review addition intents and all recorded removal intents/reviews fail
+closed until positive terminal reconciliation is implemented. Local tests do not
+authorize release, remote migration, deployment or live purge.
+
+## Archive services consume exact owner-approved scopes — 10 October 2026
+
+Use a request-local, non-serializable authority after verified Worker Access,
+bound to the existing owner, inherited area, exact attempt and fixed service
+purpose. Never fabricate a browser owner. Origin, delivery version and current
+epoch/witness checks remain mandatory on every archive service operation.
+Processing has originals/staging; promotion has staging/approved; the verifier
+has DB only. The finalizer is independently bundled and has originals/DB only;
+it consumes an existing owner deletion request, never creates consent or a request.
+No service environment may contain all the buckets. Legacy v1 routes retain
+their checks; only well-formed new non-binding scalars are removed before their
+unchanged exact-environment validation. Archive routes never use that helper.
+
+Two immutable tier-absence checkpoints certify exact closed-generation cleanup
+by their separate storage services. They are not host proof. The verifier still
+performs the fixed-origin, current-version witness protocol and every historical
+target observation; a manifest receipt requires current host and terminal-review
+proof. Prepared-review recovery avoids source replay. Current main is read through
+the existing narrow GitHub client before restoration: historical DB receipts do
+not permit retired IDs/URLs to reappear. Hide stops at an unmerged exact one-file
+removal review if main still references the item. Allow plus fresh complete-person
+consent creates a new generation and stops at an unmerged addition review.
+
+Containment requirement fragments cover private-archive/v1/, derivative-staging/v2/
+and media/v2/ with exact 24-hour multipart abort rules. They neither replace bucket
+policies nor delete objects, and never count as synchronous cleanup or host proof.
+Actual remote policies must be read and verified at a separate activation gate.
+
+At that earlier checkpoint metadata purge remained disabled. Safety review rejected introducing an irreversible
+purge migration/service under the broader retention/containment approval. No 0026
+migration or retention-purge service was created, and existing no-delete guards
+remained. The later explicit local-only approval is recorded in the decision above.
+Hide must never qualify; terminal consent
+withdrawal keeps immediate byte deletion and minimum-audit priority. Legacy
+30-day retention rules and v1 permanent retirement remain unchanged.
+
+## Owner intake and public removal review have separate authority — 10 October 2026
+
+Private original intake uses the existing verified browser owner, inherited area,
+signed session, same-origin and CSRF boundary. Private-retention consent and fresh
+public-use consent are separate explicit forms and records; neither Allow nor an
+original byte-match receipt grants publication. Bounded body reading precedes the
+existing quarantine service, with ownership checked before bytes. No filenames,
+private person IDs, object keys or arbitrary destinations become public inputs.
+
+An exact-removal review is a separate narrow GitHub-client capability, not a flag
+that relaxes the addition contract. It must remove precisely the historical public
+item from one inherited manifest, preserve all other content and reject collateral
+URL use. Immutable intent/review evidence survives uncertain replies. A review is
+not a merge or completed removal; current fixed-main and independent public-host
+proof remain mandatory. Originals and complete private tags survive reversible
+hiding; archive metadata purge remains unfinished rather than silently permanent.
+
+These owner controls and removal adapter are local only. The proposed service
+authority adapter was rejected and not applied because its conditional media
+origin/version checks could weaken the existing boundary. No alternative service
+authority architecture is accepted by this entry: mandatory configured checks,
+separate bucket capabilities and explicit local design approval remain required.
+
+## Archive generations close before cleanup and restoration never reopens them — 10 October 2026
+
+Connect retained-photo reservations to the existing pinned processor and narrow
+review client through an internal archive-specific lifecycle, not manufactured
+legacy drafts or a transfer of original ownership. The new ledger checks current
+complete tag/visibility versions, consent, exclusions, source receipt and delivery
+epoch at durable writes. Mutable permission changes close affected attempts before
+cleanup. Immutable output keys/writers/receipts remain available for recovery;
+GitHub outages cannot hold up public-byte removal. Originals and private tags
+survive reversible hiding, while terminal consent deletion remains stronger.
+
+Storage absence is not public-host absence. New v2 proof uses the existing strict
+fixed-origin witness/target protocol, checks the complete historical target set
+and current epoch, and leaves v1 withdrawal/purge untouched. Manifest convergence
+requires a current fixed-main read and separately reviewed removal. A read-only
+acknowledgement may recognize an independently owner-merged candidate, never merge
+one. Allow is not consent: restoration requires fresh explicit consent, completed
+prior removal and a new generation even when stripped image bytes are identical.
+Historical manifest receipts cannot substitute for a current main read: new
+attempt admission first reconciles all earlier generations, and main movement
+during a removal-receipt write remains pending. Later reappearance of a retired
+item/URL blocks restoration without replaying completed cleanup or original I/O.
+The internal runner stops at an unmerged one-file review and is not activated by
+HTTP, workflow or UI; production processing/promotion capability separation,
+protected orchestration and archive metadata retention/purge remain prerequisites.
+
+## Retained-photo review preparation has fresh consent and separate ownership — 10 October 2026
+
+Keep each retained private asset independent of legacy processing drafts and
+their terminal retention/purge. Local `0022` reservations attach new complete-
+person public-use/minor/guardian consent to the current tag and visibility
+versions, source catalogue and quarantined original receipt. They never copy
+old consent, reactivate a withdrawn draft, transfer original ownership or treat
+private retention as public permission. Server-generated prospective item and
+generation UUIDs reserve new identities without admitting a public generation.
+Until archive-source processing, v2 promotion/cleanup/host verification and
+hide/restore orchestration are complete, the module remains unrouted and cannot
+start processing, create a candidate or publish. Expired or stale reservations
+remain immutable history, not current authorization. Existing public manifests,
+media retirement, metadata stripping and withdrawal/purge contracts are intact.
+
+
 This log records durable architectural decisions, not proposed features.
 Unknown historical details are labelled rather than inferred.
+
+## 2026-10-08 — Tag corrections append evidence instead of rewriting permission
+
+Complete private photo-tag sets are versioned independently of the immutable
+initial asset reservation. Each correction appends the previous and new
+ordered sets, actor, current roster generation and fresh complete-person
+private-retention/guardian attestations; associations are written atomically.
+Current reads and eligibility use the latest complete revision and include its
+version, preventing a return to the same people from reviving older approval.
+Original tags, photo bytes, original intake permission and receipts stay intact.
+
+Unfinished original intake and terminal deletion block correction. New intake
+after correction requires an explicit current tag version at the owner/service
+boundary and SQL write; legacy version-one intake fingerprints remain unchanged.
+Private retention is not public permission: any future publication attempt
+still requires fresh complete-person public consent, current visibility and
+all existing processing/stripping/review gates. No metadata purge, retention
+extension, draft resurrection or automatic publication follows from correction.
+
+## 2026-10-01 — Private visibility is a versioned preference, not publication consent
+
+New protected Gallery people start hidden. Owner preference events are
+append-only and compare-and-set at the SQL write, including the current roster
+generation and inherited area. Hide/allow cycles invalidate older eligibility
+even when the final preference matches an earlier value. Complete private tags
+remain independent of public roster membership; projection emits only exact
+current mapped public athlete IDs, never private person IDs/names. Public
+suppression and unresolved exclusions cannot be overridden by private allow.
+The preparatory preference UI must distinguish a preference from completed
+public removal or a reviewed publication attempt.
+
+## 2026-10-01 — Restored photos need new opaque addresses without altered image bytes
+
+John approved preparing an additive photo-only address format locally:
+`media/v2/<server-generated-v4-UUID>/<verified-sha256>/display.webp` or
+`thumbnail.webp`. It carries no private identity, original filename or race.
+Both derivatives in one future attempt must share a durable generation ID;
+new attempts need a new ID, even for identical stripped bytes. Existing v1
+formats and permanent URL retirement remain unchanged. No image watermark,
+metadata salt or quality/pixel variation is introduced solely to escape
+retirement. Builder/delivery tests are not proof of lifecycle integration:
+forward SQL admission, cleanup, host verification and review integration are
+required before any v2 promotion. Deployment remains separately approved.
 
 ## 2026-09-25 — Review refresh preserves an immutable origin, not a rewritten receipt
 
@@ -27,7 +219,46 @@ resubmission until the owner explicitly starts another photo. The new form
 clears consent answers. Opening an existing draft never regenerates its ID.
 Server validation, duplicate rejection, draft IDs, storage keys and public
 manifest contracts are unchanged. This identifier is not authorization.
-No database migration is needed. Deployment remains a separate release gate.
+No database migration or deployment is implied by this local UI change.
+
+## 2026-09-25 — Complete Gallery tags belong in protected storage
+
+John accepted a private all-athlete catalogue and retained photo/tag history,
+not a public repository roster. Public-result membership, private tagging and
+permission to publish are separate facts. A hidden person blocks the whole
+group photo; later opt-in permits fresh checked publication, never automatic
+publication or reuse of retired generations. The uploader remains owner-only.
+
+Reversible visibility must be separate from terminal withdrawal/deletion and
+existing 30-day retention. No withdrawn/purged draft may be reclassified as an
+archive or have completed cleanup replayed. Private identities/tags, originals
+and evidence remain outside Git/public artifacts. Real roster/workbook access,
+release, remote migration/deployment and publication need their explicit gates.
+
+The first local storage slice adds an empty private catalogue and owner-only
+GET route, using the existing D1 binding and signed area session. It deliberately
+does not widen the public uploader/tag validator before archive, consent and
+publication integration exists. Future imports must preserve opaque person IDs
+and be atomic; catalogue revision checks cannot substitute for consent checks.
+See `docs/gallery-private-tagging-plan.md` for the remaining work.
+
+The next local slice reserves independent private assets and complete tags in
+one revision-checked SQL write. Archive keys use a separate `private-archive/v1/`
+namespace and no draft ownership link, so an old draft's terminal purge cannot
+claim them. Owner request replay returns the existing reservation only. This
+does not accept bytes or confer consent/publication rights: all records stay
+`awaiting-original` until a separately tested archive intake, tag-revision and
+consent/deletion lifecycle is implemented. Existing draft retention is unchanged.
+
+Internal archive intake now distinguishes private-retention consent from
+public-use consent and stops at byte-checked quarantine. It uses one immutable
+multipart writer registered before any bytes, rather than unconditional object
+PUTs which could arrive after cleanup. Terminal private removal is committed
+first, then the exact multipart writer is closed, the original deleted and
+absence checked. Retrying cannot create a replacement writer. No public route
+is enabled until decoder/processing, tag correction, archive purge and complete
+visibility/publication safeguards are integrated. Old draft lifecycle rules are
+unchanged; private original removal is not public-host or purge proof.
 
 ## 2026-09-25 — Gallery displays workbook-owned exact race-day age
 

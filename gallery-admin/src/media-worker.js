@@ -1,3 +1,4 @@
+import { parseV2PhotoDerivativeKey } from './photo-generation-keys.js';
 import {
     MEDIA_BINDING_WITNESS_CONTENT_TYPE,
     MEDIA_BINDING_WITNESS_KEY,
@@ -24,7 +25,8 @@ export async function handleMediaRequest(request, env) {
     }
 
     const match = MEDIA_PATH_PATTERN.exec(url.pathname);
-    if (!match) {
+    const photoGeneration = parseV2PhotoDerivativeKey(url.pathname.slice(1));
+    if (!match && !photoGeneration) {
         return mediaFailure(404);
     }
 
@@ -38,7 +40,7 @@ export async function handleMediaRequest(request, env) {
     }
 
     const key = url.pathname.slice(1);
-    const filename = match[2];
+    const filename = photoGeneration?.filename || match[2];
     const contentType = CONTENT_TYPES[filename];
     const rangeHeader = request.headers.get('Range');
 

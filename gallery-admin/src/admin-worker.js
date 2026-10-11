@@ -1,6 +1,13 @@
 import catalogSnapshot from '../generated/catalog-snapshot.js';
 
 import { verifyWorkerAccessIdentity } from './access.js';
+import { readPrivateGalleryRoster } from './private-gallery-roster-service.js';
+import { reservePrivateGalleryAsset, readPrivateGalleryAsset } from './private-gallery-asset-service.js';
+import { readPrivateGalleryTags, correctPrivateGalleryTags } from './private-gallery-tag-service.js';
+import { createPrivateGalleryPerson, readPrivateGalleryVisibility, readPrivateGalleryPreferences, changePrivateGalleryVisibility,
+    readPrivateGalleryAssetEligibility } from './private-gallery-visibility-service.js';
+import { privateGalleryDocument, privateGalleryScript } from './private-gallery-assets.js';
+import { handlePrivatePhotoOwnerOperation } from './private-gallery-owner-service.js';
 import {
     adminClientScript,
     adminShellDocument,
@@ -44,6 +51,7 @@ const ADMIN_SCRIPT_PATH = '/admin.js';
 const BROWSER_HEALTH_PATH = '/api/browser/health';
 const BROWSER_SESSION_PATH = '/api/browser/session';
 const BROWSER_CATALOG_PATH = '/api/browser/catalog';
+const BROWSER_PRIVATE_ROSTER_PATH = '/api/browser/private-roster';
 const BROWSER_DRAFTS_PATH = '/api/browser/drafts';
 const BROWSER_ATHLETE_EXCLUSIONS_PATH = '/api/browser/athlete-exclusions';
 const SYNTHETIC_RECORDS_PATH = '/api/browser/synthetic-records';
@@ -155,7 +163,17 @@ async function handleBrowserRoute(
         if (request.method !== 'GET') {
             return adminFailure(405, { Allow: 'GET' });
         }
-        return adminHtml(200, adminShellDocument(siteMode));
+        return adminHtml(200, adminShellDocument(siteMode).replace('<main id="main-content"',
+            `<p><a href="/private-gallery?site=${siteMode}">Protected photo library and complete athlete tags</a></p><main id="main-content"`));
+    }
+
+    if (pathname === '/private-gallery') {
+        if (request.method !== 'GET') return adminFailure(405, {Allow:'GET'});
+        return adminHtml(200, privateGalleryDocument(siteMode));
+    }
+    if (pathname === '/private-gallery.js') {
+        if (request.method !== 'GET') return adminFailure(405, {Allow:'GET'});
+        return adminScript(200, privateGalleryScript());
     }
 
     if (pathname === ADMIN_STYLES_PATH) {
@@ -226,6 +244,58 @@ async function handleBrowserRoute(
         mutation
     )) {
         return adminFailure(403);
+    }
+
+    if (route.kind === 'private-roster') {
+        if (request.method !== 'GET') {
+            return adminFailure(405, { Allow: 'GET' });
+        }
+        return serviceResultResponse(await readPrivateGalleryRoster(env, siteMode));
+    }
+
+    if (route.kind.startsWith('archive-')) {
+        const result=await handlePrivatePhotoOwnerOperation(request,env,identity,siteMode,route,catalogSnapshot,dependencies);
+        return result?.status===405 ? adminFailure(405,{Allow:result.allow}) : serviceResultResponse(result);
+    }
+
+    if (route.kind === 'private-people') {
+        if (request.method !== 'POST') return adminFailure(405, {Allow:'POST'});
+        const parsed = await readBoundedJson(request);
+        if (!parsed.ok) return adminFailure(parsed.status);
+        return serviceResultResponse(await createPrivateGalleryPerson(env,identity,siteMode,parsed.value,catalogSnapshot));
+    }
+    if (route.kind === 'private-preferences') {
+        if (request.method !== 'GET') return adminFailure(405, {Allow:'GET'});
+        return serviceResultResponse(await readPrivateGalleryPreferences(env,identity,siteMode));
+    }
+    if (route.kind === 'private-visibility') {
+        if (request.method === 'GET') return serviceResultResponse(await readPrivateGalleryVisibility(env,identity,siteMode,route.personId));
+        if (request.method !== 'POST') return adminFailure(405, {Allow:'GET, POST'});
+        const parsed = await readBoundedJson(request);
+        if (!parsed.ok) return adminFailure(parsed.status);
+        return serviceResultResponse(await changePrivateGalleryVisibility(env,identity,siteMode,route.personId,parsed.value));
+    }
+    if (route.kind === 'private-eligibility') {
+        if (request.method !== 'GET') return adminFailure(405, {Allow:'GET'});
+        return serviceResultResponse(await readPrivateGalleryAssetEligibility(env,identity,siteMode,route.assetId,catalogSnapshot));
+    }
+
+    if (route.kind === 'private-tags') {
+        if (request.method === 'GET') return serviceResultResponse(await readPrivateGalleryTags(env,identity,siteMode,route.assetId));
+        if (request.method !== 'POST') return adminFailure(405, {Allow:'GET, POST'});
+        const parsed = await readBoundedJson(request);
+        if (!parsed.ok) return adminFailure(parsed.status);
+        return serviceResultResponse(await correctPrivateGalleryTags(env,identity,siteMode,route.assetId,parsed.value));
+    }
+    if (route.kind === 'private-assets') {
+        if (request.method !== 'POST') return adminFailure(405, { Allow: 'POST' });
+        const parsed = await readBoundedJson(request);
+        if (!parsed.ok) return adminFailure(parsed.status);
+        return serviceResultResponse(await reservePrivateGalleryAsset(env, identity, siteMode, parsed.value));
+    }
+    if (route.kind === 'private-asset') {
+        if (request.method !== 'GET') return adminFailure(405, { Allow: 'GET' });
+        return serviceResultResponse(await readPrivateGalleryAsset(env, identity, siteMode, route.assetId));
     }
 
     if (route.kind === 'catalog') {
@@ -477,6 +547,22 @@ async function createSyntheticRecord(request, env, identity, now) {
 }
 
 function matchPhaseCRoute(pathname) {
+    const archiveMatch = /^\/api\/browser\/private-assets\/(asset_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(archive-intake|archive-original|archive-attempt|archive-deletion|archive-jobs)$/.exec(pathname);
+    if (archiveMatch) return {kind:archiveMatch[2],assetId:archiveMatch[1]};
+    if (pathname === '/api/browser/private-preferences') return {kind:'private-preferences'};
+    if (pathname === '/api/browser/private-people') return {kind:'private-people'};
+    const visibilityMatch = /^\/api\/browser\/private-people\/(person_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/visibility$/.exec(pathname);
+    if (visibilityMatch) return {kind:'private-visibility',personId:visibilityMatch[1]};
+    const tagsMatch = /^\/api\/browser\/private-assets\/(asset_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/tags$/.exec(pathname);
+    if (tagsMatch) return {kind:'private-tags',assetId:tagsMatch[1]};
+    const eligibilityMatch = /^\/api\/browser\/private-assets\/(asset_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/eligibility$/.exec(pathname);
+    if (eligibilityMatch) return {kind:'private-eligibility',assetId:eligibilityMatch[1]};
+    if (pathname === '/api/browser/private-assets') return { kind: 'private-assets' };
+    const assetMatch = /^\/api\/browser\/private-assets\/(asset_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/.exec(pathname);
+    if (assetMatch) return { kind: 'private-asset', assetId: assetMatch[1] };
+    if (pathname === BROWSER_PRIVATE_ROSTER_PATH) {
+        return { kind: 'private-roster' };
+    }
     if (pathname === BROWSER_CATALOG_PATH) {
         return { kind: 'catalog' };
     }
@@ -770,7 +856,7 @@ function normalizeConfiguredOrigin(value) {
 }
 
 function isBrowserPath(pathname) {
-    return pathname === ADMIN_SHELL_PATH ||
+    return pathname === '/private-gallery' || pathname === '/private-gallery.js' || pathname === ADMIN_SHELL_PATH ||
         pathname === ADMIN_STYLES_PATH ||
         pathname === ADMIN_SCRIPT_PATH ||
         pathname === BROWSER_HEALTH_PATH ||
@@ -780,7 +866,7 @@ function isBrowserPath(pathname) {
 }
 
 function isAreaScopedBrowserPath(pathname) {
-    return pathname === ADMIN_SHELL_PATH ||
+    return pathname === '/private-gallery' || pathname === ADMIN_SHELL_PATH ||
         pathname === BROWSER_SESSION_PATH ||
         pathname === SYNTHETIC_RECORDS_PATH ||
         matchPhaseCRoute(pathname) !== null;

@@ -1,0 +1,40 @@
+name: Protected archive terminal purge gate
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: Exact owner-requested inspection or separately confirmed purge job ID
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: gallery-archive-publication-purge
+  cancel-in-progress: false
+jobs:
+  terminal-gate:
+    if: github.repository == 'johnkevan88888/family-running' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: gallery-finalization
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/run-gallery-archive-job.mjs
+        env:
+          GALLERY_ARCHIVE_PHASE: purge
+          GALLERY_ARCHIVE_JOB_ID: ${{ inputs.job_id }}
+          GALLERY_BASE_SHA: ${{ github.sha }}
+          GALLERY_WORKFLOW_RUN_REFERENCE: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GALLERY_GITHUB_READ_TOKEN: ${{ github.token }}
+          GALLERY_WITHDRAWAL_FINALIZER_ORIGIN: ${{ secrets.GALLERY_WITHDRAWAL_FINALIZER_ORIGIN }}
+          GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_ID }}
+          GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_SECRET: ${{ secrets.GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_SECRET }}

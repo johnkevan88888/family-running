@@ -12,7 +12,7 @@ export const MEDIA_BINDING_WITNESS_PATH = `/${MEDIA_BINDING_WITNESS_KEY}`;
 
 const CANONICAL_WORKER_VERSION_ID =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-const EXACT_MEDIA_ENVIRONMENT_KEYS = Object.freeze([
+const EXACT_MEDIA_ENVIRONMENT_KEYS = /* @__PURE__ */ Object.freeze([
     'APPROVED_MEDIA',
     'MEDIA_VERSION'
 ]);

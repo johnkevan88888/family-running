@@ -1,4 +1,6 @@
 import { verifyWorkerAccessIdentity } from './access.js';
+import {isArchiveServicePath} from './private-gallery-service-request.js';
+import {handleArchiveVerifierRequest} from './private-gallery-verifier-adapter.js';
 import {
     MEDIA_BINDING_WITNESS_CONTENT_TYPE,
     MEDIA_BINDING_WITNESS_KEY,
@@ -37,6 +39,7 @@ export async function handlePublicHostVerifierRequest(
     env,
     dependencies = {}
 ) {
+    if(isArchiveServicePath(request)) return handleArchiveVerifierRequest(request,env,dependencies);
     const identityVerifier = dependencies.verifyAccessIdentity ||
         (() => verifyWorkerAccessIdentity(dependencies.accessContext, request));
     const identity = await verifyIdentity(identityVerifier);

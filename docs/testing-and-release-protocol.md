@@ -4,6 +4,47 @@ This project is a static GitHub Pages site. Excel/VBA remains the private source
 
 ## Local Setup
 
+### Protected archive continuation checks
+
+In addition to the existing owner-intake/private-lifecycle groups, run
+`tests/gallery-private-service-adapter.mjs`,
+`tests/gallery-protected-archive-lifecycle.mjs` and
+`tests/gallery-archive-containment.mjs`. They use generated photos, fictional
+private tags, SQLite and fixed synthetic HTTP/GitHub transports only. Cover both
+inherited areas; exact Access role/scope/configuration; no forged browser owner;
+real pinned decoding/metadata stripping; separated bucket capabilities; one-file
+unmerged review and removal; uncertain-reply recovery without source replay;
+current-main retired-URL rejection; new-generation restoration; both tier cleanup
+receipts before host I/O; exact current witness/host proof; and existing owner
+deletion only, without replaying completed original cleanup.
+
+The actual Wrangler dry-run finalizer bundle must contain neither derivative
+bucket bindings/operations nor GitHub capability. The required scalar
+`APPROVED_MEDIA_ORIGIN` is not an `APPROVED_MEDIA` bucket; assertions distinguish
+exact binding names and additionally reject `PRIVATE_DERIVATIVE_STAGING`.
+Actual local D1 must apply/compile 0025, including the host-before-manifest guard.
+Containment fixtures are requirements evidence, NOT evidence of remote policies,
+writer closure or public-host absence. No live archive purge capability is enabled.
+Keep focused/full results, current-main/artifact proof and live proof separate.
+
+`tests/gallery-private-retention.mjs` applies every forward migration through the
+pinned Wrangler SQL splitter and uses generated JPEGs/fictional people only.
+Cover both areas: Hide/service/combined-binding denial; exact terminal request
+and original absence; every admitted/unadmitted generation's current tier/host/
+main/review evidence; both-manifest historical-URL denial; dry-run without writes;
+direct deletion/update/REPLACE refusal; atomic rollback near the final deletion;
+lost completion response; hash-only immutable audit/retirement; unrelated archive
+and private-people preservation; retired reservation/identity/key denial; scoped
+proof-bound zero-I/O replay; and zero actual generations without fake host proof.
+The fixed-client internal wrapper must refuse main movement between its reads.
+Local D1 must apply `0026` and compile its entire atomic purge/delete-guard chain.
+Forward `0027`/`0028` additionally require exact addition/removal terminal ledgers
+and a distinct owner-confirmed active purge job. No live purge safety is inferred.
+Actual local D1 must execute the owner job/claim statements, reject a non-digit
+run suffix, and compile the completion/retirement guards. Use a literal comparison
+for the fixed GitHub run prefix and short wildcard patterns for its suffix: a
+full-URL wildcard may compile but fail at execution under D1's pattern limit.
+
 Install Node.js and pnpm if they are not already available.
 
 Install the Node development dependency once:
@@ -19,6 +60,122 @@ pnpm exec playwright install chromium
 ```
 
 ## Local Commands
+
+`node tests/gallery-private-owner-intake.mjs` tests the local protected owner
+wrapper with generated JPEGs and full SQLite migrations: verified owner/session/
+CSRF/area denial before provider I/O, exact original quarantine and lost-response
+replay, separate fresh public consent, safe state responses, bounded unknown-length
+and stalled bodies, terminal consent deletion and retained private tags. No service
+identity can use these routes. Consent reservation still reports processing and
+publication disabled. Private retention is not public-use consent or metadata purge.
+
+The private-library browser group exercises these controls in both inherited areas
+on desktop/mobile, including explicit minor answers, reset consent forms, no filename
+leak, upload reply recovery without another storage write and no destination selector.
+These owner controls are local-only, not an activated archive-to-review workflow.
+
+The lifecycle and GitHub-client groups also test local `0024` removal review intent/
+receipt guards and the separate exact one-item removal client. Generated fixtures
+prove a one-file unmerged removal review, read-only retry and refusal of collateral
+or cross-area edits. Creating a review never proves current-main removal or supplies
+a merge capability. The addition client does not accept removal-shaped input.
+Pinned Wrangler SQL splitting and actual local D1 depth checks include `0024`.
+
+The full runner now includes 75 groups. Run `tests/gallery-private-owner-workflow.mjs`
+for actual owner/session/CSRF and purpose-authenticated synthetic HTTP connections,
+pre-POST/no-PR recovery, a genuinely delayed admitted POST which must stay pending,
+conservative pre-gate upgrade, exact terminal removal reviews, completed-cleanup
+reuse, non-expiring publication versus an otherwise eligible purge, distinct owner
+purge confirmation and immutable hash-only no-I/O job replay. The same group checks
+the two main-only manual workflows, pinned actions, separate environments, one
+opaque input, shared non-cancelling concurrency and no dispatch/merge/deployment.
+Actual pinned local D1 must apply through `0028`, execute real owner job/claim SQL,
+deny run substitution and compile the full trigger/atomic-delete chain. Browser
+tests cover job consent reset, saved status and no dispatch in both areas/sizes.
+Passing proves only the supported local coordination path, not an atomic GitHub/D1
+transaction or control over arbitrary owner merges outside it. Live App restriction,
+owner-only environments, fixed origin/version/epoch and multipart containment still
+require separate verification/activation and a generated synthetic rehearsal. Mandatory
+origin/version and browser-owner checks remain unchanged. Local passing checks
+are not permission to deploy,
+use real photos/identities, mutate a remote PR, merge or publish.
+
+`node tests/gallery-private-photo-lifecycle.mjs` exercises the internal `0023`
+archive-source lifecycle with the actual pinned photo processor, complete forward
+SQLite migrations, fake fixed-repository GitHub transport and actual local
+workerd/R2 multipart storage. It tests both inherited areas, public-ID-only
+one-file review, read-only replay, complete-group hiding, retained original/tag
+identity, fresh-consent restoration with new URLs, revocation during byte/review
+I/O, interrupted cleanup, uncertain GitHub/provider replies, public-host fault
+responses, epoch races and terminal archive deletion priority. Main movement
+and retired-URL reappearance at restoration are explicitly tested.
+No new source or public bytes may be admitted on historical manifest proof alone.
+Fixture owner merges and removals are explicit synthetic state changes, never
+runner capabilities.
+Host proof must use the real media handler's witness/target HEAD/GET protocol,
+not infer absence from storage. Direct empty SQL host receipts are rejected.
+The actual R2 fixture uses the normal 5-second proof deadline; deterministic
+timeout-fault fixtures retain shorter limits. No real media or remote API is used.
+
+This group also applies `0023` through the pinned Wrangler SQL splitter: equivalent
+`iif` predicates avoid the provider's CASE/trigger splitting incompatibility
+without changing guards. Local D1 parity applies all forward migrations and
+compiles all new ledger writes under its actual expression-depth limit. The full
+runner now includes 74 groups. Internal runner proof is NOT proof that protected
+Workers/workflow/UI are connected or that a live host has removed anything.
+Before activation, finish protected orchestration, terminal review reconciliation,
+publication/purge serialization and remote multipart containment verification.
+No resource/binding/credential change, workflow dispatch,
+PR mutation, merge, deployment or publication is authorized by these local tests.
+Face-framing remains separate.
+
+`node tests/gallery-private-attempts.mjs` tests the database-only fresh
+public-consent reservation against an independently retained private photo.
+It uses fictional people, full forward SQLite migrations and generated JPEGs;
+requires current complete tags, owner/inherited area, current catalogue race,
+every visibility version, public-ID-only projection, fresh public/minor/guardian
+answers and the exact retained original receipt. SQL race hooks must themselves
+complete valid competing writes before claiming rejection. It covers rollback,
+lost replies, post-commit revocation, 24-hour replay expiry and unchanged older
+attestations/bytes/provider identity. The full runner includes it, and local
+D1 parity executes and compiles the real `0022` reservation INSERT. It does NOT
+admit a processing draft, prove decoding/stripping, create preview media or a
+PR, complete hide/restore, or authorize release/deployment. Its separate owner
+HTTP wrapper is tested above; the reservation module itself does not authenticate
+HTTP requests or gain storage/processing capability.
+The internal `0023` runner now tests archive-to-processing/review, v2 cleanup/host
+proof and hide/restore; metadata purge is internal/local-only. Protected activation
+and owner-operable orchestration remain unfinished. Face-framing stays separate.
+
+`node tests/gallery-private-tags.mjs` tests local migration 0021 and audited
+complete-tag corrections through actual SQLite and owner routes. It requires
+historical tags/attestations/receipts to remain intact, explicit fresh retention
+and guardian answers, versioned complete sets, roster/area/owner/CSRF boundaries,
+lost-response recovery and write-time tag/intake/deletion race refusal. Corrected
+intake must explicitly name its current tag version; old version-one fingerprints
+remain replayable without writes. The local R2 archive suite proves exact photo
+bytes and provider identity survive correction, and D1 parity executes the real
+correction/intake and compiles new write guards. These checks are in the full
+runner, not permission to activate archive intake or publish. Tag-edit UI,
+protected activation of archive-to-fresh-public-consent, hide/restore and v2
+lifecycle remain unfinished; the internal implementations are tested above.
+Existing old-draft withdrawal and purge isolation is retested with
+the full forward schema. Face-framing remains a separately scoped follow-up.
+
+Private tagging continuation adds `tests/gallery-private-visibility.mjs`,
+`tests/gallery-private-library-browser.mjs` and
+`tests/gallery-photo-generation-keys.mjs` to the full runner. They use fictional
+identities and local SQLite/virtual owner browser transport, checking private
+creation/replay, SQL revision races, complete-group visibility, non-public tag
+retention/projection, public suppression/exclusion precedence, Access/session/
+CSRF/area denial, safe literal names and four desktop/mobile screenshots.
+Generation-key tests preserve v1 delivery and prove strict opaque photo-only v2
+addresses, exact range reads and rejection before storage access. These tests
+do NOT prove v2 SQL promotion/retirement or complete archive-to-review/hide/
+restore integration. Intake is locally routed through the protected owner wrapper
+above, but the preparation UI must not be activated as a completed privacy workflow.
+Public-output comparisons now
+preserve the one published Family pilot, not an obsolete empty Family manifest.
 
 The review-refresh correction extends the existing manifest, GitHub-client and
 photo-review-bridge suites (already part of `pnpm test`). They require original
@@ -46,6 +203,41 @@ fresh consent after **Start another photo**, and read-only recovery by opening
 the committed draft after a lost usable save reply. Existing draft IDs are not
 rewritten. Both inherited areas and desktop/mobile layouts are exercised.
 These are local browser fixtures, not evidence of deployed uploader behavior.
+
+Protected all-athlete roster preparation is local-only. Run
+`node tests/gallery-private-roster.mjs` and
+`node tests/gallery-private-roster-storage.mjs` for fictional-identity contract,
+full SQLite migration-chain, private persistence/read and owner API tests.
+Both are included in the full runner. They do not authorize or prove a real
+roster import, archived photo/tag ownership, reversible hiding, re-inclusion,
+consent/publication integration or live activation. Missing private schema or
+invalid roster data must fail closed without a public-roster fallback. See
+`docs/gallery-private-tagging-plan.md` for the remaining acceptance matrix.
+
+Run `node tests/gallery-private-assets.mjs` for independent asset reservations,
+complete ordered private tags, revision-race rejection at SQL write, atomic
+rollback, lost-response idempotency and owner/session/area/CSRF boundaries.
+`tests/gallery-d1-expression-depth.mjs` executes the real statements in the
+pinned local D1 runtime. `tests/gallery-withdrawal-finalizer-service.mjs` also
+proves an independent reservation/tag record and synthetic sentinel object
+survive old-draft consent deletion and purge. These are included in the full
+runner. They do not verify retained photo intake or reversible visibility:
+every reservation remains `awaiting-original` and performs no object I/O.
+Archive-specific consent/deletion and tag-correction workflows must be complete
+before enabling actual intake; immutable preparatory records are not permission
+for indefinite retention. No existing withdrawal or purge check is relaxed.
+
+`node tests/gallery-private-archive.mjs` now tests the internal pre-publication
+quarantine/removal slice: separate private/guardian retention consent, exact
+bounded byte/hash/signature checks, conditional storage readback, immutable
+writer registration, stale/expired intake, completion/deletion races, writer
+closure, lost responses, pending cleanup and terminal replay. It uses generated
+JPEG/PNG fixtures, full local SQL migrations and an actual local R2 runtime.
+It is in the full runner; D1 parity also executes intake and compiles every new
+cleanup write. Passing does not approve decoder eligibility, metadata stripping,
+public use, hiding, metadata purge, real intake or live activation. The separate
+local protected owner HTTP wrapper is tested above. Before activating it, complete the remaining
+archive safeguards in `docs/gallery-private-tagging-plan.md`.
 
 Run all automated checks:
 

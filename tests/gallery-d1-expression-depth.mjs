@@ -7,6 +7,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { withdrawalFinalizerTestHooks } from
     '../gallery-admin/src/withdrawal-finalizer-service.js';
+import { readPrivateGalleryRoster } from
+    '../gallery-admin/src/private-gallery-roster-service.js';
+import { reservePrivateGalleryAsset, readPrivateGalleryAsset } from '../gallery-admin/src/private-gallery-asset-service.js';
+import { preparePrivateArchiveIntake } from '../gallery-admin/src/private-archive-service.js';
+import { correctPrivateGalleryTags } from '../gallery-admin/src/private-gallery-tag-service.js';
+import { reservePrivateGalleryAttempt } from '../gallery-admin/src/private-gallery-attempt-service.js';
+import { readPrivateGalleryAssetEligibility,changePrivateGalleryVisibility } from '../gallery-admin/src/private-gallery-visibility-service.js';
+import {queuePrivateArchiveJob,claimArchiveJob} from '../gallery-admin/src/private-gallery-job-service.js';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -78,6 +86,9 @@ try {
     ], environment, 120_000);
     assert.equal(migrations.error, undefined, diagnostic(migrations));
     assert.equal(migrations.status, 0, diagnostic(migrations));
+    const claimCompile = runWrangler(['d1','execute',...commonArguments,'--command',
+        'EXPLAIN INSERT INTO private_gallery_job_claims DEFAULT VALUES','--json'],environment);
+    assert.equal(claimCompile.status,0,diagnostic(claimCompile));
 
     // EXPLAIN compiles each INSERT and all table triggers into bytecode but does
     // not execute them. DEFAULT VALUES deliberately avoids fixture data: these
@@ -170,7 +181,139 @@ try {
     assert.match(countResult[0].results[0].transitionReplacementGuard,
         /existing\.idempotency_key = NEW\.idempotency_key OR\s+existing\.expected_state_version = NEW\.expected_state_version/);
 
-    console.log('Gallery D1 expression-depth parity tests passed.');
+    // Exercise the new private reader through the actual pinned D1 runtime,
+    // not just Node SQLite. This disposable database contains fictitious data.
+    const personId = 'person_00000000-0000-4000-8000-000000000001';
+    const seedRoster = runWrangler([
+        'd1', 'execute', ...commonArguments, '--command',
+        `INSERT INTO private_gallery_people
+            (person_id, display_name, public_athlete_id, family, everyone)
+         VALUES ('${personId}', 'Synthetic D1 Private Runner', NULL, 1, 0)`,
+        '--json'
+    ], environment);
+    assert.equal(seedRoster.status, 0, diagnostic(seedRoster));
+    const roster = await readPrivateGalleryRoster({ DB: { prepare(sql) {
+        return { async all() {
+            const query = runWrangler([
+                'd1', 'execute', ...commonArguments, '--command', sql, '--json'
+            ], environment);
+            assert.equal(query.status, 0, diagnostic(query));
+            const results = parseWranglerJson(query);
+            assert.equal(results.length, 1);
+            return results[0];
+        } };
+    } } }, 'family');
+    assert.equal(roster.ok, true);
+    assert.deepEqual(roster.people, [{ personId, displayName: 'Synthetic D1 Private Runner', publicAthleteId: null }]);
+    assert.match(roster.revision, /^sha256:[0-9a-f]{64}$/);
+
+    // Execute the real prepared service statements against disposable local D1.
+    // Wrangler has no binding arguments: literalize ONLY these synthetic test
+    // values, with quote escaping and no credentials/media/real-person data.
+    let beforeAssetWrite,lastD1Failure;
+    const assetEnv = { DB: { prepare(sql) {
+        let bindings = [];
+        const execute = () => {
+            const command = sql.replace(/\?(\d+)/g, (_, index) => {
+                const value = bindings[Number(index) - 1];
+                if (value === null) return 'NULL';
+                if (Number.isSafeInteger(value)) return String(value);
+                assert.equal(typeof value, 'string');
+                return `'${value.replaceAll("'", "''")}'`;
+            });
+            const query = runWrangler(['d1', 'execute', ...commonArguments, '--command', command, '--json'], environment);
+            if (query.status !== 0) { lastD1Failure=diagnostic(query);throw new Error(lastD1Failure); }
+            const results = parseWranglerJson(query);
+            assert.equal(results.length, 1);
+            return results[0];
+        };
+        return { bind(...values) { bindings = values; return this; }, async all() { return execute(); },
+            async first() { return execute().results[0] ?? null; },
+            async run() { const hook = beforeAssetWrite; beforeAssetWrite = undefined; hook?.(); return execute(); } };
+    } } };
+    const owner = {type:'browser',subject:'synthetic-d1-owner'};
+    const reservationInput = {idempotencyKey:crypto.randomUUID(), originalFormat:'jpg',
+        personIds:[personId], rosterRevision:roster.revision};
+    const reservation = await reservePrivateGalleryAsset(assetEnv, owner, 'family', reservationInput);
+    assert.equal(reservation.status, 201, JSON.stringify(reservation));
+    assert.deepEqual((await readPrivateGalleryAsset(assetEnv, owner, 'family', reservation.asset.assetId)).asset, reservation.asset);
+    assert.equal((await reservePrivateGalleryAsset(assetEnv, owner, 'family', reservationInput)).replayed, true);
+    beforeAssetWrite = () => {
+        const edit = runWrangler(['d1', 'execute', ...commonArguments, '--command',
+            `UPDATE private_gallery_people SET display_name = 'Synthetic D1 Changed Runner' WHERE person_id = '${personId}'`, '--json'], environment);
+        assert.equal(edit.status, 0, diagnostic(edit));
+    };
+    const raced = await reservePrivateGalleryAsset(assetEnv, owner, 'family', {...reservationInput,idempotencyKey:crypto.randomUUID()});
+    assert.equal(raced.status,409);
+    const counts = runWrangler(['d1','execute',...commonArguments,'--command',
+        'SELECT (SELECT count(*) FROM private_gallery_assets) AS assets, (SELECT count(*) FROM private_gallery_asset_tags) AS tags', '--json'],environment);
+    assert.equal(counts.status,0,diagnostic(counts));
+    assert.deepEqual(parseWranglerJson(counts)[0].results,[{assets:1,tags:1}]);
+
+    const currentRoster = await readPrivateGalleryRoster(assetEnv,'family');
+    const tagCorrection = await correctPrivateGalleryTags(assetEnv,owner,'family',reservation.asset.assetId,{
+        idempotencyKey:crypto.randomUUID(),expectedVersion:1,rosterRevision:currentRoster.revision,
+        personIds:[personId],completeTagsConfirmed:true,privateRetentionConfirmed:true,
+        containsMinors:false,guardianApprovalConfirmed:false
+    });
+    assert.equal(tagCorrection.status,201,JSON.stringify(tagCorrection));
+    assert.equal(tagCorrection.tagVersion,2);
+    const intake = await preparePrivateArchiveIntake(assetEnv,owner,'family',reservation.asset.assetId,{
+        byteCount:100,sha256:'a'.repeat(64),declaredMimeType:'image/jpeg',
+        privateRetentionConfirmed:true,containsMinors:false,guardianApprovalConfirmed:false,
+        rosterRevision:currentRoster.revision,tagVersion:2
+    });
+    assert.equal(intake.status,201,JSON.stringify(intake));
+    // Fictitious retained-source evidence for the actual attempt INSERT. R2
+    // byte integrity is exercised separately with generated JPEG fixtures.
+    const originalSeed = runWrangler(['d1','execute',...commonArguments,'--command',
+        `INSERT INTO private_archive_multipart_uploads VALUES ('${reservation.asset.assetId}','synthetic-d1-writer');
+         INSERT INTO private_archive_original_receipts (asset_id,byte_count,sha256,provider_version,provider_etag)
+         VALUES ('${reservation.asset.assetId}',100,'${'a'.repeat(64)}','synthetic-d1-version','synthetic-d1-etag')`, '--json'],environment);
+    assert.equal(originalSeed.status,0,diagnostic(originalSeed));
+    const allowed = await changePrivateGalleryVisibility(assetEnv,owner,'family',personId,{
+        expectedVersion:1,idempotencyKey:crypto.randomUUID(),preference:'allowed'});
+    assert.equal(allowed.ok,true,JSON.stringify(allowed));
+    const attemptCatalog={exportBundleId:'synthetic-d1-bundle',sourceRevision:`sha256:${'a'.repeat(64)}`,
+        suppressionRevision:`sha256:${'b'.repeat(64)}`,suppressionDocument:{schemaVersion:'1.0',hiddenAthleteIds:[]},
+        sites:{family:{catalog:{exportBundleId:'synthetic-d1-bundle',sourceRevision:`sha256:${'a'.repeat(64)}`,
+            races:[{raceDate:'2026-01-01',raceEvent:'Synthetic D1 Race',raceDistance:'5 km'}],athleteIds:[]}}}};
+    const eligible = await readPrivateGalleryAssetEligibility(assetEnv,owner,'family',reservation.asset.assetId,attemptCatalog);
+    assert.equal(eligible.visibilityEligible,true,JSON.stringify(eligible));
+    const attempt=await reservePrivateGalleryAttempt(assetEnv,owner,'family',reservation.asset.assetId,{
+        idempotencyKey:crypto.randomUUID(),tagVersion:2,eligibilityRevision:eligible.revision,
+        sourceRevision:attemptCatalog.sourceRevision,suppressionRevision:attemptCatalog.suppressionRevision,
+        raceIndex:0,completeTagsConfirmed:true,publicUseConfirmed:true,containsMinors:false,guardianApprovalConfirmed:false
+    },attemptCatalog);
+    assert.equal(attempt.status,201,JSON.stringify(attempt));
+    assert.equal(attempt.processingEnabled,false);assert.equal(attempt.publicationEnabled,false);
+    const ownerJob=await queuePrivateArchiveJob(assetEnv,owner,'family',reservation.asset.assetId,{
+        action:'review',attemptId:attempt.attemptId,idempotencyKey:crypto.randomUUID()});
+    assert.equal(ownerJob.status,201,JSON.stringify(ownerJob));
+    const runReference='https://github.com/johnkevan88888/family-running/actions/runs/123';
+    await assert.rejects(assetEnv.DB.prepare('INSERT INTO private_gallery_job_claims(job_id,run_reference,run_hash) VALUES(?1,?2,?3)')
+        .bind(ownerJob.job.jobId,runReference+'x','0'.repeat(64)).run(),/Fixed protected run reference/);
+    lastD1Failure=undefined;
+    try {
+        assert.equal((await claimArchiveJob(assetEnv,ownerJob.job.jobId,runReference,'promotion')).run_reference,runReference);
+    } catch (error) { assert.fail(`${error.message}\n${lastD1Failure||'No D1 statement failed.'}`); }
+    await assert.rejects(claimArchiveJob(assetEnv,ownerJob.job.jobId,runReference+'4','promotion'),'Different run cannot take the active slot');
+    for (const table of ['private_gallery_tag_revisions','private_gallery_revision_tags','private_archive_intakes',
+        'private_archive_multipart_uploads','private_archive_original_receipts',
+        'private_archive_deletion_requests','private_archive_writer_closures','private_archive_deletion_receipts','private_gallery_attempts',
+        ...['admissions','closures','outputs','writers','byte_receipts','review_intents','reviews','review_closures',
+            'object_removals','host_receipts','manifest_receipts'].map(name=>`private_gallery_pipeline_${name}`),
+            'private_gallery_manifest_removal_intents','private_gallery_manifest_removal_reviews','private_gallery_pipeline_tier_absences',
+            'private_archive_purge_operations','private_archive_purge_receipts','private_gallery_retired_generations','private_gallery_retired_keys',
+            'private_gallery_review_write_admissions','private_gallery_review_terminals','private_gallery_owner_jobs','private_gallery_job_claims',
+            'private_gallery_job_completions','private_gallery_retired_jobs']) {
+        const compiled = runWrangler(['d1','execute',...commonArguments,'--command',
+            `EXPLAIN INSERT INTO ${table} DEFAULT VALUES`,'--json'],environment);
+        assert.equal(compiled.status,0,diagnostic(compiled));
+        assert.ok(parseWranglerJson(compiled)[0].results.length>0);
+    }
+
+    console.log('Gallery D1 expression-depth parity, private roster, tag correction, archive intake/cleanup, fresh-consent reservation and atomic metadata-purge trigger compilation passed.');
 } finally {
     const resolvedTemporaryRoot = await fs.realpath(temporaryRoot);
     assert.equal(path.dirname(resolvedTemporaryRoot), temporaryParent);

@@ -1,4 +1,7 @@
 import { verifyWorkerAccessIdentity } from './access.js';
+import catalog from '../generated/catalog-snapshot.js';
+import {isArchiveServicePath,legacyArchiveEnvironment} from './private-gallery-service-request.js';
+import {handleArchivePromotionRequest} from './private-gallery-promotion-adapter.js';
 import { cleanupPhotoPromotion } from './promotion-cleanup-service.js';
 import {
     abandonPhotoReviewCandidate,
@@ -56,6 +59,8 @@ const EXACT_ENVIRONMENT_KEYS = Object.freeze([
 ]);
 
 export async function handlePromotionRequest(request, env, dependencies = {}) {
+    if(isArchiveServicePath(request)) return handleArchivePromotionRequest(request,env,catalog,dependencies);
+    env=legacyArchiveEnvironment(env,'promotion');
     const identityVerifier = dependencies.verifyAccessIdentity ||
         (() => verifyWorkerAccessIdentity(dependencies.accessContext, request));
     const identity = await verifyIdentity(identityVerifier);

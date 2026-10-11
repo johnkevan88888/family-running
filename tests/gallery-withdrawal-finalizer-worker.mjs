@@ -803,14 +803,14 @@ async function assertWranglerDryRun(workerConfigPath) {
         assert.match(output, /env\.PRIVATE_ORIGINALS/);
         assert.doesNotMatch(
             output,
-            /APPROVED_MEDIA|DERIVATIVE_STAGING|PUBLIC_MANIFESTS|GITHUB_TOKEN|GITHUB_REPOSITORY/
+            /\bAPPROVED_MEDIA\b|\bDERIVATIVE_STAGING\b|\bPRIVATE_DERIVATIVE_STAGING\b|PUBLIC_MANIFESTS|GITHUB_TOKEN|GITHUB_REPOSITORY/
         );
         const bundle = await readJavaScriptOutput(outdir);
         assert.match(bundle, /withdrawal-finalizations/);
         assert.match(bundle, /PRIVATE_ORIGINALS/);
         assert.doesNotMatch(
             bundle,
-            /APPROVED_MEDIA|DERIVATIVE_STAGING|PUBLIC_MANIFESTS|GITHUB_TOKEN|GITHUB_REPOSITORY/
+            /\bAPPROVED_MEDIA\b|\bDERIVATIVE_STAGING\b|\bPRIVATE_DERIVATIVE_STAGING\b|PUBLIC_MANIFESTS|GITHUB_TOKEN|GITHUB_REPOSITORY/
         );
     } finally {
         assert.equal(path.dirname(temporaryRoot), os.tmpdir());
