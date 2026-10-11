@@ -11,7 +11,8 @@ import { changePrivateGalleryVisibility,readPrivateGalleryAssetEligibility } fro
 import { preparePrivateArchiveIntake,storePrivateArchiveOriginal,deletePrivateArchiveOriginal } from '../gallery-admin/src/private-archive-service.js';
 import { admitArchivePhotoProcessing,readArchivePhotoSource,readArchivePhotoCandidateItem,
     verifyArchivePhotoPublicAbsence,removeArchivePhotoCopies,closeArchivePhotoAttempt } from '../gallery-admin/src/private-gallery-photo-lifecycle.js';
-import { runArchivePhotoReview,restoreArchivePhotoReview,hideArchivePhotoPerson,resumeArchivePhotoRemoval } from '../scripts/gallery-media/private-photo-lifecycle.mjs';
+import { runArchivePhotoReview,restoreArchivePhotoReview,hideArchivePhotoPerson,resumeArchivePhotoRemoval,requestArchivePhotoManifestRemoval } from '../scripts/gallery-media/private-photo-lifecycle.mjs';
+import { createOrReconcileGalleryRemoval,createOrReconcileGalleryReview } from '../scripts/gallery-media/github-review-client.mjs';
 import { readBoundedBytes,sha256Hex } from '../gallery-admin/src/media-byte-verification.js';
 import * as delivery from '../gallery-admin/src/media-delivery-contract.js';
 import { handleMediaRequest } from '../gallery-admin/src/media-worker.js';
@@ -26,7 +27,7 @@ const {unstable_splitSqlQuery}=require('wrangler');
 const parserDatabase=new DatabaseSync(':memory:');
 for(const name of names) {
     const sql=await readFile(new URL(name,migrations),'utf8');
-    if(name.startsWith('0023')) for(const statement of unstable_splitSqlQuery(sql)) parserDatabase.exec(statement);
+    if(name.startsWith('0023') || name.startsWith('0024')) for(const statement of unstable_splitSqlQuery(sql)) parserDatabase.exec(statement);
     else parserDatabase.exec(sql);
 }
 parserDatabase.close();
@@ -142,9 +143,29 @@ for(const site of ['family','everyone']) {
     assert.equal(hidden.ok,false);assert.equal(hidden.outcomes[0].state,'manifest-removal-required',JSON.stringify(hidden));
     assert.equal(hidden.outcomes[0].hostDeletionConfirmed,true);assert.equal(f.approved.objects.size,1);assert.equal(f.staging.objects.size,0);
     f.retain();assert.deepEqual(f.github.state.manifests[site].items[0],item,'Hiding cannot secretly merge a manifest change');
-    f.github.ownerRemove(site,item.id);
+    const removalReview=await requestArchivePhotoManifestRemoval(f.options());
+    assert.equal(removalReview.ok,true,JSON.stringify(removalReview));
+    assert.equal(removalReview.state,'unmerged-removal-review');assert.equal(removalReview.completed,false);
+    assert.deepEqual(f.github.state.manifests[site].items[0],item,'Removal review cannot merge or alter main');
+    const removed=JSON.parse(db.prepare('SELECT removal_json FROM private_gallery_manifest_removal_intents').get().removal_json);
+    const options={expectedBaseSha:f.github.state.main,token:f.github.token,fetchImpl:f.github.fetchImpl};
+    const before=f.github.state.requests.length;
+    assert.equal((await requestArchivePhotoManifestRemoval(f.options())).ok,true);
+    assert.ok(f.github.state.requests.slice(before).every(request=>request.method==='GET'),'Exact removal retry is read-only');
+    const candidateBad={...intent,manifestText:removed.manifestText,manifestSha256:removed.manifestSha256,
+        receipt:{...intent.receipt,manifestSha256:removed.manifestSha256}};
+    await assert.rejects(createOrReconcileGalleryReview(candidateBad,options),'Addition client still rejects a removal');
+    for(const mutation of [{...removed,operationId:'promotion_wrong'},
+        {...removed,item:{...removed.item,raceEvent:'Wrong race'}},
+        {...removed,targetRelativePath:`gallery-data/${site==='family'?'everyone':'family'}.json`}]) {
+        const requests=f.github.state.requests.length;
+        await assert.rejects(createOrReconcileGalleryRemoval(mutation,options));
+        assert.ok(f.github.state.requests.slice(requests).every(request=>request.method==='GET'),'Invalid removal cannot mutate GitHub');
+    }
+    f.github.ownerMerge(removalReview.review); // Explicit fixture owner approval only.
     let movedMain=false;
-    f.afterWrite=sql=>{assert.match(sql,/INSERT INTO private_gallery_pipeline_manifest_receipts/);
+    f.afterWrite=function moveAtManifest(sql) {
+        if(!/INSERT INTO private_gallery_pipeline_manifest_receipts/.test(sql)) {f.afterWrite=moveAtManifest;return;}
         f.github.state.main='d'.repeat(40);movedMain=true;};
     assert.equal((await resumeArchivePhotoRemoval(f.options())).ok,false,'Main movement during receipt insertion remains pending');
     assert.equal(movedMain,true,'The competing main update must actually occur');

@@ -1,6 +1,445 @@
 # Active Work
 
-## Current continuation — internal archive processing/review and hide/restore, 10 October 2026
+## Current release — completed private Gallery lifecycle, 11 October 2026
+
+Following the completed local pass and its explicit repository-release handoff,
+John instructed continuation through synchronization/retest, PR checks and merge.
+This release includes the coherent private-roster/archive lifecycle branch: 83
+changed paths, including forward migrations `0017`–`0028` and the two manual
+protected archive workflows. It does not activate those workflows or services.
+
+Fresh fetch confirms main remains `6d2fbccb01a6e8edb566e43e526b650d9d2e6fc4`;
+the branch already contains it, so no synchronization changes are needed. The
+complete 75-group local pass below remains applicable. All 12 focused release
+checks passed: repository/vendor/CSV/Gallery/catalogue, owner workflow, retention,
+split services, protected lifecycle, GitHub review client, containment and artifact
+safety. Canonical artifact identity was reconfirmed at 23:11:47 UTC with the same
+115 files and inventory hash recorded below. Because
+workflows change, this uses the standard PR/Netlify preview pathway, not a skip
+marker. Merge is conditional on required checks, successful preview and unchanged
+public output. Normal Pages may republish only the same 115-file public artifact,
+including the existing Family pilot (1 item) and empty Everyone manifest (0).
+
+No Worker deployment, remote migration, credentials/settings/resources change,
+Gallery workflow dispatch, real-media use, live purge or photo publication is
+included. Live containment/access verification and synthetic activation rehearsal
+remain the next separate approval boundary. PR/run/merge evidence will be recorded
+after the repository release completes; no remote success is claimed here.
+
+## Completed local continuation — recovery/owner-workflow completion, 11 October 2026
+
+John approved one local-only pass to finish both review-recovery cases, protected
+owner/workflow connections and publication/purge coordination, then all checks.
+Checkout `test-artifacts/gallery-0016-repair`, branch
+`codex/gallery-private-roster-storage`, HEAD `cb453c180c8db6cbdcc8f62d3d2df83502cc81c4`.
+Baseline and read-only verified remote main: `6d2fbccb01a6e8edb566e43e526b650d9d2e6fc4`.
+Earlier dirty work is preserved. No remote change, real media/workbook/roster,
+live purge, merge or publication. Face-framing remains separate.
+
+Local `0027` distinguishes an intent from a one-way admission immediately before
+the only PR POST. Checked no-PR evidence can settle only an intent with no admitted
+POST/recorded review; an admitted uncertain/delayed POST remains pending until
+positive exact PR evidence exists. Historical pre-gate intents are conservatively
+classified uncertain on upgrade, without changing consent/review/cleanup evidence.
+Addition/removal terminal ledgers are separate from current host and main absence.
+All removal intents must be reconciled before restoration/finalization/purge.
+
+Local `0028` connects owner/session/CSRF/inherited-area job requests, strict-purpose
+Access service controllers and main-only protected Actions entry points. Only a
+generated job ID is an input; action/asset/attempt/purge proof come from the private
+owner record. The browser does not dispatch GitHub or carry service credentials.
+Existing `gallery-processing` / `gallery-finalization` environments stay separate;
+credentials never move between jobs. Mandatory origin/version/epoch/witness and
+separate bucket capability checks remain. No new binding/resource/configuration.
+
+A non-expiring global D1 claim and shared non-cancelling Actions concurrency
+serialize supported archive jobs. Publication preparation cannot merge and holds
+its claim until a separate owner merge is observed or revocation is terminally
+reconciled. Purge needs a distinct owner-confirmed proof/key and its active claim.
+Failure never expires unknown authority: rerun the SAME Actions run. Atomic purge
+retires its own job; only immutable hashes survive for no-I/O completion replay.
+Shared private people and unrelated archives/jobs survive. Hide never grants purge.
+
+GitHub/D1 still have no shared transaction; this coordinates the supported owner
+path, not arbitrary out-of-band owner merges/settings changes. Separately approved
+live activation must verify the App restriction, owner-only environments and use
+of that publication path. No automatic merge/settings capability is introduced.
+
+Validation complete at 23:03:10 UTC on 11 October 2026. The final complete
+`node scripts/run-all-tests.mjs` run passed all **75 groups**, exit **0**,
+including actual pinned local D1 migration/trigger compilation and owner-job
+INSERT/claim execution, strict HTTP/service boundaries, both inherited areas,
+full CSV/Gallery/vendor/repository/artifact checks and both public browser modes.
+Durable ignored evidence:
+`test-artifacts/local-completion-2026-10-11T22-46-20-691Z.log` and matching `.json`.
+The log has exactly 75 group headings and `All checks passed.` Focused owner,
+recovery, retention and responsive browser checks, plus the remaining 24-group
+focused run, are supplementary evidence, not substitutes for that full receipt.
+
+At 22:53:46 UTC, the disposable canonical public artifact proved all 115 files
+byte-identical to main `6d2fbcc`, preserving the existing one Family pilot and
+zero Everyone items. Remote main was reconfirmed read-only at 23:00 UTC.
+Inventory SHA-256: `e663141813c1398eebd43cfa33074c932df5f550fd6145111edb502922b8304c`.
+Receipt: ignored `test-artifacts/local-completion-public-identity.json`.
+All four protected-library desktop/mobile screenshots were visually inspected;
+public Gallery desktop/mobile layouts were also inspected. Public browser tests
+block off-origin media: this proves layout/behaviour, NOT live media delivery.
+
+Initial failures were corrected without weakening production checks: the
+synthetic Wrangler adapter now literalizes optional SQL NULLs; D1's long-wildcard
+limit is avoided with a literal fixed GitHub prefix and positive digits-only
+suffix; the old client export allowlist now names the three gated archive methods.
+Missing-admission/replay, malformed run-reference and direct SQL completion
+regressions pass. Earlier failed-run logs remain ignored evidence. No further
+local implementation blocker is indicated by these tests; live activation and
+proof remain separate. `git diff --check` passes; no real media/workbook, remote
+mutation, deployment, live purge or publication occurred.
+
+Exact files changed by this continuation (earlier dirty paths preserved):
+
+- `.github/workflows/gallery-archive-job.yml`
+- `.github/workflows/gallery-archive-purge.yml`
+- `gallery-admin/migrations/0027_private_gallery_review_recovery.sql`
+- `gallery-admin/migrations/0028_private_gallery_owner_jobs.sql`
+- `gallery-admin/src/admin-worker.js`
+- `gallery-admin/src/private-gallery-assets.js`
+- `gallery-admin/src/private-gallery-owner-service.js`
+- `gallery-admin/src/private-gallery-job-service.js`
+- `gallery-admin/src/private-gallery-job-request.js`
+- `gallery-admin/src/private-gallery-service-authority.js`
+- `gallery-admin/src/private-gallery-service-request.js`
+- `gallery-admin/src/private-gallery-promotion-adapter.js`
+- `gallery-admin/src/private-gallery-finalizer-adapter.js`
+- `gallery-admin/src/private-gallery-photo-lifecycle.js`
+- `gallery-admin/src/private-gallery-retention-service.js`
+- `scripts/gallery-media/github-review-client.mjs`
+- `scripts/gallery-media/archive-service-client.mjs`
+- `scripts/gallery-media/private-photo-lifecycle.mjs`
+- `scripts/gallery-media/protected-archive-lifecycle.mjs`
+- `scripts/gallery-media/protected-archive-job.mjs`
+- `scripts/run-gallery-archive-job.mjs`
+- `scripts/run-all-tests.mjs`
+- `tests/gallery-private-owner-workflow.mjs`
+- `tests/gallery-private-retention.mjs`
+- `tests/gallery-private-photo-lifecycle.mjs`
+- `tests/gallery-private-library-browser.mjs`
+- `tests/gallery-d1-expression-depth.mjs`
+- `tests/gallery-github-review-client.mjs`
+- `tests/helpers/private-gallery-job-fixture.mjs`
+- `tests/helpers/private-gallery-lifecycle-fixtures.mjs`
+- `tests/helpers/private-gallery-service-fixture.mjs`
+- `docs/active-work.md`
+- `docs/decision-log.md`
+- `docs/gallery-private-tagging-plan.md`
+- `docs/testing-and-release-protocol.md`
+
+The outer checkout's `docs/active-work.md` is the additional navigation handoff.
+Generated fixtures, types, logs/reports and screenshots stay ignored. Next gate
+after successful local validation: synchronization/retest and release through a
+PR/required checks. Live migrations/configuration/deployment/containment proof and
+one synthetic rehearsal remain separately approved; no live media/purge/publication.
+
+## Previous continuation — approved local terminal metadata purge, 10 October 2026
+
+John explicitly approved local-only terminal archive metadata-purge implementation
+and synthetic testing, including replacing the exact no-delete guards. Feature
+checkout/branch/HEAD remain `test-artifacts/gallery-0016-repair`,
+`codex/gallery-private-roster-storage`, `cb453c180c8db6cbdcc8f62d3d2df83502cc81c4`;
+main baseline is `6d2fbccb01a6e8edb566e43e526b650d9d2e6fc4`. Earlier dirty work
+is preserved. No push, remote PR/settings/credentials/resources, migration,
+deployment, live retry/purge, real-media/workbook use, merge or publication.
+
+Forward-only `0026` requires the exact terminal owner deletion/consent-withdrawal
+request, original absence and writer closure, every generation's closed writers,
+both current storage-tier receipts, current fixed-host/epoch evidence, exact
+current-main absence and terminal addition-review evidence. Hide never qualifies.
+An unadmitted reservation also needs reconciliation; an archive with zero attempts
+has no public generation, not an inferred host-absence receipt. Both current-main
+manifests are checked for historical public IDs/URLs. Missing proof fails closed.
+
+One bound SQL INSERT consumes its own ephemeral grant, deletes only that asset's
+operational rows and records immutable hash-only audit/identity/key retirement in
+the same transaction. Failure rolls everything back. No reusable grant remains.
+Shared people/preferences, unrelated archives and legacy draft retention/purge are
+untouched. Retired owner reservations/assets/generations/items/keys are rejected
+before new byte work. Completed replay checks owner/area/key/proof and needs no
+storage, host or GitHub I/O. Original deletion and metadata purge remain distinct.
+
+The DB-only service and fixed-GitHub read wrapper are INTERNAL libraries, not an
+HTTP route, CLI, workflow, credential-discovery path or deployed capability.
+Two current-main reads reject intervening changes. They cannot provide an atomic
+GitHub/D1 lock: future owner-authenticated/CSRF-protected orchestration must also
+serialize publication and purge before live operation is considered safe.
+
+Focused synthetic purge and legacy-finalizer tests pass. Full 74-group validation,
+actual pinned D1 migration/trigger compilation and public-artifact proof are in
+progress; the first full attempt found an old finalizer fixture missing the new
+retirement tables. It now applies every later forward migration without removing
+production guards; the focused legacy-finalizer test passes again.
+
+Remaining integration blockers: positive no-review terminal reconciliation for
+an addition intent interrupted before GitHub creates a review; terminal ledger/
+reconciliation for removal reviews (any saved removal intent/review currently blocks
+purge, even after main removal); protected Actions/owner orchestration and the
+publication/purge serialization boundary. No fabricated terminal proof is used.
+Remote containment verification and activation/rehearsal remain separate gates.
+Face-framing remains separate.
+
+Exact paths changed by this purge continuation (prior dirty paths preserved):
+
+- `gallery-admin/migrations/0026_private_gallery_terminal_metadata.sql`
+- `gallery-admin/src/private-gallery-retention-service.js`
+- `gallery-admin/src/private-gallery-retirement.js`
+- `gallery-admin/src/private-gallery-asset-service.js`
+- `gallery-admin/src/private-gallery-attempt-service.js`
+- `gallery-admin/src/private-gallery-photo-lifecycle.js`
+- `scripts/gallery-media/protected-archive-purge.mjs`
+- `scripts/run-all-tests.mjs`
+- `tests/gallery-private-retention.mjs`
+- `tests/gallery-d1-expression-depth.mjs`
+- `tests/gallery-withdrawal-finalizer-service.mjs`
+- `tests/helpers/private-gallery-service-fixture.mjs`
+- `docs/active-work.md`
+- `docs/gallery-private-tagging-plan.md`
+- `docs/decision-log.md`
+- `docs/testing-and-release-protocol.md`
+
+Root `docs/active-work.md` is the additional navigation update. Generated synthetic
+media, disposable databases, reports, artifact fixtures and screenshots stay ignored.
+
+## Previous continuation — strict split services, purge disabled at that checkpoint, 10 October 2026
+
+John approved preparation/testing of the stricter local-only service design and
+remaining retention/containment safeguards. Face-framing stays separate.
+Feature checkout: `test-artifacts/gallery-0016-repair`;
+branch `codex/gallery-private-roster-storage`. The original owner-intake/removal
+edits were preserved. Remote main advanced during this continuation through PR
+#128's full 72-file export plus matching catalogue, and was inspected/fetched
+read-only. Non-overlapping local synchronization now includes main
+`6d2fbccb01a6e8edb566e43e526b650d9d2e6fc4`; local feature HEAD is
+`cb453c180c8db6cbdcc8f62d3d2df83502cc81c4`. New private-service edits remain
+uncommitted. No main-branch commit, push, remote PR change, remote migration,
+Worker/Pages deployment, credentials/settings/resources, real-photo processing,
+private workbook/roster use, live purge or publication occurred.
+
+Exact verified Access service identities consume request-local non-serializable
+authorities bound to existing owner-approved attempts. No browser impersonation.
+Mandatory configured media origin/version and current epoch/witness checks apply
+on every service operation, including cleanup. Fixed-purpose adapters preserve
+originals/staging processing, staging/approved promotion, DB-only verification
+and independently bundled originals/DB finalization. Unknown/combined bindings
+fail closed. Full private tags, roster, fresh consent, catalogue, suppression and
+pending exclusions are rechecked before byte/review work.
+
+The protected-transport libraries connect actual pinned metadata stripping,
+verified derivative readback, prepared-review recovery, the existing narrow
+GitHub client and exact one-file unmerged addition/removal reviews. A lost review
+reply cleans both tiers independently; completed original cleanup and still-
+current host evidence are reused. Hide preserves archive bytes/all private tags.
+Allow requires fresh complete-person consent and a new generation; current main
+is checked against old IDs/URLs. A review retry cannot silently unpublish an
+owner-merged photo. SQL 0025 adds separate tier absence receipts and rejects
+manifest completion before current host/terminal-review evidence. R2 absence is
+never host absence.
+
+Archive multipart containment requirement fragments cover all three new prefixes;
+the local read-only validator rejects missing/disabled/wrong/late abort rules,
+overlapping object-changing rules and unknown shapes. No real bucket policy was
+read or changed here. These are requirements, not remote containment evidence.
+
+Safety review blocked the proposed irreversible archive metadata-purge migration
+and service: the general safeguards approval did not specifically authorise
+replacing existing no-delete guards. That patch was not applied; no proposed 0026
+migration or retention-purge service exists. No workaround was used. Original
+deletion is not metadata purge; legacy retention and permanent v1 retirement
+remain unchanged. The next explicit gate is specifically local-only approval to
+design, implement and test terminal archive metadata purge (dry-run, atomic
+rollback, exact current host/main proof, minimal hash-only audit and no Hide
+eligibility). No remote application, deployment or purge would be included.
+After this prerequisite, Actions workflow wiring and a separately approved
+activation/rehearsal are still needed; these runners have no CLI, dispatch,
+credential discovery, automatic merge or publication. Owner UI consent saving
+and Hide controls remain honest about that boundary.
+
+One recovery edge remains deliberately pending: if an addition intent was saved
+but GitHub never created a review, removal cannot fabricate opened/closed review
+evidence. Wiring positive no-review terminal reconciliation into the archive SQL
+guards is still required before the workflow is owner-operable. Existing tests
+prove lost replies after a real synthetic review, not completion of that earlier
+pre-review interruption. Cleanup may complete independently; metadata completion
+must continue to fail closed for this case.
+
+Focused split-service, protected HTTP/GitHub review/removal/restoration,
+containment and legacy Worker/configuration checks pass locally. The final full
+`node scripts/run-all-tests.mjs` run passed all 73 groups with exit 0 on the
+synchronized baseline. This includes repository safety (357 tracked/intent files),
+vendor, both-area CSV/Gallery, actual pinned local D1 migration/depth parity,
+local storage/cleanup, legacy consent/withdrawal/retention/purge, narrow fake
+GitHub review boundaries, updater/export regressions, artifact safety/build and
+both-mode desktop/mobile browser checks. Earlier full attempts exposed bundle composition and
+an isolated fixture's missing media-policy dependency; fixed-purpose imports,
+an unused-constant pure annotation and complete fixture copying resolved those
+without dropping any real capability/denial assertions. The finalizer bundle
+assertion distinguishes the origin scalar from the approved bucket and additionally
+forbids the private-staging alias.
+
+The suite generated 67 ignored screenshots. Representative current private
+Family desktop and Everyone mobile layouts and public Family mobile layouts were
+visually inspected. Public browser smoke tests deliberately block off-origin
+requests: these screenshots prove local rendering/layout, not live media delivery.
+No live workflow or GitHub review was exercised; service/review integration uses
+generated photos and synthetic authenticated HTTP/GitHub transports only.
+
+Current-main artifact proof passed: all 115 public files byte-identical to
+`6d2fbcc`, one existing Family pilot and empty Everyone preserved. Source public
+files were first compared against that commit; 105 CRLF-only conversions were
+confined to ignored disposable `test-artifacts/tag-public-proof-2uMJCz`.
+No tracked public runtime/data/manifest changes beyond the whole main synchronization.
+This is local output proof, not live-host proof.
+
+Exact feature paths edited in this stricter-service continuation (31);
+earlier dirty owner-intake/removal paths listed below remain preserved:
+
+- `docs/active-work.md`
+- `docs/decision-log.md`
+- `docs/gallery-private-tagging-plan.md`
+- `docs/testing-and-release-protocol.md`
+- `gallery-admin/archive-media-lifecycle.required.json`
+- `gallery-admin/migrations/0025_private_gallery_split_cleanup.sql`
+- `gallery-admin/src/media-delivery-contract.js`
+- `gallery-admin/src/private-archive-service.js`
+- `gallery-admin/src/private-gallery-finalizer-adapter.js`
+- `gallery-admin/src/private-gallery-photo-lifecycle.js`
+- `gallery-admin/src/private-gallery-processing-adapter.js`
+- `gallery-admin/src/private-gallery-promotion-adapter.js`
+- `gallery-admin/src/private-gallery-service-adapter.js`
+- `gallery-admin/src/private-gallery-service-authority.js`
+- `gallery-admin/src/private-gallery-service-request.js`
+- `gallery-admin/src/private-gallery-verifier-adapter.js`
+- `gallery-admin/src/processing-worker.js`
+- `gallery-admin/src/promotion-worker.js`
+- `gallery-admin/src/public-host-verifier-worker.js`
+- `gallery-admin/src/withdrawal-finalizer-worker.js`
+- `scripts/gallery-media/archive-containment.mjs`
+- `scripts/gallery-media/archive-service-client.mjs`
+- `scripts/gallery-media/protected-archive-lifecycle.mjs`
+- `scripts/run-all-tests.mjs`
+- `tests/gallery-archive-containment.mjs`
+- `tests/gallery-d1-expression-depth.mjs`
+- `tests/gallery-phase-d-processing-configs.mjs`
+- `tests/gallery-private-service-adapter.mjs`
+- `tests/gallery-protected-archive-lifecycle.mjs`
+- `tests/gallery-withdrawal-finalizer-worker.mjs`
+- `tests/helpers/private-gallery-service-fixture.mjs`
+
+The root `docs/active-work.md` is the additional navigation edit. The existing
+ignored artifact-verifier script was updated to pin current main; generated
+types, fixtures, reports, dry-run bundles and screenshots remain out of Git.
+
+## Prior continuation — owner intake and removal review, 10 October 2026
+
+John approved a local-only integration/retest continuation. Face-framing remains
+separate. Active checkout is `test-artifacts/gallery-0016-repair`, branch
+`codex/gallery-private-roster-storage`. Previous tested work was preserved in local
+feature checkpoint `80567fe99d9fb7e00ebeb18872eb0845f3e85b6b`, then this actual
+feature branch was synchronized nonconflictingly with current main
+`18b01c35a02d0cca40300feea56536d739c224bc` (PR #127 whole data/catalogue refresh).
+Local HEAD is `0f3d25b4f444552ea0651cc34732948492f055fc`; this turn's new edits
+are uncommitted. Main was not edited or merged into remotely. Root prototype work
+is preserved. No push, remote PR mutation, migration/deployment, credentials,
+real identities/media/workbook, purge, publication or face-framing is included.
+
+Local protected owner intake/status/original/fresh-consent/terminal-deletion
+routes now use the existing verified owner, signed inherited-area session,
+same-origin and CSRF boundary before dispatch. Automation cannot use them. A
+bounded body reader enforces exact content type, size/length, total deadline and
+bounded cancellation. Original filenames, provider identities and storage keys
+are not returned or published. The local private-library UI collects separate
+private-retention and fresh public-use permission, explicit Yes/No minor answers,
+guardian confirmation and server-catalogue race selection. Exact uncertain-reply
+retry recovers the saved intake/receipt or consent reservation, not another upload.
+Confirmed forms reset. Saving consent does NOT process, review or publish; Hide
+on this page still reports preference-only, not completed public removal.
+
+Forward local `0024` records immutable exact-removal review intent/receipts after
+closed-generation cleanup and current-epoch host proof. A separate removal client
+uses the existing fixed-repository/main/candidate-only GitHub API boundary. It
+removes exactly the historical item from one inherited manifest, rejects collateral
+and cross-area URL reuse, preserves other items and has no merge capability.
+The explicit internal runner can stop at a fake unmerged removal review; cleanup
+does not automatically request it. Current-main removal and fresh restoration
+remain independently checked. Local generated fixtures test both areas only.
+
+Security review rejected the proposed service-authority adapter because its
+service authority path and conditional media-origin/version checks could weaken
+fail-closed validation. That patch was NOT applied: the proposed file is absent,
+and `private-gallery-photo-lifecycle.js` has no diff from the synchronized HEAD.
+Mandatory configured origin/version checks and its browser-owner boundary remain
+unchanged. Do not bypass the rejection or impersonate a browser owner. Protected
+service/workflow orchestration remains unfinished. Archive metadata retention/
+purge and prefix-specific multipart containment also remain incomplete; original
+deletion is not metadata purge, and old draft retention/purge is unchanged.
+
+Validation: final owner-intake and both-area desktop/mobile private-browser focused
+checks pass, as do lifecycle/removal, existing GitHub-client, syntax and diff checks.
+The complete 70-group run passed, exit 0: repository safety (341 tracked/intent
+paths), five vendor files, the whole 72-file CSV bundle, both Gallery manifests/
+current catalogue, legacy/new processing/review/withdrawal/purge/host proof,
+actual local D1/R2, updater, artifact contracts/build and both-mode responsive
+public browsers. Actual local D1 applies and compiles `0024`, and actual local
+R2/lifecycle checks pass. The final minor-answer/status-label UI changes occurred
+after the full run's private-browser group; the final private-browser and owner-
+intake focused reruns passed, exit 0, on those exact changes. No other functional
+code changed afterward. All 67 screenshots are available; four final private-library
+screenshots and representative public/synthetic views were inspected. A temporary browser rerun waited for an obsolete
+status label after its text changed; the expectation was corrected and rerun,
+without relaxing consent or security assertions.
+Final repository safety, syntax and diff checks pass. Read-only remote main
+verification after the full run still names `18b01c3`; local HEAD is unchanged.
+
+The ignored current-main artifact verifier passed: all 115 built files are
+byte-identical to `18b01c3`, Family's existing one-photo pilot is preserved and
+Everyone remains empty. Source public files first matched that same main commit;
+105 CRLF-only conversions were confined to the disposable copy
+`test-artifacts/tag-public-proof-92OTgr`. No tracked public runtime/data/manifest
+edits were made by this integration. Generated artifacts/screenshots stay ignored.
+This is local output proof, NOT live-host or complete workflow proof.
+
+Exact feature paths edited in this continuation (16):
+
+- `gallery-admin/migrations/0024_private_gallery_removal_reviews.sql`
+- `gallery-admin/src/admin-worker.js`
+- `gallery-admin/src/private-gallery-assets.js`
+- `gallery-admin/src/private-gallery-owner-service.js`
+- `scripts/gallery-media/github-review-client.mjs`
+- `scripts/gallery-media/private-photo-lifecycle.mjs`
+- `scripts/run-all-tests.mjs`
+- `tests/gallery-d1-expression-depth.mjs`
+- `tests/gallery-github-review-client.mjs`
+- `tests/gallery-private-library-browser.mjs`
+- `tests/gallery-private-owner-intake.mjs`
+- `tests/gallery-private-photo-lifecycle.mjs`
+- `docs/gallery-private-tagging-plan.md`
+- `docs/testing-and-release-protocol.md`
+- `docs/decision-log.md`
+- `docs/active-work.md`
+
+The root `docs/active-work.md` is the sole additional navigation edit (17 source
+paths total). The ignored verifier adaptation and generated evidence are excluded.
+
+Next explicit gate is local-only approval of a stricter service authority design:
+verified service identity may consume only an exact existing owner-approved attempt,
+with mandatory configured fixed origin/version checks and separate processing,
+promotion and verification capabilities. Wrong/missing configuration and cross-
+attempt use must fail before I/O. Include completion of archive metadata retention/
+purge and containment safeguards and focused/full retesting; no remote activation,
+push, PR, deployment, real media, merge or publication. This partial slice is NOT
+release-ready, and the next gate is not a request to deploy it.
+
+## Earlier checkpoint — internal archive processing/review and hide/restore, 10 October 2026
+
+Historical snapshot below; current branch synchronization and remaining gates are
+recorded above. Its older HEAD/baseline and no-commit status are not current.
 
 John approved connecting checked retained-photo reservations to processing and
 review, plus local photo hiding/restoration and public-host verification.

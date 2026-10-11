@@ -7,6 +7,7 @@ import { readPrivateGalleryTags, correctPrivateGalleryTags } from './private-gal
 import { createPrivateGalleryPerson, readPrivateGalleryVisibility, readPrivateGalleryPreferences, changePrivateGalleryVisibility,
     readPrivateGalleryAssetEligibility } from './private-gallery-visibility-service.js';
 import { privateGalleryDocument, privateGalleryScript } from './private-gallery-assets.js';
+import { handlePrivatePhotoOwnerOperation } from './private-gallery-owner-service.js';
 import {
     adminClientScript,
     adminShellDocument,
@@ -250,6 +251,11 @@ async function handleBrowserRoute(
             return adminFailure(405, { Allow: 'GET' });
         }
         return serviceResultResponse(await readPrivateGalleryRoster(env, siteMode));
+    }
+
+    if (route.kind.startsWith('archive-')) {
+        const result=await handlePrivatePhotoOwnerOperation(request,env,identity,siteMode,route,catalogSnapshot,dependencies);
+        return result?.status===405 ? adminFailure(405,{Allow:result.allow}) : serviceResultResponse(result);
     }
 
     if (route.kind === 'private-people') {
@@ -541,6 +547,8 @@ async function createSyntheticRecord(request, env, identity, now) {
 }
 
 function matchPhaseCRoute(pathname) {
+    const archiveMatch = /^\/api\/browser\/private-assets\/(asset_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(archive-intake|archive-original|archive-attempt|archive-deletion|archive-jobs)$/.exec(pathname);
+    if (archiveMatch) return {kind:archiveMatch[2],assetId:archiveMatch[1]};
     if (pathname === '/api/browser/private-preferences') return {kind:'private-preferences'};
     if (pathname === '/api/browser/private-people') return {kind:'private-people'};
     const visibilityMatch = /^\/api\/browser\/private-people\/(person_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/visibility$/.exec(pathname);

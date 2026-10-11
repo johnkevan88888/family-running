@@ -1,6 +1,7 @@
 import { hashIdentity } from './session.js';
 import { loadPrivateGalleryRoster } from './private-gallery-roster-service.js';
 import { resolvePrivateGalleryTags } from './private-gallery-roster.js';
+import {assertArchiveIdentityAvailable} from './private-gallery-retirement.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const person = /^person_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -63,6 +64,7 @@ export async function reservePrivateGalleryAsset(env, identity, site, input) {
     }
     try {
         const owner = await hashIdentity(identity);
+        await assertArchiveIdentityAvailable(env,'reservation',JSON.stringify([owner,site,input.idempotencyKey]));
         const requestHash = await digest(JSON.stringify([
             input.rosterRevision, input.personIds, input.originalFormat
         ]));
@@ -75,6 +77,7 @@ export async function reservePrivateGalleryAsset(env, identity, site, input) {
         try { resolvePrivateGalleryTags(document, site, input.personIds, input.rosterRevision); }
         catch { return conflict(); }
         const assetId = `asset_${crypto.randomUUID()}`;
+        await assertArchiveIdentityAvailable(env,'asset',assetId);
         try {
             const result = await env.DB.prepare(`INSERT INTO private_gallery_assets
                 (asset_id, site_mode, owner_identity_hash, idempotency_key, request_hash,

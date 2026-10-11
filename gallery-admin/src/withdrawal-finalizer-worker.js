@@ -1,6 +1,7 @@
 import { verifyWorkerAccessIdentity } from './access.js';
 import { finalizeGalleryWithdrawal } from './withdrawal-finalizer-service.js';
 import { adminFailure, adminJson } from './responses.js';
+import {isArchiveFinalizerPath,handleArchiveFinalizerRequest,legacyFinalizerEnvironment} from './private-gallery-finalizer-adapter.js';
 
 const DRAFT_ID_FRAGMENT =
     '(draft_[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})';
@@ -24,6 +25,8 @@ export async function handleWithdrawalFinalizerRequest(
     env,
     dependencies = {}
 ) {
+    if(isArchiveFinalizerPath(request)) return handleArchiveFinalizerRequest(request,env,dependencies);
+    env=legacyFinalizerEnvironment(env);
     const identityVerifier = dependencies.verifyAccessIdentity ||
         (() => verifyWorkerAccessIdentity(dependencies.accessContext, request));
     const identity = await verifyIdentity(identityVerifier);

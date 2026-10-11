@@ -14,6 +14,7 @@ import { preparePrivateArchiveIntake } from '../gallery-admin/src/private-archiv
 import { correctPrivateGalleryTags } from '../gallery-admin/src/private-gallery-tag-service.js';
 import { reservePrivateGalleryAttempt } from '../gallery-admin/src/private-gallery-attempt-service.js';
 import { readPrivateGalleryAssetEligibility,changePrivateGalleryVisibility } from '../gallery-admin/src/private-gallery-visibility-service.js';
+import {queuePrivateArchiveJob,claimArchiveJob} from '../gallery-admin/src/private-gallery-job-service.js';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -85,6 +86,9 @@ try {
     ], environment, 120_000);
     assert.equal(migrations.error, undefined, diagnostic(migrations));
     assert.equal(migrations.status, 0, diagnostic(migrations));
+    const claimCompile = runWrangler(['d1','execute',...commonArguments,'--command',
+        'EXPLAIN INSERT INTO private_gallery_job_claims DEFAULT VALUES','--json'],environment);
+    assert.equal(claimCompile.status,0,diagnostic(claimCompile));
 
     // EXPLAIN compiles each INSERT and all table triggers into bytecode but does
     // not execute them. DEFAULT VALUES deliberately avoids fixture data: these
@@ -206,18 +210,19 @@ try {
     // Execute the real prepared service statements against disposable local D1.
     // Wrangler has no binding arguments: literalize ONLY these synthetic test
     // values, with quote escaping and no credentials/media/real-person data.
-    let beforeAssetWrite;
+    let beforeAssetWrite,lastD1Failure;
     const assetEnv = { DB: { prepare(sql) {
         let bindings = [];
         const execute = () => {
             const command = sql.replace(/\?(\d+)/g, (_, index) => {
                 const value = bindings[Number(index) - 1];
+                if (value === null) return 'NULL';
                 if (Number.isSafeInteger(value)) return String(value);
                 assert.equal(typeof value, 'string');
                 return `'${value.replaceAll("'", "''")}'`;
             });
             const query = runWrangler(['d1', 'execute', ...commonArguments, '--command', command, '--json'], environment);
-            if (query.status !== 0) throw new Error(diagnostic(query));
+            if (query.status !== 0) { lastD1Failure=diagnostic(query);throw new Error(lastD1Failure); }
             const results = parseWranglerJson(query);
             assert.equal(results.length, 1);
             return results[0];
@@ -282,18 +287,33 @@ try {
     },attemptCatalog);
     assert.equal(attempt.status,201,JSON.stringify(attempt));
     assert.equal(attempt.processingEnabled,false);assert.equal(attempt.publicationEnabled,false);
+    const ownerJob=await queuePrivateArchiveJob(assetEnv,owner,'family',reservation.asset.assetId,{
+        action:'review',attemptId:attempt.attemptId,idempotencyKey:crypto.randomUUID()});
+    assert.equal(ownerJob.status,201,JSON.stringify(ownerJob));
+    const runReference='https://github.com/johnkevan88888/family-running/actions/runs/123';
+    await assert.rejects(assetEnv.DB.prepare('INSERT INTO private_gallery_job_claims(job_id,run_reference,run_hash) VALUES(?1,?2,?3)')
+        .bind(ownerJob.job.jobId,runReference+'x','0'.repeat(64)).run(),/Fixed protected run reference/);
+    lastD1Failure=undefined;
+    try {
+        assert.equal((await claimArchiveJob(assetEnv,ownerJob.job.jobId,runReference,'promotion')).run_reference,runReference);
+    } catch (error) { assert.fail(`${error.message}\n${lastD1Failure||'No D1 statement failed.'}`); }
+    await assert.rejects(claimArchiveJob(assetEnv,ownerJob.job.jobId,runReference+'4','promotion'),'Different run cannot take the active slot');
     for (const table of ['private_gallery_tag_revisions','private_gallery_revision_tags','private_archive_intakes',
         'private_archive_multipart_uploads','private_archive_original_receipts',
         'private_archive_deletion_requests','private_archive_writer_closures','private_archive_deletion_receipts','private_gallery_attempts',
         ...['admissions','closures','outputs','writers','byte_receipts','review_intents','reviews','review_closures',
-            'object_removals','host_receipts','manifest_receipts'].map(name=>`private_gallery_pipeline_${name}`)]) {
+            'object_removals','host_receipts','manifest_receipts'].map(name=>`private_gallery_pipeline_${name}`),
+            'private_gallery_manifest_removal_intents','private_gallery_manifest_removal_reviews','private_gallery_pipeline_tier_absences',
+            'private_archive_purge_operations','private_archive_purge_receipts','private_gallery_retired_generations','private_gallery_retired_keys',
+            'private_gallery_review_write_admissions','private_gallery_review_terminals','private_gallery_owner_jobs','private_gallery_job_claims',
+            'private_gallery_job_completions','private_gallery_retired_jobs']) {
         const compiled = runWrangler(['d1','execute',...commonArguments,'--command',
             `EXPLAIN INSERT INTO ${table} DEFAULT VALUES`,'--json'],environment);
         assert.equal(compiled.status,0,diagnostic(compiled));
         assert.ok(parseWranglerJson(compiled)[0].results.length>0);
     }
 
-    console.log('Gallery D1 expression-depth parity, private roster, tag correction, archive intake/cleanup and fresh-consent attempt reservation passed.');
+    console.log('Gallery D1 expression-depth parity, private roster, tag correction, archive intake/cleanup, fresh-consent reservation and atomic metadata-purge trigger compilation passed.');
 } finally {
     const resolvedTemporaryRoot = await fs.realpath(temporaryRoot);
     assert.equal(path.dirname(resolvedTemporaryRoot), temporaryParent);

@@ -1,0 +1,149 @@
+name: Protected archive review and removal
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: Exact owner-requested opaque job ID from the protected library
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: gallery-archive-publication-purge
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.repository == 'johnkevan88888/family-running' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: gallery-processing
+    timeout-minutes: 20
+    outputs:
+      state: ${{ steps.run.outputs.state }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: review-token
+        with:
+          app-id: ${{ secrets.GALLERY_REVIEW_APP_ID }}
+          private-key: ${{ secrets.GALLERY_REVIEW_APP_PRIVATE_KEY }}
+          owner: johnkevan88888
+          repositories: family-running
+          permission-contents: write
+          permission-pull-requests: write
+      - id: run
+        run: node scripts/run-gallery-archive-job.mjs
+        env:
+          GALLERY_ARCHIVE_PHASE: prepare
+          GALLERY_ARCHIVE_JOB_ID: ${{ inputs.job_id }}
+          GALLERY_BASE_SHA: ${{ github.sha }}
+          GALLERY_WORKFLOW_RUN_REFERENCE: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GALLERY_GITHUB_APP_TOKEN: ${{ steps.review-token.outputs.token }}
+          GALLERY_PROCESSING_ORIGIN: ${{ secrets.GALLERY_PROCESSING_ORIGIN }}
+          GALLERY_PROCESSING_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_PROCESSING_ACCESS_CLIENT_ID }}
+          GALLERY_PROCESSING_ACCESS_CLIENT_SECRET: ${{ secrets.GALLERY_PROCESSING_ACCESS_CLIENT_SECRET }}
+          GALLERY_PROMOTION_ORIGIN: ${{ secrets.GALLERY_PROMOTION_ORIGIN }}
+          GALLERY_PROMOTION_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_PROMOTION_ACCESS_CLIENT_ID }}
+          GALLERY_PROMOTION_ACCESS_CLIENT_SECRET: ${{ secrets.GALLERY_PROMOTION_ACCESS_CLIENT_SECRET }}
+  verify:
+    needs: prepare
+    if: always() && github.repository == 'johnkevan88888/family-running' && github.ref == 'refs/heads/main' && (needs.prepare.outputs.state == 'cleanup-ready' || needs.prepare.outputs.state == 'pending')
+    runs-on: ubuntu-latest
+    environment: gallery-finalization
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/run-gallery-archive-job.mjs
+        env:
+          GALLERY_ARCHIVE_PHASE: verify
+          GALLERY_ARCHIVE_JOB_ID: ${{ inputs.job_id }}
+          GALLERY_BASE_SHA: ${{ github.sha }}
+          GALLERY_WORKFLOW_RUN_REFERENCE: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GALLERY_PUBLIC_HOST_VERIFIER_ORIGIN: ${{ secrets.GALLERY_PUBLIC_HOST_VERIFIER_ORIGIN }}
+          GALLERY_PUBLIC_HOST_VERIFIER_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_PUBLIC_HOST_VERIFIER_ACCESS_CLIENT_ID }}
+          GALLERY_PUBLIC_HOST_VERIFIER_ACCESS_CLIENT_SECRET: ${{ secrets.GALLERY_PUBLIC_HOST_VERIFIER_ACCESS_CLIENT_SECRET }}
+          GALLERY_WITHDRAWAL_FINALIZER_ORIGIN: ${{ secrets.GALLERY_WITHDRAWAL_FINALIZER_ORIGIN }}
+          GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_ID }}
+          GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_SECRET: ${{ secrets.GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_SECRET }}
+  reconcile:
+    needs: [prepare, verify]
+    if: always() && needs.verify.result == 'success' && github.repository == 'johnkevan88888/family-running' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: gallery-processing
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        id: review-token
+        with:
+          app-id: ${{ secrets.GALLERY_REVIEW_APP_ID }}
+          private-key: ${{ secrets.GALLERY_REVIEW_APP_PRIVATE_KEY }}
+          owner: johnkevan88888
+          repositories: family-running
+          permission-contents: write
+          permission-pull-requests: write
+      - run: node scripts/run-gallery-archive-job.mjs
+        env:
+          GALLERY_ARCHIVE_PHASE: reconcile
+          GALLERY_ARCHIVE_JOB_ID: ${{ inputs.job_id }}
+          GALLERY_BASE_SHA: ${{ github.sha }}
+          GALLERY_WORKFLOW_RUN_REFERENCE: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GALLERY_GITHUB_APP_TOKEN: ${{ steps.review-token.outputs.token }}
+          GALLERY_PROCESSING_ORIGIN: ${{ secrets.GALLERY_PROCESSING_ORIGIN }}
+          GALLERY_PROCESSING_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_PROCESSING_ACCESS_CLIENT_ID }}
+          GALLERY_PROCESSING_ACCESS_CLIENT_SECRET: ${{ secrets.GALLERY_PROCESSING_ACCESS_CLIENT_SECRET }}
+          GALLERY_PROMOTION_ORIGIN: ${{ secrets.GALLERY_PROMOTION_ORIGIN }}
+          GALLERY_PROMOTION_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_PROMOTION_ACCESS_CLIENT_ID }}
+          GALLERY_PROMOTION_ACCESS_CLIENT_SECRET: ${{ secrets.GALLERY_PROMOTION_ACCESS_CLIENT_SECRET }}
+  original:
+    needs: reconcile
+    if: always() && needs.reconcile.result == 'success' && github.repository == 'johnkevan88888/family-running' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: gallery-finalization
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/run-gallery-archive-job.mjs
+        env:
+          GALLERY_ARCHIVE_PHASE: finalize
+          GALLERY_ARCHIVE_JOB_ID: ${{ inputs.job_id }}
+          GALLERY_BASE_SHA: ${{ github.sha }}
+          GALLERY_WORKFLOW_RUN_REFERENCE: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GALLERY_WITHDRAWAL_FINALIZER_ORIGIN: ${{ secrets.GALLERY_WITHDRAWAL_FINALIZER_ORIGIN }}
+          GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_ID: ${{ secrets.GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_ID }}
+          GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_SECRET: ${{ secrets.GALLERY_WITHDRAWAL_FINALIZER_ACCESS_CLIENT_SECRET }}

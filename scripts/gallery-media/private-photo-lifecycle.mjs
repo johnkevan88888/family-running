@@ -1,5 +1,5 @@
 import { processGalleryPhoto } from './processor.mjs';
-import { createOrReconcileGalleryReview,invalidateGalleryReview,readExistingGalleryReview,readGalleryReviewMain,readMergedGalleryReview } from './github-review-client.mjs';
+import { createOrReconcileArchiveGalleryReview,createOrReconcileArchiveGalleryRemoval,invalidateGalleryReview,readExistingGalleryReview,readGalleryReviewMain,readMergedGalleryReview,reconcileArchiveGalleryReview } from './github-review-client.mjs';
 import { admitArchivePhotoProcessing,readArchivePhotoAttempt,readArchivePhotoSource,storeArchivePhotoDerivative,
     readArchivePhotoCandidateItem,closeArchivePhotoAttempt,removeArchivePhotoCopies,
     verifyArchivePhotoPublicAbsence,readArchivePhotoRemovalState } from '../../gallery-admin/src/private-gallery-photo-lifecycle.js';
@@ -77,7 +77,10 @@ export async function runArchivePhotoReview({env,identity,site,attemptId,catalog
         if(JSON.stringify(JSON.parse(candidate.manifestText).items.find(i=>i.id===candidate.itemId))!==JSON.stringify(fresh)) throw new Error('Candidate changed');
         const receipt=await first(env,'SELECT review_json FROM private_gallery_pipeline_reviews WHERE attempt_id=?1',attemptId);
         const review=receipt?await readExistingGalleryReview(candidate,{expectedBaseSha:baseSha,...githubOptions(github)}):
-            await createOrReconcileGalleryReview(candidate,{expectedBaseSha:baseSha,...githubOptions(github)});
+            await createOrReconcileArchiveGalleryReview(candidate,{expectedBaseSha:baseSha,...githubOptions(github),admitPullRequest:async()=>{
+                await readArchivePhotoCandidateItem(env,identity,site,attemptId,catalog);
+                await put(env,"INSERT INTO private_gallery_review_write_admissions(attempt_id,kind,base_sha) VALUES(?1,'addition',?2)",attemptId,baseSha);
+            }});
         if(receipt && JSON.stringify({...review,replayed:false})!==receipt.review_json) throw new Error('Review changed');
         if(!receipt) await saveReview(env,attemptId,review);
         await readArchivePhotoCandidateItem(env,identity,site,attemptId,catalog);
@@ -105,19 +108,26 @@ export async function restoreArchivePhotoReview({env,identity,site,assetId,conse
 
 async function closeReview(env,attemptId,github) {
     if(await first(env,'SELECT 1 FROM private_gallery_pipeline_review_closures WHERE attempt_id=?1',attemptId)) return;
+    if(await first(env,"SELECT 1 FROM private_gallery_review_terminals WHERE attempt_id=?1 AND kind='addition'",attemptId)) return;
     const intent=await first(env,'SELECT * FROM private_gallery_pipeline_review_intents WHERE attempt_id=?1',attemptId);
     if(!intent) return;
     const candidate=JSON.parse(intent.candidate_json);
     let stored=await first(env,'SELECT review_json FROM private_gallery_pipeline_reviews WHERE attempt_id=?1',attemptId);
     if(!stored) {
-        const review=await readExistingGalleryReview(candidate,{expectedBaseSha:intent.base_sha,...githubOptions(github)});
-        await saveReview(env,attemptId,review);stored={review_json:JSON.stringify(review)};
+        const evidence=await reconcileArchiveGalleryReview(candidate,{expectedBaseSha:intent.base_sha,...githubOptions(github),kind:'addition'});
+        await saveTerminal(env,attemptId,'addition',intent.base_sha,evidence);return;
     }
     let evidence;
     try {evidence=await invalidateGalleryReview(candidate,JSON.parse(stored.review_json),{expectedBaseSha:intent.base_sha,...githubOptions(github)});}
     catch {evidence=await readMergedGalleryReview(candidate,JSON.parse(stored.review_json),{expectedBaseSha:intent.base_sha,...githubOptions(github)});}
     try {await put(env,'INSERT INTO private_gallery_pipeline_review_closures(attempt_id,evidence_json) VALUES(?1,?2)',attemptId,JSON.stringify(evidence));}
     catch {if(!await first(env,'SELECT 1 FROM private_gallery_pipeline_review_closures WHERE attempt_id=?1',attemptId)) throw new Error('Unavailable');}
+}
+async function saveTerminal(env,attemptId,kind,baseSha,evidence) {
+    const prior=()=>first(env,'SELECT evidence_json FROM private_gallery_review_terminals WHERE attempt_id=?1 AND kind=?2 AND base_sha=?3',attemptId,kind,baseSha);
+    const text=JSON.stringify(evidence);if(await prior()) return;
+    try {await put(env,'INSERT INTO private_gallery_review_terminals(attempt_id,kind,base_sha,evidence_json) VALUES(?1,?2,?3,?4)',attemptId,kind,baseSha,text);}
+    catch {if((await prior())?.evidence_json!==text) throw new Error('Unavailable');}
 }
 
 export async function resumeArchivePhotoRemoval({env,identity,site,attemptId,github,publicFetch,timeoutMilliseconds}) {
@@ -145,6 +155,12 @@ export async function resumeArchivePhotoRemoval({env,identity,site,attemptId,git
                 proposal:{baseSha:main.baseSha,targetRelativePath:`gallery-data/${site}.json`,
                     manifestText:canonical({schemaVersion:'1.0',items:own.items.filter(i=>!usesTarget(i))})}};
         }
+        const removals=await env.DB.prepare(`SELECT i.base_sha,i.removal_json FROM private_gallery_manifest_removal_intents i
+            WHERE i.attempt_id=?1 AND NOT EXISTS(SELECT 1 FROM private_gallery_review_terminals t
+             WHERE t.attempt_id=i.attempt_id AND t.kind='removal' AND t.base_sha=i.base_sha) LIMIT 1001`).bind(attemptId).all();
+        if(removals?.success!==true || !Array.isArray(removals.results) || removals.results.length>1000) throw new Error('Unavailable');
+        for(const row of removals.results) await saveTerminal(env,attemptId,'removal',row.base_sha,
+            await reconcileArchiveGalleryReview(JSON.parse(row.removal_json),{expectedBaseSha:row.base_sha,...githubOptions(github),kind:'removal'}));
         const manifestHash=await hash(canonical(own));
         if(!await first(env,`SELECT 1 FROM private_gallery_pipeline_manifest_receipts WHERE attempt_id=?1 AND main_sha=?2`,attemptId,main.baseSha)) {
             try {await put(env,`INSERT INTO private_gallery_pipeline_manifest_receipts(attempt_id,main_sha,manifest_sha256)
@@ -174,4 +190,46 @@ export async function hideArchivePhotoPerson({env,identity,site,personId,input,g
         attemptId:row.attempt_id,github,publicFetch,timeoutMilliseconds}));
     return {ok:outcomes.every(result=>result.completed===true),status:outcomes.every(result=>result.completed===true)?200:409,
         state:outcomes.every(result=>result.completed===true)?'hidden':'removal-pending',outcomes};
+}
+
+// Explicit review step, separate from Hide's privacy-first cleanup and separate
+// from the addition client. Never marks an open removal PR as removal complete.
+export async function requestArchivePhotoManifestRemoval(options) {
+    const {env,identity,site,attemptId,github}=options;
+    try {
+        const state=await resumeArchivePhotoRemoval(options);
+        if(state.completed) return state;
+        if(state.state!=='manifest-removal-required' || state.hostDeletionConfirmed!==true) return pending();
+        const attempt=await readArchivePhotoAttempt(env,identity,site,attemptId,null,{allowClosed:true});
+        const addition=await first(env,'SELECT candidate_json FROM private_gallery_pipeline_review_intents WHERE attempt_id=?1',attemptId);
+        if(!addition) return pending();
+        const item=JSON.parse(JSON.parse(addition.candidate_json).manifestText).items.find(value=>value.id===attempt.public_item_id);
+        if(!item) return pending();
+        const {baseSha,targetRelativePath,manifestText}=state.proposal;
+        const prior=()=>first(env,'SELECT * FROM private_gallery_manifest_removal_intents WHERE attempt_id=?1 AND base_sha=?2',attemptId,baseSha);
+        let intent=await prior();
+        const removal={operationId:intent?.operation_id || `removal_${crypto.randomUUID()}`,targetRelativePath,item,
+            manifestText,manifestSha256:`sha256:${await hash(manifestText)}`};
+        const json=JSON.stringify(removal);
+        if(intent && intent.removal_json!==json) return pending();
+        if(!intent) {
+            try {await put(env,`INSERT INTO private_gallery_manifest_removal_intents(attempt_id,base_sha,operation_id,removal_json)
+                VALUES(?1,?2,?3,?4)`,attemptId,baseSha,removal.operationId,json);}
+            catch {intent=await prior();if(!intent) return pending();}
+            intent=await prior();
+            // Another concurrent identical request may have won its UUID.
+            const saved=JSON.parse(intent.removal_json);
+            if(JSON.stringify({...saved,operationId:removal.operationId})!==json) return pending();
+        }
+        const review=await createOrReconcileArchiveGalleryRemoval(JSON.parse(intent.removal_json),{expectedBaseSha:baseSha,...githubOptions(github),
+            admitPullRequest:()=>put(env,"INSERT INTO private_gallery_review_write_admissions(attempt_id,kind,base_sha) VALUES(?1,'removal',?2)",attemptId,baseSha)});
+        const text=JSON.stringify({...review,replayed:false});
+        const stored=()=>first(env,'SELECT review_json FROM private_gallery_manifest_removal_reviews WHERE attempt_id=?1 AND base_sha=?2',attemptId,baseSha);
+        if(!(await stored())) {
+            try {await put(env,`INSERT INTO private_gallery_manifest_removal_reviews(attempt_id,base_sha,review_json) VALUES(?1,?2,?3)`,attemptId,baseSha,text);}
+            catch {if((await stored())?.review_json!==text) return pending();}
+        }
+        if((await stored())?.review_json!==text) return pending();
+        return {ok:true,status:200,state:'unmerged-removal-review',completed:false,hostDeletionConfirmed:true,review};
+    } catch {return pending();}
 }

@@ -1,5 +1,112 @@
 # Decision Log
 
+## Archive review recovery and owner job coordination — 11 October 2026
+
+Local `0027` distinguishes review intents from one-way PR POST admission. Checked
+no-PR observations can settle only closed requests without admitted POSTs/recorded
+PRs. A timeout after admission is uncertainty, not absence; exact closed/owner-
+merged PR evidence is required. Upgrade conservatively fences historical intents
+without rewriting consent or reviews. All removal reviews need their own terminal
+ledger, independently of byte cleanup, current host proof and current-main absence.
+
+Local `0028` chooses operations through owner/session/CSRF/inherited-area private
+jobs, not arbitrary workflow inputs. Split service identities and the existing two
+protected environments keep credentials separate. Manual main-only workflows take
+one opaque job ID and cannot dispatch, merge, deploy or create resources.
+
+A non-expiring global D1 claim and shared Actions concurrency serialize supported
+jobs. Publication preparation holds its claim across the separate owner merge,
+until checked observation or terminal cancellation. Purge has a separate owner-
+confirmed proof/key and cannot overlap it. Failure recovers in the SAME Actions
+run, not through expiry or cancellation. Atomic purge consumes private jobs/claims
+and keeps hash-only immutable replay evidence; people/unrelated archives survive.
+
+GitHub/D1 still have no shared transaction. The owner must use this publication
+path; code cannot restrict arbitrary owner merges outside it. Existing App/main
+restrictions and owner environments need separately approved live verification.
+This local design grants no live media, purge, deployment or publication authority.
+
+## Terminal archive metadata purge is atomic and separate from Hide — 10 October 2026
+
+John explicitly approved this local-only slice after the earlier broader approval
+was insufficient to replace no-delete guards. `0026` grants deletion only inside
+one bound INSERT after exact terminal owner request/original absence and all
+attempts' current storage, fixed-host, main and addition-review proofs. It retires
+opaque identities/keys and deletes only owned operational rows atomically. The
+grant consumes itself; interruption cannot leave partial deletion or retirement.
+Only hash-only immutable audit/retirement and server time survive. Shared private
+people/preferences, unrelated assets and legacy retention remain unchanged.
+Hide retains metadata; original deletion is not metadata purge. Every reservation,
+including one never admitted to processing, must be reconciled. No public-host
+proof is fabricated from an empty storage inventory.
+
+The internal DB-only service has no byte/network capability. Its fixed-client
+wrapper rereads both current-main manifests and refuses intervening changes,
+but GitHub and D1 cannot share a transaction. A future protected owner/CSRF path
+must serialize publication/purge; there is no live purge route or workflow now.
+Unresolved pre-review addition intents and all recorded removal intents/reviews fail
+closed until positive terminal reconciliation is implemented. Local tests do not
+authorize release, remote migration, deployment or live purge.
+
+## Archive services consume exact owner-approved scopes — 10 October 2026
+
+Use a request-local, non-serializable authority after verified Worker Access,
+bound to the existing owner, inherited area, exact attempt and fixed service
+purpose. Never fabricate a browser owner. Origin, delivery version and current
+epoch/witness checks remain mandatory on every archive service operation.
+Processing has originals/staging; promotion has staging/approved; the verifier
+has DB only. The finalizer is independently bundled and has originals/DB only;
+it consumes an existing owner deletion request, never creates consent or a request.
+No service environment may contain all the buckets. Legacy v1 routes retain
+their checks; only well-formed new non-binding scalars are removed before their
+unchanged exact-environment validation. Archive routes never use that helper.
+
+Two immutable tier-absence checkpoints certify exact closed-generation cleanup
+by their separate storage services. They are not host proof. The verifier still
+performs the fixed-origin, current-version witness protocol and every historical
+target observation; a manifest receipt requires current host and terminal-review
+proof. Prepared-review recovery avoids source replay. Current main is read through
+the existing narrow GitHub client before restoration: historical DB receipts do
+not permit retired IDs/URLs to reappear. Hide stops at an unmerged exact one-file
+removal review if main still references the item. Allow plus fresh complete-person
+consent creates a new generation and stops at an unmerged addition review.
+
+Containment requirement fragments cover private-archive/v1/, derivative-staging/v2/
+and media/v2/ with exact 24-hour multipart abort rules. They neither replace bucket
+policies nor delete objects, and never count as synchronous cleanup or host proof.
+Actual remote policies must be read and verified at a separate activation gate.
+
+At that earlier checkpoint metadata purge remained disabled. Safety review rejected introducing an irreversible
+purge migration/service under the broader retention/containment approval. No 0026
+migration or retention-purge service was created, and existing no-delete guards
+remained. The later explicit local-only approval is recorded in the decision above.
+Hide must never qualify; terminal consent
+withdrawal keeps immediate byte deletion and minimum-audit priority. Legacy
+30-day retention rules and v1 permanent retirement remain unchanged.
+
+## Owner intake and public removal review have separate authority — 10 October 2026
+
+Private original intake uses the existing verified browser owner, inherited area,
+signed session, same-origin and CSRF boundary. Private-retention consent and fresh
+public-use consent are separate explicit forms and records; neither Allow nor an
+original byte-match receipt grants publication. Bounded body reading precedes the
+existing quarantine service, with ownership checked before bytes. No filenames,
+private person IDs, object keys or arbitrary destinations become public inputs.
+
+An exact-removal review is a separate narrow GitHub-client capability, not a flag
+that relaxes the addition contract. It must remove precisely the historical public
+item from one inherited manifest, preserve all other content and reject collateral
+URL use. Immutable intent/review evidence survives uncertain replies. A review is
+not a merge or completed removal; current fixed-main and independent public-host
+proof remain mandatory. Originals and complete private tags survive reversible
+hiding; archive metadata purge remains unfinished rather than silently permanent.
+
+These owner controls and removal adapter are local only. The proposed service
+authority adapter was rejected and not applied because its conditional media
+origin/version checks could weaken the existing boundary. No alternative service
+authority architecture is accepted by this entry: mandatory configured checks,
+separate bucket capabilities and explicit local design approval remain required.
+
 ## Archive generations close before cleanup and restoration never reopens them — 10 October 2026
 
 Connect retained-photo reservations to the existing pinned processor and narrow

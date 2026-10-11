@@ -5,6 +5,7 @@ import { sha256Hex } from './media-byte-verification.js';
 import { loadPrivateGalleryRoster } from './private-gallery-roster-service.js';
 import { readPrivateGalleryAssetEligibility } from './private-gallery-visibility-service.js';
 import { readPrivateGalleryTags } from './private-gallery-tag-service.js';
+import {assertArchiveIdentityAvailable} from './private-gallery-retirement.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const revision = /^sha256:[0-9a-f]{64}$/;
@@ -99,6 +100,9 @@ export async function reservePrivateGalleryAttempt(env,identity,site,assetId,inp
         const current = await snapshot();
         if (!current.ok) return current;
         const attemptId = `attempt_${crypto.randomUUID()}`;
+        const generationId=crypto.randomUUID(),itemId=`photo-${crypto.randomUUID()}`;
+        await assertArchiveIdentityAvailable(env,'generation',generationId);
+        await assertArchiveIdentityAvailable(env,'item',itemId);
         try {
             const result = await env.DB.prepare(`INSERT INTO private_gallery_attempts
                 (attempt_id,asset_id,site_mode,generation_id,public_item_id,idempotency_key,owner_identity_hash,request_hash,
@@ -107,7 +111,7 @@ export async function reservePrivateGalleryAttempt(env,identity,site,assetId,inp
                  original_byte_count,original_sha256,original_provider_version,original_provider_etag,
                  complete_tags_confirmed,public_use_confirmed,contains_minors,guardian_approval_confirmed)
                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,1,1,?25,?26)`)
-                .bind(attemptId,assetId,site,crypto.randomUUID(),`photo-${crypto.randomUUID()}`,input.idempotencyKey,owner,hash,
+                .bind(attemptId,assetId,site,generationId,itemId,input.idempotencyKey,owner,hash,
                     current.generation,current.tags.tagVersion,JSON.stringify(current.tags.personIds),JSON.stringify(current.visibility),
                     JSON.stringify(current.eligibility.publicAthleteIds),current.eligibility.revision,catalog.exportBundleId,catalog.sourceRevision,
                     catalog.suppressionRevision,current.race.raceDate,current.race.raceEvent,current.race.raceDistance,

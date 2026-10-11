@@ -70,7 +70,7 @@ export function syntheticGitHub() {
         if(method==='GET' && path.startsWith('/compare/')) {
             const [base,head]=path.slice('/compare/'.length).split('...'),commit=state.commits.get(head);
             if(commit?.parents?.[0]?.sha===base) return json(200,{status:'ahead',ahead_by:1,total_commits:1,files:[{filename:commit.path,status:'modified'}]});
-            return json(200,{status:head===base?'identical':'ahead',ahead_by:1,total_commits:1,files:[]});
+            return json(200,{status:head===base?'identical':'ahead',ahead_by:1,behind_by:0,merge_base_commit:{sha:base},total_commits:1,files:[]});
         }
         if(method==='GET' && path==='/pulls') {
             const branch=url.searchParams.get('head')?.split(':')[1];return json(200,state.pulls.filter(p=>p.head.ref===branch));

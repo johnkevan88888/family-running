@@ -1,4 +1,7 @@
 import { verifyWorkerAccessIdentity } from './access.js';
+import catalog from '../generated/catalog-snapshot.js';
+import {isArchiveServicePath,legacyArchiveEnvironment} from './private-gallery-service-request.js';
+import {handleArchiveProcessingRequest} from './private-gallery-processing-adapter.js';
 import {
     cleanupProcessingRun,
     processingOriginalResponse,
@@ -48,6 +51,8 @@ const EXACT_ENVIRONMENT_KEYS = Object.freeze([
 ]);
 
 export async function handleProcessingRequest(request, env, dependencies = {}) {
+    if(isArchiveServicePath(request)) return handleArchiveProcessingRequest(request,env,catalog,dependencies);
+    env=legacyArchiveEnvironment(env,'processing');
     const hasRehearsalHeader = request.headers.has(PROCESSING_REHEARSAL_HEADER);
     const prepareRehearsalRequest = dependencies.prepareRehearsalRequest;
     if (hasRehearsalHeader && typeof prepareRehearsalRequest !== 'function') {

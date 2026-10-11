@@ -328,7 +328,7 @@ async function withFixture(callback) {
             path.join(repositoryRoot, 'scripts', 'gallery-media-toolchain.json'),
             path.join(root, 'scripts', 'gallery-media-toolchain.json')
         );
-        for (const contract of ['gallery-contract.js', 'gallery-upload-contract.js']) {
+        for (const contract of ['gallery-contract.js', 'gallery-upload-contract.js', 'gallery-media-policy.js']) {
             await fs.copyFile(
                 path.join(repositoryRoot, contract),
                 path.join(root, contract)

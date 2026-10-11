@@ -1,13 +1,119 @@
 # Protected Gallery tagging and reversible visibility
 
-Status: accepted product/storage direction; local protected-roster storage,
+## Current local completion — 11 October 2026
+
+All 75 local check groups passed at 23:03:10 UTC, including the actual D1 engine,
+both areas and responsive browser checks. Public output remains byte-identical
+to main. Exact files, receipts and separate release/activation gates are recorded
+in `docs/active-work.md`; this is local proof, not a live lifecycle rehearsal.
+
+The approved local-only pass connects owner job requests, protected review/removal
+recovery, publication preparation and terminal purge inspection/confirmation.
+`0027` adds pre-POST admission and immutable addition/removal terminal evidence.
+An interrupted intent with no admitted POST can be positively reconciled as no-PR;
+an in-flight/uncertain POST cannot. Historical unknown writers remain fenced.
+Current main alone does not settle a removal PR; its exact closed/owner-merged
+result is required before manifest completion/restoration/finalization/purge.
+
+`0028` records owner/session/CSRF/area-bound jobs and non-expiring global claims.
+The local UI queues only an exact asset/action/consent attempt, then links to the
+owner-approved workflow; it cannot dispatch or publish. Opening saved asset/job
+status is read-only. Minor/guardian answers, all private tags, server-derived public
+metadata and fresh eligibility checks remain unchanged. Terminal original deletion
+and metadata purge have separate controls; Hide never authorizes either.
+
+The two manual main-only archive workflows accept only an opaque job ID. Existing
+processing/finalization environments keep service/App credentials separate, never
+passing them as outputs/artifacts. Purpose-authenticated HTTP controllers consume
+the private owner job. Publication preparation holds its claim across the separate
+owner merge, until checked observation or terminal cancellation. A confirmed purge
+cannot acquire that slot; it also needs its exact owner-approved proof/key.
+Completed purge retires private jobs in the same transaction and keeps hash-only
+completion replay, without further media/host/GitHub operations.
+
+Rerun the SAME failed Actions run; a new run cannot steal its claim. No timeout or
+empty storage inventory fabricates absence. Existing current host/witness evidence
+and completed cleanup are reused; real proof remains distinct from local fixtures.
+This coordinates the supported owner path, not arbitrary out-of-band owner merges.
+Live activation must verify owner-only environment approvals, the App/main update
+restriction, fixed configuration, archive multipart containment and that publication
+procedure. No remote resources/settings/credentials/deployment/rehearsal occur here.
+Full validation/evidence and exact changed paths are in `docs/active-work.md`.
+
+Previous-stage status (superseded by the completed owner/workflow integration above):
+accepted product/storage direction; local protected-roster storage,
 owner reads, atomic private asset/tag reservations and internal pre-publication
 archive quarantine/removal, audited complete-tag correction and internal
 fresh-consent attempt reservation and internal archive-source processing/review,
 whole-photo hide/restore and fixed-origin removal proof implemented locally.
-Protected HTTP/workflow/UI activation and archive metadata retention/purge are
-not implemented; this is not yet an owner-operable or deployed feature.
+Protected owner intake/fresh-consent HTTP controls and a separate exact-removal
+review adapter and strictly scoped processing/promotion/verifier/finalizer service
+paths are now implemented locally. Explicit protected-transport runner libraries
+connect review, recovery, removal proposals and fresh-generation restoration;
+they have no CLI, credential discovery, workflow dispatch, merge or publication.
+No Actions workflow is yet wired to these archive runners. Terminal archive
+metadata purge is implemented/tested locally as internal libraries only; the whole lifecycle is not
+yet owner-operable or deployed. No real-photo intake is approved by this status.
 Not deployed, and not part of the UI/data release in PR #120.
+
+## Strict service continuation — 10 October 2026
+
+`private-gallery-service-authority.js` issues an ephemeral exact-attempt authority
+only after the adapter verifies the configured single Access service identity.
+All archive operations require configured media origin/version and matching
+current epoch/witness values. No ledger-origin fallback, optional-version path,
+browser impersonation or caller destination/key is present. Fresh public consent
+can still be created only through the existing browser-owner session/CSRF path.
+The full private roster, complete tags, consent, catalogue, suppression and pending
+exclusions are rechecked before byte/review operations and afterward where needed.
+
+The existing processing/promotion/verifier Workers route archive requests through
+their fixed purpose and exact separated bindings. Original readback precedes the
+actual pinned metadata-stripping decoder; staging/approved receipts bind actual
+independently read bytes. The independently bundled finalizer adapter accepts
+only an existing owner-deletion request and cannot process derivatives or purge.
+`0025_private_gallery_split_cleanup.sql` adds immutable current-epoch tier absence
+receipts and host-before-manifest completion guards. The verifier has no R2 binding
+and refuses host I/O before both storage receipts; it then runs the unchanged
+fixed-origin witness/target protocol. Missing storage is never public-host absence.
+
+`archive-service-client.mjs` has fixed provider origins, explicit authenticated
+transports, forbidden redirects and bounded whole-request/response reads. The
+protected archive runner uses the existing narrow GitHub client. Prepared reviews
+recover without reading the source or rewriting bytes. Privacy cleanup runs both
+tiers independently of GitHub outages. Published-photo hiding may produce only an
+unmerged one-file removal review; restoration requires fresh owner consent, checks
+both current-main manifests against every old generation and uses fresh URLs.
+A normal review rerun cannot silently unpublish an owner-merged photo.
+
+An intent interrupted before any review exists still stops pending: positive
+no-review terminal reconciliation is not yet wired into the archive guards.
+Do not invent open/closed review evidence to finish it. This edge, Actions wiring
+and explicit activation/rehearsal remain necessary before owner operation.
+
+`archive-media-lifecycle.required.json` and the read-only containment validator
+require exact 24-hour abort rules on all three new prefixes and reject overlapping
+object-changing rules or unknown policy shapes. Generated policies pass locally;
+no live bucket policy has been inspected or altered by this continuation.
+
+After a separate explicit local-only approval, `0026` and the DB-only retention
+service implement terminal owner deletion/consent-withdrawal metadata purge.
+Hide/Allow and retention expiry do not qualify. Original deletion, every attempt's
+closed generation, both tier receipts, current epoch/host and current-main absence,
+and terminal addition-review evidence are required. An unadmitted generation is
+not omitted. Zero actual attempts is not an R2-derived public-host receipt.
+Both current-main manifests are inspected for old IDs/URLs. Exact private rows
+are deleted atomically with hash-only permanent audit and retirement; shared
+people/preferences, unrelated archives and legacy retention remain intact.
+Completed replay does not repeat storage/host/GitHub work. Immutable retirement
+fences prevent old reservation/asset/generation/item/key reuse.
+
+The fixed-client purge wrapper is internal only, with two current-main reads;
+it cannot establish an atomic GitHub/D1 transaction. Publication serialization,
+authenticated owner/CSRF orchestration and Actions wiring remain prerequisites.
+Any saved removal intent/review currently blocks purge because its terminal ledger is not
+wired yet. The pre-review interrupted-addition case also remains pending.
+No HTTP purge route, deployment, migration application or live purge is included.
 
 Local components: `gallery-admin/src/private-gallery-roster.js` validates an
 owner-only catalogue and resolves complete private person tags without a public
@@ -62,9 +168,10 @@ no foreign-key relationship to a draft and no backfill/reclassification of old
 withdrawn/purged records. Stable person IDs cannot be replaced; removing a
 person's public mapping or area eligibility does not erase saved tags.
 
-The reservation endpoints remain `awaiting-original`. They accept no bytes; no upload
-or publication route accepts these records, and no image/hash/consent claim is
-made. This is a future ownership reservation, NOT a verified retained photo.
+The reservation endpoints themselves remain `awaiting-original` and accept no
+bytes. The separate owner intake controls below can quarantine an original in
+local generated fixtures; a reservation alone is NOT a verified retained photo.
+Neither endpoint is a publication capability.
 Initial records and tags remain immutable; the separately documented 0021
 correction appends new versions rather than rewriting them. Complete archive
 consent/deletion/purge integration is still required before real intake is
@@ -88,13 +195,13 @@ receipts, terminal removal requests, writer-closure evidence and original-absenc
 receipts. None of these fields grants public-use consent. Complete private tags
 remain attached; original deletion does not claim that metadata has been purged.
 
-This service is deliberately not imported by the admin Worker or wired to any
-HTTP route, workflow or UI. The existing reservation endpoint remains a
-reservation reader. The future intake integration must use the existing
-verified single-owner identity, area-bound session and CSRF checks; these
-internal helpers enforce owner/area scoping but do not independently authenticate
-an HTTP request. No new bindings, resources, credentials or worker configuration
-are introduced. No old draft, original, consent or terminal receipt is imported.
+The original internal-only slice is now consumed by the local protected owner
+wrapper described below. The existing reservation endpoint remains a reservation
+reader. The wrapper uses the existing verified single-owner identity, area-bound
+session and CSRF checks before dispatch; these internal helpers enforce owner/
+area scoping but do not independently authenticate an HTTP request. No new
+bindings, resources, credentials or Worker configuration are introduced. No old
+draft, original, consent or terminal receipt is imported. Nothing is deployed.
 
 Before bytes, the owner must confirm private retention for all depicted people,
 state whether minors appear and supply the corresponding guardian confirmation.
@@ -221,8 +328,9 @@ conflict. Reservations expire after 24 hours for current-success replay without
 rewriting old evidence or deleting retained originals. Later processing must
 repeat these fences and the fresh-consent lifetime, not trust a saved reservation.
 
-This module is not imported by any Worker/router/workflow/UI. It performs no
-R2/GitHub/network operation and reports processing/publication disabled.
+This database-only module is now consumed by the local protected owner wrapper,
+not a service workflow. It performs no R2/GitHub/network operation and reports
+processing/publication disabled.
 Quarantine remains byte-match evidence, not decoder acceptance or metadata
 stripping. No source ownership transfer, active processing draft, preview object,
 PR, hide/restore completion, metadata purge or public-host proof exists here.
@@ -322,9 +430,60 @@ adapters. It has no command-line entry point, credential discovery, ambient
 network adapter, protected Worker route, workflow dispatch or uploader control.
 Do not deploy a combined all-bucket Worker: activation must preserve the existing
 separate processing and promotion capabilities. Remaining work is protected
-service/owner orchestration and UI, the reviewed manifest-removal adapter, archive
+service/owner orchestration and its completion UI, archive
 metadata retention/purge and prefix-specific multipart containment checks. Those
 are implementation prerequisites, not extra live approvals requested here.
+
+### Protected owner intake and exact removal review — local partial integration, 10 October 2026
+
+`private-gallery-owner-service.js` is routed through the existing admin boundary
+at `/api/browser/private-assets/{assetId}/archive-intake`, `archive-original`,
+`archive-attempt` and `archive-deletion`. Existing verified owner, inherited area,
+signed session, same-origin and CSRF checks precede dispatch. Automation is denied.
+No destination, identity, filename, object key or URL input is added. Ownership is
+checked before reading original bytes. Exact content types, encoding/length and
+size bounds, a total body deadline and bounded cancellation prevent unknown-length
+or stalled bodies from bypassing intake limits. Responses expose safe state only.
+
+The protected-library local UI saves fresh private-retention permission, uploads
+an exact JPEG/PNG original and separately records fresh public-use consent. Both
+minor questions require an explicit Yes/No selection, with guardian confirmation
+validated server-side. Exact lost-response retries recover the existing intake/
+receipt or consent reservation; they do not write another original. Confirmed
+consent forms reset. Race/event/distance/date and public tags remain server-derived.
+The UI explicitly says processing is not connected; saving consent cannot process,
+create a review or publish. Hide remains a private preference action, not a claim
+that public-byte or manifest removal has finished. Terminal original deletion is
+not metadata purge and remains blocked from completion by incomplete public removal.
+
+Forward local `0024_private_gallery_removal_reviews.sql` adds immutable removal
+intents and open-review receipts keyed to the closed attempt and pinned main base.
+SQL requires exact output-removal receipts, current-epoch host proof and the exact
+historical public item. `requestArchivePhotoManifestRemoval` explicitly requests
+a review through `createOrReconcileGalleryRemoval`; cleanup itself does not do so.
+The removal client is separate from the exact-addition client. It proves that only
+one inherited manifest file loses exactly the recorded item, preserves all other
+items and rejects shared/cross-area URLs or changed historical metadata. It uses
+the existing fixed repository/main, candidate-only branch and API allowlist, with
+no merge, settings or arbitrary-file capability. Exact replay is read-only. An
+open removal review stays incomplete until separate owner removal is observed on
+current main; restoration still needs new consent, new URLs and current host proof.
+
+Local owner-route, browser, fake-GitHub, full SQLite and actual local D1 tests cover
+both areas, denial before I/O, stalled bodies, lost replies, retained tags/originals,
+explicit synthetic owner removal and fresh restoration. These are not live proof.
+
+The attempted service-authority adapter was rejected by tool security review
+because it would add a service authority path and make required media-origin/
+version checks conditional. The patch was NOT applied; the lifecycle core's
+browser-owner boundary and mandatory configured origin/version checks are unchanged.
+Do not bypass that rejection, impersonate a browser owner, or deploy a combined
+all-bucket Worker. The next approval is a local-only stricter service design:
+verified service identity may consume only an existing owner-approved exact attempt,
+with mandatory fixed-origin/version configuration and separate processing/promotion/
+verification capabilities. Wrong or missing configuration and cross-attempt requests
+must fail before I/O. Protected orchestration, archive metadata retention/purge and
+prefix-specific multipart containment remain unfinished. No release is requested.
 
 ## Outcome
 

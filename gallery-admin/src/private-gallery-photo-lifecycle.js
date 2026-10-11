@@ -1,11 +1,13 @@
 import '../../gallery-contract.js';
 import toolchain from '../../scripts/gallery-media-toolchain.json' with {type:'json'};
 import { reservePrivateGalleryAttempt } from './private-gallery-attempt-service.js';
-import { hashIdentity } from './session.js';
+import {assertArchiveIdentityAvailable} from './private-gallery-retirement.js';
+import {archiveOperationOwner,isArchiveServiceAuthority,archiveServiceTier,
+    recheckArchiveServiceConsent,readArchiveMediaEpoch} from './private-gallery-service-authority.js';
 import { inspectStaticWebp,readBoundedBytes,sha256Hex } from './media-byte-verification.js';
 import { matchesExactImageHttpMetadata } from './r2-http-metadata.js';
 import { buildV2PhotoDerivativeKey } from './photo-generation-keys.js';
-import { PUBLIC_HOST_VERIFIER_SQL,proveArchivePhotoHostAbsence } from './public-host-verifier-service.js';
+import { proveArchivePhotoHostAbsence } from './public-host-verifier-service.js';
 import { MEDIA_BINDING_WITNESS_KEY,MEDIA_BINDING_WITNESS_SHA256,MEDIA_BINDING_WITNESS_SIZE,
     MEDIA_BINDING_WITNESS_CONTENT_TYPE,MEDIA_DELIVERY_CONTRACT_VALUE } from './media-delivery-contract.js';
 
@@ -28,16 +30,22 @@ async function insert(env,sql,...values) {
 function primary(env) { return {...env,DB:env.DB.withSession?.('first-primary')||env.DB}; }
 
 export async function readArchivePhotoAttempt(env,identity,site,attemptId,catalog,{allowClosed=false}={}) {
-    if(identity?.type!=='browser' || !['family','everyone'].includes(site) ||
+    if(!['family','everyone'].includes(site) ||
         !/^attempt_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(attemptId||'')) throw new Error('Unavailable');
     const row=await first(env,`SELECT a.*,s.private_object_key,s.original_format FROM private_gallery_attempts a
         JOIN private_gallery_assets s ON s.asset_id=a.asset_id WHERE a.attempt_id=?1 AND a.owner_identity_hash=?2 AND a.site_mode=?3`,
-        attemptId,await hashIdentity(identity),site);
+        attemptId,await archiveOperationOwner(env,identity,site,attemptId),site);
     if(!row) throw new Error('Unavailable');
+    await assertArchiveIdentityAvailable(env,'generation',row.generation_id);
+    await assertArchiveIdentityAvailable(env,'item',row.public_item_id);
     if(row.private_object_key!==`private-archive/v1/${site}/${row.asset_id}/original.${row.original_format}` ||
         !['jpg','png'].includes(row.original_format)) throw new Error('Unavailable');
     if(allowClosed) return row;
     if(await first(env,'SELECT 1 FROM private_gallery_pipeline_closures WHERE attempt_id=?1',attemptId)) throw new Error('Closed');
+    if(isArchiveServiceAuthority(identity)) {
+        await recheckArchiveServiceConsent(env,row,catalog);
+        return row;
+    }
     const raceIndex=catalog?.sites?.[site]?.catalog?.races?.findIndex(r=>r.raceDate===row.race_date &&
         r.raceEvent===row.race_event && r.raceDistance===row.race_distance);
     const checked=await reservePrivateGalleryAttempt(env,identity,site,row.asset_id,{
@@ -51,22 +59,13 @@ export async function readArchivePhotoAttempt(env,identity,site,attemptId,catalo
 }
 
 async function epoch(env) {
-    const e=await first(env,PUBLIC_HOST_VERIFIER_SQL.readCurrentEpoch);
-    const origin=env.APPROVED_MEDIA_ORIGIN;
-    if(!e || typeof origin!=='string' || !/^https:\/\/[a-z0-9.-]+$/.test(origin) ||
-        e.approvedOrigin!==origin || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(env.EXPECTED_MEDIA_VERSION||'') ||
-        e.approvedOriginHash!==await digest(`approved-media-origin:${origin}`) ||
-        e.deliveryContractHash!==await digest(`approved-media-contract:${MEDIA_DELIVERY_CONTRACT_VALUE}`) ||
-        e.deliveryVersionHash!==await digest(`approved-media-version:${env.EXPECTED_MEDIA_VERSION}`) ||
-        e.witnessObjectKeyHash!==await digest(`approved-object-key:${MEDIA_BINDING_WITNESS_KEY}`) ||
-        e.witnessSha256!==MEDIA_BINDING_WITNESS_SHA256 || e.witnessByteCount!==MEDIA_BINDING_WITNESS_SIZE ||
-        e.witnessContentType!==MEDIA_BINDING_WITNESS_CONTENT_TYPE) throw new Error('Epoch unavailable');
-    return e;
+    return readArchiveMediaEpoch(env);
 }
 
 export async function admitArchivePhotoProcessing(env,identity,site,attemptId,catalog) {
     env=primary(env);
     try {
+        await archiveOperationOwner(env,identity,site,attemptId,'admit');
         await readArchivePhotoAttempt(env,identity,site,attemptId,catalog);
         const current=await epoch(env);
         const prior=await first(env,'SELECT * FROM private_gallery_pipeline_admissions WHERE attempt_id=?1',attemptId);
@@ -83,6 +82,7 @@ export async function admitArchivePhotoProcessing(env,identity,site,attemptId,ca
 
 export async function readArchivePhotoSource(env,identity,site,attemptId,catalog) {
     env=primary(env);
+    await archiveOperationOwner(env,identity,site,attemptId,'source');
     const row=await readArchivePhotoAttempt(env,identity,site,attemptId,catalog);
     if(!await first(env,'SELECT 1 FROM private_gallery_pipeline_admissions WHERE attempt_id=?1',attemptId)) throw new Error('Not admitted');
     const object=await env.PRIVATE_ORIGINALS.get(row.private_object_key,{onlyIf:{etagMatches:row.original_provider_etag}});
@@ -123,6 +123,7 @@ async function verifiedBytes(bucket,row,object=null) {
 // Called by the trusted pinned processor, never with browser scanner claims.
 export async function storeArchivePhotoDerivative(env,identity,site,attemptId,catalog,tier,derivative,scan) {
     env=primary(env);
+    await archiveOperationOwner(env,identity,site,attemptId,tier);
     const attempt=await readArchivePhotoAttempt(env,identity,site,attemptId,catalog);
     if(!['staging','approved'].includes(tier) || !roles.includes(derivative?.storageRole) || !derivative.payload ||
         scan?.videoEnabled!==false || Object.keys(scan).sort().join('|')!=='exiftool|libvips|png|sharp|videoEnabled|webp' ||
@@ -135,6 +136,7 @@ export async function storeArchivePhotoDerivative(env,identity,site,attemptId,ca
         bytes.length!==derivative.byteLength || await sha256Hex(bytes)!==derivative.sha256) throw new Error('Invalid derivative');
     const key=tier==='approved'?buildV2PhotoDerivativeKey({generationId:attempt.generation_id,sha256:derivative.sha256,role}):
         `derivative-staging/v2/${site}/${attempt.generation_id}/${derivative.sha256}/${role==='photo-display'?'display.webp':'thumbnail.webp'}`;
+    await assertArchiveIdentityAvailable(env,'key',key);
     const scanJson=JSON.stringify(scan);
     let row=(await outputRows(env,attemptId)).find(r=>r.tier===tier && r.role===role);
     if(!row) {
@@ -189,6 +191,7 @@ export async function storeArchivePhotoDerivative(env,identity,site,attemptId,ca
 
 export async function readArchivePhotoCandidateItem(env,identity,site,attemptId,catalog) {
     env=primary(env);
+    await archiveOperationOwner(env,identity,site,attemptId,'candidate');
     const a=await readArchivePhotoAttempt(env,identity,site,attemptId,catalog);
     const current=await epoch(env);
     const admission=await first(env,'SELECT * FROM private_gallery_pipeline_admissions WHERE attempt_id=?1',attemptId);
@@ -207,6 +210,7 @@ export async function readArchivePhotoCandidateItem(env,identity,site,attemptId,
 
 export async function closeArchivePhotoAttempt(env,identity,site,attemptId,reason='cancelled') {
     env=primary(env);
+    await archiveOperationOwner(env,identity,site,attemptId,'close');
     await readArchivePhotoAttempt(env,identity,site,attemptId,null,{allowClosed:true});
     if(!['failed','cancelled'].includes(reason)) throw new Error('Invalid close request');
     if(!await first(env,'SELECT 1 FROM private_gallery_pipeline_closures WHERE attempt_id=?1',attemptId)) {
@@ -235,9 +239,12 @@ export async function removeArchivePhotoCopies(env,identity,site,attemptId) {
     env=primary(env);
     try {
         const a=await readArchivePhotoAttempt(env,identity,site,attemptId,null,{allowClosed:true});
+        const scopedTier=archiveServiceTier(identity,env,site,attemptId);
+        if(scopedTier) await archiveOperationOwner(env,identity,site,attemptId,`remove-${scopedTier}`);
         if(!await first(env,'SELECT 1 FROM private_gallery_pipeline_closures WHERE attempt_id=?1',attemptId)) throw new Error('Not closed');
         const rows=await outputRows(env,attemptId);
         for(const row of rows) {
+            if(scopedTier && row.tier!==scopedTier) continue;
             const bucket=row.tier==='approved'?env.APPROVED_MEDIA:env.PRIVATE_DERIVATIVE_STAGING;
             if(row.writer_proof) continue;
             let writerProof='no-writer';
@@ -257,22 +264,51 @@ export async function removeArchivePhotoCopies(env,identity,site,attemptId) {
             catch { if(!await first(env,`SELECT 1 FROM private_gallery_pipeline_object_removals
                 WHERE attempt_id=?1 AND tier=?2 AND role=?3`,attemptId,row.tier,row.role)) throw new Error('Unavailable'); }
         }
-        await emptyPrefix(env.APPROVED_MEDIA,`media/v2/${a.generation_id}/`);
-        await emptyPrefix(env.PRIVATE_DERIVATIVE_STAGING,`derivative-staging/v2/${site}/${a.generation_id}/`);
-        return {ok:true,status:200,state:'copies-removed',hostDeletionConfirmed:false};
+        if(!scopedTier || scopedTier==='approved') await emptyPrefix(env.APPROVED_MEDIA,`media/v2/${a.generation_id}/`);
+        if(!scopedTier || scopedTier==='staging') await emptyPrefix(env.PRIVATE_DERIVATIVE_STAGING,`derivative-staging/v2/${site}/${a.generation_id}/`);
+        for(const tier of scopedTier?[scopedTier]:['staging','approved']) {
+            const current=await epoch(env);
+            const found=()=>first(env,`SELECT 1 FROM private_gallery_pipeline_tier_absences
+                WHERE attempt_id=?1 AND tier=?2 AND epoch_id_hash=?3`,attemptId,tier,current.epochIdHash);
+            if(!await found()) {
+                try {await insert(env,`INSERT INTO private_gallery_pipeline_tier_absences(attempt_id,tier,epoch_id_hash)
+                    VALUES(?1,?2,?3)`,attemptId,tier,current.epochIdHash);}
+                catch {if(!await found()) throw new Error('Unavailable');}
+            }
+            if((await epoch(env)).epochIdHash!==current.epochIdHash) throw new Error('Changed epoch');
+        }
+        return {ok:true,status:200,state:scopedTier?`${scopedTier}-copies-removed`:'copies-removed',hostDeletionConfirmed:false};
     } catch { return fail(); }
 }
 
 export async function verifyArchivePhotoPublicAbsence(env,identity,site,attemptId,fetchImpl,timeoutMilliseconds) {
+    if(isArchiveServiceAuthority(identity)) return verifyScopedArchivePhotoPublicAbsence(env,identity,site,attemptId,fetchImpl,timeoutMilliseconds);
+    return verifyArchivePhotoHostCore(env,identity,site,attemptId,fetchImpl,timeoutMilliseconds,async (env,a)=>{
+        await emptyPrefix(env.APPROVED_MEDIA,`media/v2/${a.generation_id}/`);
+        await emptyPrefix(env.PRIVATE_DERIVATIVE_STAGING,`derivative-staging/v2/${site}/${a.generation_id}/`);
+    });
+}
+
+// Dedicated service entry point has no R2 dependency or bucket references in
+// its compiled bundle. The shared host protocol itself is unchanged.
+export async function verifyScopedArchivePhotoPublicAbsence(env,identity,site,attemptId,fetchImpl,timeoutMilliseconds) {
+    if(!isArchiveServiceAuthority(identity)) return fail();
+    return verifyArchivePhotoHostCore(env,identity,site,attemptId,fetchImpl,timeoutMilliseconds,async (env,a,e)=>{
+        const proofs=await all(env,`SELECT tier FROM private_gallery_pipeline_tier_absences
+            WHERE attempt_id=?1 AND epoch_id_hash=?2 ORDER BY tier`,attemptId,e.epochIdHash);
+        if(JSON.stringify(proofs.map(r=>r.tier))!==JSON.stringify(['approved','staging'])) throw new Error('Storage pending');
+    });
+}
+
+async function verifyArchivePhotoHostCore(env,identity,site,attemptId,fetchImpl,timeoutMilliseconds,checkStorage) {
     env=primary(env);
     try {
+        await archiveOperationOwner(env,identity,site,attemptId,'verify');
         const a=await readArchivePhotoAttempt(env,identity,site,attemptId,null,{allowClosed:true});
         if(!await first(env,'SELECT 1 FROM private_gallery_pipeline_closures WHERE attempt_id=?1',attemptId)) throw new Error('Not closed');
         const e=await epoch(env),rows=await outputRows(env,attemptId);
         if(rows.some(r=>!r.writer_proof)) throw new Error('Storage pending');
-        // Recheck prefix absence before host I/O, even on receipt replay.
-        await emptyPrefix(env.APPROVED_MEDIA,`media/v2/${a.generation_id}/`);
-        await emptyPrefix(env.PRIVATE_DERIVATIVE_STAGING,`derivative-staging/v2/${site}/${a.generation_id}/`);
+        await checkStorage(env,a,e);
         const prior=await first(env,`SELECT * FROM private_gallery_pipeline_host_receipts WHERE attempt_id=?1 AND epoch_id_hash=?2`,attemptId,e.epochIdHash);
         if(prior) return {ok:true,status:200,hostDeletionConfirmed:true,replayed:true};
         const targets=await Promise.all(rows.filter(r=>r.tier==='approved').map(async r=>({approvedObjectKey:r.object_key,

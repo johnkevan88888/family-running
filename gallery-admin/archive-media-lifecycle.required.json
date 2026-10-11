@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1.0",
+  "evidenceBoundary": {
+    "purpose": "orphan-multipart-containment-only",
+    "synchronousCleanupProof": false,
+    "permitsTombstoneOrPurge": false,
+    "permitsPolicyReplacement": false
+  },
+  "requirements": [
+    {"bucketName": "family-running-gallery-originals-dev", "prefix": "private-archive/v1/", "abortAfterSeconds": 86400},
+    {"bucketName": "family-running-gallery-staging-dev", "prefix": "derivative-staging/v2/", "abortAfterSeconds": 86400},
+    {"bucketName": "family-running-gallery-approved-dev", "prefix": "media/v2/", "abortAfterSeconds": 86400}
+  ]
+}

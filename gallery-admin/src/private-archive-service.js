@@ -4,6 +4,7 @@ import { readBoundedBytes, sha256Hex } from './media-byte-verification.js';
 import { readPrivateGalleryAsset } from './private-gallery-asset-service.js';
 import { loadPrivateGalleryRoster } from './private-gallery-roster-service.js';
 import { resolvePrivateGalleryTags } from './private-gallery-roster.js';
+import {isArchiveServiceAuthority,archiveOperationOwner} from './private-gallery-service-authority.js';
 
 const policy = mediaPolicyModule?.default || mediaPolicyModule;
 const maximumBytes = 25 * 1024 * 1024;
@@ -14,13 +15,14 @@ const failure = status => ({ ok:false, status, code:status === 409 ? 'archive-bl
 const response = (status, state) => ({ok:true,status,state});
 const intakeFields = ['byteCount','containsMinors','declaredMimeType','guardianApprovalConfirmed','privateRetentionConfirmed','rosterRevision','sha256'];
 
-// Preparatory internal service: deliberately NOT wired into the admin Worker.
-// The future route must use its verified owner/session/CSRF boundary. No helper
-// here confers public-use consent or performs image decoding/publishing.
+// Owner intake uses the verified owner/session/CSRF boundary. The separately
+// authenticated finalizer can consume only a pre-existing owner deletion request.
+// Neither confers public-use consent or performs image decoding/publishing.
 async function context(env, identity, site, assetId) {
-    const selected = await readPrivateGalleryAsset(env, identity, site, assetId);
-    if (!selected.ok) throw Object.assign(new Error('Unavailable'), {status:selected.status});
-    const owner = await hashIdentity(identity);
+    const service=isArchiveServiceAuthority(identity);
+    const selected = service?null:await readPrivateGalleryAsset(env, identity, site, assetId);
+    if (!service && !selected.ok) throw Object.assign(new Error('Unavailable'), {status:selected.status});
+    const owner = service?await archiveOperationOwner(env,identity,site,assetId,'finalize'):await hashIdentity(identity);
     const row = await env.DB.prepare(`SELECT a.original_format, a.private_object_key,
         i.request_hash, i.roster_generation, i.byte_count, i.sha256, s.tag_version, s.current_person_ids_json,
         (unixepoch(i.created_at) + 86400 > unixepoch('now')) AS unexpired,
@@ -39,10 +41,11 @@ async function context(env, identity, site, assetId) {
         WHERE a.asset_id = ?1 AND a.owner_identity_hash = ?2 AND a.site_mode = ?3`)
         .bind(assetId,owner,site).first();
     if (!row || !Number.isSafeInteger(row.tag_version) || row.tag_version < 1 ||
-        row.current_person_ids_json !== JSON.stringify(selected.asset.personIds) || !['jpg','png'].includes(row.original_format) ||
+        (!service && row.current_person_ids_json !== JSON.stringify(selected.asset.personIds)) || !['jpg','png'].includes(row.original_format) ||
         row.private_object_key !== `private-archive/v1/${site}/${assetId}/original.${row.original_format}` ||
         (row.provider_upload_id !== null && !safeProvider(row.provider_upload_id,1024))) throw new Error('Unavailable');
-    return {...row,owner,personIds:selected.asset.personIds};
+    if(service && !row.deletion_reason) throw new Error('Owner request required');
+    return {...row,owner,personIds:service?[]:selected.asset.personIds};
 }
 async function run(env, sql, ...bindings) {
     const result = await env.DB.prepare(sql).bind(...bindings).run();
@@ -54,6 +57,7 @@ const state = row => row.original_absent === 1 ? 'private-original-deleted' : ro
 const publicError = error => failure([403,404,409,422].includes(error?.status) ? error.status : 503);
 
 export async function preparePrivateArchiveIntake(env, identity, site, assetId, input) {
+    if(isArchiveServiceAuthority(identity)) return failure(403);
     try {
         const row = await context(env,identity,site,assetId);
         if (row.deletion_reason) return failure(409);
@@ -95,6 +99,7 @@ export async function preparePrivateArchiveIntake(env, identity, site, assetId, 
 }
 
 export async function storePrivateArchiveOriginal(env, identity, site, assetId, body, dependencies = {}) {
+    if(isArchiveServiceAuthority(identity)) return failure(403);
     try {
         let row = await context(env,identity,site,assetId);
         if (row.deletion_reason || !row.request_hash) return failure(409);
@@ -186,6 +191,7 @@ export async function deletePrivateArchiveOriginal(env,identity,site,assetId,rea
     if (!['owner-delete','consent-withdrawal'].includes(reason)) return failure(422);
     try {
         let row = await context(env,identity,site,assetId);
+        if(isArchiveServiceAuthority(identity) && row.deletion_reason!==reason) return failure(409);
         if (row.original_absent === 1) return response(200,'private-original-deleted');
         if (!row.deletion_reason) {
             try { await run(env,'INSERT INTO private_archive_deletion_requests (asset_id,actor_identity_hash,reason) VALUES (?1,?2,?3)',assetId,row.owner,reason); }
