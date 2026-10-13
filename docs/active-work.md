@@ -1,5 +1,123 @@
 # Active Work
 
+## Approved timeout-correction repository release — 13 October 2026
+
+John explicitly approved synchronization/retest, push, PR creation and merge
+after required checks. Normal Pages is authorized ONLY with byte-identical
+public output and Family 1 / Everyone 0. No Worker deployment, migration,
+credential/settings change, protected Gallery workflow dispatch, live retry,
+real media, purge or new Gallery publication is included.
+
+Fresh main fetch and readback confirmed
+`4b8e6f4530b4def0f4de18380ab36ec1caa10abc`, unchanged from the complete
+76-group local pass recorded below. The release branch is
+`codex/gallery-promotion-timeout`. Its only implementation changes are the
+promotion-only 30-second adapter and protected Actions wiring; the existing
+transport checks and all Worker/SQL/media contracts are unchanged.
+
+Fresh release checks cover the timeout regression, both-area protected lifecycle
+and owner/workflow recovery, repository/vendor/CSV/Gallery/catalogue validation,
+preview artifact safety and canonical public-file comparison. Required GitHub
+checks must pass on the exact proposed commit before merge. The standard
+PR/Netlify pathway is used: these service-client scripts are not classified by
+the existing no-visual skip gate, and that gate is not weakened for this release.
+
+Only the eight timeout implementation/test/documentation paths listed below
+are staged. Earlier uncommitted activation/reconciliation operational notes and
+unrelated outer work remain local and preserved, not added to this timeout PR.
+The working handoff retains them. The source remains photo-only; no previously
+closed attempt is reopened and no completed cleanup is replayed.
+
+This release alone cannot prove live restoration. After release verification,
+a fresh consent/new-generation synthetic review from the retained original still
+requires separate approval and must stop at an unmerged one-file candidate PR.
+
+## Completed local-only promotion-request timeout correction — 13 October 2026
+
+John approved preparing/testing the client correction only: no remote changes,
+deployment or live retry. Work is confined to the existing implementation
+checkout `test-artifacts/gallery-0016-repair`; unrelated outer edits are preserved.
+Its source baseline is locally cached main
+`4b8e6f4530b4def0f4de18380ab36ec1caa10abc`. No remote fetch/synchronization,
+commit, push, PR mutation, dispatch, merge or publication has occurred.
+
+The protected Actions driver now selects a small purpose-specific adapter around
+the UNCHANGED fixed-origin transport. ONLY promotion's `promote` RPC gets its
+existing permitted 30,000-ms total option. Other promotion operations and all
+processing/verifier/owner-job/finalizer defaults remain 10,000 ms. The transport's
+30-second maximum, one header-and-body budget, complete bounded read, origin,
+redirect, cache, content-type/UTF-8/JSON validation, input/credential checks and
+abort-on-completion/failure are unchanged. There is no automatic retry or
+timeout/environment/workflow input. Worker code/bindings, SQL guards, consent,
+private tags, catalogue, writer fences, App checks, host proof and publication/
+purge serialization are untouched. This client-only correction needs no Worker
+deployment or migration.
+
+Focused `gallery-archive-service-timeout`, `gallery-protected-archive-lifecycle`
+and `gallery-private-owner-workflow` checks passed. The regression reproduces the
+old 11-second reply rejection and corrected acceptance using both simulated clocks
+and an actual wall-clock fictional transport (latest measured 10,015-ms rejection
+versus 11,015-ms acceptance). It covers acceptance immediately below the 30-second
+cap, exact-cap rejection/abort, partial/late complete bodies, every unaffected
+10-second operation, wrong origin/redirect/cache/type, invalid UTF-8/JSON,
+oversize/error replies and zero automatic retries. Generated-photo fixtures in
+both areas prove a late promotion reply leaves the owner claim held, consent and
+private original/tags unchanged, and no candidate PR inferred; only normal tier
+cleanup plus actual synthetic host/main verification releases the claim. No live
+record, photo, credential or endpoint was accessed by these tests.
+
+Validation status: the fresh full 76-group suite PASSED on 13 October (completion
+confirmed at 14:38 UTC). It includes repository/vendor/CSV/Gallery/catalogue checks,
+actual pinned local D1 through all 28 migrations, preview artifact safety/build
+and both-mode desktop/mobile browser checks. Four fresh generated-photo Gallery
+desktop/mobile screenshots covering both modes were visually reviewed; protected
+owner layouts were also reviewed. External media remained blocked in test browsers.
+Git diff whitespace checks and changed-file syntax checks passed. No local blocker
+remains for this correction; there is still no live correction/retry evidence.
+
+The first full run and one focused packaging retry hit an unchanged local Wrangler dry-run
+process timeout after its success message. A diagnostic-only run and then a
+normal UNINSTRUMENTED focused rerun passed without changing source, tool version,
+limits or assertions; the fresh full run passed that packaging check and all
+remaining groups.
+The initial all-fixture simulated clock stalled native Blob/decoder scheduling;
+the test clock was narrowed to the promotion RPC and restored before safety
+cleanup. No production guard or validation was relaxed.
+
+Canonical public artifact proof at 14:16:21 UTC built exactly 115 files, each
+byte-identical to the cached baseline; inventory SHA-256
+`e663141813c1398eebd43cfa33074c932df5f550fd6145111edb502922b8304c`.
+Family retains its ONE existing pilot; Everyone remains empty. Only proven
+CRLF-only differences were normalized inside a new disposable ignored fixture,
+never in tracked runtime files. This is local canonical proof, not a fresh remote
+main/Pages verification. Existing public runtime/data/manifests, catalogue,
+dependencies and workflows have no diff to cached main.
+
+Exact tracked paths changed in the implementation checkout:
+
+- `scripts/gallery-media/archive-service-client.mjs`
+- `scripts/run-gallery-archive-job.mjs`
+- `tests/gallery-archive-service-timeout.mjs` (new)
+- `tests/gallery-protected-archive-lifecycle.mjs`
+- `tests/helpers/private-gallery-job-fixture.mjs`
+- `scripts/run-all-tests.mjs`
+- `docs/testing-and-release-protocol.md`
+- `docs/active-work.md`
+
+The outer `docs/active-work.md` mirrors this handoff. Generated regression/public
+receipts, diagnostic helpers, canonical fixture and screenshots remain ignored.
+No applied migration, Worker, private workbook, real media or manifest was edited.
+Evidence: implementation `test-artifacts/gallery-archive-timeout-regression.json`
+and `test-artifacts/gallery-timeout-public-identity.json`.
+
+The next separate gate is synchronization/retest and release through a corrective
+PR, required checks and explicit merge,
+allowing normal Pages ONLY with unchanged public bytes and preserved Family 1 /
+Everyone 0 manifests. No Worker deployment is required. A fresh consent/generation
+synthetic restoration from the retained original remains separately approved and
+must stop at an unmerged one-file candidate; neither closed earlier attempt may
+be reopened or completed cleanup replayed.
+
 ## Current release — completed private Gallery lifecycle, 11 October 2026
 
 Following the completed local pass and its explicit repository-release handoff,

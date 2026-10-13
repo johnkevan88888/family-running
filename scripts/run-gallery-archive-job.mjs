@@ -1,5 +1,5 @@
 import {appendFile} from 'node:fs/promises';
-import {createArchiveServiceClient,createArchiveJobClient,createArchiveFinalizerClient} from './gallery-media/archive-service-client.mjs';
+import {createArchiveServiceClient,createArchivePromotionClient,createArchiveJobClient,createArchiveFinalizerClient} from './gallery-media/archive-service-client.mjs';
 import {runProtectedArchiveJob} from './gallery-media/protected-archive-job.mjs';
 import {verifyGalleryReviewBoundary} from './gallery-media/github-review-boundary.mjs';
 import {readGalleryReviewMain} from './gallery-media/github-review-client.mjs';
@@ -37,7 +37,7 @@ try {
         const main=await readGalleryReviewMain({token:github.token,fetchImpl:githubFetch});
         await verifyGalleryReviewBoundary({expectedBaseSha:main.baseSha,token:github.token,fetchImpl:githubFetch});
         dependencies.github=github;dependencies.processing=createArchiveServiceClient(configuration('processing'));
-        dependencies.promotion=createArchiveServiceClient(configuration('promotion'));
+        dependencies.promotion=createArchivePromotionClient(configuration('promotion'));
         if(phase==='prepare') {
             const read=await jobs(jobId,'read',{runReference});
             if(read?.ok!==true || !['review','removal','publication'].includes(read.value.job?.action)) throw new Error('Owner job unavailable.');
