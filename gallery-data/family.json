@@ -16,6 +16,20 @@
       "athleteIds": [
         "john-kevan"
       ]
+    },
+    {
+      "id": "photo-09bc8ada-ff2d-4a56-8cd2-587051ba8f61",
+      "type": "photo",
+      "title": "Photo",
+      "caption": "",
+      "alt": "Photo",
+      "raceDate": "2026-10-04",
+      "raceEvent": "Manchester Half Marathon",
+      "raceDistance": "H. Mar",
+      "sourceUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v2/68ec3af1-10d9-48d1-ac61-ee85333572c8/8f3f4461cb96c9c0fc33910d9b867dc5a16474563e7b6fe0ee34bc27e4749757/display.webp",
+      "thumbnailUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v2/68ec3af1-10d9-48d1-ac61-ee85333572c8/a5ae4cc88af4093dbabec93cc2caa0e0bbcc657412a2e72d9ccad06ff1a5a626/thumbnail.webp",
+      "featured": false,
+      "athleteIds": []
     }
   ]
 }
