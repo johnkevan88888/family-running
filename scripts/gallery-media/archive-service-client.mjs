@@ -46,6 +46,16 @@ export function createArchiveServiceClient({purpose,origin,clientId,clientSecret
     };
 }
 
+// The protected promotion RPC copies/verifies the two-derivative photo set. Give
+// only that RPC the existing bounded 30-second option; all other operations
+// retain their normal deadline, validation and uncertain-write behaviour.
+export function createArchivePromotionClient(options) {
+    if(options?.purpose!=='promotion') throw new Error('Unavailable');
+    const normal=createArchiveServiceClient(options);
+    const promote=createArchiveServiceClient({...options,timeoutMilliseconds:30000});
+    return (attemptId,operation,value)=>(operation==='promote'?promote:normal)(attemptId,operation,value);
+}
+
 const finalizerOrigin='https://family-running-gallery-withdrawal-finalizer-dev.family-running.workers.dev';
 // Explicit protected transports. The body cannot select an owner, area, object
 // key, repository or URL. Job metadata comes from the owner request in D1.

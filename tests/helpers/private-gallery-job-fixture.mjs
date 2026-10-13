@@ -3,7 +3,7 @@ import {handleArchiveServiceRequest} from '../../gallery-admin/src/private-galle
 import {handleWithdrawalFinalizerRequest} from '../../gallery-admin/src/withdrawal-finalizer-worker.js';
 import {handleAdminRequest} from '../../gallery-admin/src/admin-worker.js';
 import {createBrowserSession} from '../../gallery-admin/src/session.js';
-import {createArchiveServiceClient,createArchiveJobClient,createArchiveFinalizerClient} from '../../scripts/gallery-media/archive-service-client.mjs';
+import {createArchiveServiceClient,createArchivePromotionClient,createArchiveJobClient,createArchiveFinalizerClient} from '../../scripts/gallery-media/archive-service-client.mjs';
 import * as delivery from '../../gallery-admin/src/media-delivery-contract.js';
 export async function privateGalleryJobFixture(f) {
     const clients={},jobs={},environments={},identities={},requests=[];
@@ -28,6 +28,7 @@ export async function privateGalleryJobFixture(f) {
             Object.defineProperty(response,'url',{value:request.url});await replyHook?.(request,response);return response;
         }};
         if(purpose==='finalizer') clients.finalizer=createArchiveFinalizerClient(configuration);
+        else if(purpose==='promotion') clients.promotion=createArchivePromotionClient(configuration);
         else clients[purpose]=createArchiveServiceClient(configuration);
         if(['promotion','finalizer'].includes(purpose)) jobs[purpose]=createArchiveJobClient(configuration);
     }

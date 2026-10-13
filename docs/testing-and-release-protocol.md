@@ -4,6 +4,22 @@ This project is a static GitHub Pages site. Excel/VBA remains the private source
 
 ## Local Setup
 
+### Promotion-request deadline correction — local only, 13 October 2026
+
+Run `node tests/gallery-archive-service-timeout.mjs`. The protected Actions driver
+uses the existing fixed-origin transport with a 30-second total budget ONLY for
+the promotion `promote` RPC. Other promotion operations, processing, verifier,
+owner-job and finalizer transports retain their 10-second defaults. No workflow
+input, environment setting, automatic retry, Worker or database guard is changed.
+The budget covers headers AND the complete bounded response body; redirects,
+wrong origin/cache/content type, malformed or oversized replies still fail closed.
+Clock-controlled tests and an actual 11-second fictional response reproduce the
+old stop and corrected acceptance without network access, live credentials or
+real media.
+The corrected adapter is also used by the existing generated-photo HTTP lifecycle
+and owner/workflow fixtures, including unknown-write closure and retained claims.
+Passing remains local proof only, not a live retry or permission to release.
+
 ### Protected archive continuation checks
 
 In addition to the existing owner-intake/private-lifecycle groups, run
@@ -81,7 +97,7 @@ or cross-area edits. Creating a review never proves current-main removal or supp
 a merge capability. The addition client does not accept removal-shaped input.
 Pinned Wrangler SQL splitting and actual local D1 depth checks include `0024`.
 
-The full runner now includes 75 groups. Run `tests/gallery-private-owner-workflow.mjs`
+The full runner now includes 76 groups. Run `tests/gallery-private-owner-workflow.mjs`
 for actual owner/session/CSRF and purpose-authenticated synthetic HTTP connections,
 pre-POST/no-PR recovery, a genuinely delayed admitted POST which must stay pending,
 conservative pre-gate upgrade, exact terminal removal reviews, completed-cleanup
