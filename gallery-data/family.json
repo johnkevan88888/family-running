@@ -16,6 +16,22 @@
       "athleteIds": [
         "john-kevan"
       ]
+    },
+    {
+      "id": "photo-e46ca61f-b003-4887-8af8-475961ba8e7d",
+      "type": "photo",
+      "title": "Photo",
+      "caption": "",
+      "alt": "Photo",
+      "raceDate": "2026-08-22",
+      "raceEvent": "Budapest Park, Toronto - Parkrun",
+      "raceDistance": "5 km",
+      "sourceUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v2/749efd78-d23b-45ad-be3d-2ad5c5900bbf/ff746d7961ebaf378c2c2f6ddc2fd1f8239737159dc193b3bc50020f36ba6a09/display.webp",
+      "thumbnailUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v2/749efd78-d23b-45ad-be3d-2ad5c5900bbf/1de82554cce5437690af14f0323707a1be9a297db1fedbb2a8564c9c86cb162c/thumbnail.webp",
+      "featured": false,
+      "athleteIds": [
+        "john-kevan"
+      ]
     }
   ]
 }
