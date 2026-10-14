@@ -1,5 +1,27 @@
 # Decision Log
 
+## Indirect owner replacement preserves the original addition review — 14 October 2026
+
+GitHub can mark an unchanged addition PR indirectly merged at a later owner
+replacement commit, whose manifest omits the old photo. Do not change the saved
+candidate, consent, tags, review head or original manifest hash to match that commit.
+
+The local terminal client keeps the existing exact-document path. A differing
+ADDITION merge is accepted only when the original branch/base/one-file proof
+still passes, the reviewed head is an ancestor of the reported merge, the exact
+approved item survives, and the merged manifest is an ordered subset of the
+original reviewed items. No added/edited item, reordered survivor or cross-area
+reuse of that photo's ID/URLs is accepted. The actual merge must still belong to
+stable current main, and the reviewed branch must remain unchanged. Evidence
+keeps the original candidate hash/head and records the actual merge/main separately.
+
+REMOVAL reviews still require the entire exact reviewed manifest. This exception
+settles historical review identity only; it proves neither public-host absence,
+manifest removal, fresh consent, purge eligibility nor permission to publish.
+Existing storage, witness/epoch, suppression/exclusion, retained-original and
+publication/purge coordination checks remain independent and unchanged.
+This correction is local-only; release and any live retry need separate approval.
+
 ## Archive review recovery and owner job coordination — 11 October 2026
 
 Local `0027` distinguishes review intents from one-way PR POST admission. Checked

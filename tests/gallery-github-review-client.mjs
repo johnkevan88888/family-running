@@ -765,7 +765,8 @@ await assert.rejects(reconcileStoredGalleryReview(tamperedHistory.stored,
     { token, fetchImpl: tamperedHistory.fetch }), /invalid refresh history/);
 assert.equal(tamperedHistory.state.pullRequests[0].state, 'open', 'Never close an unowned history.');
 
-console.log('Gallery GitHub review client tests passed, including refresh, replay, races and anchored withdrawal.');
+await import('./gallery-review-reconciliation.mjs');
+console.log('Gallery GitHub review client tests passed, including refresh, replay, races, anchored withdrawal and indirect owner-replacement reconciliation.');
 
 async function refreshFixture(settings = {}) {
     const mock = createMockGitHub();

@@ -231,8 +231,12 @@ export async function reconcileArchiveGalleryReview(value, options={}) {
             throw new Error('Unverified merge.');
         const document=JSON.parse(decodeRepositoryFile(await github.request('GET',
             `/contents/${candidate.targetRelativePath}?ref=${pull.merge_commit_sha}`),candidate.targetRelativePath,'merged review'));
-        if(galleryContract.validateGalleryDocument(document).length || canonicalManifest(document)!==candidate.manifestText)
+        if(galleryContract.validateGalleryDocument(document).length)
             throw new Error('Merged bytes differ from reviewed manifest.');
+        if(canonicalManifest(document)!==candidate.manifestText) {
+            if(removalOnly) throw new Error('Merged bytes differ from reviewed manifest.');
+            await verifyIndirectAdditionMerge(github,{candidate,document,headSha,baseSha,mergeSha:pull.merge_commit_sha});
+        }
         const main=await readRequiredRef(github,'heads/main','main');
         const compare=await github.request('GET',`/compare/${pull.merge_commit_sha}...${main}`);
         if(!['identical','ahead'].includes(compare?.status) || compare.behind_by!==0 ||
@@ -245,6 +249,34 @@ export async function reconcileArchiveGalleryReview(value, options={}) {
 }
 
 const canonicalManifest = document => `${JSON.stringify(document,null,2)}\n`;
+
+// GitHub may associate an unchanged addition review with a later owner
+// replacement commit, not its preserved intermediate merge. Admit only that
+// narrow shape: reviewed head is an ancestor, the exact new photo survives,
+// and the only manifest changes are removals of old reviewed-context entries.
+// This is terminal history evidence, NOT publication or removal authority.
+async function verifyIndirectAdditionMerge(github,{candidate,document,headSha,baseSha,mergeSha}) {
+    const reviewed=JSON.parse(candidate.manifestText);
+    const expected=reviewed.items.find(item=>item.id===candidate.itemId);
+    const survivingIds=new Set(document.items.map(item=>item.id));
+    const surviving=reviewed.items.filter(item=>survivingIds.has(item.id));
+    if(mergeSha===headSha || JSON.stringify(document.items.find(item=>item.id===candidate.itemId))!==JSON.stringify(expected) ||
+        canonicalManifest(document)!==canonicalManifest({schemaVersion:'1.0',items:surviving}))
+        throw new Error('Indirect merge must preserve the exact reviewed photo and surviving context.');
+    // Preserve the original whole-document, one-addition proof. Never replace
+    // its candidate hash/base/head with the later owner's manifest bytes.
+    await proveCandidateIsOneAddition(github,candidate,baseSha);
+    const comparison=await github.request('GET',`/compare/${headSha}...${mergeSha}`);
+    if(comparison?.status!=='ahead' || comparison.behind_by!==0 || comparison.merge_base_commit?.sha!==headSha)
+        throw new Error('Indirect merge does not contain the original reviewed head.');
+    const otherPath=candidate.targetRelativePath==='gallery-data/family.json'?'gallery-data/everyone.json':'gallery-data/family.json';
+    const other=JSON.parse(decodeRepositoryFile(await github.request('GET',`/contents/${otherPath}?ref=${mergeSha}`),otherPath,'indirect merge other area'));
+    const usesPhoto=item=>item.id===expected.id || [item.sourceUrl,item.thumbnailUrl,item.posterUrl].some(url=>
+        [expected.sourceUrl,expected.thumbnailUrl].includes(url));
+    if(galleryContract.validateGalleryDocument(other).length || Object.keys(other).sort().join(',')!=='items,schemaVersion' ||
+        document.items.filter(usesPhoto).length!==1 || other.items.some(usesPhoto))
+        throw new Error('Indirect merge duplicates the reviewed photo across items or areas.');
+}
 
 async function proveCandidateIsOneRemoval(github,candidate,baseSha) {
     const site=candidate.targetRelativePath==='gallery-data/family.json'?'family':'everyone';

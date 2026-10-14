@@ -1,5 +1,151 @@
 # Active Work
 
+## Approved review-reconciliation repository release — 14 October 2026
+
+John's "Ok. Proceed" approves synchronization/retest, a NEW corrective PR,
+required checks and owner merge. Normal Pages is authorized ONLY with
+byte-identical public output and Family 1 / Everyone 0. No Worker deployment,
+migration, credential/settings change, protected Gallery workflow dispatch,
+live hiding/removal retry, real-media use, purge or new Gallery publication
+is included.
+
+Fresh fetch and owner readback confirmed current main
+`383930f80a0eec93dfdcf84acefd6d1e3c93b5a9`. Its tree is identical to the
+previously tested local replacement tree. The prepared correction and prior
+notes are preserved on `codex/gallery-review-reconciliation`, based on that
+exact current main. Ruleset 18119142 remains active with the owner's PR-only
+path, merge-only method, strict `Test static site` / integration 15368 check,
+resolved-thread requirement and Gallery App excluded from bypass.
+An initial unauthenticated CLI response was a restricted-context limitation:
+owner authentication passed in the approved context, without login or settings
+changes.
+
+The fresh combined `pnpm test` run PASSED all 76 groups at 13:47 UTC, including
+the exact local D1 engine, 90 adversarial review refusals, both modes and responsive
+browser screenshots. No test, timeout, chart, published file or dependency was
+changed to obtain it. The earlier failed chart run remains preserved in the
+local preparation record; this new synchronized full run satisfies the release
+gate. Exact complete output is ignored in
+`test-artifacts/gallery-review-reconciliation-release-full.log`.
+
+At 13:38:54 UTC a fresh read-only baseline check matched all 115 LIVE static
+files to the canonical current-main artifact and verified both rendered modes
+plus desktop/mobile Gallery views: Family 1 / Everyone 0. External photo and
+analytics requests were blocked; no real-photo bytes were fetched or processed.
+This is static-site proof, not public-media absence or lifecycle finalization.
+
+Release scope is exactly the nine correction paths listed below. The PR's
+active-work addition contains only this approval/handoff and the local correction
+record; earlier unrelated uncommitted operational notes remain intact locally
+and in the outer handoff, rather than being added to this PR. Generated evidence,
+logs, source archives and screenshots remain ignored.
+
+Use the ordinary full-preview route: the unchanged classifier does not classify
+the private runner path as eligible for a preview skip. Before owner merge,
+require the fresh full local result, exact-head required CI, Netlify preview and
+both-mode review, exact nine-file diff, unchanged public artifact and stable
+current main/head. Do not use an admin bypass or change protection. After merge,
+verify the exact normal Pages run, published artifact and all 115 live files.
+No separate Gallery workflow is dispatched by this release.
+
+The next SEPARATE approval is any protected live reconciliation/hiding/removal
+operation. Preserve the existing real photo, consent, tags, immutable review
+history, completed cleanup and still-current host evidence. Do not replay the
+completed publication, manufacture terminal proof, reupload media or infer purge
+eligibility. This Node-client correction needs no Worker deployment or migration.
+
+
+## Local review-reconciliation correction — 14 October 2026
+
+John approved preparing/testing the LOCAL-ONLY compatibility correction. No
+remote read/change, push, PR mutation, migration, deployment, live hiding/removal
+retry, real-media read/upload, purge or further publication is included or
+performed. The published photo and all private evidence remain untouched.
+The implementation uses the existing isolated `test-artifacts/gallery-0016-repair`
+checkout at local replacement tree `e4f67bf00f87bf9a5bfe3eae553e501d97bb1571`.
+Unrelated outer changes and previous operational notes are preserved.
+
+The new generated GitHub fixture reproduces the exact prior failure,
+`Merged bytes differ from reviewed manifest.`: GitHub records the final
+owner replacement as the original PR's indirect merge, not its unchanged head
+or preserved intermediate merge. The correction keeps the existing full-document
+path and adds only a bounded ADDITION exception: unchanged original branch/base/
+one-file candidate proof; exact approved photo; ordered subset containing only
+old-context removals; reviewed-head-to-actual-merge and actual-merge-to-stable-main
+ancestry; no cross-area ID/URL reuse; final unchanged branch readback.
+Added/edited/reordered items, altered/private fields, missing photo, detached or
+uncertain merges and ref races fail closed. REMOVAL reviews still demand the
+entire exact reviewed manifest. Original candidate/hash/head/consent/tag evidence
+is not rewritten. Terminal review proof is not host or manifest absence.
+
+Focused passing commands:
+
+- `node tests/gallery-review-reconciliation.mjs` (both areas, 90 adversarial refusals);
+- `node tests/gallery-github-review-client.mjs` (includes the new group);
+- `node tests/gallery-private-owner-workflow.mjs`;
+- `node tests/gallery-protected-archive-lifecycle.mjs`;
+- `node tests/gallery-private-photo-lifecycle.mjs`;
+- `node tests/gallery-private-retention.mjs`.
+
+The owner/session/CSRF and split-purpose HTTP/SQL fixtures now model the actual
+indirect replacement, acknowledge publication separately, record its actual
+terminal merge with the ORIGINAL review hash/head, propose an unmerged one-file
+removal, then reuse completed byte/current-host proof after an explicit
+fixture-only owner removal. Exact generated original bytes/provider identity,
+intake/original receipts, complete tags, consent and review records survive
+reversible removal. Existing uncertainty, fresh-consent restoration, permanent
+URL retirement, suppression/exclusion and publication/purge fences are retained.
+All processing/storage/host/purge test operations use generated local fixtures,
+not the real pilot or a remote provider.
+
+The complete `pnpm test` run executed all 76 groups: the first 75 passed, but
+the final browser group stopped on five Family/desktop progression-chart sizing
+assertions at 768px/1920px. These public chart/runtime/test files are unchanged.
+The identical browser suite then PASSED on an independent rerun, including both
+modes and desktop/mobile screenshots, without code/test/timing changes. Every
+local group now has passing evidence, but the first combined full run remains
+FAILED and is preserved; no combined full-suite pass is claimed. A fresh green
+combined suite after synchronization is REQUIRED before release. The browser
+failure was not reproduced; its underlying cause is not established here.
+
+At 12:56:52 UTC a FRESH modified-source LF build matched all 115 canonical public
+files byte-for-byte. Public source Git blobs and all publication controls are
+unchanged: Family 1 / Everyone 0, all 72 CSVs, suppression, runtime, vendor and
+CNAME. Cached original public-candidate metadata/hash also match the unchanged
+one-photo replacement. This is LOCAL output proof against the previously verified
+replacement release `383930f80a0eec93dfdcf84acefd6d1e3c93b5a9`, NOT a new live
+read or synchronization with today's remote main.
+
+Exact implementation-checkout files changed for this correction:
+
+- `scripts/gallery-media/github-review-client.mjs`;
+- `tests/gallery-review-reconciliation.mjs` (new);
+- `tests/gallery-github-review-client.mjs`;
+- `tests/gallery-private-owner-workflow.mjs`;
+- `tests/helpers/private-gallery-lifecycle-fixtures.mjs`;
+- `docs/decision-log.md`;
+- `docs/gallery-private-tagging-plan.md`;
+- `docs/testing-and-release-protocol.md`;
+- `docs/active-work.md`.
+
+Only this handoff is additionally prepended to the outer `docs/active-work.md`.
+Generated logs, fictional fixture evidence, fresh canonical source/build and
+public-output proof remain ignored under `test-artifacts/gallery-review-reconciliation-*`.
+Wrangler 4.126.0 was confirmed with ignored local configuration after its optional
+default log-path write was denied; no broader permissions/settings were changed.
+
+Next explicit approval gate: synchronize with current main, retest, release the
+correction through a NEW corrective PR, required checks and owner merge. Release
+must first satisfy the fresh green combined-suite requirement above. Any normal
+Pages deployment must retain byte-identical public output and Family 1 /
+Everyone 0. This is a Node review-client change, with NO Worker deployment,
+migration or credential/configuration change required or included. A live
+reconciliation/hiding/removal operation remains a SEPARATE approval and must
+preserve completed cleanup and still-current host evidence. Do not replay the
+completed publication run, reupload the photo, rewrite consent or infer purge
+eligibility. The live terminal checkpoint remains unchanged until separately
+approved application/verification.
+
 ## Approved timeout-correction repository release — 13 October 2026
 
 John explicitly approved synchronization/retest, push, PR creation and merge
