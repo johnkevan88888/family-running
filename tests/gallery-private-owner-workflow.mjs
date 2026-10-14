@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {spawnSync} from 'node:child_process';
 import {archiveServiceFixture} from './helpers/private-gallery-service-fixture.mjs';
 import {privateGalleryJobFixture} from './helpers/private-gallery-job-fixture.mjs';
-import {syntheticGitHub} from './helpers/private-gallery-lifecycle-fixtures.mjs';
+import {syntheticGitHub,syntheticReviewedPhoto} from './helpers/private-gallery-lifecycle-fixtures.mjs';
 import {runProtectedArchiveJob} from '../scripts/gallery-media/protected-archive-job.mjs';
 import {runProtectedArchiveReview,resumeProtectedArchiveRemoval} from '../scripts/gallery-media/protected-archive-lifecycle.mjs';
 import {changePrivateGalleryVisibility} from '../gallery-admin/src/private-gallery-visibility-service.js';
@@ -14,7 +14,7 @@ import {readPrivateGalleryRoster} from '../gallery-admin/src/private-gallery-ros
 import {readBoundedBytes,sha256Hex} from '../gallery-admin/src/media-byte-verification.js';
 import {runArchivePhotoReview} from '../scripts/gallery-media/private-photo-lifecycle.mjs';
 import {queuePrivateArchiveJob,claimArchiveJob,readRetiredArchiveJob} from '../gallery-admin/src/private-gallery-job-service.js';
-import {readGalleryReviewMain} from '../scripts/gallery-media/github-review-client.mjs';
+import {readGalleryReviewMain,reconcileArchiveGalleryReview} from '../scripts/gallery-media/github-review-client.mjs';
 import {inspectPrivateArchivePurge,purgePrivateArchiveMetadata} from '../gallery-admin/src/private-gallery-retention-service.js';
 const runReference='https://github.com/johnkevan88888/family-running/actions/runs/123';
 for(const site of ['family','everyone']) {
@@ -51,8 +51,18 @@ for(const site of ['family','everyone']) {
     }
     // Real owner HTTP -> job ledger -> split authenticated HTTP -> processor ->
     // exact review client, then a separate held publication preparation gate.
+    // Model GitHub's actual indirect replacement merge, not head=merge.
     {
         const f=await archiveServiceFixture(site),c=await privateGalleryJobFixture(f),github=syntheticGitHub();
+        const legacy=syntheticReviewedPhoto('fixture-legacy-photo');
+        github.state.manifests[site].items=[legacy];
+        const retained=()=>JSON.stringify({original:f.original.objects.values().next().value,
+            asset:f.db.prepare('SELECT * FROM private_gallery_assets WHERE asset_id=?').get(f.assetId),
+            tags:f.db.prepare('SELECT * FROM private_gallery_asset_tags WHERE asset_id=? ORDER BY ordinal').all(f.assetId),
+            intake:f.db.prepare('SELECT * FROM private_archive_intakes WHERE asset_id=?').get(f.assetId),
+            receipt:f.db.prepare('SELECT * FROM private_archive_original_receipts WHERE asset_id=?').get(f.assetId),
+            consent:f.db.prepare('SELECT * FROM private_gallery_attempts WHERE attempt_id=?').get(f.attemptId)});
+        const originalEvidence=retained();
         const input={action:'review',attemptId:f.attemptId,idempotencyKey:crypto.randomUUID()};
         for(const [extra,identity] of [[{'X-CSRF-Token':'wrong'},f.owner],[{},c.identities.promotion]])
             assert.equal((await c.ownerResponse(f.assetId,input,extra,identity)).status,403);
@@ -64,6 +74,9 @@ for(const site of ['family','everyone']) {
             assert.throws(()=>f.db.prepare('INSERT INTO private_gallery_job_claims(job_id,run_reference,run_hash) VALUES(?,?,?)')
                 .run(jobId,invalid,'0'.repeat(64)),/Fixed protected run reference/,'SQL requires the exact repository and positive digits-only run');
         const review=await execute('review');assert.equal(review.state,'unmerged-review',JSON.stringify(review));
+        const immutableReview=()=>JSON.stringify({intent:f.db.prepare('SELECT * FROM private_gallery_pipeline_review_intents WHERE attempt_id=?').get(f.attemptId),
+            review:f.db.prepare('SELECT * FROM private_gallery_pipeline_reviews WHERE attempt_id=?').get(f.attemptId)});
+        const reviewedEvidence=immutableReview();
         const originalCalls=f.original.calls.length;
         assert.equal((await execute('review')).replayed,true);assert.equal(f.original.calls.length,originalCalls);
         const publishId=await c.ownerJob({action:'publication',attemptId:f.attemptId,idempotencyKey:crypto.randomUUID()});
@@ -104,12 +117,27 @@ for(const site of ['family','everyone']) {
             assert.throws(()=>f.db.exec(`DELETE FROM ${table}`),/Exact atomic/);
             assert.throws(()=>f.db.exec(`UPDATE ${table} SET job_id=job_id`),/immutable/);
         }
-        github.ownerMerge(review.review); // Fixture-only separately authorized owner merge.
+        const replacement=github.ownerReplacementMerge(review.review,[legacy.id]); // Explicit fixture-only owner replacement.
         assert.equal((await execute('publication',publishId)).state,'publication-observed');
+        assert.equal(github.state.manifests[site].items.length,1,'Only the new reviewed photo is published in this synthetic state');
+        assert.equal(retained(),originalEvidence);assert.equal(immutableReview(),reviewedEvidence);
         assert.equal((await changePrivateGalleryVisibility(f.env,f.owner,site,f.ids[0],{expectedVersion:2,idempotencyKey:crypto.randomUUID(),preference:'hidden'})).ok,true);
         assert.equal((await execute('cleanup',removeId)).state,'cleanup-ready');
         assert.equal((await execute('verify',removeId,'finalizer')).state,'host-ready');
-        const removing=await execute('reconcile',removeId);assert.equal(removing.state,'unmerged-removal-review',JSON.stringify(removing));
+        const storedIntent=f.db.prepare('SELECT * FROM private_gallery_pipeline_review_intents WHERE attempt_id=?').get(f.attemptId);
+        const terminalRead=await reconcileArchiveGalleryReview(JSON.parse(storedIntent.candidate_json),{expectedBaseSha:storedIntent.base_sha,
+            token:github.token,fetchImpl:github.fetchImpl,kind:'addition'});
+        assert.equal(terminalRead.mergeSha,replacement.mergeSha);
+        const reconciliationReplies=[];
+        c.setReplyHook(async(request,response)=>{reconciliationReplies.push({operation:new URL(request.url).pathname.split('/').at(-1),
+            status:response.status,...(!response.ok?{error:await response.clone().text()}:{})});});
+        const removing=await execute('reconcile',removeId);
+        c.setReplyHook(null);
+        assert.equal(removing.state,'unmerged-removal-review',JSON.stringify({removing,replies:reconciliationReplies,github:github.state.requests.slice(-5)}));
+        const additionTerminal=JSON.parse(f.db.prepare("SELECT evidence_json FROM private_gallery_review_terminals WHERE attempt_id=? AND kind='addition'").get(f.attemptId).evidence_json);
+        assert.equal(additionTerminal.mergeSha,replacement.mergeSha);assert.equal(additionTerminal.headSha,review.review.headSha);
+        assert.equal(additionTerminal.manifestSha256,review.review.manifestSha256);
+        assert.equal(immutableReview(),reviewedEvidence,'Terminal reconciliation preserves both original review records');
         assert.equal((await execute('finalize',removeId,'finalizer')).state,'awaiting-owner-removal-review');
         // Owner merges the removal; a new owner-approved recovery job observes
         // main AND settles that exact removal review before it can purge.
@@ -121,6 +149,8 @@ for(const site of ['family','everyone']) {
         assert.equal((await execute('reconcile',recovery)).state,'removed');
         assert.equal((await execute('finalize',recovery,'finalizer')).state,'hidden-original-retained');
         assert.deepEqual([f.staging.calls.filter(c=>c[0]==='delete').length,f.approved.calls.filter(c=>c[0]==='delete').length,f.hostRequests.length],counts,'Recovery reuses completed byte/host evidence');
+        assert.equal(retained(),originalEvidence,'Reversible removal retains exact photo, consent, tags and source receipts');
+        assert.equal(immutableReview(),reviewedEvidence);
         assert.equal(f.original.objects.size,1);assert.equal(f.db.prepare('SELECT count(*) n FROM private_gallery_asset_tags WHERE asset_id=?').get(f.assetId).n,2);
         assert.equal((await c.ownerResponse(f.assetId,{action:'purge-inspect',idempotencyKey:crypto.randomUUID()})).status,409,'Hide is not terminal retention withdrawal');
         assert.equal((await deletePrivateArchiveOriginal(f.env,f.owner,site,f.assetId,'owner-delete')).ok,true);

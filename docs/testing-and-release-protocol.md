@@ -4,6 +4,31 @@ This project is a static GitHub Pages site. Excel/VBA remains the private source
 
 ## Local Setup
 
+### Indirect owner-replacement review reconciliation — local only, 14 October 2026
+
+Run `node tests/gallery-review-reconciliation.mjs` and
+`node tests/gallery-private-owner-workflow.mjs`. The first is also included by
+the existing GitHub-client group in `pnpm test`; the runner remains 76 groups.
+Use fictional photos/public fields and a fixed fake GitHub graph: unchanged
+review H, preserved intermediate merge M, and final owner replacement C, with
+GitHub reporting C as the original PR's merge SHA and `merged_by: null`.
+
+Require unchanged candidate/branch/head/hash, the exact reviewed photo, an ordered
+subset with only old-entry removals, positive H-to-C and C-to-current-main ancestry,
+no ID/URL reuse in the other area, and stable branch/main readback. Refuse changed
+photo fields, private/unknown fields, duplicates, added/edited/reordered neighbours,
+unowned or altered PRs, detached merges, incomplete ancestry and ref races in both
+areas. Removal reviews must retain their full-document equality requirement.
+
+The protected owner/workflow fixtures must observe publication separately, then
+record the real terminal merge identity through the unchanged HTTP/SQL gates,
+propose an unmerged one-file removal, and reuse completed cleanup/current host
+evidence after an explicit fixture-only owner removal. Generated original bytes,
+consent, tags, original receipts and original review records must remain intact
+through reversible hiding. Existing uncertainty, withdrawal, restoration and
+publication/purge tests still run. Passing is local implementation proof only:
+no live media, host verification, purge, deployment or publication is authorized.
+
 ### Promotion-request deadline correction — local only, 13 October 2026
 
 Run `node tests/gallery-archive-service-timeout.mjs`. The protected Actions driver

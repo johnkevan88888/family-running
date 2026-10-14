@@ -393,6 +393,13 @@ verifier purposes, SQL, routes and v1 withdrawal/purge are unchanged.
 Open reviews are closed through the existing exact-review client. Separately
 owner-merged reviews can only be acknowledged read-only after identity, exact
 manifest content and main ancestry checks; this adds no merge capability.
+The 14 October local-only compatibility correction additionally recognises an
+indirect owner replacement: the unchanged reviewed head must be an ancestor of
+the actual merge, the exact approved photo must survive, and only old context
+entries may be omitted, without edits/additions/reordering or cross-area reuse.
+The original full candidate/hash/head remain immutable; removal reviews retain
+full-manifest equality. This is terminal review proof, not host/main absence or
+purge permission. See `docs/decision-log.md` and the focused testing protocol.
 The runner rereads fixed-repository main and both manifests. A still-published
 photo produces an exact one-file removal proposal and remains pending until
 the separately reviewed change is actually merged. It does not create or merge
