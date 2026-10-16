@@ -46,6 +46,16 @@ export function createArchiveServiceClient({purpose,origin,clientId,clientSecret
     };
 }
 
+// A photo PUT stores and independently verifies its bytes before acknowledging
+// success. Bound that complete exchange at 30 seconds, without extending start,
+// source reads, close or cleanup and without retrying an uncertain write.
+export function createArchiveProcessingClient(options) {
+    if(options?.purpose!=='processing') throw new Error('Unavailable');
+    const normal=createArchiveServiceClient(options);
+    const photo=createArchiveServiceClient({...options,timeoutMilliseconds:30000});
+    return (attemptId,operation,value)=>(operation==='photo-display' || operation==='photo-thumbnail'?photo:normal)(attemptId,operation,value);
+}
+
 // The protected promotion RPC copies/verifies the two-derivative photo set. Give
 // only that RPC the existing bounded 30-second option; all other operations
 // retain their normal deadline, validation and uncertain-write behaviour.

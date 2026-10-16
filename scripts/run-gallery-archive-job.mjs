@@ -1,5 +1,5 @@
 import {appendFile} from 'node:fs/promises';
-import {createArchiveServiceClient,createArchivePromotionClient,createArchiveJobClient,createArchiveFinalizerClient} from './gallery-media/archive-service-client.mjs';
+import {createArchiveServiceClient,createArchiveProcessingClient,createArchivePromotionClient,createArchiveJobClient,createArchiveFinalizerClient} from './gallery-media/archive-service-client.mjs';
 import {runProtectedArchiveJob} from './gallery-media/protected-archive-job.mjs';
 import {verifyGalleryReviewBoundary} from './gallery-media/github-review-boundary.mjs';
 import {readGalleryReviewMain} from './gallery-media/github-review-client.mjs';
@@ -36,7 +36,7 @@ try {
         // historical run. This PATCH is same-SHA and must be denied; never merge.
         const main=await readGalleryReviewMain({token:github.token,fetchImpl:githubFetch});
         await verifyGalleryReviewBoundary({expectedBaseSha:main.baseSha,token:github.token,fetchImpl:githubFetch});
-        dependencies.github=github;dependencies.processing=createArchiveServiceClient(configuration('processing'));
+        dependencies.github=github;dependencies.processing=createArchiveProcessingClient(configuration('processing'));
         dependencies.promotion=createArchivePromotionClient(configuration('promotion'));
         if(phase==='prepare') {
             const read=await jobs(jobId,'read',{runReference});
