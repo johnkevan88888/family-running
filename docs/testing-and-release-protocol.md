@@ -4,6 +4,36 @@ This project is a static GitHub Pages site. Excel/VBA remains the private source
 
 ## Local Setup
 
+### Processing-photo acknowledgement deadline — local only, 15 October 2026
+
+Run `node tests/gallery-archive-service-timeout.mjs` and
+`node tests/gallery-protected-archive-lifecycle.mjs`, then the complete suite.
+The protected Actions driver now selects `createArchiveProcessingClient`, with
+one fixed 30-second request/complete-response budget ONLY for `photo-display`
+and `photo-thumbnail`. Processing start/original/close/cleanup, generic clients,
+verifier, owner-job and finalizer requests keep their 10-second defaults. The
+existing promotion-only 30-second wrapper is unchanged. There is no new workflow
+input, environment override, automatic retry, Worker or database change.
+
+Cover both upload roles: old 10-second rejection versus valid 11-second complete
+acknowledgement, successful delayed body, just-before/exact deadline, partial and
+late bodies, aborted requests, no late revival, and unchanged origin/auth/cache/
+redirect/content-type/UTF-8/JSON/size checks. Both-area generated-photo HTTP/job
+fixtures must withhold acknowledgement AFTER a durable independent byte receipt,
+then prove permanent closure, no PR, retained claim until separate host/main
+reconciliation, retained original/provider receipt/tags/consent, and zero byte I/O
+on closed-generation replay. Valid visibility revocation after the write and
+expired consent must still stop review. Native pinned photo-processing tools
+need local child-process permission; a sandbox spawn failure is not a product
+timeout failure. No validation may be bypassed to make that tool start.
+
+These checks harden a plausible failure mode; they do NOT establish the exact
+cause of the 14 October live failure. No live retry, real media, source replay,
+old-generation reuse, cleanup replay, release or deployment follows from local
+passing tests. The correction is in the Actions-side transport, not a Worker;
+no Worker deployment is required for this change. Synchronization/release and a
+fresh-consent/new-generation retry remain explicit approval gates.
+
 ### Indirect owner-replacement review reconciliation — local only, 14 October 2026
 
 Run `node tests/gallery-review-reconciliation.mjs` and

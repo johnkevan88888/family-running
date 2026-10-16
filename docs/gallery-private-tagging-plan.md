@@ -79,7 +79,14 @@ fixed-origin witness/target protocol. Missing storage is never public-host absen
 
 `archive-service-client.mjs` has fixed provider origins, explicit authenticated
 transports, forbidden redirects and bounded whole-request/response reads. The
-protected archive runner uses the existing narrow GitHub client. Prepared reviews
+15 October local-only transport correction gives only processing `photo-display`
+and `photo-thumbnail` PUTs the existing bounded 30-second total exchange option;
+the promotion `promote` operation already has that option. Other operations keep
+their 10-second defaults. Complete response validation and uncertain-write
+closure/cleanup remain unchanged; no automatic write retry or Worker change is
+introduced. A verified stored derivative is not, by itself, a successful response
+or current consent. This is not a confirmed diagnosis of the failed live review.
+The protected archive runner uses the existing narrow GitHub client. Prepared reviews
 recover without reading the source or rewriting bytes. Privacy cleanup runs both
 tiers independently of GitHub outages. Published-photo hiding may produce only an
 unmerged one-file removal review; restoration requires fresh owner consent, checks

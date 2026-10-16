@@ -1,5 +1,56 @@
 # Active Work
 
+## Approved runner-only release and fresh Toronto review — 16 October 2026
+
+John approved synchronization/retest, a scoped runner-fix PR, required checks and
+normal owner merge, with public output unchanged and both manifests empty; then
+ONE fresh-consent/new-generation review of the retained Toronto photo, stopping
+at an unmerged one-file Family candidate. No Worker deployment, purge, photo
+publication, migration, credentials or settings change is authorized.
+
+Fresh owner/main/ruleset readback confirms main
+`62051e6b6f0035aa8034fc77c6003196608d95a7`, both empty manifests, and unchanged
+ruleset 18119142 with strict app-15368 checks, resolved threads and owner-role
+Pull-Request-only update bypass; the Gallery App has no bypass.
+Branch `codex/gallery-processing-photo-deadline` is based on that main.
+The eight local correction paths were carried forward without content loss;
+all older operational notes and ignored proofs remain protected by the
+recoverable local snapshot/stash recorded under ignored `test-artifacts/`.
+Only this section plus the unchanged main document will be staged for the
+active-work handoff, leaving unrelated uncommitted historical notes intact.
+
+The two production paths are `scripts/gallery-media/archive-service-client.mjs`
+and `scripts/run-gallery-archive-job.mjs`. The three test paths are
+`tests/gallery-archive-service-timeout.mjs`,
+`tests/gallery-protected-archive-lifecycle.mjs` and
+`tests/helpers/private-gallery-job-fixture.mjs`; documentation is this file,
+`docs/gallery-private-tagging-plan.md` and `docs/testing-and-release-protocol.md`.
+No public or publishing-control path may change. The unchanged classifier
+requires the STANDARD preview pathway for the two runner paths: no skip marker
+or allowlist relaxation. The response-budget change remains photo-PUT-only,
+bounded at 30 seconds with complete validation/no retries; other normal requests
+keep 10 seconds. It is not a confirmed diagnosis of the older live failure.
+
+At 16:39:10 UTC, the synchronized `node scripts/run-all-tests.mjs` passed all
+76 groups, exit 0, including local D1 guards and both-mode responsive browser
+smoke coverage. The 115 built public files and three saved historical cleanup
+proofs are unchanged; both manifests remain empty. A separate canonical-LF
+build at 16:30:34 and live readback at 16:33:10 verify all 115 bytes against
+exact main, both exported-data modes and four empty-Gallery desktop/mobile views.
+Independent source/test review found no additional issue. The 16:29:59 SELECT-only
+storage readback and local deep comparison preserve every earlier protected row:
+both old attempts are closed, cleanup complete, active claims zero, original,
+tags and consent retained, with no original deletion or purge. The transient
+earlier read failure was not evidence of expired authentication.
+
+The approved runner PR/release is next; no push/PR/merge or fresh media job has
+occurred at this validation checkpoint. Raw logs, private IDs and ignored
+proofs stay out of Git and public PR messages.
+After code release and exact Pages/live verification, record fresh owner consent
+for the SAME retained original, without upload, retagging, reopening old attempts
+or replaying completed cleanup. Restore only into a new unmerged one-file PR.
+Main/live must remain empty at that stopping point.
+
 ## Approved review-reconciliation repository release — 14 October 2026
 
 John's "Ok. Proceed" approves synchronization/retest, a NEW corrective PR,

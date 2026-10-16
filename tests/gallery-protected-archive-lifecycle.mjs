@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {archiveServiceFixture} from './helpers/private-gallery-service-fixture.mjs';
 import {syntheticGitHub} from './helpers/private-gallery-lifecycle-fixtures.mjs';
 import {handleArchiveServiceRequest,legacyArchiveEnvironment} from '../gallery-admin/src/private-gallery-service-adapter.js';
-import {createArchiveServiceClient,createArchivePromotionClient} from '../scripts/gallery-media/archive-service-client.mjs';
+import {createArchiveServiceClient,createArchiveProcessingClient,createArchivePromotionClient} from '../scripts/gallery-media/archive-service-client.mjs';
 import {runProtectedArchiveReview,resumeProtectedArchiveRemoval} from '../scripts/gallery-media/protected-archive-lifecycle.mjs';
 import * as delivery from '../gallery-admin/src/media-delivery-contract.js';
 import {changePrivateGalleryVisibility,readPrivateGalleryAssetEligibility} from '../gallery-admin/src/private-gallery-visibility-service.js';
@@ -18,7 +18,7 @@ for(const site of ['family','everyone']) {
                 {PUBLIC_HOST_VERIFIER_IDENTITY:`subject:${subject}`,PUBLIC_HOST_VERIFIER_ORIGIN:origin,MEDIA_CONTRACT:delivery.MEDIA_DELIVERY_CONTRACT_VALUE,
                     MEDIA_WITNESS_KEY:delivery.MEDIA_BINDING_WITNESS_KEY,MEDIA_WITNESS_SHA256:delivery.MEDIA_BINDING_WITNESS_SHA256,MEDIA_WITNESS_BYTE_COUNT:'28',MEDIA_WITNESS_CONTENT_TYPE:'image/webp'})};
         environments[purpose]=env;
-        clients[purpose]=(purpose==='promotion'?createArchivePromotionClient:createArchiveServiceClient)({purpose,origin,clientId:`fictional-${purpose}`,clientSecret:'fictional-secret',fetchImpl:async request=>{
+        clients[purpose]=(purpose==='processing'?createArchiveProcessingClient:purpose==='promotion'?createArchivePromotionClient:createArchiveServiceClient)({purpose,origin,clientId:`fictional-${purpose}`,clientSecret:'fictional-secret',fetchImpl:async request=>{
             assert.equal(request.redirect,'error');assert.equal(request.credentials,'omit');httpCalls.push([purpose,new URL(request.url).pathname.split('/').at(-1)]);
             const response=await handleArchiveServiceRequest(request,env,purpose,f.catalog,{accessContext:{getIdentity:async()=>({service_token_status:true,common_name:subject})},fetch:f.publicFetch});
             Object.defineProperty(response,'url',{value:request.url});
