@@ -1,9 +1,11 @@
+import { privateFaceEditorPanel } from './private-gallery-face-assets.js';
+
 export function privateGalleryDocument(site) {
     if (!['family','everyone'].includes(site)) throw new TypeError('Invalid inherited Gallery area');
     const area = site === 'family' ? 'Family' : 'Everyone';
     return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
-<meta name="referrer" content="no-referrer"><title>Protected photo library</title><link rel="stylesheet" href="/admin.css"></head>
+<meta name="referrer" content="no-referrer"><title>Protected photo library</title><link rel="stylesheet" href="/admin.css"><link rel="stylesheet" href="/private-face-editor.css?site=${site}"></head>
 <body><header class="admin-header"><h1>Protected photo library</h1><span class="protected-badge">Owner access protected</span></header>
 <main class="admin-main"><p><a href="/?site=${site}">Back to photo review</a></p>
 <div class="fixed-area"><span>Inherited Gallery area</span><strong>${area}</strong><small>No destination selector. Complete tags remain in protected storage.</small></div>
@@ -27,6 +29,7 @@ export function privateGalleryDocument(site) {
 <label class="check-line"><input id="private-upload-guardian" type="checkbox"><span>Their guardians agree to private retention (required for minors only).</span></label>
 <button class="button button-primary" type="submit">Upload original to protected storage</button></form>
 <p id="private-upload-status" role="status" aria-live="polite">No original uploaded.</p></section>
+${privateFaceEditorPanel(site)}
 <section class="admin-panel"><h2>Fresh public-use consent</h2><p>Allow is not consent and does not publish. Every depicted person must be eligible. A saved consent reservation is not a review or publication.</p>
 <form id="private-consent-form"><label class="form-field">Race<select id="private-race" required></select></label>
 <label class="check-line"><input id="private-complete-tags" type="checkbox" required><span>The saved tags include every depicted person.</span></label>
@@ -48,7 +51,7 @@ export function privateGalleryDocument(site) {
 <form id="private-delete-form"><h3>Separate terminal original removal</h3><label class="form-field">Reason<select id="private-delete-reason"><option value="owner-delete">Owner requests original deletion</option><option value="consent-withdrawal">Private retention consent withdrawn</option></select></label>
 <label class="check-line important-check"><input id="private-delete-confirm" type="checkbox" required><span>I request irreversible original deletion, not reversible hiding. Public removal must finish first. This does not authorize metadata purge.</span></label><button class="button button-secondary" type="submit">Request terminal original removal</button></form>
 <p>Rerun the original GitHub run to recover an active job. Its lock never expires automatically. Before merging, recheck this publication run; keep its lock until that same run confirms the merge or safely cancels it. No real-photo operation is approved by this local preparation.</p></section></main>
-<script src="/private-gallery.js" defer></script></body></html>`;
+<script src="/gallery-podium-framing.js?site=${site}" defer></script><script src="/private-face-editor.js?site=${site}" defer></script><script src="/private-gallery.js" defer></script></body></html>`;
 }
 
 export function privateGalleryScript() {
@@ -56,8 +59,10 @@ export function privateGalleryScript() {
     'use strict';
     const site = new URLSearchParams(location.search).get('site');
     const status = document.getElementById('private-status');
-    let csrf, revision, catalog, busy = false, personRequest, assetRequest, attemptRequest, jobRequest, activeAssetId;
+    let csrf, revision, catalog, busy = false, personRequest, assetRequest, attemptRequest, jobRequest, activeAssetId, privatePeople = [];
     const choices = document.getElementById('private-tag-choices');
+    const framing = window.privateGalleryFaceFraming?.create({site,api,getContext:()=>({assetId:activeAssetId,people:privatePeople,busy})});
+    document.getElementById('private-photo').addEventListener('change',event=>{ void framing?.selectFile(event.target.files[0]); });
     const uuid = () => {
         if (typeof crypto.randomUUID !== 'function') throw new Error('Secure identifiers unavailable.');
         return crypto.randomUUID();
@@ -78,15 +83,17 @@ export function privateGalleryScript() {
         if (activeAssetId) document.getElementById('private-asset-status').textContent = 'Refreshing complete-tag eligibility…';
         const controls = [...document.querySelectorAll('button')];
         controls.forEach(button => button.disabled = true);
+        framing?.refreshControls();
         try { await callback(); } catch (error) {
             note(error.message);
             if (activeAssetId) document.getElementById('private-asset-status').textContent = 'Eligibility unavailable. Do not publish from an earlier result.';
         }
-        finally { busy = false; controls.forEach(button => button.disabled = false); }
+        finally { busy = false; controls.forEach(button => {if(!button.closest('#private-framing-panel')) button.disabled = false;}); framing?.refreshControls(); }
     }
     async function refresh() {
         const roster = await api('/api/browser/private-preferences');
         revision = roster.revision;
+        privatePeople = roster.people;
         const selected = new Set([...choices.querySelectorAll('input:checked')].map(input=>input.value));
         choices.replaceChildren();
         const list = document.getElementById('private-people'); list.replaceChildren();
@@ -143,7 +150,7 @@ export function privateGalleryScript() {
         event.preventDefault(); action(async()=>{
             const id = document.getElementById('private-open-id').value.trim();
             await api('/api/browser/private-assets/' + id);
-            activeAssetId = id; jobRequest = null; await refreshEligibility(); await refreshJobs(); note('Saved private photo opened. No media or permission changed.');
+            activeAssetId = id; jobRequest = null; await framing?.setAsset(); await refreshEligibility(); await refreshJobs(); note('Saved private photo opened. No media or permission changed.');
         });
     });
     document.getElementById('private-jobs-refresh').addEventListener('click',()=>action(refreshJobs));
@@ -192,6 +199,7 @@ export function privateGalleryScript() {
             if (!assetRequest || JSON.stringify(assetRequest.data) !== JSON.stringify(data)) assetRequest = {key:uuid(),data};
             const result = await api('/api/browser/private-assets',{idempotencyKey:assetRequest.key,rosterRevision:revision,personIds,originalFormat});
             activeAssetId = result.asset.assetId;
+            await framing?.setAsset();
             await refreshEligibility();
             await refreshJobs(); note('Complete private tags retained. Intake and protected-job preparation are available locally. Nothing published.');
         });
@@ -220,6 +228,7 @@ export function privateGalleryScript() {
             const checked = await api('/api/browser/private-assets/' + activeAssetId + '/archive-intake');
             if (checked.state !== 'quarantined') throw new Error('Original receipt unavailable. Refresh before continuing.');
             document.getElementById('private-upload-form').reset();
+            await framing?.retained();
             document.getElementById('private-upload-status').textContent = 'Original retained privately. This is not decoding, stripping or public-use approval.';
             note('Private original verified. Nothing published.');
         });
@@ -229,7 +238,9 @@ export function privateGalleryScript() {
             if (!activeAssetId) throw new Error('Save complete private tags first.');
             const current = await api('/api/browser/private-assets/' + activeAssetId + '/archive-intake');
             const eligibility = await api('/api/browser/private-assets/' + activeAssetId + '/eligibility');
+            const framingVersion = await framing?.beforeConsent();
             const data = {tagVersion:current.tagVersion,eligibilityRevision:eligibility.revision,sourceRevision:catalog.sourceRevision,
+                ...(Number.isSafeInteger(framingVersion) ? {framingVersion} : {}),
                 suppressionRevision:catalog.suppressionRevision,raceIndex:Number(document.getElementById('private-race').value),
                 completeTagsConfirmed:document.getElementById('private-complete-tags').checked,
                 publicUseConfirmed:document.getElementById('private-public-use').checked,

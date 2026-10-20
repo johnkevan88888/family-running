@@ -11,6 +11,7 @@ import {
     resolvePreviewOutputDir
 } from './preview-artifact-contract.mjs';
 import { publishedSiteEntries } from './published-site-entries.mjs';
+import { validateGalleryPodiumFramingTree } from './validate-gallery-podium-framing.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -101,7 +102,8 @@ const contractProblems = [
     ...findDataBundleProblems(publishedPaths, await readPublishedManifest()),
     ...findVendorProblems(publishedPaths),
     ...findAssetProblems(publishedPaths),
-    ...findGalleryDataProblems(publishedPaths)
+    ...findGalleryDataProblems(publishedPaths),
+    ...await validateGalleryPodiumFramingTree(outputDir)
 ];
 
 if (contractProblems.length) {

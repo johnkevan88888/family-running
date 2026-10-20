@@ -153,6 +153,7 @@ console.log('PASS - the build refuses an out-of-tree output directory before del
 // is published at its path on the public web.
 
 const newsRuntimeEntries = ['news.html', 'news.js', 'news.css'];
+const podiumRuntimeEntries = ['gallery-podium-framing.js', 'gallery-podium-framing.json'];
 const unpublishedGalleryFoundationEntries = [
     'gallery-upload-contract.js',
     'gallery-media-policy.js'
@@ -166,6 +167,7 @@ assert.deepEqual(
 );
 
 console.log('PASS - the News page is complete in the published runtime contract');
+assert.ok(podiumRuntimeEntries.every(entry => publishedSiteEntries.includes(entry)));
 
 assert.deepEqual(
     publishedSiteEntries.filter(entry =>
@@ -183,12 +185,19 @@ console.log('PASS - Gallery upload administration contracts remain outside the p
 assert.deepEqual(findUnpublishablePublicationEntryProblems(publishedSiteEntries), []);
 
 const unpublishedProcessorEntries = [
+    'scripts/gallery-podium-editor.mjs',
+    'scripts/gallery-podium-editor/index.html',
     'scripts/process-gallery-media.mjs',
     'scripts/gallery-media/processor.mjs',
     'tests/gallery-media-processor.mjs',
     'tests/gallery-processing-bridge.mjs',
     'tests/fixtures/gallery-media/synthetic-photo.jpg',
     'tests/fixtures/gallery-media/synthetic-video.mp4',
+    'tests/fixtures/face-framing/synthetic-runners-ai.png',
+    'gallery-admin/generated/private-face-detector.js',
+    'gallery-admin/src/private-gallery-face-assets.js',
+    'gallery-admin/src/private-gallery-framing-service.js',
+    'gallery-admin/migrations/0029_private_gallery_framing.sql',
     'gallery-admin/src/admin-worker.js',
     'gallery-admin/src/processing-worker.js',
     'gallery-admin/src/processing-service.js',
@@ -387,6 +396,8 @@ const processorOutputProbeRoot = path.join(
     `gallery-media-processing-safety-${process.pid}`
 );
 const processorOutputProbe = path.join(processorOutputProbeRoot, 'run-test', 'display.webp');
+const framingFile = path.join(repoRoot, 'gallery-podium-framing.json');
+const savedFraming = await fs.readFile(framingFile);
 
 try {
     await fs.mkdir(path.dirname(processorOutputProbe), { recursive: true });
@@ -428,11 +439,21 @@ try {
 
     await fs.rm(strayGalleryFile, { force: true });
 
+    // Crop settings cannot smuggle a name, identity, media URL or private note
+    // into a new root-level public file, including through the real build.
+    await fs.writeFile(framingFile, JSON.stringify({
+        schemaVersion: '1.0', frames: {}, privateNote: 'Synthetic forbidden field'
+    }));
+    const unsafeFraming = await runBuild({ PREVIEW_OUTPUT_DIR: buildOutputDir });
+    assert.notEqual(unsafeFraming.code, 0, 'The build published uncontracted framing metadata.');
+    assert.match(unsafeFraming.output, /gallery-podium-framing\.json/);
+    await fs.writeFile(framingFile, savedFraming);
+
     const clean = await runBuild({ PREVIEW_OUTPUT_DIR: buildOutputDir });
 
     assert.equal(clean.code, 0, `The unmodified tree failed its own contract:\n${clean.output}`);
 
-    for (const entry of newsRuntimeEntries) {
+    for (const entry of [...newsRuntimeEntries, ...podiumRuntimeEntries]) {
         assert.equal(
             await pathExists(path.join(buildOutputDir, entry)),
             true,
@@ -462,6 +483,7 @@ try {
         'A generated Gallery processor output entered the public preview artifact.'
     );
 } finally {
+    await fs.writeFile(framingFile, savedFraming);
     await fs.rm(strayDataFile, { force: true });
     await fs.rm(strayVendorFile, { force: true });
     await fs.rm(strayAssetFile, { force: true });

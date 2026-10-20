@@ -1,4 +1,6 @@
 node_modules/
+.gallery-podium-framing.lock
+.gallery-podium-framing-*.tmp
 .pnpm-store/
 .wrangler/
 .cloudflare-config/

@@ -7,7 +7,10 @@ import { readPrivateGalleryTags, correctPrivateGalleryTags } from './private-gal
 import { createPrivateGalleryPerson, readPrivateGalleryVisibility, readPrivateGalleryPreferences, changePrivateGalleryVisibility,
     readPrivateGalleryAssetEligibility } from './private-gallery-visibility-service.js';
 import { privateGalleryDocument, privateGalleryScript } from './private-gallery-assets.js';
-import { handlePrivatePhotoOwnerOperation } from './private-gallery-owner-service.js';
+import { handlePrivatePhotoOwnerOperation, readPrivateOwnerBody } from './private-gallery-owner-service.js';
+import { readPrivateGalleryFraming, savePrivateGalleryFraming } from './private-gallery-framing-service.js';
+import { privateFaceWorkerScript, privateFaceEditorScript, privateFaceEditorStylesheet } from './private-gallery-face-assets.js';
+import podiumFraming from '../../gallery-podium-framing.js';
 import {
     adminClientScript,
     adminShellDocument,
@@ -56,6 +59,10 @@ const BROWSER_DRAFTS_PATH = '/api/browser/drafts';
 const BROWSER_ATHLETE_EXCLUSIONS_PATH = '/api/browser/athlete-exclusions';
 const SYNTHETIC_RECORDS_PATH = '/api/browser/synthetic-records';
 const SERVICE_HEALTH_PATH = '/api/service/health';
+const PRIVATE_FRAMING_ASSET_PATHS = new Set([
+    '/private-face-worker.js', '/private-face-editor.js',
+    '/private-face-editor.css', '/gallery-podium-framing.js'
+]);
 const IDENTITY_VALUE_PATTERN = /^[^\u0000-\u001f\u007f]{1,512}$/;
 const DRAFT_ID_FRAGMENT = '([A-Za-z0-9_-]{20,128})';
 const DRAFT_PATH_PATTERN = new RegExp(`^${BROWSER_DRAFTS_PATH}/${DRAFT_ID_FRAGMENT}$`);
@@ -169,11 +176,25 @@ async function handleBrowserRoute(
 
     if (pathname === '/private-gallery') {
         if (request.method !== 'GET') return adminFailure(405, {Allow:'GET'});
-        return adminHtml(200, privateGalleryDocument(siteMode));
+        const response = adminHtml(200, privateGalleryDocument(siteMode));
+        // Only this protected page may start the same-origin detection worker.
+        // No camera, blob worker, CDN, outside connection or eval is enabled.
+        response.headers.set('Content-Security-Policy',
+            response.headers.get('Content-Security-Policy') + "; worker-src 'self'");
+        return response;
     }
     if (pathname === '/private-gallery.js') {
         if (request.method !== 'GET') return adminFailure(405, {Allow:'GET'});
         return adminScript(200, privateGalleryScript());
+    }
+    if (PRIVATE_FRAMING_ASSET_PATHS.has(pathname)) {
+        if (request.method !== 'GET') return adminFailure(405, {Allow:'GET'});
+        if (pathname === '/private-face-editor.css') return adminStyles(200, privateFaceEditorStylesheet());
+        if (pathname === '/gallery-podium-framing.js') return adminScript(200, podiumFraming.browserScript());
+        if (pathname === '/private-face-editor.js') return adminScript(200, privateFaceEditorScript());
+        return adminScript(200, privateFaceWorkerScript(), {
+            'Content-Security-Policy': "default-src 'none'; connect-src 'none'"
+        });
     }
 
     if (pathname === ADMIN_STYLES_PATH) {
@@ -286,6 +307,22 @@ async function handleBrowserRoute(
         const parsed = await readBoundedJson(request);
         if (!parsed.ok) return adminFailure(parsed.status);
         return serviceResultResponse(await correctPrivateGalleryTags(env,identity,siteMode,route.assetId,parsed.value));
+    }
+    if (route.kind === 'private-framing') {
+        if (request.method === 'GET') {
+            if (request.body || request.headers.has('Content-Type') || request.headers.has('Transfer-Encoding') ||
+                    ![null, '0'].includes(request.headers.get('Content-Length'))) return adminFailure(400);
+            return serviceResultResponse(await readPrivateGalleryFraming(env, identity, siteMode, route.assetId));
+        }
+        if (request.method !== 'POST') return adminFailure(405, {Allow:'GET, POST'});
+        const asset = await readPrivateGalleryAsset(env, identity, siteMode, route.assetId);
+        if (!asset.ok) return serviceResultResponse(asset);
+        const body = await readPrivateOwnerBody(request, JSON_BODY_LIMIT, 'application/json', dependencies.bodyTimeoutMilliseconds);
+        if (!body.ok) return serviceResultResponse(body);
+        let input;
+        try { input = JSON.parse(new TextDecoder('utf-8', {fatal:true}).decode(body.bytes)); }
+        catch { return adminFailure(400); }
+        return serviceResultResponse(await savePrivateGalleryFraming(env, identity, siteMode, route.assetId, input));
     }
     if (route.kind === 'private-assets') {
         if (request.method !== 'POST') return adminFailure(405, { Allow: 'POST' });
@@ -555,6 +592,8 @@ function matchPhaseCRoute(pathname) {
     if (visibilityMatch) return {kind:'private-visibility',personId:visibilityMatch[1]};
     const tagsMatch = /^\/api\/browser\/private-assets\/(asset_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/tags$/.exec(pathname);
     if (tagsMatch) return {kind:'private-tags',assetId:tagsMatch[1]};
+    const framingMatch = /^\/api\/browser\/private-assets\/(asset_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/framing$/.exec(pathname);
+    if (framingMatch) return {kind:'private-framing',assetId:framingMatch[1]};
     const eligibilityMatch = /^\/api\/browser\/private-assets\/(asset_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/eligibility$/.exec(pathname);
     if (eligibilityMatch) return {kind:'private-eligibility',assetId:eligibilityMatch[1]};
     if (pathname === '/api/browser/private-assets') return { kind: 'private-assets' };
@@ -856,7 +895,8 @@ function normalizeConfiguredOrigin(value) {
 }
 
 function isBrowserPath(pathname) {
-    return pathname === '/private-gallery' || pathname === '/private-gallery.js' || pathname === ADMIN_SHELL_PATH ||
+    return PRIVATE_FRAMING_ASSET_PATHS.has(pathname) ||
+        pathname === '/private-gallery' || pathname === '/private-gallery.js' || pathname === ADMIN_SHELL_PATH ||
         pathname === ADMIN_STYLES_PATH ||
         pathname === ADMIN_SCRIPT_PATH ||
         pathname === BROWSER_HEALTH_PATH ||
@@ -866,7 +906,8 @@ function isBrowserPath(pathname) {
 }
 
 function isAreaScopedBrowserPath(pathname) {
-    return pathname === '/private-gallery' || pathname === ADMIN_SHELL_PATH ||
+    return PRIVATE_FRAMING_ASSET_PATHS.has(pathname) ||
+        pathname === '/private-gallery' || pathname === ADMIN_SHELL_PATH ||
         pathname === BROWSER_SESSION_PATH ||
         pathname === SYNTHETIC_RECORDS_PATH ||
         matchPhaseCRoute(pathname) !== null;

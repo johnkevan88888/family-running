@@ -75,6 +75,40 @@ assert.match(
     /unsupported field "unexpected"/
 );
 
+const oldPhotoBytes = JSON.stringify(validPhoto);
+const framedPhoto = { ...validPhoto, athleteIds: ['carolyn-kevan', 'david-graham-kevan'],
+    podiumFraming: { 'carolyn-kevan': { x: 12, y: 18, zoom: 2 }, 'david-graham-kevan': { x: 88, y: 18, zoom: 2.5 } } };
+assert.deepEqual(validateGalleryDocument({ schemaVersion: '1.0', items: [framedPhoto] }), []);
+assert.equal(JSON.stringify(validPhoto), oldPhotoBytes, 'optional framing never changes old item bytes');
+assert.equal(Object.hasOwn(validPhoto, 'podiumFraming'), false, 'omission remains backwards compatible');
+for (const value of [null, [], 'private',
+    { 'untagged-person': { x: 50, y: 20, zoom: 2 } },
+    { 'person_private-identity': { x: 50, y: 20, zoom: 2 } },
+    { 'carolyn-kevan': { x: '50', y: 20, zoom: 2 } },
+    { 'carolyn-kevan': { x: 50, y: null, zoom: 2 } },
+    { 'carolyn-kevan': { x: NaN, y: 20, zoom: 2 } },
+    { 'carolyn-kevan': { x: 50, y: Infinity, zoom: 2 } },
+    { 'carolyn-kevan': { x: -1, y: 20, zoom: 2 } },
+    { 'carolyn-kevan': { x: 50, y: 101, zoom: 2 } },
+    { 'carolyn-kevan': { x: 50, y: 20, zoom: 0.9 } },
+    { 'carolyn-kevan': { x: 50, y: 20, zoom: 8.1 } },
+    ...['box', 'embedding', 'personId', 'imageWidth', 'sourceUrl'].map(field =>
+        ({ 'carolyn-kevan': { x: 50, y: 20, zoom: 2, [field]: 'private-sentinel' } }))
+]) {
+    assert.ok(validateGalleryDocument({ schemaVersion: '1.0', items: [{ ...validPhoto, podiumFraming: value }] }).length,
+        'invalid, private or untagged framing fails closed');
+}
+assert.match(validateGalleryDocument({ schemaVersion: '1.0', items: [{ ...validVideo,
+    podiumFraming: { 'carolyn-kevan': { x: 50, y: 20, zoom: 2 } } }] }).join('\n'), /photos only/);
+for (const value of [Object.create({ inherited: true }),
+    Object.defineProperty({}, 'carolyn-kevan', { enumerable: true, get() { throw new Error('must not execute getter'); } }),
+    { 'carolyn-kevan': Object.defineProperty({ x: 50, y: 20, zoom: 2 }, 'privateNote', { value: 'private' }) }
+]) assert.ok(validateGalleryDocument({ schemaVersion: '1.0', items: [{ ...validPhoto, podiumFraming: value }] }).length,
+    'inherited, accessor and non-JSON fields cannot enter public framing');
+assert.deepEqual(filterSuppressedGalleryItems([framedPhoto], {
+    schemaVersion: '1.0', hiddenAthleteIds: ['david-graham-kevan']
+}), [], 'one hidden tag suppresses the complete group photo, including other people framing');
+
 const validSuppressionDocument = {
     schemaVersion: '1.0',
     hiddenAthleteIds: ['carolyn-kevan']

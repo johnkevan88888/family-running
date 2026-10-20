@@ -373,6 +373,7 @@
 }
 
 .championship-podium-media {
+    position: relative;
     align-items: center;
     background:
         radial-gradient(circle at 76% 20%, rgba(255, 215, 0, 0.34), transparent 24%),
@@ -395,6 +396,16 @@
     height: 100%;
     object-fit: cover;
     width: 100%;
+}
+
+.championship-podium-media[data-gallery-media-type="photo"] img {
+    /* A photo without an owner-chosen framing must not guess where a face is. */
+    object-fit: contain;
+}
+
+.championship-podium-media.has-podium-framing img {
+    max-width: none;
+    position: absolute;
 }
 
 .championship-podium-copy {

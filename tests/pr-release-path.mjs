@@ -164,7 +164,8 @@ assert.match(broadCustomDomainChange.errors.join('\n'), /leaderboard\.js/);
 
 for (const selfApprovingPath of [
     '.github/workflows/pr-preview-review-links.yml',
-    'scripts/validate-pr-release-path.mjs'
+    'scripts/validate-pr-release-path.mjs',
+    'scripts/validate-gallery-podium-framing.mjs'
 ]) {
     const selfApprovingDomainChange = assessReleasePath({
         title: '[skip netlify] Configure custom domain and its guard',

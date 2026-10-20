@@ -35,6 +35,9 @@ export const publishedSiteEntries = [
     'gallery.css',
     'gallery-contract.js',
     'gallery-results.js',
+    // Presentation-only crop coordinates; no media URLs or athlete identities.
+    'gallery-podium-framing.js',
+    'gallery-podium-framing.json',
     'gallery.js',
     'calculator.css',
     'calculator.js',
@@ -77,6 +80,7 @@ export const publishingControlPaths = new Set([
     // `data/` and `vendor/` are allowed to contain, so a change to any of them
     // can change the published site.
     'scripts/preview-artifact-contract.mjs',
+    'scripts/validate-gallery-podium-framing.mjs',
     'scripts/vendored-library-files.mjs',
     'scripts/export-bundle-tools.mjs'
 ]);

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Local championship photo framing</title>
+    <link rel="stylesheet" href="/editor.css">
+    <script src="/gallery-podium-framing.js" defer></script>
+    <script src="/editor.js" defer></script>
+</head>
+<body>
+    <main>
+        <header>
+            <p class="eyebrow">Local editing tool · not a public uploader</p>
+            <h1>Put the person in the picture</h1>
+            <p>Choose an already-public photo and a tagged athlete. Click their face, then adjust the position and zoom. Only the small championship podium picture changes; the Gallery and original photo stay untouched.</p>
+            <p>The championship still chooses each athlete's first eligible photo. Framing another approved photo does not change that selection.</p>
+        </header>
+        <p id="status" role="status" aria-live="polite">Loading validated public photos…</p>
+        <section class="selection" aria-label="Photo selection">
+            <label for="photo-person">Public photo and tagged athlete</label>
+            <select id="photo-person" disabled><option>No eligible photos loaded</option></select>
+            <button id="refresh" type="button">Refresh local files</button>
+        </section>
+        <section id="workspace" hidden aria-label="Framing workspace">
+            <div class="workspace-grid">
+                <section class="panel">
+                    <h2>1. Pick the face</h2>
+                    <p id="photo-caption"></p>
+                    <p id="pick-help">Click the face in the whole photograph. You can also use the position controls below.</p>
+                    <div class="source-stage">
+                        <div id="source-wrap">
+                            <img id="full-photo" alt="" referrerpolicy="no-referrer" draggable="false">
+                            <span id="focal-marker" aria-hidden="true" hidden></span>
+                        </div>
+                    </div>
+                </section>
+                <section class="panel">
+                    <h2>2. Check the small pictures</h2>
+                    <p id="mode-note">Whole photo: no manual framing is saved.</p>
+                    <div class="previews">
+                        <figure>
+                            <div id="desktop-preview" class="preview desktop"><img alt="Desktop podium preview" referrerpolicy="no-referrer"></div>
+                            <figcaption>Desktop podium shape</figcaption>
+                        </figure>
+                        <figure>
+                            <div id="mobile-preview" class="preview mobile"><img alt="Mobile podium preview" referrerpolicy="no-referrer"></div>
+                            <figcaption>Mobile podium shape</figcaption>
+                        </figure>
+                    </div>
+                    <div class="controls">
+                        <label for="position-x">Horizontal position <output id="value-x" for="position-x">50%</output></label>
+                        <input id="position-x" type="range" min="0" max="100" step="0.1" value="50">
+                        <label for="position-y">Vertical position <output id="value-y" for="position-y">50%</output></label>
+                        <input id="position-y" type="range" min="0" max="100" step="0.1" value="50">
+                        <label for="zoom">Zoom <output id="value-zoom" for="zoom">2.5×</output></label>
+                        <input id="zoom" type="range" min="1" max="8" step="0.05" value="2.5">
+                    </div>
+                    <div class="actions">
+                        <button id="save" type="button" disabled>Save framing locally</button>
+                        <button id="reset" type="button">Reset to whole photo</button>
+                    </div>
+                    <p class="fine-print">Reset changes the preview; use Save to keep it. Saving writes only an opaque photo/person key and three numbers in <code>gallery-podium-framing.json</code>. It does not publish, upload, process, hide or delete any photograph.</p>
+                </section>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

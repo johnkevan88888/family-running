@@ -1,4 +1,5 @@
 import { processGalleryPhoto } from './processor.mjs';
+import { assertPhotoFramingSource } from './photo-framing-source.mjs';
 import { createOrReconcileArchiveGalleryReview,createOrReconcileArchiveGalleryRemoval,invalidateGalleryReview,readExistingGalleryReview,readGalleryReviewMain,readMergedGalleryReview,reconcileArchiveGalleryReview } from './github-review-client.mjs';
 import { admitArchivePhotoProcessing,readArchivePhotoAttempt,readArchivePhotoSource,storeArchivePhotoDerivative,
     readArchivePhotoCandidateItem,closeArchivePhotoAttempt,removeArchivePhotoCopies,
@@ -62,6 +63,7 @@ export async function runArchivePhotoReview({env,identity,site,attemptId,catalog
             const processed=await processGalleryPhoto({sourceBytes:Buffer.from(source.bytes),fileExtension:source.fileExtension,
                 declaredMimeType:source.declaredMimeType,expectedSha256:source.expectedSha256,
                 draftBinding:{site,draftId:`draft_${attemptId.slice(8)}`,processingRunId:`run_${attemptId.slice(8).replaceAll('-','')}`}});
+            assertPhotoFramingSource(source.framingSource,processed.source);
             for(const tier of ['staging','approved']) for(const derivative of processed.derivatives)
                 await storeArchivePhotoDerivative(env,identity,site,attemptId,catalog,tier,derivative,processed.toolchain);
             const main=await readGalleryReviewMain(githubOptions(github));

@@ -1,4 +1,5 @@
 import {readBoundedBytes} from '../../gallery-admin/src/media-byte-verification.js';
+import {validatePhotoFramingSource} from './photo-framing-source.mjs';
 const origins=Object.freeze({processing:'https://family-running-gallery-processing-dev.family-running.workers.dev',
     promotion:'https://family-running-gallery-promotion-dev.family-running.workers.dev',
     verifier:'https://family-running-gallery-public-host-verifier-dev.family-running.workers.dev'});
@@ -39,6 +40,7 @@ export function createArchiveServiceClient({purpose,origin,clientId,clientSecret
                 }
                 if(contentType!=='application/json; charset=utf-8') throw new Error('Unavailable');
                 const bytes=await readBoundedBytes(response.body,2097152),decoded=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+                if(operation==='start' && response.ok && Object.hasOwn(decoded,'framingSource')) validatePhotoFramingSource(decoded.framingSource);
                 return {ok:response.ok,value:response.ok?decoded:undefined};
             })();
             return await Promise.race([responsePromise,new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new Error('Unavailable'));},timeoutMilliseconds);})]);

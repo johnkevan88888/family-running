@@ -64,6 +64,17 @@ Preserve the selected `site` parameter when navigating between championship page
   and does not belong to Excel; it must not influence championship data or
   calculations. Public manifests and public derivatives contain no geotags;
   private originals may retain them only in access-controlled media storage.
+- Championship photo framing is presentation only. `gallery-podium-framing.js`
+  and root `gallery-podium-framing.json` bind numeric position/zoom to the exact
+  already-public photo/person generation, after suppression. They cannot select
+  media or grant consent. Unframed photos use whole-image `contain`; Gallery
+  cards/viewers and video posters stay unchanged. Keep the local editor under
+  `scripts/` unpublished. Fresh photo reviews may additionally carry strict
+  public-tag-only `podiumFraming` inside the immutable item, projected from
+  owner-confirmed protected snapshots. Browser detection is a suggestion, not
+  identity, complete tagging or consent. Keep its pinned code/classifier and
+  synthetic test faces outside the public artifact. See
+  `docs/gallery-upload-face-framing.md` and `docs/gallery-podium-framing.md`.
 - `utils.js` contains the shared CSV loading/parsing, HTML escaping, and
   athlete-link helpers. `escapeHTML`, `csvRowsToObjects`, and `parseCSV` live
   here only; do not reintroduce per-file copies. `athleteLink` escapes its own

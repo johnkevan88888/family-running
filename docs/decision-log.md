@@ -1,5 +1,58 @@
 # Decision Log
 
+## Upload detection suggests framing; only a confirmed fresh review can carry it — 20 October 2026
+
+John approved automatic browser face detection, manual protected-uploader
+adjustment, private saving and fresh-photo review integration locally. Reuse the
+shared framing geometry, but do not require a separate local-editor release for
+every new upload. Keep the existing root numeric file as a legacy presentation
+override; new reviewed photo items may carry optional strict `podiumFraming`.
+This deliberately extends the earlier presentation-only decision for NEW reviews
+without rewriting any existing photo, consent, review or retirement evidence.
+
+Run the pinned small Pico detector in a bounded same-origin browser Web Worker,
+not a remote inference service. Preserve MIT notices and exact upstream hashes.
+Temporary suggested face boxes are not identities or complete-person tags.
+The owner maps suggestions to existing private tags and confirms numeric framing.
+No detection, embedding, landmark, camera permission or inferred identity is saved.
+
+Protected revisions bind owner/area, exact retained source hash, canonical EXIF
+orientation and complete tag version under SQL compare-and-swap. Fresh consent
+freezes a separate immutable snapshot. Independently decoded oriented dimensions
+must match before derivative uploads. Project only exact already-approved public
+athlete frames after normal whole-group visibility, suppression and consent gates.
+The optional field is part of the same one-file candidate and canonical review
+hash. No new GitHub capability, old-review edit, automatic merge or publication
+is added. Later framing edits affect later attempts only. Private frames follow
+the existing guarded metadata-purge path; Hide retains them with tags/originals.
+
+Source, runtime, UI, SQL/race and both-mode browser tests use fictional identities
+and generated media, including an entirely AI-generated positive face fixture.
+All detector/uploader/fixture assets stay outside the public Pages artifact.
+Repository release, remote migration, affected-service deployment and synthetic
+rehearsal are separately approved later; no real-photo processing is included.
+See `docs/gallery-upload-face-framing.md`.
+
+## Podium crops are generation-bound presentation, not consent — 19 October 2026
+
+Keep per-photo/person position and zoom separate from the immutable reviewed
+Gallery item. A strict root presentation JSON stores only numeric settings under
+an opaque digest of the exact public item ID, public athlete tag and both public
+derivative URLs. It contains no explicit identities, URLs, private tags or bytes.
+The digest is reproducible from public inputs, not a claim of anonymity.
+
+Resolve valid Gallery metadata and whole-item suppression first. Settings cannot
+introduce media, change photo selection, grant eligibility or revive a removed
+item. New/restored URLs require new framing. Orphan digests stay inert so existing
+one-file manifest publication/withdrawal and saved review/consent evidence do not
+need migration or rewriting. Unframed/invalid/late settings use the whole photo;
+they never guess a face. Video and ranking behavior stay unchanged.
+
+Use the same geometry in a loopback-only local editor and the public podium.
+Only the shared runtime script and validated numeric JSON are published; the
+editor stays outside the artifact. Publication remains a normal separately
+approved site release, with no Worker/database/image-processing change.
+
 ## Indirect owner replacement preserves the original addition review — 14 October 2026
 
 GitHub can mark an unchanged addition PR indirectly merged at a later owner

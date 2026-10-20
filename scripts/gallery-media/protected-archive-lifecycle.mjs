@@ -1,4 +1,5 @@
 import {processGalleryPhoto} from './processor.mjs';
+import {assertPhotoFramingSource} from './photo-framing-source.mjs';
 import {readGalleryReviewMain,createOrReconcileArchiveGalleryReview,createOrReconcileArchiveGalleryRemoval,readExistingGalleryReview,
     reconcileArchiveGalleryReview} from './github-review-client.mjs';
 
@@ -30,11 +31,12 @@ export async function runProtectedArchiveReview({attemptId,processing,promotion,
         // photo. Existing publication is a separate reconciliation gate.
         if(saved.candidate && !absent(main,saved.candidate.itemId,[])) return {ok:false,state:'already-published',publicationEnabled:false};
         if(saved.state!=='prepared') {
-            await checked(processing,attemptId,'start');
+            const admission=await checked(processing,attemptId,'start');
             const source=await checked(processing,attemptId,'original');
             const processed=await processGalleryPhoto({sourceBytes:Buffer.from(source.bytes),fileExtension:source.mimeType==='image/jpeg'?'jpg':'png',
                 declaredMimeType:source.mimeType,expectedSha256:source.sha256,
                 draftBinding:{site:saved.site,draftId:`draft_${attemptId.slice(8)}`,processingRunId:`run_${attemptId.slice(8).replaceAll('-','')}`}});
+            assertPhotoFramingSource(admission.framingSource,processed.source);
             for(const derivative of processed.derivatives) await checked(processing,attemptId,derivative.storageRole,
                 {bytes:await derivative.payload.arrayBuffer(),toolchain:processed.toolchain});
             await checked(promotion,attemptId,'promote');

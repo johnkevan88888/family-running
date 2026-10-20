@@ -5,6 +5,10 @@
 # output on every platform, so Windows checkouts must not rewrite it to CRLF.
 gallery-admin/generated/catalog-snapshot.js text eol=lf
 
+# Protected face-detector code/model and license are verified by exact hashes.
+gallery-admin/generated/private-face-detector.js text eol=lf
+gallery-admin/vendor/face-detector/LICENSE text eol=lf
+
 # Vendored library builds must round-trip byte for byte. Without this, checkout
 # on Windows rewrites them to CRLF and `pnpm run validate:vendor` reports drift
 # against the identical build in node_modules.
