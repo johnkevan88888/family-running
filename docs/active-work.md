@@ -1,5 +1,38 @@
 # Active Work
 
+## Approved refresh of data PR #139 — 20 October 2026
+
+John approved bringing the existing PR up to date with current main, rerunning
+the complete checks and responsive screenshots, and pushing the refreshed
+branch, with a stop before merge. Production release is not approved.
+
+The saved update on `data/refresh-20261019-141940` stopped in phase `checked`
+because its original head `976817b8bdf3b611367a87e1393eb0e7a1d7340d` was based
+on `fefbc3651c05710b165c39d2f2786a308aa83792`, while main had advanced to
+`9777d044dbf3338473a5331647f1392b9d65eb37` through Gallery PR #138. That change
+touches only `gallery-data/family.json` and does not overlap the routine update.
+The current main is incorporated without conflict. All 72 original CSVs and
+the deterministic private Gallery catalogue are preserved byte-for-byte;
+the bundle remains `20261019T141943930Z-5659E17F`. The private workbook has
+not been opened, changed, or exported again.
+
+The original saved record and file hashes are retained under ignored
+`test-artifacts/data-refresh-139-recovery-20261020/`, alongside validation
+evidence. The complete `node scripts/run-all-tests.mjs` passed, including
+repository/vendor safety, both-mode CSV and Gallery validation, export and
+updater regressions, artifact safety, the 115-file public build, and responsive
+browser tests. Family and Everyone desktop/mobile screenshots were reviewed;
+external media requests were blocked, so this is layout/data proof, not a new
+photo-delivery verification. The original tested data-diff fingerprint also
+matches exactly after incorporating main.
+
+Only the complete existing data update and this handoff differ from current
+main; the inherited Gallery manifest remains exactly main's Git version. Push
+the refreshed branch through the existing lightweight data pathway and require
+fresh exact-head GitHub checks. Refresh only the saved reviewed-commit identity
+and validation evidence after those checks; retain phase `checked`, the existing
+export and promotion backup, and the human MERGE gate. Stop with PR #139 open.
+
 ## Approved runner-only release and fresh Toronto review — 16 October 2026
 
 John approved synchronization/retest, a scoped runner-fix PR, required checks and
