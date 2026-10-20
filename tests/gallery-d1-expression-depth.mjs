@@ -15,6 +15,7 @@ import { correctPrivateGalleryTags } from '../gallery-admin/src/private-gallery-
 import { reservePrivateGalleryAttempt } from '../gallery-admin/src/private-gallery-attempt-service.js';
 import { readPrivateGalleryAssetEligibility,changePrivateGalleryVisibility } from '../gallery-admin/src/private-gallery-visibility-service.js';
 import {queuePrivateArchiveJob,claimArchiveJob} from '../gallery-admin/src/private-gallery-job-service.js';
+import {savePrivateGalleryFraming,readPrivateGalleryAttemptFraming} from '../gallery-admin/src/private-gallery-framing-service.js';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -287,6 +288,41 @@ try {
     },attemptCatalog);
     assert.equal(attempt.status,201,JSON.stringify(attempt));
     assert.equal(attempt.processingEnabled,false);assert.equal(attempt.publicationEnabled,false);
+    const framingInput={idempotencyKey:crypto.randomUUID(),expectedVersion:0,tagVersion:2,
+        sourceSha256:'a'.repeat(64),orientation:'exif-transposed-v1',imageWidth:32,imageHeight:48,
+        frames:{[personId]:{x:45,y:15,zoom:2}},confirmed:true};
+    const framingSaved=await savePrivateGalleryFraming(assetEnv,owner,'family',reservation.asset.assetId,framingInput);
+    assert.equal(framingSaved.status,201,JSON.stringify(framingSaved));
+    assert.equal(framingSaved.version,1);
+    assert.deepEqual(framingSaved.frames,framingInput.frames);
+    const framedAttempt=await reservePrivateGalleryAttempt(assetEnv,owner,'family',reservation.asset.assetId,{
+        idempotencyKey:crypto.randomUUID(),tagVersion:2,eligibilityRevision:eligible.revision,
+        sourceRevision:attemptCatalog.sourceRevision,suppressionRevision:attemptCatalog.suppressionRevision,
+        raceIndex:0,completeTagsConfirmed:true,publicUseConfirmed:true,containsMinors:false,guardianApprovalConfirmed:false,
+        framingVersion:1
+    },attemptCatalog);
+    assert.equal(framedAttempt.status,201,JSON.stringify(framedAttempt));
+    const framedRow=await assetEnv.DB.prepare('SELECT * FROM private_gallery_attempts WHERE attempt_id=?1')
+        .bind(framedAttempt.attemptId).first();
+    const framingSnapshot=await readPrivateGalleryAttemptFraming(assetEnv,framedRow);
+    assert.equal(framingSnapshot.version,1);
+    assert.equal(framingSnapshot.sourceSha256,'a'.repeat(64));
+    assert.deepEqual(framingSnapshot.podiumFraming,{},'Private-only D1 person never becomes public framing');
+    const storedFrame=await assetEnv.DB.prepare('SELECT * FROM private_gallery_frame_revisions WHERE asset_id=?1')
+        .bind(reservation.asset.assetId).first();
+    assert.match(storedFrame.request_hash,/^[0-9a-f]{64}$/);
+    assert.deepEqual(JSON.parse(storedFrame.frames_json),framingInput.frames);
+    assert.equal(storedFrame.frames_json.includes('Synthetic'),false,'Coordinates contain no identity names or detector details');
+    assert.equal(storedFrame.frames_json.includes('http'),false);
+    const compactReferences=await assetEnv.DB.prepare(`SELECT
+        (SELECT json_group_array(json_array(version,request_hash)) FROM private_gallery_frame_revisions) AS revisions,
+        (SELECT json_group_array(json_array(attempt_id,version)) FROM private_gallery_attempt_framings) AS attempts,
+        (SELECT sql FROM sqlite_schema WHERE type='view' AND name='private_archive_purge_snapshots') AS definition`).first();
+    assert.deepEqual(JSON.parse(compactReferences.revisions),[[1,storedFrame.request_hash]]);
+    const compactAttempts=new Map(JSON.parse(compactReferences.attempts));
+    assert.equal(compactAttempts.get(attempt.attemptId),0);
+    assert.equal(compactAttempts.get(framedAttempt.attemptId),1);
+    assert.equal(compactReferences.definition.includes('frames_json'),false,'Private purge proof uses immutable references, not repeated coordinate maps');
     const ownerJob=await queuePrivateArchiveJob(assetEnv,owner,'family',reservation.asset.assetId,{
         action:'review',attemptId:attempt.attemptId,idempotencyKey:crypto.randomUUID()});
     assert.equal(ownerJob.status,201,JSON.stringify(ownerJob));
@@ -306,14 +342,15 @@ try {
             'private_gallery_manifest_removal_intents','private_gallery_manifest_removal_reviews','private_gallery_pipeline_tier_absences',
             'private_archive_purge_operations','private_archive_purge_receipts','private_gallery_retired_generations','private_gallery_retired_keys',
             'private_gallery_review_write_admissions','private_gallery_review_terminals','private_gallery_owner_jobs','private_gallery_job_claims',
-            'private_gallery_job_completions','private_gallery_retired_jobs']) {
+            'private_gallery_job_completions','private_gallery_retired_jobs',
+            'private_gallery_frame_revisions','private_gallery_attempt_framings']) {
         const compiled = runWrangler(['d1','execute',...commonArguments,'--command',
             `EXPLAIN INSERT INTO ${table} DEFAULT VALUES`,'--json'],environment);
         assert.equal(compiled.status,0,diagnostic(compiled));
         assert.ok(parseWranglerJson(compiled)[0].results.length>0);
     }
 
-    console.log('Gallery D1 expression-depth parity, private roster, tag correction, archive intake/cleanup, fresh-consent reservation and atomic metadata-purge trigger compilation passed.');
+    console.log('Gallery D1 expression-depth parity, private roster, tag correction, archive intake/cleanup, private framing/fresh-consent snapshot and atomic metadata-purge trigger compilation passed.');
 } finally {
     const resolvedTemporaryRoot = await fs.realpath(temporaryRoot);
     assert.equal(path.dirname(resolvedTemporaryRoot), temporaryParent);

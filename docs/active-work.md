@@ -1,5 +1,236 @@
 # Active Work
 
+## Framing repository release preparation — 20 October 2026
+
+John asked to continue from the repository-release gate. Synchronize this
+isolated branch with current main 140b3fbf5d0762e47e98105f6b30de947fdd6230,
+preserving PR #139's newer complete 72-file export/catalogue and PR #140's
+updater fix, then retest the combined source through the standard preview path.
+John explicitly approved the standard repository PR/checks/merge and normal
+Pages release. The synchronized HEAD 74f9bdcba7e8016d28bb740ee741b81e503949f9
+passed all 88 groups, exit 0, from 16:19:19 to 16:45:41 UTC on 20 October.
+Independent reconciliation confirmed the log/driver hashes, all 88 group
+headers, success sentinel and exact before/after inventory of 404 source files,
+72 CSVs and three Gallery files. Family 1 / Everyone 0 remains unchanged.
+
+Canonical Git-blob builds of current main and the synchronized head prove the
+117-file candidate artifact changes only five existing runtime files and adds
+the two podium-framing files, with no removals. All 72 CSVs, three Gallery files
+and CNAME are byte-identical between those artifacts. The protected detector,
+uploader, model, fixture and migration are not published in that artifact.
+Evidence: test-artifacts/framing-release-full-checks.json/.log and
+test-artifacts/framing-release-public-proof.json. Only release-status prose in
+this file and the two framing product documents changes after this local run;
+the final pushed head must pass required CI and both-mode preview review before
+merge. Migration 0029, all Worker deployments, live synthetic rehearsal,
+real-media processing, purge and new photo publication remain outside this
+step. Preserve all earlier local validation evidence below.
+
+## Automatic upload face framing — local implementation complete, 20 October 2026
+
+John approved local browser-side detection, manual protected-uploader controls,
+protected numeric saving and fresh-photo review integration. Completed in the
+isolated test-artifacts/gallery-podium-framing checkout, branch
+codex/championship-photo-framing, HEAD 9777d044dbf3338473a5331647f1392b9d65eb37.
+The earlier unreleased manual-framing work is preserved in this combined slice.
+No push, PR, remote migration, deployment, real-photo processing, live retry,
+credential/settings change or publication was performed.
+
+The pinned self-hosted Pico detector runs in a bounded same-origin browser
+worker. It suggests numbered possible faces, not identities. The owner assigns
+suggestions to existing complete private tags, adjusts position/zoom, checks
+desktop/mobile previews and explicitly confirms a private save. Only numeric
+framing is retained, bound to owner/area, exact original hash, oriented source
+dimensions, complete tag revision and compare-and-swap version. No face boxes,
+recognition profile, original GET route or new Cloudflare resource is added.
+Detector failure/missed faces retain manual and whole-photo fallback.
+
+Forward migration 0029 adds immutable private revisions and fresh-attempt
+snapshots without backfilling old evidence. Actual processing checks decoded
+source hash/orientation/dimensions before any derivative PUT. Eligible public
+frames enter optional strict podiumFraming in the same one-file candidate and
+its exact review hash. Private/hidden/unmapped identifiers never enter it; normal
+whole-group visibility, consent, suppression, metadata stripping, fixed-origin
+host verification, retirement and guarded purge checks remain. Hide retains
+framing with the original/tags. Later edits cannot rewrite earlier reviews.
+
+Final validation PASSED all 87 groups, exit 0, from 13:51:37 to 14:08:07 UTC on
+20 October. This includes actual model detection on three entirely AI-generated
+fictional faces, all eight EXIF orientations/mirrors, manual fallback, timeout/
+late replies, owner/session/CSRF/body bounds, actual uploader-to-router-to-SQL
+saves and fresh consent in both areas/viewport sizes, CAS/source/tag races,
+immutable old/new evidence, public projection, guarded local purge rollback,
+actual pinned local D1, one-file review, artifact safety and responsive smoke
+tests for Family/Everyone. Desktop/mobile synthetic screenshots were visually
+checked. Original fixture provenance is in tests/fixtures/face-framing/README.md.
+
+Independent read-only evidence verification confirmed the actual success log,
+driver hash, exact before/after paths/hashes for all 402 source files, all 72
+CSVs and three Gallery files; Family 1 / Everyone 0 remains unchanged. Existing
+tests temporarily create/restore their own probes: this is endpoint equality,
+not continuous immutability. All 55 exact Worker compile-input files also match
+the tested source. Only this handoff prose changed after the full run.
+The 117-file public artifact excludes all detector/uploader/model/fixture files.
+
+Two review findings were fixed and regression-tested before the final run:
+existing UUID-shaped private people must not be restricted to newer v4 IDs;
+switching people must immediately clear confirmation and disable Save. The first
+run was intentionally stopped at 11/87 and retained as non-passing evidence;
+it was not silently overwritten or automatically retried.
+
+Ignored evidence, relative to this isolated checkout:
+
+- test-artifacts/automatic-framing-full-checks-final.json and .log — final 87/87.
+- test-artifacts/automatic-framing-bundles-final-v2.json — all six existing
+  services compile in memory; five have changed inputs, media delivery does not.
+- test-artifacts/verify-automatic-framing-evidence.mjs — read-only reconciliation.
+- test-artifacts/automatic-framing-interrupted-run.md and original
+  automatic-framing-full-checks.json/.log — preserved interrupted run.
+- test-artifacts/screenshots/private-face-framing-1440.png and
+  private-face-framing-390.png — fictional synthetic uploader previews.
+
+Exact combined changed paths relative to HEAD (57, including prior manual work):
+
+```text
+.gitattributes
+.gitignore
+AGENTS.md
+championships.html
+docs/active-work.md
+docs/decision-log.md
+docs/gallery-podium-framing.md
+docs/gallery-publishing-workflow.md
+docs/gallery-upload-face-framing.md
+docs/testing-and-release-protocol.md
+gallery-admin/generated/private-face-detector.js
+gallery-admin/migrations/0029_private_gallery_framing.sql
+gallery-admin/src/admin-worker.js
+gallery-admin/src/private-gallery-assets.js
+gallery-admin/src/private-gallery-attempt-service.js
+gallery-admin/src/private-gallery-face-assets.js
+gallery-admin/src/private-gallery-framing-service.js
+gallery-admin/src/private-gallery-framing.js
+gallery-admin/src/private-gallery-photo-lifecycle.js
+gallery-admin/vendor/face-detector/LICENSE
+gallery-contract.js
+gallery-podium-framing.js
+gallery-podium-framing.json
+gallery.css
+gallery.js
+index.html
+package.json
+scripts/build-preview-artifact.mjs
+scripts/gallery-media/archive-service-client.mjs
+scripts/gallery-media/photo-framing-source.mjs
+scripts/gallery-media/private-photo-lifecycle.mjs
+scripts/gallery-media/protected-archive-lifecycle.mjs
+scripts/gallery-podium-editor.mjs
+scripts/gallery-podium-editor/editor.css
+scripts/gallery-podium-editor/editor.js
+scripts/gallery-podium-editor/index.html
+scripts/published-site-entries.mjs
+scripts/run-all-tests.mjs
+scripts/sync-private-face-detector.mjs
+scripts/validate-gallery-podium-framing.mjs
+tests/browser-smoke.mjs
+tests/fixtures/face-framing/README.md
+tests/fixtures/face-framing/synthetic-runners-ai.png
+tests/gallery-contract.mjs
+tests/gallery-d1-expression-depth.mjs
+tests/gallery-framing-owner-boundaries.mjs
+tests/gallery-framing-uploader-integration.mjs
+tests/gallery-fresh-photo-framing.mjs
+tests/gallery-podium-editor.mjs
+tests/gallery-podium-framing-browser.mjs
+tests/gallery-podium-framing.mjs
+tests/gallery-private-face-browser.mjs
+tests/gallery-private-face-vendor.mjs
+tests/gallery-private-framing.mjs
+tests/helpers/private-gallery-service-fixture.mjs
+tests/pr-release-path.mjs
+tests/preview-artifact-safety.mjs
+```
+
+No local blocker remains. The next explicit gate is synchronization/retest and
+normal PR/required checks/preview/owner merge, permitting the intended static
+framing UI change but keeping CSVs/manifests and Family 1 / Everyone 0 unchanged.
+Activation then separately requires approval for migration 0029 and ONLY the
+five affected existing services: admin, processing, promotion,
+withdrawal-finalizer and public-host-verifier, preserving bindings/Access.
+Media delivery is unchanged and needs no deployment. Follow with an approved
+synthetic protected upload-to-review rehearsal stopping at an unmerged one-file
+candidate. Local evidence is not live proof. No new real-photo processing,
+purge, candidate merge or photo publication is included. Release the compatible
+static renderer before any new framed candidate is merged. This supersedes the
+older static-only next gate below for the combined automatic-upload feature.
+See docs/gallery-upload-face-framing.md for the full contract and workflow.
+
+## Championship face framing — local implementation, 19 October 2026
+
+John requested face-focused championship thumbnails. Work is isolated in
+test-artifacts/gallery-podium-framing on codex/championship-photo-framing,
+from freshly fetched main 9777d044dbf3338473a5331647f1392b9d65eb37.
+The live Toronto Family pilot and both public manifests are untouched (Family 1,
+Everyone 0). No push, PR, merge, deployment or live change is authorized here.
+
+The local change adds manual position/zoom per exact approved photo/public
+athlete, with a separate numeric opaque-key presentation file so immutable
+photo/consent/review evidence and one-file removal stay unchanged. A loopback-only
+editor previews and saves coordinates; it cannot upload, process or publish.
+John's already-public Toronto display derivative is framed locally with his
+face visible. No private original was read or changed.
+
+Focused contract/geometry, editor HTTP/browser, synthetic podium browser,
+Gallery whole-photo and artifact/release checks pass. Local visual inspection
+confirms compact desktop/mobile podiums with the face visible; the Gallery
+whole-photo presentation and video behavior are unchanged. A settings-loading
+race and missing legacy championships.html script were found and corrected.
+Both URLs and delayed/timeout configurations have regression coverage.
+The single full `node scripts/run-all-tests.mjs` run PASSED all 80 groups,
+exit 0, at 18:08:38 UTC on 19 October. It includes repository/vendor/CSV/Gallery
+validation, local D1 safety checks, artifact safety and both-mode responsive
+browser smoke tests. The 117-file public artifact includes only the new framing
+runtime and numeric settings; the local editor remains unpublished.
+Ignored evidence in the isolated checkout is
+test-artifacts/framing-full-checks.json and framing-full-checks.log. The receipt
+verifies identical before/after paths and hashes for all 385 source files,
+all 72 CSV files, both Gallery manifests and the suppression list. Existing
+tests create and restore temporary probes; this is endpoint equality, not a
+claim of continuous immutability. Only this handoff prose changed after the run.
+
+The already-public Toronto derivative was visually checked in compact desktop
+and mobile podiums; Everyone retains initials and does not borrow Family media.
+The eight local-preview PNGs and proof.json are under
+test-artifacts/podium-current-photo-dwtF0r/. Independent editor/contract and
+visual reviews found no remaining issue. No dependency installation, remote
+mutation, private-original read or media processing was performed.
+
+Exact changed paths in this isolated implementation (28):
+
+- Runtime: gallery.js, gallery.css, index.html, championships.html,
+  gallery-podium-framing.js, gallery-podium-framing.json.
+- Local editor/validation: scripts/gallery-podium-editor.mjs,
+  scripts/gallery-podium-editor/index.html,
+  scripts/gallery-podium-editor/editor.js,
+  scripts/gallery-podium-editor/editor.css,
+  scripts/validate-gallery-podium-framing.mjs.
+- Build/tooling: .gitignore, package.json,
+  scripts/build-preview-artifact.mjs, scripts/published-site-entries.mjs,
+  scripts/run-all-tests.mjs.
+- Tests: tests/browser-smoke.mjs, tests/pr-release-path.mjs,
+  tests/preview-artifact-safety.mjs, tests/gallery-podium-framing.mjs,
+  tests/gallery-podium-editor.mjs, tests/gallery-podium-framing-browser.mjs.
+- Documentation: AGENTS.md, docs/active-work.md, docs/decision-log.md,
+  docs/gallery-publishing-workflow.md, docs/gallery-podium-framing.md,
+  docs/testing-and-release-protocol.md.
+
+No local blocker remains. The next explicit gate is synchronization/retest,
+normal PR/required checks and Netlify preview, followed by approved owner merge
+and normal Pages deployment for this static UI change, preserving Family 1 /
+Everyone 0. No Worker deployment, migration, new photo or Gallery workflow is
+needed. Baseline PR #138 publication is already complete: do not replay it.
+See docs/gallery-podium-framing.md for owner editing and the framing contract.
+
 ## Updater recovery for a changing main — 20 October 2026
 
 John requested a permanent updater path for main advancing during a routine
@@ -107,7 +338,6 @@ the refreshed branch through the existing lightweight data pathway and require
 fresh exact-head GitHub checks. Refresh only the saved reviewed-commit identity
 and validation evidence after those checks; retain phase `checked`, the existing
 export and promotion backup, and the human MERGE gate. Stop with PR #139 open.
-
 ## Approved runner-only release and fresh Toronto review — 16 October 2026
 
 John approved synchronization/retest, a scoped runner-fix PR, required checks and

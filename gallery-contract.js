@@ -24,7 +24,8 @@
         'sourceUrl',
         'thumbnailUrl',
         'featured',
-        'athleteIds'
+        'athleteIds',
+        'podiumFraming'
     ]);
 
     function validateGalleryDocument(documentValue) {
@@ -109,9 +110,66 @@
                     }
                 });
             }
+
+            if (Object.hasOwn(item, 'podiumFraming')) {
+                const descriptor = Object.getOwnPropertyDescriptor(item, 'podiumFraming');
+                if (!descriptor.enumerable || !Object.hasOwn(descriptor, 'value')) {
+                    problems.push(`${label}.podiumFraming must be an own JSON data field.`);
+                } else {
+                    validatePodiumFraming(descriptor.value, item, label, problems);
+                }
+            }
         });
 
         return problems;
+    }
+
+    // New-photo framing is public presentation only. Its public person keys
+    // must already be tags on this exact approved photo; it cannot add a person,
+    // choose a different photo or carry a private identity/biometric record.
+    function validatePodiumFraming(value, item, label, problems) {
+        const prefix = `${label}.podiumFraming`;
+        if (item.type !== 'photo') {
+            problems.push(`${prefix} is supported for photos only.`);
+        }
+        if (!isJsonRecord(value)) {
+            problems.push(`${prefix} must be a plain JSON object with own data fields.`);
+            return;
+        }
+        const keys = Object.keys(value);
+        if (keys.length > 100) problems.push(`${prefix} must contain no more than 100 public athlete entries.`);
+        for (const athleteId of keys) {
+            if (!athleteIdPattern.test(athleteId) || !Array.isArray(item.athleteIds) || !item.athleteIds.includes(athleteId)) {
+                problems.push(`${prefix} keys must be already-tagged public athlete IDs.`);
+            }
+            const frame = value[athleteId];
+            if (!isJsonRecord(frame)) {
+                problems.push(`${prefix}[${JSON.stringify(athleteId)}] must be a plain numeric framing object.`);
+                continue;
+            }
+            if (Object.keys(frame).sort().join('|') !== 'x|y|zoom') {
+                problems.push(`${prefix}[${JSON.stringify(athleteId)}] must contain exactly x, y and zoom.`);
+            }
+            for (const coordinate of ['x', 'y']) {
+                if (typeof frame[coordinate] !== 'number' || !Number.isFinite(frame[coordinate]) ||
+                        frame[coordinate] < 0 || frame[coordinate] > 100) {
+                    problems.push(`${prefix}.${coordinate} must be a finite number from 0 through 100.`);
+                }
+            }
+            if (typeof frame.zoom !== 'number' || !Number.isFinite(frame.zoom) || frame.zoom < 1 || frame.zoom > 8) {
+                problems.push(`${prefix}.zoom must be a finite number from 1 through 8.`);
+            }
+        }
+    }
+
+    function isJsonRecord(value) {
+        if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+        const prototype = Object.getPrototypeOf(value);
+        if (prototype !== Object.prototype && prototype !== null) return false;
+        return Reflect.ownKeys(value).every(key => {
+            const descriptor = Object.getOwnPropertyDescriptor(value, key);
+            return typeof key === 'string' && descriptor.enumerable && Object.hasOwn(descriptor, 'value');
+        });
     }
 
     function validateGallerySuppressionDocument(documentValue) {

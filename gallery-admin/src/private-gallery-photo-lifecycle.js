@@ -1,6 +1,7 @@
 import '../../gallery-contract.js';
 import toolchain from '../../scripts/gallery-media-toolchain.json' with {type:'json'};
 import { reservePrivateGalleryAttempt } from './private-gallery-attempt-service.js';
+import {readPrivateGalleryAttemptFraming,privateGalleryAttemptFramingReplayInput} from './private-gallery-framing-service.js';
 import {assertArchiveIdentityAvailable} from './private-gallery-retirement.js';
 import {archiveOperationOwner,isArchiveServiceAuthority,archiveServiceTier,
     recheckArchiveServiceConsent,readArchiveMediaEpoch} from './private-gallery-service-authority.js';
@@ -52,7 +53,7 @@ export async function readArchivePhotoAttempt(env,identity,site,attemptId,catalo
         idempotencyKey:row.idempotency_key,tagVersion:row.tag_version,eligibilityRevision:row.eligibility_revision,
         sourceRevision:row.source_revision,suppressionRevision:row.suppression_revision,raceIndex,
         completeTagsConfirmed:true,publicUseConfirmed:true,containsMinors:Boolean(row.contains_minors),
-        guardianApprovalConfirmed:Boolean(row.guardian_approval_confirmed)},catalog);
+        guardianApprovalConfirmed:Boolean(row.guardian_approval_confirmed),...privateGalleryAttemptFramingReplayInput(row)},catalog);
     if(!checked.ok || checked.attemptId!==attemptId || !await first(env,
         'SELECT 1 FROM private_gallery_current_attempt_permissions WHERE attempt_id=?1',attemptId)) throw new Error('Changed');
     return row;
@@ -60,6 +61,12 @@ export async function readArchivePhotoAttempt(env,identity,site,attemptId,catalo
 
 async function epoch(env) {
     return readArchiveMediaEpoch(env);
+}
+
+async function framingSourceFor(env,attempt) {
+    const framing=await readPrivateGalleryAttemptFraming(env,attempt);
+    return framing?{framingSource:{orientation:framing.orientation,imageWidth:framing.imageWidth,
+        imageHeight:framing.imageHeight,sourceSha256:framing.sourceSha256}}:{};
 }
 
 export async function admitArchivePhotoProcessing(env,identity,site,attemptId,catalog) {
@@ -75,8 +82,8 @@ export async function admitArchivePhotoProcessing(env,identity,site,attemptId,ca
             catch { const stored=await first(env,'SELECT * FROM private_gallery_pipeline_admissions WHERE attempt_id=?1',attemptId);
                 if(stored?.epoch_id_hash!==current.epochIdHash) throw new Error('Unavailable'); }
         }
-        await readArchivePhotoAttempt(env,identity,site,attemptId,catalog);
-        return {ok:true,status:200,attemptId,state:'admitted',replayed:Boolean(prior)};
+        const attempt=await readArchivePhotoAttempt(env,identity,site,attemptId,catalog);
+        return {ok:true,status:200,attemptId,state:'admitted',replayed:Boolean(prior),...await framingSourceFor(env,attempt)};
     } catch { return fail(); }
 }
 
@@ -92,7 +99,7 @@ export async function readArchivePhotoSource(env,identity,site,attemptId,catalog
     if(bytes.length!==row.original_byte_count || await sha256Hex(bytes)!==row.original_sha256) throw new Error('Source changed');
     await readArchivePhotoAttempt(env,identity,site,attemptId,catalog);
     return {bytes,fileExtension:row.original_format,declaredMimeType:row.original_format==='jpg'?'image/jpeg':'image/png',
-        expectedSha256:row.original_sha256,site};
+        expectedSha256:row.original_sha256,site,...await framingSourceFor(env,row)};
 }
 
 async function outputRows(env,attemptId) {
@@ -204,6 +211,8 @@ export async function readArchivePhotoCandidateItem(env,identity,site,attemptId,
         raceDistance:a.race_distance,sourceUrl:`${current.approvedOrigin}/${approved.find(r=>r.role==='photo-display').object_key}`,
         thumbnailUrl:`${current.approvedOrigin}/${approved.find(r=>r.role==='photo-thumbnail').object_key}`,
         featured:false,athleteIds:JSON.parse(a.public_athlete_ids_json)};
+    const framing=await readPrivateGalleryAttemptFraming(env,a);
+    if(framing && Object.keys(framing.podiumFraming).length) item.podiumFraming=framing.podiumFraming;
     if(globalThis.galleryContract.validateGalleryDocument({schemaVersion:'1.0',items:[item]}).length) throw new Error('Invalid public item');
     return item;
 }

@@ -4,6 +4,62 @@ This project is a static GitHub Pages site. Excel/VBA remains the private source
 
 ## Local Setup
 
+### Automatic uploader face framing — local only, 20 October 2026
+
+The combined runner now includes 88 groups after incorporating main's updater
+refresh coverage (the original framing-only run had 87). Add the pinned detector
+check plus `tests/gallery-private-face-browser.mjs`,
+`tests/gallery-private-face-vendor.mjs`,
+`tests/gallery-framing-owner-boundaries.mjs`,
+`tests/gallery-private-framing.mjs`, `tests/gallery-fresh-photo-framing.mjs`
+and `tests/gallery-framing-uploader-integration.mjs` to the previous coverage.
+Use only fictional people/generated images, including the documented entirely
+AI-generated positive face fixture, not the owner's or stock photographs.
+
+Prove actual classifier detection, no external runtime requests, strict asset
+hash/license validation, worker timeout/late replies, manual whole-photo fallback,
+all eight EXIF rotations/mirrors versus actual decoding, per-tag suggestions,
+explicit framing confirmation, wrong-file/stale/changed-source refusal and exact
+lost-save replay. Actual owner-router/SQL/browser tests must enforce Access,
+signed inherited-area session, Origin/CSRF, bounded body/cancellation, numeric-only
+save, source/tag/CAS races, no original GET and separate fresh consent snapshots.
+
+Run actual local D1 with all forward migrations, nonzero saved framing, immutable
+attempt projection and trigger-depth/purge compilation. Both internal and split
+HTTP processing must check the independently decoded source before derivative
+PUTs, preserve metadata stripping, omit private/hidden/unmapped framing and retain
+exact one-file review/hash. Old attempts/reviews and their omitted framing fields
+must remain unchanged. Test terminal metadata-purge rollback and complete private
+frame removal without changing its existing authority or interpreting Hide as purge.
+
+Public podium tests must cover inline reviewed framing before legacy settings,
+missing legacy settings, whole-group suppression before any media request, strict
+photo/tag-subset validation and unchanged tables, Gallery/video behavior and both
+championship URLs. Validate the 117-file public artifact: no detector, classifier,
+private uploader/API or test fixture is published. Local proof does not authorize
+push, remote migrations, deployment, live rehearsal, real photos or publication.
+See `docs/gallery-upload-face-framing.md` for scope and release ordering.
+
+### Championship photo framing — local only, 19 October 2026
+
+Run the framing validator, `tests/gallery-podium-framing.mjs`,
+`tests/gallery-podium-editor.mjs` and `tests/gallery-podium-framing-browser.mjs`,
+then the complete runner (now 80 groups). Use generated face markers and invented
+media URLs for fixtures. Cover exact public-generation/person keys, strict numeric
+privacy schema, multiple people in one photo, portrait/landscape/wide/tall shapes,
+actual visible face pixels, resize/lazy sections, both modes and desktop/mobile.
+Delayed valid settings must not memoize an early unframed decoration; requests
+past 2.5 seconds must keep whole photos without late revival. Missing/malformed
+framing is whole-photo fallback; malformed suppression still denies all media.
+Prove unchanged photo choice, standings/medals, compact podiums, Gallery/viewer/
+highlight/video behavior, inert orphan settings and one-file removal compatibility.
+The local editor must reject cross-origin/token/Host failures, bounded malformed
+requests and stale file revisions, preserve unrelated settings, and never expose
+private originals or an arbitrary file/media proxy. The real artifact build must
+reject unsupported framing fields and exclude the editor. The 117-file artifact
+is a visual change requiring a normal preview release; local passing tests are
+not permission to push, open/merge a PR, deploy Workers or change the live site.
+
 ### Automatic refresh of a published data branch — local implementation, 20 October 2026
 
 Run `node tests/data-update-refresh.mjs` plus the existing simple-updater and
@@ -23,7 +79,6 @@ tooling only; verify that the 115-file public artifact is byte-identical to the
 unchanged runtime baseline. Release tooling needs the standard preview route.
 Local passing tests do not publish this implementation or authorize a new PR,
 merge, production update, workbook access or live recovery experiment.
-
 ### Processing-photo acknowledgement deadline — local only, 15 October 2026
 
 Run `node tests/gallery-archive-service-timeout.mjs` and

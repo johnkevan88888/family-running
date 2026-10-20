@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createStaticServer } from '../scripts/serve-site.mjs';
 import { findChromiumExecutable, loadPlaywright } from '../scripts/browser-runtime.mjs';
+import podiumFraming from '../gallery-podium-framing.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = process.env.SITE_ROOT
@@ -215,6 +216,7 @@ async function runModeViewportTest(browserInstance, mode, viewport) {
         await assertPrimaryNavigation(page, mode, viewport, 'championships');
         await assertNoModeSwitch(page, mode, viewport, 'championships');
         await expectCountAtLeast(page, '#leaderboards table tr', 2, `${mode} landing championship leaderboard rows`);
+        await assertChampionshipPodiums(page, mode, viewport);
         await assertSitePaceToggle(page, mode, viewport);
         await assertNavigationBetweenPublicPages(page, mode, viewport);
         await assertResponsiveViewport(page, viewport, `${mode}/${viewport.name} landing championships page`);
@@ -4698,6 +4700,16 @@ async function assertLeaderboardDisplayLabels(page, mode, viewport) {
 async function assertChampionshipPodiums(page, mode, viewport) {
     const context = `${mode}/${viewport.name} championship podiums`;
     const visibleItems = await readVisibleGalleryItems(mode);
+    const framingDocument = JSON.parse(await fs.readFile(path.join(siteRoot, 'gallery-podium-framing.json'), 'utf8'));
+    if (podiumFraming.validateDocument(framingDocument).length) {
+        failures.push(`${context}: invalid presentation-only framing document.`);
+    }
+    // The exact photo/person digest is asynchronous; do not race an incomplete
+    // decoration merely because the independently loaded table has appeared.
+    for (const item of visibleItems) for (const athleteId of item.athleteIds) {
+        const containers = page.locator(`#leaderboards [data-gallery-athlete-photo="${athleteId}"]`);
+        if (await containers.count()) await containers.first().locator('img').waitFor({ state: 'attached' });
+    }
     const layout = await page.evaluate(() => {
         const sections = [...document.querySelectorAll('#leaderboards .leaderboard-section')];
         const firstPodium = document.querySelector('#leaderboards .championship-podium');
@@ -4731,6 +4743,7 @@ async function assertChampionshipPodiums(page, mode, viewport) {
                 source: container.querySelector('img')?.getAttribute('src') || null,
                 alt: container.querySelector('img')?.getAttribute('alt') || null,
                 hasMedia: container.classList.contains('has-gallery-media'),
+                hasFraming: container.classList.contains('has-podium-framing'),
                 hasFallback: container.getAttribute('role') === 'img' &&
                     Boolean(container.getAttribute('aria-label'))
             })),
@@ -4764,10 +4777,18 @@ async function assertChampionshipPodiums(page, mode, viewport) {
         const taggedItems = visibleItems.filter(item => item.athleteIds.includes(media.athleteId));
         const expectedItem = taggedItems.find(item => item.type === 'photo') || taggedItems[0];
         if (expectedItem) {
-            if (media.itemId !== expectedItem.id || media.source !== expectedItem.thumbnailUrl ||
+            const key = expectedItem.type === 'photo' ? await podiumFraming.keyFor(expectedItem, media.athleteId) : null;
+            const hasFraming = expectedItem.type === 'photo' &&
+                (Boolean(expectedItem.podiumFraming && Object.hasOwn(expectedItem.podiumFraming, media.athleteId)) ||
+                (key !== null && Object.hasOwn(framingDocument.frames, key)));
+            const expectedSource = hasFraming ? expectedItem.sourceUrl : expectedItem.thumbnailUrl;
+            if (media.itemId !== expectedItem.id || media.source !== expectedSource || media.hasFraming !== hasFraming ||
                 media.alt !== expectedItem.alt || media.imageCount !== 1 || !media.hasMedia ||
                 media.hasFallback) {
-                failures.push(`${context}: ${media.athleteId} did not use its first eligible Gallery image.`);
+                failures.push(`${context}: ${media.athleteId} did not use its first eligible Gallery image ` +
+                    `(item ${media.itemId === expectedItem.id}, source ${media.source === expectedSource}, ` +
+                    `framing ${media.hasFraming}/${hasFraming}, images ${media.imageCount}, ` +
+                    `media ${media.hasMedia}, fallback ${media.hasFallback}).`);
             }
         } else if (!media.hasFallback || media.hasMedia || media.imageCount !== 0 || media.itemId) {
             failures.push(`${context}: ${media.athleteId} lost its accessible fallback without eligible media.`);

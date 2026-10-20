@@ -6,6 +6,11 @@
     ];
     let galleryItems = [];
     let photoResults = null;
+    let podiumFrames = Object.freeze({});
+    const framedPodiums = new Map();
+    const podiumResizeObserver = typeof ResizeObserver === 'function'
+        ? new ResizeObserver(entries => entries.forEach(entry => layoutPodiumPhoto(entry.target)))
+        : null;
     let activeFilter = 'all';
     let previouslyFocusedElement = null;
 
@@ -49,7 +54,14 @@
                 throw new Error('Gallery data did not match its contract.');
             }
 
-            galleryItems = contract.filterSuppressedGalleryItems(data.items, suppressionData);
+            const visibleItems = contract.filterSuppressedGalleryItems(data.items, suppressionData);
+            // Crops cannot introduce media or identities: resolve them only AFTER
+            // the existing manifest and whole-photo person suppression gates.
+            await loadPodiumFrames();
+            // Tables can finish loading while the optional framing request is in
+            // flight. Publish the eligible item list only when both are settled,
+            // otherwise a premature whole-photo decoration would be memoized.
+            galleryItems = visibleItems;
             if (grid) {
                 // Suppression is resolved first. Optional result failures never invent facts
                 // and cannot bypass the media/suppression contract above.
@@ -265,28 +277,125 @@
     }
 
     function decorateAthletePhotos(root = document) {
+        for (const container of framedPodiums.keys()) {
+            if (!container.isConnected) {
+                podiumResizeObserver?.unobserve(container);
+                framedPodiums.delete(container);
+            }
+        }
         root.querySelectorAll('[data-gallery-athlete-photo]').forEach(container => {
             const athleteId = String(container.dataset.galleryAthletePhoto || '').trim();
             const candidates = galleryItems.filter(item => item.athleteIds.includes(athleteId));
             const item = candidates.find(candidate => candidate.type === 'photo') || candidates[0];
 
             if (!item || container.dataset.galleryMediaId === item.id) {
+                layoutPodiumPhoto(container);
                 return;
             }
 
-            const image = document.createElement('img');
-            image.src = item.thumbnailUrl;
-            image.alt = item.alt;
-            image.loading = 'lazy';
-            image.decoding = 'async';
-            image.referrerPolicy = 'no-referrer';
-
-            container.replaceChildren(image);
-            container.removeAttribute('role');
-            container.removeAttribute('aria-label');
+            // Set the identity before the asynchronous digest so a repeated table
+            // render cannot start duplicate decorations. Only this selected,
+            // already-approved item may supply either image URL.
             container.dataset.galleryMediaId = item.id;
-            container.classList.add('has-gallery-media');
+            void decorateAthletePhoto(container, item, athleteId);
         });
+    }
+
+    async function loadPodiumFrames() {
+        const framing = window.galleryPodiumFraming;
+        if (!framing) return;
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 2500);
+        try {
+            const response = await fetch('gallery-podium-framing.json', {
+                cache: 'no-store', signal: controller.signal
+            });
+            if (!response.ok) return;
+            const value = await response.json();
+            if (framing.validateDocument(value).length === 0) podiumFrames = value.frames;
+        } catch {
+            // Optional presentation failure keeps complete photos and standings;
+            // it never supplies an alternative manifest or bypasses suppression.
+        } finally { clearTimeout(timer); }
+    }
+
+    async function decorateAthletePhoto(container, item, athleteId) {
+        const framing = window.galleryPodiumFraming;
+        let frame = null;
+        if (item.type === 'photo' && container.classList.contains('championship-podium-media') && framing) {
+            try {
+                // New photo reviews bind their public-only framing into the exact
+                // immutable item. Older photos can still use the separate local
+                // presentation settings. Neither path changes photo selection.
+                if (item.podiumFraming && Object.hasOwn(item.podiumFraming, athleteId)) {
+                    frame = item.podiumFraming[athleteId];
+                } else {
+                    const key = await framing.keyFor(item, athleteId);
+                    if (Object.hasOwn(podiumFrames, key)) frame = podiumFrames[key];
+                }
+            } catch {
+                // Missing Web Crypto or an invalid binding uses the whole photo.
+            }
+        }
+        if (!container.isConnected || container.dataset.galleryMediaId !== item.id) return;
+        framedPodiums.delete(container);
+        podiumResizeObserver?.unobserve(container);
+        container.classList.remove('has-podium-framing');
+        container.dataset.galleryMediaType = item.type;
+        const image = document.createElement('img');
+        // A face crop uses the already-approved larger display image, rather than
+        // enlarging a tiny thumbnail. No new derivative or original is requested.
+        image.src = frame ? item.sourceUrl : item.thumbnailUrl;
+        image.alt = item.alt;
+        image.loading = 'lazy';
+        image.decoding = 'async';
+        image.referrerPolicy = 'no-referrer';
+
+        if (frame) {
+            framedPodiums.set(container, { image, frame });
+            container.classList.add('has-podium-framing');
+            image.addEventListener('load', () => layoutPodiumPhoto(container), { once: true });
+            podiumResizeObserver?.observe(container);
+        }
+        container.replaceChildren(image);
+        container.removeAttribute('role');
+        container.removeAttribute('aria-label');
+        container.classList.add('has-gallery-media');
+        if (image.complete) layoutPodiumPhoto(container);
+    }
+
+    if (!podiumResizeObserver) {
+        window.addEventListener('resize', () => {
+            framedPodiums.forEach((_, container) => layoutPodiumPhoto(container));
+        });
+    }
+
+    function layoutPodiumPhoto(container) {
+        const saved = framedPodiums.get(container);
+        if (!saved) return;
+        if (!container.isConnected) {
+            podiumResizeObserver?.unobserve(container);
+            framedPodiums.delete(container);
+            return;
+        }
+        const { image, frame } = saved;
+        const width = container.clientWidth, height = container.clientHeight;
+        if (!image.naturalWidth || !image.naturalHeight || !width || !height) return;
+        try {
+            const geometry = window.galleryPodiumFraming.layout(
+                frame, image.naturalWidth, image.naturalHeight, width, height
+            );
+            for (const property of ['left', 'top', 'width', 'height']) {
+                image.style[property] = `${geometry[property]}px`;
+            }
+        } catch {
+            // Defensive whole-photo fallback; invalid geometry must not create
+            // hidden content, a guessed face, or an unbounded layout.
+            framedPodiums.delete(container);
+            podiumResizeObserver?.unobserve(container);
+            container.classList.remove('has-podium-framing');
+            image.removeAttribute('style');
+        }
     }
 
     function createHighlightCard(item) {

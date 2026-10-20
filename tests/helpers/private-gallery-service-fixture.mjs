@@ -12,7 +12,7 @@ import {readBoundedBytes,sha256Hex} from '../../gallery-admin/src/media-byte-ver
 import * as delivery from '../../gallery-admin/src/media-delivery-contract.js';
 import {handleMediaRequest} from '../../gallery-admin/src/media-worker.js';
 
-export async function archiveServiceFixture(site='family',{reserveAttempt=true,migrationThrough=Infinity}={}) {
+export async function archiveServiceFixture(site='family',{reserveAttempt=true,migrationThrough=Infinity,photoBytes=null}={}) {
     const db=new DatabaseSync(':memory:'),directory=new URL('../../gallery-admin/migrations/',import.meta.url);
     for(const name of (await readdir(directory)).filter(n=>n.endsWith('.sql') && Number(n.slice(0,4))<=migrationThrough).sort()) db.exec(await readFile(new URL(name,directory),'utf8'));
     const original=syntheticBucket(),staging=syntheticBucket(),approved=syntheticBucket();
@@ -34,7 +34,7 @@ export async function archiveServiceFixture(site='family',{reserveAttempt=true,m
     const roster=(await readPrivateGalleryRoster(env,site)).revision;
     const asset=await reservePrivateGalleryAsset(env,owner,site,{idempotencyKey:crypto.randomUUID(),rosterRevision:roster,personIds:ids,originalFormat:'jpg'});
     assert.equal(asset.ok,true);const assetId=asset.asset.assetId;
-    const photo=await sharp({create:{width:32,height:48,channels:3,background:'#7ab341'}}).withExif({IFD0:{Make:'private-camera'}}).jpeg().toBuffer();
+    const photo=photoBytes??await sharp({create:{width:32,height:48,channels:3,background:'#7ab341'}}).withExif({IFD0:{Make:'private-camera'}}).jpeg().toBuffer();
     assert.equal((await preparePrivateArchiveIntake(env,owner,site,assetId,{rosterRevision:roster,byteCount:photo.length,sha256:digest(photo),
         declaredMimeType:'image/jpeg',privateRetentionConfirmed:true,containsMinors:false,guardianApprovalConfirmed:false})).ok,true);
     assert.equal((await storePrivateArchiveOriginal(env,owner,site,assetId,new Blob([photo]).stream(),{

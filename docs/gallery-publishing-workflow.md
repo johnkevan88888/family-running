@@ -383,6 +383,23 @@ applied before either can become an image request. When no eligible media is
 available, the card retains a branded initials fallback and the ranking remains
 fully readable.
 
+Photos can now have owner-chosen podium framing without changing those selection
+or ranking rules. A saved position/zoom belongs to one exact approved photo and
+public athlete; a group photo may use different views for different people.
+Unframed photos show the complete thumbnail. The Gallery card/full viewer and
+video posters retain their existing presentation. Use the unpublished local
+editor described in [Championship photo framing](gallery-podium-framing.md).
+The legacy numeric, generation-bound settings never add media or bypass
+suppression, and do not modify an existing photo manifest or review evidence.
+The separate local upload integration provides face suggestions and manual
+controls in the protected uploader. Owner-confirmed settings are saved privately
+and may be projected into optional `podiumFraming` in a FRESH photo item, included
+in its exact immutable one-file review. No old consent/review is edited; existing
+public-use/minor/guardian and complete-group exclusion gates remain mandatory.
+See [Automatic upload face framing](gallery-upload-face-framing.md). This broader
+integration needs its own local tests and separately approved release/migration/
+affected-service deployment; the earlier static-only approval does not activate it.
+
 ## Validation And Release
 
 Run `pnpm test`. Gallery validation rejects malformed JSON, unsafe or non-HTTPS

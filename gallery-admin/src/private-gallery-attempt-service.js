@@ -6,6 +6,7 @@ import { loadPrivateGalleryRoster } from './private-gallery-roster-service.js';
 import { readPrivateGalleryAssetEligibility } from './private-gallery-visibility-service.js';
 import { readPrivateGalleryTags } from './private-gallery-tag-service.js';
 import {assertArchiveIdentityAvailable} from './private-gallery-retirement.js';
+import { readPrivateGalleryAttemptFraming } from './private-gallery-framing-service.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const revision = /^sha256:[0-9a-f]{64}$/;
@@ -21,15 +22,18 @@ const safeProvider = value => typeof value === 'string' && value.length > 0 && v
 export async function reservePrivateGalleryAttempt(env,identity,site,assetId,input,catalog) {
     if (identity?.type !== 'browser' || typeof identity.subject !== 'string' || !identity.subject.trim() ||
         !['family','everyone'].includes(site)) return failure(403);
+    const hasFramingVersion = input && Object.hasOwn(input, 'framingVersion');
+    const requestFields = hasFramingVersion ? [...fields, 'framingVersion'].sort() : fields;
     if (!input || typeof input !== 'object' || Array.isArray(input) ||
-        Object.keys(input).sort().join('|') !== fields.join('|') || !uuid.test(input.idempotencyKey) ||
+        Object.keys(input).sort().join('|') !== requestFields.join('|') || !uuid.test(input.idempotencyKey) ||
+        (hasFramingVersion && (!Number.isSafeInteger(input.framingVersion) || input.framingVersion < 0)) ||
         input.completeTagsConfirmed !== true || input.publicUseConfirmed !== true || typeof input.containsMinors !== 'boolean' ||
         input.guardianApprovalConfirmed !== input.containsMinors || !Number.isSafeInteger(input.tagVersion) || input.tagVersion < 1 ||
         !Number.isSafeInteger(input.raceIndex) || input.raceIndex < 0 ||
         ![input.eligibilityRevision,input.sourceRevision,input.suppressionRevision].every(value=>typeof value === 'string' && revision.test(value))) return failure(422);
     try {
         const owner = await hashIdentity(identity);
-        const hash = await fingerprint([site,assetId,...fields.map(key=>input[key])]);
+        const hash = await fingerprint([site,assetId,...requestFields.map(key=>input[key])]);
         const prior = () => env.DB.prepare('SELECT *, (unixepoch(created_at)+86400 > unixepoch(\'now\')) AS unexpired FROM private_gallery_attempts WHERE idempotency_key = ?1')
             .bind(input.idempotencyKey).first();
         const snapshot = async () => {
@@ -80,6 +84,9 @@ export async function reservePrivateGalleryAttempt(env,identity,site,assetId,inp
             if (row.asset_id !== assetId || row.site_mode !== site || row.owner_identity_hash !== owner || row.request_hash !== hash ||
                 row.unexpired !== 1 || !uuid.test(row.attempt_id?.slice(8)) || !uuid.test(row.generation_id) ||
                 !uuid.test(row.public_item_id?.slice(6))) return failure(409);
+            // Framing is immutable attempt evidence, never a read of today's
+            // editable settings. Later owner edits cannot rewrite an old review.
+            await readPrivateGalleryAttemptFraming(env, row);
             const current = await snapshot();
             if (!current.ok) return current;
             if (row.roster_generation !== current.generation || row.tag_version !== current.tags.tagVersion ||
@@ -109,14 +116,14 @@ export async function reservePrivateGalleryAttempt(env,identity,site,assetId,inp
                  roster_generation,tag_version,person_ids_json,visibility_json,public_athlete_ids_json,eligibility_revision,
                  export_bundle_id,source_revision,suppression_revision,race_date,race_event,race_distance,
                  original_byte_count,original_sha256,original_provider_version,original_provider_etag,
-                 complete_tags_confirmed,public_use_confirmed,contains_minors,guardian_approval_confirmed)
-                VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,1,1,?25,?26)`)
+                 complete_tags_confirmed,public_use_confirmed,contains_minors,guardian_approval_confirmed${hasFramingVersion ? ',framing_version' : ''})
+                VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,1,1,?25,?26${hasFramingVersion ? ',?27' : ''})`)
                 .bind(attemptId,assetId,site,generationId,itemId,input.idempotencyKey,owner,hash,
                     current.generation,current.tags.tagVersion,JSON.stringify(current.tags.personIds),JSON.stringify(current.visibility),
                     JSON.stringify(current.eligibility.publicAthleteIds),current.eligibility.revision,catalog.exportBundleId,catalog.sourceRevision,
                     catalog.suppressionRevision,current.race.raceDate,current.race.raceEvent,current.race.raceDistance,
                     current.original.byte_count,current.original.sha256,current.original.provider_version,current.original.provider_etag,
-                    Number(input.containsMinors),Number(input.guardianApprovalConfirmed)).run();
+                    Number(input.containsMinors),Number(input.guardianApprovalConfirmed),...(hasFramingVersion ? [input.framingVersion] : [])).run();
             if (result?.success !== true) throw new Error('Unavailable');
         } catch {
             const recovered = await prior();
