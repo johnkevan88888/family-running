@@ -1,5 +1,45 @@
 # Active Work
 
+## Local updater recovery for a changing main — 20 October 2026
+
+John requested a permanent updater path for main advancing during a routine
+data review, while retaining MERGE approval. Work is isolated on
+`codex/updater-main-refresh`, including the prior local PR #139 release note.
+No push, new PR, merge, deployment, private workbook access, or live recovery
+experiment is authorized by this implementation request.
+
+The new `scripts/data-update-refresh.mjs` previews and journals a disjoint
+forward integration, preserves the exact original CSVs/catalogue, runs the full
+local suite, validates the original and refreshed release paths, and performs
+only a normal push to the same already published PR. Journal recovery verifies
+Git parents and tree, tests before push, and exact remote readback. It retains
+the original head until testing and publication succeed. A persistent marker
+requires fresh GitHub checks and a new review stop, including after failed CI
+or a restart with an earlier `--approve-merge` flag. MERGE still uses the
+existing independent protection/review/exact-head policy and live verifier.
+
+Main movement is checked before waiting for CI, before/after human review and
+after a final-policy failure. Local edits, conflicting/overlapping changes,
+rewritten history, moved heads and data, suppression, dependency, export or
+updater-contract changes fail closed. Saved-state writes now use a temporary
+file and atomic replacement. Existing ordinary saved updates remain supported.
+
+The complete 77-group suite passed, including 44 recovery cases in that run,
+both-mode desktop/mobile browser screenshots and every required repository,
+vendor, CSV, Gallery, export and artifact check. After the final exact-head
+screenshot-evidence guard was added, the complete final focused suite passed
+all 45 recovery/approval cases; the existing updater and 46 merge-policy cases
+also passed on that final code. A read-only check against the completed PR #139
+run verified the real GitHub response and artifact shape, without any remote
+mutation. This is not a live automatic-refresh experiment.
+
+All 115 rebuilt public files match the pre-change artifact byte-for-byte.
+Family and Everyone desktop/mobile screenshots were reviewed; external media
+remained blocked. Final source hashes, whitespace and exact nine-path scope
+checks pass. Evidence is ignored in `test-artifacts/updater-main-refresh-*`.
+The change remains local and requires the standard preview/PR route, with
+separate push/PR/merge approval before it can become the main-branch updater.
+
 ## PR #139 merged and verified live — 20 October 2026
 
 John explicitly approved merging PR #139 and verifying the data update in

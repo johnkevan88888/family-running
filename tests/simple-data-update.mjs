@@ -432,7 +432,9 @@ assert.match(remoteCleanupBody, /remoteBranchDeletionArguments/);
 assert.match(remoteCleanupBody, /force-with-lease|Delete exact merged remote data branch/);
 
 const confirmBody = functionSource(updater, 'async function confirmReviewedMerge');
-assert.match(confirmBody, /confirmExactWord\(\s*'MERGE'/);
+assert.match(confirmBody, /confirm = confirmExactWord/);
+assert.match(confirmBody, /await confirm\(\s*'MERGE'/);
+assert.match(confirmBody, /merge = mergeReviewedPullRequest/);
 assert.match(confirmBody, /options\.approveMerge/);
 assert.match(confirmBody, /printReviewCheckpoint\(state\)/);
 
@@ -456,9 +458,9 @@ assert.doesNotMatch(
 // The re-verification must happen after the human pause, not before it, so a
 // push during review is refused rather than merged.
 const approvalIndex = confirmBody.indexOf('const approved');
-const firstReloadIndex = confirmBody.indexOf('loadPullRequest(state, tools.gh)');
+const firstReloadIndex = confirmBody.indexOf('inspect(state, tools.gh)');
 const secondReloadIndex = confirmBody.indexOf(
-    'loadPullRequest(state, tools.gh)',
+    'inspect(state, tools.gh)',
     approvalIndex
 );
 const firstIdentityIndex = confirmBody.indexOf('requireDataPullRequestIdentity');

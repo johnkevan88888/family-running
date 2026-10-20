@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -18,6 +18,12 @@ import {
 } from './pages-deployment-verification.mjs';
 import { verifyProductionData } from './verify-production-data.mjs';
 import { verifyRoutineDataMergePolicy } from './data-update-merge-policy.mjs';
+import {
+    finishRefreshReview,
+    refreshRoutineDataBranch,
+    validateRefreshState,
+    verifyFreshReviewEvidence
+} from './data-update-refresh.mjs';
 
 const STATE_VERSION = 1;
 const REPOSITORY = 'johnkevan88888/family-running';
@@ -40,6 +46,7 @@ const acceptedPhases = new Set([
     'tested',
     'committed',
     'published',
+    'refreshing',
     // The Pull Request exists and its required check has passed, but nobody has
     // confirmed the merge yet. This phase is the review checkpoint: PUBLISH is
     // given before the Pull Request exists, so it cannot be approval of a diff
@@ -368,6 +375,7 @@ export function validateUpdateState(state) {
     if (!acceptedPhases.has(state.phase)) {
         throw new Error(`The saved data-update phase is invalid: ${state.phase}`);
     }
+    validateRefreshState(state);
     if (!/^data\/refresh-[0-9]{8}-[0-9]{6}$/.test(state.branch || '')) {
         throw new Error('The saved data-update branch is invalid.');
     }
@@ -387,6 +395,7 @@ export function validateUpdateState(state) {
     const commitPhases = new Set([
         'committed',
         'published',
+        'refreshing',
         'checked',
         'merged',
         'production-verified'
@@ -557,6 +566,7 @@ async function main() {
         state = loadState();
         if (![
             'published',
+            'refreshing',
             'checked',
             'merged',
             'production-verified',
@@ -625,7 +635,7 @@ async function main() {
     ) {
         const approved = options.approvePublish || await confirmExactWord(
             'PUBLISH',
-            'Publish will commit and push the validated CSV bundle plus its deterministic private Gallery catalogue, open a lightweight Pull Request, and wait for GitHub checks and screenshots. It does not merge: the run stops afterwards so you can review the exact diff and screenshots, and merging needs a separate MERGE confirmation.'
+            'Publish will commit and push the validated CSV bundle plus its deterministic private Gallery catalogue, open a lightweight Pull Request, and wait for GitHub checks and screenshots. It also permits a clean refresh of that same bundle when main changes, followed by full local and GitHub checks and a fresh review stop. It does not merge: merging needs a separate MERGE confirmation after reviewing the exact current diff and screenshots.'
         );
 
         if (!approved) {
@@ -645,8 +655,28 @@ async function main() {
         state = pushAndOpenPullRequest(state, tools);
     }
 
+    if (['published', 'refreshing'].includes(state.phase)) {
+        const review = await prepareFreshDataReview(state, tools);
+        state = review.state;
+        if (review.stop) {
+            printResumeInstructions(state);
+            return;
+        }
+    }
+
     if (state.phase === 'published') {
-        state = await waitForRequiredChecks(state, tools);
+        try {
+            state = await waitForRequiredChecks(state, tools);
+        } catch (error) {
+            // Main may have advanced while the old commit's CI was running.
+            const review = await prepareFreshDataReview(state, tools);
+            state = review.state;
+            if (review.stop) {
+                printResumeInstructions(state);
+                return;
+            }
+            throw error;
+        }
     }
 
     if (state.phase === 'checked') {
@@ -737,6 +767,7 @@ function prepareUpdate(options, tools) {
             version: STATE_VERSION,
             phase,
             branch,
+            baseCommitSha: baseCommit,
             stagedRoot,
             reportPath,
             expectedExportBundleId: readExportBundleId(fs.readFileSync(
@@ -1115,13 +1146,54 @@ async function waitForRequiredChecks(state, tools) {
     return state;
 }
 
-async function confirmReviewedMerge(state, tools, options) {
-    let pullRequest = loadPullRequest(state, tools.gh);
+async function prepareFreshDataReview(state, tools) {
+    const readApi = endpoint => JSON.parse(runCommand(tools.gh, [
+        'api', '--method', 'GET', `repos/${REPOSITORY}/${endpoint}`
+    ], { label: 'Read current data refresh identity', quiet: true }).stdout);
+    const refreshed = refreshRoutineDataBranch({
+        state,
+        runGit: (args, settings) => runCommand(tools.git, args, settings),
+        readMain: () => readApi('git/ref/heads/main'),
+        readPullRequest: saved => readApi(`pulls/${saved.pullRequestUrl.split('/').at(-1)}`),
+        persistState: saveState,
+        runTests: () => runNodeScript('scripts/run-all-tests.mjs'),
+        validateReleasePath: ({ baseCommitSha, headCommitSha, state: saved }) => {
+            runNodeScript('scripts/validate-pr-release-path.mjs', [], { env: {
+                ...process.env,
+                PATH: `${path.dirname(tools.git)}${path.delimiter}${process.env.PATH || ''}`,
+                PR_TITLE: saved.pullRequestTitle,
+                PR_BASE_SHA: baseCommitSha,
+                PR_HEAD_SHA: headCommitSha
+            } });
+        }
+    });
+    return finishRefreshReview(refreshed.state, {
+        waitForChecks: current => waitForRequiredChecks(current, tools),
+        verifyEvidence: current => verifyFreshReviewEvidence(current, readApi),
+        showReview: current => {
+            console.log('Main was integrated and the refreshed commit passed fresh checks. Review its new diff and screenshots; any earlier MERGE approval does not apply.');
+            printReviewCheckpoint(current);
+        },
+        persistState: saveState
+    });
+}
+
+export async function confirmReviewedMerge(state, tools, options, {
+    prepareReview = prepareFreshDataReview,
+    inspect = loadPullRequest,
+    confirm = confirmExactWord,
+    merge = mergeReviewedPullRequest,
+    recordMerged = recordMergedPullRequest
+} = {}) {
+    let review = await prepareReview(state, tools);
+    state = review.state;
+    if (review.stop) return state;
+    let pullRequest = inspect(state, tools.gh);
 
     requireDataPullRequestIdentity(pullRequest, state);
 
     if (pullRequest.state === 'MERGED') {
-        return recordMergedPullRequest(state, pullRequest);
+        return recordMerged(state, pullRequest);
     }
     if (pullRequest.state !== 'OPEN') {
         throw new Error(
@@ -1137,7 +1209,7 @@ async function confirmReviewedMerge(state, tools, options) {
 
     printReviewCheckpoint(state);
 
-    const approved = options.approveMerge || await confirmExactWord(
+    const approved = options.approveMerge || await confirm(
         'MERGE',
         'Review the exact Pull Request diff and the uploaded Family and Everyone screenshots above. MERGE publishes this data to production.'
     );
@@ -1146,15 +1218,20 @@ async function confirmReviewedMerge(state, tools, options) {
         return state;
     }
 
+    // A main change during the human review invalidates this approval too.
+    review = await prepareReview(state, tools);
+    state = review.state;
+    if (review.stop) return state;
+
     // Re-read GitHub after the human pause rather than trusting what was true
     // before it. Identity pins the head commit to the validated one, so a push
     // during review is refused rather than merged.
-    pullRequest = loadPullRequest(state, tools.gh);
+    pullRequest = inspect(state, tools.gh);
 
     requireDataPullRequestIdentity(pullRequest, state);
 
     if (pullRequest.state === 'MERGED') {
-        return recordMergedPullRequest(state, pullRequest);
+        return recordMerged(state, pullRequest);
     }
     if (pullRequest.state !== 'OPEN') {
         throw new Error(
@@ -1168,7 +1245,15 @@ async function confirmReviewedMerge(state, tools, options) {
         throw new Error(`Automatic merge refused:\n- ${checkErrors.join('\n- ')}`);
     }
 
-    return mergeReviewedPullRequest(state, tools);
+    try {
+        return merge(state, tools);
+    } catch (error) {
+        // Cover a main change during the final policy reads. A safe refresh
+        // still returns to review and never reuses the approval above.
+        review = await prepareReview(state, tools);
+        if (review.stop) return review.state;
+        throw error;
+    }
 }
 
 function mergeReviewedPullRequest(state, tools) {
@@ -1323,6 +1408,7 @@ function recordMergedPullRequest(state, pullRequest) {
     }
 
     state.phase = 'merged';
+    delete state.refreshReviewRequired;
     state.mergeCommitSha = mergeCommitSha;
     state.mergedAt = pullRequest.mergedAt || new Date().toISOString();
     saveState(state);
@@ -1798,8 +1884,21 @@ function loadState() {
 }
 
 function saveState(state) {
-    fs.mkdirSync(stateDirectory, { recursive: true });
-    fs.writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
+    saveUpdateStateFile(statePath, state);
+}
+
+export function saveUpdateStateFile(filePath, state, fileSystem = fs) {
+    validateUpdateState(state);
+    fileSystem.mkdirSync(path.dirname(filePath), { recursive: true });
+    const temporaryPath = `${filePath}.${randomUUID()}.tmp`;
+    try {
+        fileSystem.writeFileSync(temporaryPath, `${JSON.stringify(state, null, 2)}\n`, {
+            encoding: 'utf8', flag: 'wx'
+        });
+        fileSystem.renameSync(temporaryPath, filePath);
+    } finally {
+        fileSystem.rmSync(temporaryPath, { force: true });
+    }
 }
 
 function printResumeInstructions(state) {
