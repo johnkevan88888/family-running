@@ -1,12 +1,13 @@
 # Active Work
 
-## Local updater recovery for a changing main — 20 October 2026
+## Updater recovery for a changing main — 20 October 2026
 
 John requested a permanent updater path for main advancing during a routine
 data review, while retaining MERGE approval. Work is isolated on
 `codex/updater-main-refresh`, including the prior local PR #139 release note.
-No push, new PR, merge, deployment, private workbook access, or live recovery
-experiment is authorized by this implementation request.
+John subsequently explicitly approved pushing this branch, opening a standard
+Netlify-preview PR and merging after its release gates pass. Private workbook
+access and a live recovery experiment remain outside this release.
 
 The new `scripts/data-update-refresh.mjs` previews and journals a disjoint
 forward integration, preserves the exact original CSVs/catalogue, runs the full
@@ -37,8 +38,9 @@ All 115 rebuilt public files match the pre-change artifact byte-for-byte.
 Family and Everyone desktop/mobile screenshots were reviewed; external media
 remained blocked. Final source hashes, whitespace and exact nine-path scope
 checks pass. Evidence is ignored in `test-artifacts/updater-main-refresh-*`.
-The change remains local and requires the standard preview/PR route, with
-separate push/PR/merge approval before it can become the main-branch updater.
+The approved release uses the standard preview/PR route: fresh exact-head CI,
+successful Netlify preview and both-mode responsive review, then protected
+merge and exact-merge Pages/live verification. Those remote gates are pending.
 
 ## PR #139 merged and verified live — 20 October 2026
 
