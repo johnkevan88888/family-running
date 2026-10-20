@@ -1,5 +1,80 @@
 # Active Work
 
+## Updater recovery for a changing main — 20 October 2026
+
+John requested a permanent updater path for main advancing during a routine
+data review, while retaining MERGE approval. Work is isolated on
+`codex/updater-main-refresh`, including the prior local PR #139 release note.
+John subsequently explicitly approved pushing this branch, opening a standard
+Netlify-preview PR and merging after its release gates pass. Private workbook
+access and a live recovery experiment remain outside this release.
+
+The new `scripts/data-update-refresh.mjs` previews and journals a disjoint
+forward integration, preserves the exact original CSVs/catalogue, runs the full
+local suite, validates the original and refreshed release paths, and performs
+only a normal push to the same already published PR. Journal recovery verifies
+Git parents and tree, tests before push, and exact remote readback. It retains
+the original head until testing and publication succeed. A persistent marker
+requires fresh GitHub checks and a new review stop, including after failed CI
+or a restart with an earlier `--approve-merge` flag. MERGE still uses the
+existing independent protection/review/exact-head policy and live verifier.
+
+Main movement is checked before waiting for CI, before/after human review and
+after a final-policy failure. Local edits, conflicting/overlapping changes,
+rewritten history, moved heads and data, suppression, dependency, export or
+updater-contract changes fail closed. Saved-state writes now use a temporary
+file and atomic replacement. Existing ordinary saved updates remain supported.
+
+The complete 77-group suite passed, including 44 recovery cases in that run,
+both-mode desktop/mobile browser screenshots and every required repository,
+vendor, CSV, Gallery, export and artifact check. After the final exact-head
+screenshot-evidence guard was added, the complete final focused suite passed
+all 45 recovery/approval cases; the existing updater and 46 merge-policy cases
+also passed on that final code. A read-only check against the completed PR #139
+run verified the real GitHub response and artifact shape, without any remote
+mutation. This is not a live automatic-refresh experiment.
+
+All 115 rebuilt public files match the pre-change artifact byte-for-byte.
+Family and Everyone desktop/mobile screenshots were reviewed; external media
+remained blocked. Final source hashes, whitespace and exact nine-path scope
+checks pass. Evidence is ignored in `test-artifacts/updater-main-refresh-*`.
+The approved release uses the standard preview/PR route: fresh exact-head CI,
+successful Netlify preview and both-mode responsive review, then protected
+merge and exact-merge Pages/live verification. Those remote gates are pending.
+
+## PR #139 merged and verified live — 20 October 2026
+
+John explicitly approved merging PR #139 and verifying the data update in
+both Family and Everyone. The guarded updater rechecked the exact reviewed
+head `52f717ea2c6d144261ef0a27f7857f566fcbe0e5`, current main, protections,
+required checks and review state, then merged at
+`f6e4d3e257b9d071d5afabc9f68948f8a9e20ece` on 20 October at 13:55:26 UTC.
+
+The exact-merge `Deploy to GitHub Pages` run `39434668479` completed
+successfully. The production verifier matched the manifest and all 71 listed
+CSVs, 72 files total, byte-for-byte against the reviewed data commit. Bundle
+`20261019T141943930Z-5659E17F` is live. Real-browser checks confirmed the
+correct site name, update value and rendered standings in both
+`https://www.aceofrace.com/?site=family` and
+`https://www.aceofrace.com/?site=everyone`, including the expected bundle
+in the requested CSVs and no opposite-mode data requests. External media and
+analytics were blocked during these data/rendering checks; this is not a new
+photo-delivery or Gallery-service verification.
+
+Only after production verification, the updater fast-forwarded local main,
+removed the exact completed local/remote data branch, and removed only its
+recorded staged export, promotion backup and saved update state. The separate
+ignored recovery evidence remains in
+`test-artifacts/data-refresh-139-recovery-20261020/`, including the original
+record, hashes, local/CI validation, merged-state receipt and release/live log.
+No private workbook was opened, changed or exported again.
+
+The 76-group local suite, both-mode desktop/mobile screenshot review and
+exact-head GitHub check passed before merge. No further release is required
+for this data update. This completion note is recorded on the local-only
+`codex/data-139-live-handoff` documentation branch; it is not an additional
+deployment or an unrequested follow-up PR.
+
 ## Approved refresh of data PR #139 — 20 October 2026
 
 John approved bringing the existing PR up to date with current main, rerunning

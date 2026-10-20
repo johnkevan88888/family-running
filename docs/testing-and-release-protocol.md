@@ -4,6 +4,26 @@ This project is a static GitHub Pages site. Excel/VBA remains the private source
 
 ## Local Setup
 
+### Automatic refresh of a published data branch — local implementation, 20 October 2026
+
+Run `node tests/data-update-refresh.mjs` plus the existing simple-updater and
+merge-policy suites, then the complete runner. The new group uses disposable
+real Git repositories with synthetic data, fake GitHub responses and an injected
+test runner; it cannot merge or deploy. It exercises disjoint main movement,
+original-data preservation, no-change behaviour, legacy state, protected and
+overlapping paths, dirty/untracked files, conflicts, rewritten history, changed
+PR identity, changed local/remote heads, failed tests, interrupted local merge,
+lost push acknowledgement, further main movement, atomic state replacement and
+the mandatory fresh review after checks. Existing MERGE, protection, exact-head
+and production verification tests remain required.
+
+Before review, the full suite must pass with both site modes, responsive
+screenshots and artifact safety. The new implementation changes repository
+tooling only; verify that the 115-file public artifact is byte-identical to the
+unchanged runtime baseline. Release tooling needs the standard preview route.
+Local passing tests do not publish this implementation or authorize a new PR,
+merge, production update, workbook access or live recovery experiment.
+
 ### Processing-photo acknowledgement deadline — local only, 15 October 2026
 
 Run `node tests/gallery-archive-service-timeout.mjs` and

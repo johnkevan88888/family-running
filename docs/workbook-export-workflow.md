@@ -217,6 +217,7 @@ The guided updater:
    `[skip netlify]` Pull Request;
 11. waits for GitHub checks, then stops and prints the Pull Request, its exact
    diff command, and the run holding the responsive-screenshot artifact;
+   if main has advanced, a safe automatic refresh follows the rules below;
 12. requires the exact word `MERGE` as explicit production approval, then
     re-verifies the PR title, base branch, data branch, exact tested head
     commit, and required check before merging through the protected Pull
@@ -256,6 +257,47 @@ without copying its path:
 ```powershell
 pnpm run data:update -- --resume
 ```
+
+### When main changes while the data update is waiting
+
+The updater can incorporate a newer main into an already published data branch
+without another workbook export. The original CSV bundle and generated Gallery
+catalogue must remain byte-for-byte unchanged. The existing PUBLISH approval
+covers this tested, non-forced update of the same Pull Request; it does not
+grant merge approval for a new combination of data and site code.
+
+The updater checks for movement before waiting for checks, before asking for
+MERGE, and after the human review pause. It also retries this check if main
+moves during the final merge-policy verification. For a safe, disjoint change,
+it previews the merge without touching working files, records a recovery
+journal, creates the local integration commit, runs the complete local test
+and screenshot suite, validates lightweight-path eligibility again, and pushes
+the tested commit to the same PR using a normal fast-forward push. Fresh
+GitHub checks and screenshots are required. The screenshot run must report
+success for the exact refreshed head and contain a non-expired, nonempty
+responsive screenshot artifact. It then stops at a **new review
+checkpoint**. Resume normally, review the new diff and screenshots, and type
+MERGE. An earlier MERGE response or `--approve-merge` flag is never reused by
+the invocation which refreshes the branch.
+
+The saved `refreshing` phase records the original head, pinned main, predicted
+tree, resulting commit, and passed-test identity. A failed local test leaves
+the new commit unpushed; `--resume` retries it. A lost push acknowledgement is
+reconciled against the exact remote PR head, without a force push or duplicate
+push. If fresh CI fails or the process stops before review, the fresh-review
+marker remains set. Another main change is handled on a later resume, again
+with tests and review. No refresh path opens Excel, recreates the export,
+merges the PR, deploys, or deletes the staged export and promotion backup.
+
+Automatic refresh stops safely for local edits, moved local/remote branches,
+rewritten main history, overlapping files or merge conflicts. Changes to
+`data/`, the derived catalogue or its generator, suppression, the workbook
+contract, dependencies, Git checkout attributes, or updater/release controls
+also require separate review. These can invalidate the retained bundle or the
+running tool. No files are reset or stashed, and no conflict is auto-resolved.
+Use the retained diagnostics to reconcile these cases; do not weaken the gates
+or copy individual CSVs. Older single-parent saved updates remain supported;
+an older merge-shaped update without a recorded base is refused as ambiguous.
 
 The same command also resumes a post-merge verification. A slow or failed Pages
 deployment, a stale production cache, a mismatched CSV, or a browser-rendering

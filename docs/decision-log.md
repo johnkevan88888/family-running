@@ -1,5 +1,25 @@
 # Decision Log
 
+## Refresh an unchanged published data bundle, then require fresh review — 20 October 2026
+
+The PR #139 interruption showed that a main advance can safely be recoverable
+without weakening the merge gate. A published routine data branch may integrate
+a disjoint forward main change only when the original CSVs and deterministic
+catalogue remain exact, the full release classifier accepts the result, and
+complete local tests/screenshots and fresh GitHub checks pass. Main changes to
+data, export/dependency/tool contracts or overlapping files are refused.
+The merge is previewed before touching the working tree; local edits are never
+discarded, and refresh pushes are never forced.
+
+Recovery uses an atomically written `refreshing` journal, pinned Git parents
+and tree, and a persistent fresh-review marker. A crashed local merge or lost
+push reply is adopted only when exact evidence establishes its outcome. The
+original reviewed head remains authoritative until testing and remote readback
+succeed. Every refresh stops at a new review checkpoint, including invocations
+that already carried MERGE approval. MERGE still authorizes only the presently
+reviewed commit and retains the independent policy, check and live-proof gates.
+Refreshing grants no workbook, PR-merge, deployment or cleanup capability.
+
 ## Indirect owner replacement preserves the original addition review — 14 October 2026
 
 GitHub can mark an unchanged addition PR indirectly merged at a later owner
