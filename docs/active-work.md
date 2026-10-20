@@ -1,5 +1,38 @@
 # Active Work
 
+## PR #139 merged and verified live — 20 October 2026
+
+John explicitly approved merging PR #139 and verifying the data update in
+both Family and Everyone. The guarded updater rechecked the exact reviewed
+head `52f717ea2c6d144261ef0a27f7857f566fcbe0e5`, current main, protections,
+required checks and review state, then merged at
+`f6e4d3e257b9d071d5afabc9f68948f8a9e20ece` on 20 October at 13:55:26 UTC.
+
+The exact-merge `Deploy to GitHub Pages` run `39434668479` completed
+successfully. The production verifier matched the manifest and all 71 listed
+CSVs, 72 files total, byte-for-byte against the reviewed data commit. Bundle
+`20261019T141943930Z-5659E17F` is live. Real-browser checks confirmed the
+correct site name, update value and rendered standings in both
+`https://www.aceofrace.com/?site=family` and
+`https://www.aceofrace.com/?site=everyone`, including the expected bundle
+in the requested CSVs and no opposite-mode data requests. External media and
+analytics were blocked during these data/rendering checks; this is not a new
+photo-delivery or Gallery-service verification.
+
+Only after production verification, the updater fast-forwarded local main,
+removed the exact completed local/remote data branch, and removed only its
+recorded staged export, promotion backup and saved update state. The separate
+ignored recovery evidence remains in
+`test-artifacts/data-refresh-139-recovery-20261020/`, including the original
+record, hashes, local/CI validation, merged-state receipt and release/live log.
+No private workbook was opened, changed or exported again.
+
+The 76-group local suite, both-mode desktop/mobile screenshot review and
+exact-head GitHub check passed before merge. No further release is required
+for this data update. This completion note is recorded on the local-only
+`codex/data-139-live-handoff` documentation branch; it is not an additional
+deployment or an unrequested follow-up PR.
+
 ## Approved refresh of data PR #139 — 20 October 2026
 
 John approved bringing the existing PR up to date with current main, rerunning
