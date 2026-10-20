@@ -16,6 +16,20 @@
       "athleteIds": [
         "john-kevan"
       ]
+    },
+    {
+      "id": "photo-ecc6879c-d3b2-47d4-9a49-355e91bca5c6",
+      "type": "photo",
+      "title": "Photo",
+      "caption": "",
+      "alt": "Photo",
+      "raceDate": "2026-10-17",
+      "raceEvent": "Worcester Parkrun",
+      "raceDistance": "5 km",
+      "sourceUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v2/830e5da9-a61d-4849-8641-b1fe2f5ac639/7db1d9fc7552aefe7fac8f24d7032bcec716f27cd8f52c72d5e26fa053e6b9dd/display.webp",
+      "thumbnailUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v2/830e5da9-a61d-4849-8641-b1fe2f5ac639/e8feaf7c0a5993458fa74cf9dc20f8b40c5655f61d8b300d2f1887b931e7749c/thumbnail.webp",
+      "featured": false,
+      "athleteIds": []
     }
   ]
 }
