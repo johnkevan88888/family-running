@@ -6,10 +6,25 @@ John asked to continue from the repository-release gate. Synchronize this
 isolated branch with current main 140b3fbf5d0762e47e98105f6b30de947fdd6230,
 preserving PR #139's newer complete 72-file export/catalogue and PR #140's
 updater fix, then retest the combined source through the standard preview path.
-The combined runner has 88 groups. Explicit external-release confirmation is
-requested before push/PR/merge. Migration 0029, all Worker deployments, live
-synthetic rehearsal, real-media processing, purge and photo publication remain
-outside this step. Preserve all earlier local validation evidence below.
+John explicitly approved the standard repository PR/checks/merge and normal
+Pages release. The synchronized HEAD 74f9bdcba7e8016d28bb740ee741b81e503949f9
+passed all 88 groups, exit 0, from 16:19:19 to 16:45:41 UTC on 20 October.
+Independent reconciliation confirmed the log/driver hashes, all 88 group
+headers, success sentinel and exact before/after inventory of 404 source files,
+72 CSVs and three Gallery files. Family 1 / Everyone 0 remains unchanged.
+
+Canonical Git-blob builds of current main and the synchronized head prove the
+117-file candidate artifact changes only five existing runtime files and adds
+the two podium-framing files, with no removals. All 72 CSVs, three Gallery files
+and CNAME are byte-identical between those artifacts. The protected detector,
+uploader, model, fixture and migration are not published in that artifact.
+Evidence: test-artifacts/framing-release-full-checks.json/.log and
+test-artifacts/framing-release-public-proof.json. Only release-status prose in
+this file and the two framing product documents changes after this local run;
+the final pushed head must pass required CI and both-mode preview review before
+merge. Migration 0029, all Worker deployments, live synthetic rehearsal,
+real-media processing, purge and new photo publication remain outside this
+step. Preserve all earlier local validation evidence below.
 
 ## Automatic upload face framing — local implementation complete, 20 October 2026
 

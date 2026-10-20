@@ -5,7 +5,8 @@ The approved local upload integration additionally offers browser face
 suggestions and manual controls inside the protected uploader, with private
 saving and fresh-review snapshots. See
 [Automatic upload face framing](gallery-upload-face-framing.md). Neither path
-identifies people or changes consent; no part of this work is deployed yet.
+identifies people or changes consent. Repository release alone does not activate
+the protected uploader.
 
 ## What changes
 

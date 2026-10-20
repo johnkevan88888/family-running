@@ -2,9 +2,10 @@
 
 ## Scope and owner workflow
 
-This is a local-only extension of the unreleased championship framing work.
-It does not deploy an uploader, apply a remote migration, process a real photo,
-alter an existing review, publish a candidate or enable face recognition.
+This extends championship framing with protected upload controls. Presence in
+the repository does not activate the uploader: its remote migration and Worker
+deployments require separate approval. It does not automatically process a real
+photo, alter an existing review, publish a candidate or enable face recognition.
 
 1. Open the protected private library in the inherited Family or Everyone area.
    Save complete private tags and choose the matching local JPEG/PNG as before.
