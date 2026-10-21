@@ -1,5 +1,25 @@
 # Active Work
 
+## Optional public-athlete associations in batch review — 21 October 2026
+
+John approved the runner correction, synchronization/retest, ordinary PR/checks/
+merge with public output unchanged, then two generated photos in one unmerged
+one-file review PR. No migrations, Worker deployments, real media, purge or
+photo publication are included. This branch starts at freshly fetched main
+`d22e3d36c55b07705809b7c71097d8a533a08839`; unrelated shared-root work is preserved.
+
+The only executable change removes the batch client's extra nonempty-public-tag
+condition. The established manifest contract permits `athleteIds:[]`; complete
+private tags and consent are distinct and remain mandatory in protected storage
+and admission. The new regression fails on the original code and passes after
+the correction (169 GitHub fixture cases). Mixed and entirely unmapped batches
+now exercise both areas, exact one-file/replay/origin proofs, strict invalid-tag
+rejection and protected end-to-end stripping, framing projection, revocation,
+host verification and retained evidence. The conservative CI classifier remains
+unchanged. The synthetic rehearsal will therefore use full CI, not prove fast-
+lane timing. Full-suite, public-byte and release evidence will be added after
+execution; local checks do not establish a successful live batch.
+
 ## Approved batch-photo repository release — 21 October 2026
 
 John approved synchronization/retest, push and a standard PR, required checks

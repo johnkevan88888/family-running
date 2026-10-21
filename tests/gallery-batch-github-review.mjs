@@ -59,7 +59,10 @@ for(const count of [0,21]) {
     const value=batchCandidate({newItems:Array.from({length:count},(_,i)=>batchPhoto(i+1))});
     await assert.rejects(create(value,{fetch:noNetwork}));checks++;
 }
-for(const mutate of [item=>{item.type='video';delete item.podiumFraming;},item=>{item.athleteIds=[];delete item.podiumFraming;},
+for(const mutate of [item=>{item.type='video';delete item.podiumFraming;},
+    item=>{delete item.athleteIds;},item=>{item.athleteIds=null;},item=>{item.athleteIds='synthetic-ada';},
+    item=>{item.athleteIds=['synthetic-ada','synthetic-ada'];},item=>{item.athleteIds=['person_private'];delete item.podiumFraming;},
+    item=>{item.athleteIds=[];}, // Existing athlete framing cannot survive without its public tag.
     item=>{item.sourceUrl=item.sourceUrl.replace('family-running-gallery-media-dev.family-running.workers.dev','evil.example');},
     item=>{item.sourceUrl+='?token=secret';},item=>{item.thumbnailUrl=item.sourceUrl;},
     item=>{item.podiumFraming={'not-tagged':{x:1,y:2,zoom:3}};},item=>{item.latitude=43;},
@@ -162,6 +165,38 @@ const sharedKeys=['baseRef','baseSha','branchRef','headSha','itemIds','mainSha',
     'repository','schemaVersion','state','targetRelativePath'].sort();
 const readPublication=(value,review,github)=>batch.readMergedGalleryBatchPublication(value,review,options(github));
 const readMember=(value,review,itemId,github)=>batch.readMergedGalleryBatchMemberReview(value,review,itemId,options(github));
+// Private people need not have public profiles. Review, exact replay and later
+// origin proofs must accept their empty public projection without inventing IDs.
+for(const site of ['family','everyone']) for(const association of ['unmapped','mixed']) {
+    const items=[batchPhoto(1),batchPhoto(2)];
+    for(const item of association==='unmapped'?items:[items[1]]) {item.athleteIds=[];delete item.podiumFraming;}
+    const old=batchPhoto(100),value=batchCandidate({site,baseItems:[old],newItems:items});
+    const github=batchGitHub({candidate:value,baseItems:[old],loseRefResponse:true,losePullResponse:true});
+    const review=await create(value,github);
+    assert.equal((await create(value,github,()=>assert.fail('Exact replay must not re-admit'))).replayed,true);
+    assert.equal((await batch.readExistingGalleryBatchReview(value,options(github))).pullRequest.number,review.pullRequest.number);
+    assert.equal(github.state.requests.filter(r=>r.method==='POST' && r.path==='/pulls').length,1);
+    assert.equal(github.state.branchManifestText,value.manifestText);
+    assert.deepEqual(JSON.parse(github.state.branchManifestText).items,[old,...items]);
+    assert.doesNotMatch(JSON.stringify(github.state.requests),/person_|asset_|attempt_|private-camera/);
+    github.merge();const before=github.state.requests.length;
+    assert.equal((await batch.readMergedGalleryBatchReview(value,review,options(github))).state,'merged-by-owner');
+    assert.equal((await readPublication(value,review,github)).state,'merged-by-owner');
+    for(const item of items) assert.deepEqual((await readMember(value,review,item.id,github)).itemIds,value.itemIds);
+    assert.equal(github.state.requests.slice(before).some(r=>r.method!=='GET'),false);
+    const closing=batchGitHub({candidate:value,baseItems:[old]});await create(value,closing);
+    assert.equal((await batch.reconcileArchiveGalleryBatchReview(value,options(closing))).state,'closed-unmerged');
+    const denied=batchGitHub({candidate:value,baseItems:[old]});
+    await assert.rejects(create(value,denied,async()=>{throw new Error('Member consent revoked');}));
+    assert.equal(denied.state.pulls.length,0);
+    const malformed=batchGitHub({candidate:value,baseItems:[old],suppressionText:'{}\n'});
+    await assert.rejects(create(value,malformed));assert.equal(malformed.state.requests.some(r=>r.method!=='GET'),false);
+    if(association==='mixed') {
+        const hidden=batchGitHub({candidate:value,baseItems:[old],hiddenAthleteIds:items[0].athleteIds});
+        await assert.rejects(create(value,hidden));assert.equal(hidden.state.requests.some(r=>r.method!=='GET'),false);
+    }
+    checks++;
+}
 for(const site of ['family','everyone']) for(const count of [1,2,20]) {
     const old=batchPhoto(100),value=batchCandidate({site,baseItems:[old],newItems:Array.from({length:count},(_,i)=>batchPhoto(i+1))});
     const github=batchGitHub({candidate:value,baseItems:[old]}),review=await create(value,github);github.merge();

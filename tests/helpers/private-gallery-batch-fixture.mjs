@@ -13,16 +13,17 @@ import {readBoundedBytes,sha256Hex} from '../../gallery-admin/src/media-byte-ver
 import {queuePrivateArchiveBatch} from '../../gallery-admin/src/private-gallery-batch-service.js';
 
 export const batchRun='https://github.com/johnkevan88888/family-running/actions/runs/456';
-export async function privateGalleryBatchFixture(site='family',{small=false}={}) {
+export async function privateGalleryBatchFixture(site='family',{small=false,publicAssociations='mapped'}={}) {
+    assert.ok(['mapped','unmapped','mixed'].includes(publicAssociations));
     // The fixed production-shaped origin is only an in-memory HTTP route. No
     // network transport is supplied anywhere in this fixture.
     const [width,height]=small?[32,48]:[512,768];
     const firstPhoto=await sharp({create:{width,height,channels:3,background:'#7ab341'}})
         .withExif({IFD0:{Make:'private-first-camera'}}).jpeg().toBuffer();
-    const f=await archiveServiceFixture(site,{reserveAttempt:false,photoBytes:firstPhoto,
+    const f=await archiveServiceFixture(site,{reserveAttempt:false,photoBytes:firstPhoto,publicAssociation:publicAssociations!=='unmapped',
         mediaOrigin:'https://family-running-gallery-media-dev.family-running.workers.dev'});
     const secondPerson='person_00000000-0000-4000-8000-000000000003';
-    f.db.prepare('INSERT INTO private_gallery_people VALUES(?,?,?,?,?)').run(secondPerson,'Fictitious second runner','fixture-public-second',1,1);
+    f.db.prepare('INSERT INTO private_gallery_people VALUES(?,?,?,?,?)').run(secondPerson,'Fictitious second runner',publicAssociations==='mapped'?'fixture-public-second':null,1,1);
     assert.equal((await changePrivateGalleryVisibility(f.env,f.owner,site,secondPerson,
         {expectedVersion:1,idempotencyKey:crypto.randomUUID(),preference:'allowed'})).ok,true);
     for(const area of ['family','everyone']) f.catalog.sites[area].catalog.athleteIds.push('fixture-public-second');
