@@ -1,5 +1,614 @@
 # Active Work
 
+## Repository-only fast-lane and batch-bridge release — 21 October 2026
+
+John explicitly approved synchronization/retest, push/PR, required checks and
+merge, with normal Pages only if public output stays byte-identical and Family
+2 / Everyone 0. Migration0030, all Worker deployments, media processing, purge
+and batch publication remain excluded. Current remote main was fetched and is
+still `82c4ee871a1b6cebea57df22ac3d6de3d1dca819`; no integration was needed.
+
+Fresh full local retest passed all95 groups in1324.77s (22m05), with all421 source
+files unchanged during the run. Ignored evidence: `batch-release-validation.json`
+and `batch-release-full-95.log`. Independent release audit found no blocker in
+the exact-diff CI selector, owner queue, batch safety guards or capability split.
+The final both-mode browser smoke and desktop/mobile screenshots passed.
+
+A fresh canonical current-main build, the actual downloaded successful Pages
+run39521005376 / artifact12311173590, and117 anonymous live static GETs all
+byte-matched the same117 files,72 CSVs,CNAME and Family2/Everyone0. Both-mode
+desktop/mobile captured-live rendering passed eight checks. Media/analytics were
+blocked; this is not new-media delivery or public-host absence evidence.
+Ignored receipts: `batch-release-current-main-canonical-proof.json`,
+`batch-before-release-pages-archive-proof.json` and
+`release-verification-batch-pre-release/report.json`.
+
+Release uses the standard preview path because CI controls change. The candidate
+must get its own exact committed canonical proof, required GitHub checks and
+successful both-mode preview review before merge; exact normal Pages artifact
+and live readback follow. No protected media workflow is dispatched by this
+release. The batch bridge remains review-only and inactive: publication and
+shared individual-withdrawal/purge coordination still require implementation.
+The historical local-only checkpoints below are preserved, not live proof.
+
+## Protected photo batch queue — local-only review bridge tested, 20 October 2026
+
+John approved building/testing the protected queue-to-one-PR bridge locally,
+with no push, deployment or publication. Reused the existing isolated checkout
+on `codex/gallery-photo-review-fast-lane`, pinned to main `82c4ee8`. Prior
+unreleased fast-lane work and all earlier handoff notes remain intact. No commit,
+remote PR, migration, Worker deployment, credential/settings change, real-media
+processing, live deletion, purge or publication occurred.
+
+The protected owner page can select/order 1–20 independently saved consent
+attempts in its inherited Family/Everyone area. Selection stays in that page;
+the confirmed job and ordered membership are immutable in protected D1 storage.
+No destination selector, aggregate consent, shared framing or browser-supplied
+candidate items were added. The existing opaque-job protected workflow processes
+each photo independently, retains the original/tag/consent/framing/generation
+evidence, derives each public item through the existing catalogue/permission/
+actual-byte checks, and reserves one exact appended manifest from a common main.
+The separate batch GitHub client proves the complete one-file change without
+loosening the existing single-photo client's exact-one-addition contract.
+
+Migration `0030_private_gallery_batch_reviews.sql` is forward-only and local
+only. SQL independently rechecks every member at reservation, single PR-POST
+admission and review recording. Claims share existing global serialization and
+never expire or transfer to another Actions run. Unknown writes remain pending;
+an admitted POST cannot become fabricated no-PR evidence. Revoked/failed batches
+close/clean members independently, reconcile the whole shared review, then require
+each member's separate current host and same-main absence receipts. R2 absence
+is not host absence. Already-completed cleanup/host receipts replay unchanged;
+unknown GitHub main permits cleanup only for already-closed generations, not
+deletion of an unclosed potentially owner-published photo.
+
+The first full run exposed promotion code in the finalizer bundle. This was
+corrected by separating promotion-only helpers into
+`private-gallery-batch-promotion.js`; the owner/finalizer ledger imports only
+identity and digest helpers. The existing strict bundle boundary test was NOT
+weakened. Valid small photos may have identical display/thumbnail hashes while
+retaining distinct generation/role URLs and all independent byte receipts.
+
+Validation: eight focused groups passed, including 136 storage cases, 74 GitHub
+cases, real owner-router/SQLite browser tests and the real pinned decoder with
+synthetic HTTP/storage/GitHub transports. The full **95 groups passed** with
+exit0 and final success sentinel in 1311.6s (21m52). All 421 source files were
+unchanged across that run. Both areas, desktop/mobile, all individual consent/
+framing preservation, late revocation, changed original/catalogue, lost/delayed
+POSTs, main outages, out-of-band merge refusal and host-removal recovery passed.
+Four private-batch screenshots were generated/reviewed. Public browser media
+requests are blocked: no new real-media pixel/delivery or live-host proof.
+
+Additional ignored generated-fixture rehearsals passed: 20 photos produced one
+simulated unmerged PR with 80 role/tier byte receipts and unchanged retained
+evidence; cancelled batches in BOTH areas returned to a fresh-consent,
+new-generation single-photo review while retaining originals. The 13.4s local
+capacity result is NOT a prediction of live upload/CI latency. After the full
+run, only two neutral owner-history label substitutions and their browser
+expectations changed; exact inverse-hash proof plus three focused owner/library
+tests passed. These labels say recorded review, not a possibly stale unmerged
+status. No permission, processing, database or publication logic changed then.
+
+Ignored receipts (SHA256):
+
+- `batch-local-validation-v3.json`:
+  `db82b1fa3a706a0c962093068037b0b6e124c6d5563253cd2e6bfe5017bc23db`.
+- `batch-label-validation.json`:
+  `72052e5705f58008096d99fe38df8da37f5ef4af00031baaf844392d35ff1f1b`.
+- `batch-canonical-proof.json`:
+  `42ebbd29148b58c902de8218cce8c32e3ab54ac4897c0b9e119de845a132bdd0`.
+- `batch-twenty-rehearsal.json`:
+  `55312e22b9c664c786ab8e69082cc4af7bd7bd0f050281f5477b43d67cbf2a7c`.
+- `batch-single-recovery-compat.json`:
+  `e3fffb3566d31784874030f1cf8f7ed9ae61eb6d8b8ec36f440c4e659078f9e6`.
+
+The canonical proof built a fresh raw-Git-blob candidate plus all 35 unpublished
+overlays, without text conversion, network, Git writes or media reads. All 117
+public files matched the retained verified main82 receipt byte-for-byte,
+including all 72 CSVs, CNAME and Family2/Everyone0 manifests. This is local
+artifact equivalence, not a new live verification. Documentation-only handoff
+updates follow these checks. Earlier interrupted v1 and failed v2 receipts/logs
+are retained; v3 is the final passing functional checkpoint.
+
+Exact batch implementation/test paths (26):
+
+- `gallery-admin/migrations/0030_private_gallery_batch_reviews.sql`.
+- `gallery-admin/src/admin-worker.js`, `private-gallery-assets.js`,
+  `private-gallery-batch-service.js`, `private-gallery-batch-promotion.js`,
+  `private-gallery-job-service.js`, `private-gallery-job-request.js`,
+  `private-gallery-owner-service.js`, `private-gallery-promotion-adapter.js`.
+- `scripts/gallery-media/archive-service-client.mjs`,
+  `github-batch-review-client.mjs`, `protected-archive-batch.mjs`,
+  `protected-archive-job.mjs`; `scripts/run-gallery-archive-job.mjs` and the
+  already-edited `scripts/run-all-tests.mjs`.
+- `tests/gallery-batch-storage.mjs`, `gallery-batch-owner.mjs`,
+  `gallery-batch-owner-browser.mjs`, `gallery-batch-github-review.mjs`,
+  `gallery-batch-protected-workflow.mjs`, `gallery-d1-expression-depth.mjs`.
+- `tests/helpers/gallery-batch-storage-fixture.mjs`,
+  `gallery-batch-github-fixture.mjs`, `private-gallery-batch-fixture.mjs`,
+  `private-gallery-service-fixture.mjs`, `private-gallery-lifecycle-fixtures.mjs`.
+
+Handoff/architecture updates: this file, `docs/decision-log.md`,
+`docs/gallery-private-tagging-plan.md`, `docs/gallery-publishing-workflow.md` and
+`docs/testing-and-release-protocol.md`; shared checkout active-work gets a
+pointer only. All generated evidence stays ignored. No public runtime, CSV,
+manifest, asset, vendor, package/lock, Worker configuration or protected archive
+workflow definition changed in the batch pass. Prior fast-lane CI edits remain
+separate and unreleased.
+
+Boundary/blockers: this requested slice stops at an UNMERGED PR and deliberately
+keeps its global claim. Batch publication preparation/completion, published-batch
+removal proposals and shared-member metadata purge are NOT implemented; single-
+photo publication cannot bypass that boundary. Original deletion remains its
+separate existing approval path, and retention/consent clocks are not reset or
+extended. Do not merge a batch candidate or activate routine batch publication
+on the strength of these local tests. An all-member publication and subsequent
+individual withdrawal/purge coordination path needs separate implementation and
+testing first. Next external gate is explicit repository synchronization/retest,
+PR/checks/merge approval; any remote0030/service activation/synthetic rehearsal
+requires separate explicit approval and must retain the review-only stop.
+
+## Photo-only review fast lane — local-only tested, 20 October 2026
+
+John requested a local-first photo-only CI optimization, retaining every consent
+and safety check. Work reused this isolated checkout, fetched current main82c4ee8
+and created local branch codex/gallery-photo-review-fast-lane. Existing handoff
+edits were preserved. No commit/push/PR, settings change or external mutation.
+
+The existing required Test static site job and standard Netlify preview remain.
+Exact committed base/head/test-merge evidence may select17 focused groups only
+for one existing inherited-area manifest appending1–20 new photos. All previous
+items/order and other files stay unchanged; every new item gets canonical bounded
+schema/framing/tag/suppression, fixed-origin v2 pair and fresh-generation checks.
+Old/opposite/within-batch identity/URL/generation reuse is excluded. Mixed/code,
+schema, suppression, removal/replacement/reorder, stale/missing/dirty or uncertain
+evidence uses full CI. There is no opt-in label/title or privileged event/token.
+Protected intake, processing/metadata stripping, consent/exclusion, publication,
+withdrawal, retirement, host verification and purge implementation are unchanged.
+
+Validation: the17 focused groups passed in199.1s (3m19); the full90 groups passed
+with exit0 and final success sentinel in1136.1s (18m56). Both-mode desktop/mobile
+Gallery/viewer, exported details, all tagged athlete profiles, championship URLs,
+podiums/highlights, mode links and responsive screenshots passed. Four focused
+screenshots were reviewed; external media is deliberately blocked, so these are
+layout/data and synthetic pixel checks, not fresh real-photo delivery evidence.
+Independent review found no reduced-scope bypass. A final test-only commit nonce
+fix prevents same-second Git fixture collisions; all135 cases passed again with
+frozen Git timestamps. Only that self-contained test changed after the full run;
+all production/CI code stayed exact. Final syntax/diff hygiene passed.
+
+The original ignored photo-fast-lane-local-validation.json remains passed:false
+ONLY because its extra live-baseline byte comparison saw Windows CRLF checkout
+bytes; both test stages and408-source before/after equality passed. Do not erase
+or normalize that evidence. A separate fresh build used raw committed Git blobs
+plus exactly10 unpublished local overlays. All117 canonical public files matched
+the reviewed main82c4ee8 baseline byte-for-byte, including72CSVs, CNAME, framing
+and manifests Family2/Everyone0. No normalization/network/archive/Git writes.
+Receipt test-artifacts/photo-fast-lane-canonical-proof.json SHA256
+08f3fb8070edd34a8199c24cd65e6f48acd931874849ae22599cd9a86a93ceaa.
+Handoff-only notes were added after these checks; public/build inputs did not move.
+
+Exact implementation files: .github/workflows/pr-checks.yml;
+scripts/classify-gallery-photo-review.mjs; scripts/run-gallery-photo-checks.mjs;
+scripts/run-all-tests.mjs; tests/gallery-photo-review-path.mjs;
+tests/gallery-photo-review-browser.mjs; docs/testing-and-release-protocol.md;
+docs/gallery-publishing-workflow.md; docs/decision-log.md; docs/active-work.md.
+The shared checkout's active-work.md gets a handoff only; its unrelated dirty
+implementation remains untouched. Generated logs/receipts/snapshots stay ignored.
+
+John clarified that queued photos should form ONE combined PR. The checker is
+batch-ready, but the current protected producer still binds one asset/attempt,
+candidate and PR. Do not concatenate its immutable reviews or invent aggregate
+consent. Next local feature: additive protected batch membership/claim, individual
+processing and fresh consent/exclusion rechecks, one immutable combined manifest,
+separate bounded-N review proof, all-member publication and correct cancellation/
+individual withdrawal recovery. That bridge is NOT implemented or tested here.
+Data updates currently retain bundle validation plus full CI; a focused data
+route would be separate work. Activation of this CI change needs separately
+approved synchronization/retest, standard PR/checks/preview and merge; no Worker
+deployment is needed for this CI-only slice. No real-photo processing, migration,
+Worker deployment, credential change, purge or publication occurred.
+
+## New Family photo PR #144 — published and verified, 20 October 2026
+
+John explicitly approved merging PR144. Fresh reads pinned head5cc5785 and
+main261b3a3, one Family-manifest-only addition, required Test static site success
+(CI39495271594), successful Netlify preview and unchanged owner PR-only ruleset.
+Four exact-head CI screenshots passed desktop/mobile Family/Everyone layout
+review; their external photo pixels are intentionally blocked by browser-smoke,
+so actual Netlify/live browser viewing supplies separate photo-delivery evidence.
+
+Requested publication job job_6842dd3c-a4ba-46d5-8f65-a72097e09e14 for the existing
+asset/consent, without new attestations or re-upload. Protected run39520897009
+attempt1 returned ready-for-separate-owner-merge. Existing owner PR merge lane,
+pinned to the reviewed head, created 82c4ee871a1b6cebea57df22ac3d6de3d1dca819 at
+20:23:15 America/New_York (00:23:15 UTC on21October). The same publication run
+was rerun once after merge; attempt2 returned publication-observed. Removal,
+reconciliation and original-deletion stages were skipped. No cleanup replay.
+
+Normal Pages push run39521005376 succeeded for this exact merge; deployment
+completed20:23:59 America/New_York. The fixed-target read-only live verifier
+rehashed117 canonical public files, overlaid only the reviewed Family bytes,
+verified merge ancestry/tree and exact Pages jobs, then byte-compared all117
+live static files. Family2/Everyone0; other116 files, all72CSVs, CNAME, Everyone,
+suppression, legacy framing and existing Toronto item/order unchanged. Receipt
+test-artifacts/new-photo-pr144-production-verification.json SHA256
+2ea4fd9334803d6fbb6914d2791bfbf88ff0a0ab9a2e45493b7da323701f6d51.
+This receipt does not compare the Pages ZIP/tar or audit private originals/D1.
+Separate live browser review confirmed the new full photo and exported details;
+saved John framing remains x53/y40/zoom5.85. Existing first-eligible podium photo
+was not reordered or replaced. Live viewer screenshot saved under test-artifacts.
+
+Completed the approved publication. No Worker deployment, migration, purge,
+credential/Access/settings change, original deletion or further media processing.
+Original/tags/history retained through the scoped lifecycle, not a new byte audit.
+Both handoffs remain local/uncommitted. Photo-only CI optimization remains future
+work requiring separate approval; this release passed the current full suite.
+
+## New Family photo PR #144 — unmerged review, 20 October 2026
+
+John requested one guided new-photo upload, face suggestions/manual adjustment,
+private retention and fresh consent, stopping at an unmerged one-file review PR.
+The owner chose the JPEG directly. The detector reported no face; the owner
+manually checked both crop shapes and saved John framing x53/y40/zoom5.85.
+The owner retained the original, saved fresh consent for the 22 August Toronto
+parkrun and requested the exact review job. No new consent was inferred by the
+agent. Earlier stale synthetic-tab and unchecked-framing stops were not bypassed.
+
+The existing owner-protected processing environment was unchanged. One dispatch
+of gallery-archive-job.yml on main261b3a3 created run39495075706; its existing
+processing approval was granted for this review only. Prepare succeeded and the
+three removal/finalization stages were skipped. The result explicitly reported
+unmerged-review/publicationEnabled:false. A normal refreshed owner session and
+GET-only saved-asset reopening confirmed this job/run's association with PR144;
+no original pixels, permissions or saved framing were changed by that readback.
+
+PR144 is OPEN/unmerged, auto-merge absent, head5cc57858e97d66f735f15f0e6c4a8190714e5c0e
+on base261b3a33207780978484ee1bd47efc44ae384254. Its only changed file is
+gallery-data/family.json, adding photo-3d38625f-0b23-4e6a-8aee-601fcb7be5e5 and
+its exact public John crop. Existing Toronto fields/order, Everyone, suppression
+and legacy framing JSON are unchanged. Candidate Family2/Everyone0 is NOT live:
+bounded credential-free public GETs still byte-match main's Family1/Everyone0.
+The candidate helper passed actual Gallery/framing validators against seven
+fresh public inputs, exact parent/diff/URLs and before/after main/head checks.
+Its receipt new-photo-candidate-validation-pr144.json has SHA256
+d8a9008f35112f2076b6289e2ea86f4074fb1af6018be011e5d1622eed0c6ff1.
+
+Local repository safety (404 files), vendor (5 files), artifact-safety and final
+serial both-mode CSV checks passed. An initial parallel CSV check saw the
+artifact test's temporary contract probe; after that test completed, the probe
+was absent and serial validation passed with no data/Gallery working-tree diff.
+Normal Netlify preview succeeded; manual browser review showed the new whole
+photo and exported John/race/time/AG/age details, while Everyone remained empty.
+Saved uploader previews checked the manual face crop; the existing first eligible
+Toronto image remains the championship selection and was not reordered/replaced.
+
+As of20:58:33 UTC, exact-head required CI39495271594 is still in progress; no
+full-suite pass or responsive CI artifact review is claimed yet. The previous
+equivalent CI job took13m30s: this is whole-site regression time, not upload time.
+The protected processing/review run itself completed in about90s including its
+approval pause. Current workflow runs the full suite for photo-only PRs; a narrow
+photo-candidate fast path would be a separately approved code/workflow change,
+not permission to bypass this check. An optional derivative-inspection helper was
+prepared but NOT executed; no independent retained-original/metadata byte audit
+is claimed beyond the normal successful protected processing checks.
+
+Stopped at the requested unmerged review. No merge, publication, Worker deploy,
+migration, purge, credential/Access/settings change, re-upload or old cleanup
+replay. Existing photos/originals/tags/history are preserved by the scoped path,
+not claimed as a new storage-byte audit. PR144 is attached to this chat and its
+Family preview is left open. These notes remain local/uncommitted. Next gate is
+completion/review of required CI and separate explicit publication approval;
+the photo-only CI optimization is separate and not authorized by this handoff.
+
+## Toronto thumbnail PR #143 — published and verified, 20 October 2026
+
+John explicitly approved the final checks, merge and normal Pages deployment,
+with original/tags/history preserved and no Worker deployment or purge. Fresh
+GitHub reads confirmed exact reviewed head1081bb2, base8997625, one changed
+framing file, successful required Test static site and Netlify preview, mergeable
+state and no automatic merge. Framing validation/geometry checks passed again.
+Independent local review rechecked the full88 receipt, log/driver hashes,
+404-file source inventory and canonical117-file public proof. No source changed.
+
+Used only the existing owner PR-only merge lane in unchanged ruleset18119142
+(RepositoryRole5/pull_request, required review count0, Test static site still
+required, no App bypass). The normal owner merge created
+261b3a33207780978484ee1bd47efc44ae384254 at19:51:02 UTC with parents8997625 and
+1081bb2. No direct main push, settings edit, branch deletion or protected media
+workflow. Pages push run39486958048 succeeded, both build/deploy jobs green,
+deployment complete19:51:50 UTC. No manual deployment or workflow retry.
+
+Read-only artifact verification pinned PR/head/merge/run and before/after main.
+Provider ZIP SHA256 matched its published digest; bounded in-memory ZIP/tar
+validation found exactly117 approved files, each byte-identical to the reviewed
+canonical candidate, including CNAME and empty .nojekyll. Only framing JSON
+differs from pre-release main; the other116, all72CSVs and three Gallery files
+are unchanged. No archive extraction, private-original read or media upload.
+
+Strict credential-free/no-redirect/no-normalization live GET verification passed
+all117 files at https://www.aceofrace.com. The same fixed public bytes rendered
+four fresh responsive cases (Family/Everyone,1440x900 desktop and390x844 mobile)
+with eight screenshots. All24 table sections per mode retain exported standings,
+medals, order and links. The exact existing Toronto generation uses the approved
+x49/y13.5/zoom2 crop; face point remains visible with no empty image edges.
+Manual screenshot review confirms face/full head at the reviewed sizes. Gallery
+cards retain whole-photo contain; Family1/Everyone0 and suppression unchanged.
+Only the two unchanged already-public derivatives were rendered, not originals.
+
+A separate normal in-app live browser visit also shows the published face crop;
+toronto-framing-published-live-context.png records the real production page.
+Original/private tags/consent/history were never read or mutated by this release;
+preservation follows the one-file presentation-only boundary, not a new private
+byte/inventory audit. No Worker, D1, R2, Access, credential, DNS or purge action.
+This does not claim an automatic detector run on the retained real original.
+
+Ignored final receipts: toronto-framing-pages-artifact-verification.json
+(SHA25630aefe27c60e2778e9fcfbd8eb9e3ad2232f346ac17fa70518e9e4810697d611),
+toronto-framing-production-verification.json
+(SHA256fbf8965472d72c5bec39287355c56bdc8db662a0a3bfea1660adeea45f317047)
+and toronto-framing-production-screenshots/ under test-artifacts/. Gate complete;
+no further release/rehearsal is implied. These handoff notes stay local and
+uncommitted, preserving older review notes and unrelated shared-tree work.
+
+## Toronto face-framing review PR #143 — completed, 20 October 2026
+
+John approved a retained-Toronto framing review ending at an unmerged one-file
+PR, preserving original, tags, history and current live photo. No deployment,
+purge, merge or production publication. The fresh-photo workflow correctly
+requires removal of a historic live generation before another generation can
+process; neither that service guard nor its independent SQL guard was bypassed.
+Used the existing documented manual editor for already-public photos instead.
+This is a presentation-settings PR, NOT a fresh manifest candidate or proof of
+automatic detection/processing on the retained real original. No private-original
+read, re-upload, protected framing save, new consent or job dispatch occurred.
+
+Branch codex/toronto-face-framing-review is based on current main 8997625 and
+commit 1081bb2b266f7f463ed2560b126eb3cdfb3bd25f changes only
+gallery-podium-framing.json. The exact existing public-generation key keeps x49,
+changes y14 to13.5 and zoom1.8 to2. An initial zoom3 proposal clipped hair in the
+real wide podium and was rejected before push; its interrupted test run and
+earlier evidence are not the final validation. The final crop was visually checked
+in actual desktop/mobile layouts, with the full head visible at those sizes.
+
+Final focused framing validator/contract/editor/browser checks passed. The pinned
+full suite passed all 88 groups from 18:48:25 to 19:15:07 UTC, exit0/success
+sentinel, with identical before/after source inventory, CSV and manifest hashes.
+GitHub run 39479370030 also passed all88 and uploaded responsive-screenshots-
+39479370030. Standard Netlify preview succeeded for the exact head; both mode
+links and unchanged whole-photo Family/empty Everyone Gallery were reviewed.
+Eight additional local candidate screenshots cover both modes and device sizes.
+
+Canonical Git-blob artifact comparison proved117 files on main and candidate,
+with only numeric framing JSON changed. Other116 files are byte-identical,
+including72CSVs, three Gallery files and CNAME. Credential-free read-only live
+checks before/after PR creation proved the old production framing and all three
+Gallery JSON files still match main; Family1/Everyone0. Original/tags/consent/
+history remain untouched, not claimed as independently re-audited private bytes.
+
+PR https://github.com/johnkevan88888/family-running/pull/143 was created as a
+draft while independent checks ran, then made ready for owner visual review.
+It remains OPEN/unmerged, one file, automatic merge disabled. Next gate is John's
+review of the crop and separate explicit merge/normal Pages approval. No Worker
+deployment is needed for this presentation-only change. Temporary editor stopped.
+
+Ignored evidence: toronto-framing-final-public-proof.json, toronto-framing-final-
+full-checks.json (SHA256 243391d6a954f9f2c64187fbfff80768734f5b2c02be198b9960f401f7572d7b),
+toronto-framing-final-browser-review.json, toronto-framing-final-responsive/,
+toronto-framing-preview-143-crop.png and toronto-framing-live-{before,after}-pr.json
+under test-artifacts/. These local handoff notes remain uncommitted and excluded
+from the one-file PR; preserve all earlier notes and unrelated shared work.
+
+## Synthetic PR #142 cleanup — completed, 20 October 2026
+
+John explicitly approved closing #142 and removing only its synthetic derivatives,
+with public-host absence checks, retaining original/tags/history. No purge, real
+media, deployment, merge or publication. Used only the existing asset-scoped
+removal job, not person-wide hiding, original deletion or any purge control.
+
+Reopened asset asset_71d4c60f-555d-41c6-a309-7ea620d61b32 through authenticated
+owner metadata reads. It has only attempt_2812b45c-0ed1-44eb-b291-0b20bbf35938 /
+generation 830e5da9-a61d-4849-8641-b1fe2f5ac639. Queued exact removal job
+job_fcda115f-b5e2-4755-98ff-91dafa635cc4 and dispatched existing protected workflow
+39475547193 on unchanged main 8997625e30c5ade195af5d78a56d9dce9fa9f30c.
+All four stages succeeded; bounded log reads verified cleanup-ready, host-ready,
+removed and hidden-original-retained for this exact job. Processing/finalization
+environment approvals used the existing owner protections without setting or
+credential changes. No workflow rerun or cleanup replay was needed.
+
+The normal services closed the attempt/writers, removed its exact staging and
+approved copies and recorded fixed-host proof before closing the addition review.
+PR #142 closed unmerged at 18:35:05 UTC, with original head
+f954b97f29a0d1362743bde40b316d69751c3d19 and review history unchanged. No removal
+PR was needed because this item was never in either main manifest. Finalization
+confirmed hidden-original-retained; it did not call terminal original deletion.
+
+An independent read-only invocation of the existing strict host-verifier function
+also passed all ten requests: fixed witness HEAD/GET before and after both exact
+synthetic target HEAD/GET checks, then final target HEAD. Witness bytes/contract/
+version matched media version ea4a6eb4-3e44-41a2-beaf-746951df4415; target responses
+were exact no-store, empty-body 404s, without redirects or credentials. No generic
+404 or empty R2 inventory was treated as host proof. Only the synthetic targets
+and known 28-byte synthetic witness were requested; no real photo was read.
+
+Fresh owner API metadata still reports the original quarantined, unchanged from
+before removal. Complete three-person tags and framing version/tag version 1,
+source hash, 1254x1254 dimensions and numeric frames match the saved baseline.
+The original review job and new completed removal job remain readable; the one
+attempt is closed. Fresh GitHub/public JSON checks prove unchanged main and all
+three canonical Gallery files, Family 1 / Everyone 0. This completed the requested
+cleanup; future real-photo use remains separately approved.
+
+Verification limit: an initial SELECT-only Wrangler read failed with Cloudflare
+7403 before any query/mutation. No login, scope expansion or credentials change
+was requested to overcome that diagnostic issue. Existing protected workflow and
+owner reads worked after refreshing the owner page. No fresh direct D1/R2 original
+inventory or original-byte rehash is claimed. The prepared cleanup D1 SQL/helper
+was NOT executed; retained-state evidence is the separate fresh owner readback
+and exact successful no-deletion workflow outcome, not a fabricated database audit.
+
+Ignored evidence: framing-synthetic-142-cleanup-final.json (all four exact states),
+framing-synthetic-142-host-absence.json, framing-synthetic-142-owner-readback.json
+and framing-synthetic-142-closed.png under test-artifacts/. Cross-checks matched
+the retained framing digest to the prior D1 baseline. Only local handoff prose
+changed in this file and the shared active-work file; no push/release is included.
+
+## Framing activation and synthetic review — completed, 20 October 2026
+
+John approved configuration verification, migration 0029, deployment of only
+the five affected existing Gallery services and one synthetic framing review,
+stopping at an unmerged one-file PR. Executed from this isolated checkout using
+the code identical to merged main 8997625e30c5ade195af5d78a56d9dce9fa9f30c;
+no further repository source release was made. Migration 0029 applied once and
+readback confirmed both new framing tables, nullable attempt framing version,
+the guarded purge snapshot view and preservation of all seven legacy attempts'
+NULL framing versions. No legacy consent/framing backfill was performed.
+
+All five services are deployed and their actual executable bytes match the
+reviewed current-source dry-run bundles. Current versions:
+
+- Admin: 14f8b99d-5b70-416c-b08f-929616e9f1c7.
+- Processing: fa8289ff-a065-423d-bfbf-d42a0a29648f.
+- Promotion: a1e99304-66dd-4536-bd20-45400d04c418.
+- Withdrawal finalizer: 9afe1a1a-a1d1-42f2-b425-c121ca52c184.
+- Public-host verifier: 845e0c2f-52a9-4b07-bb79-b541a10c3aa9.
+
+Media delivery version ea4a6eb4-3e44-41a2-beaf-746951df4415 and delivery epoch 2
+are unchanged. Retained binding names/types, plaintext fingerprints, compatibility
+dates/flags, subdomains, cron, logging/tails and all three R2 lifecycle policies
+were compared before/after. No resources, credentials or Access settings changed.
+Existing OAuth cannot read the five Access applications/policies (403), so fresh
+policy continuity and unreadable secret-value equality are NOT claimed. Anonymous
+GET/HEAD denial passed for all five services. The authenticated owner page works;
+GET-only finalizer access probe 39467598067 passed anonymous/invalid 401 and
+authenticated 405. Processing/promotion authentication succeeded in the review
+workflow below; no authenticated verifier/removal claim follows from this run.
+
+The first admin bundle exposed a real packaging defect before any upload: esbuild
+keep_names instrumentation introduced an unavailable __name helper into three
+serialized browser scripts. No source, contract or access check was changed.
+An admin-only ignored deployment config with keep_names:false fixed the build.
+All 34 admin inputs/import edges still match current main; the other services'
+build settings were not changed. The original compiled bundle reproduced three
+errors; the corrected actual compiled router passed both modes on desktop/mobile,
+real synthetic face detection, manual protected saving and 225 negative route
+checks. Corrected admin bundle SHA-256 is
+fa9ae202eda7a759eec2f2297be29edf4978beffa00f98f1e1265e29a7e55696.
+Live readback matches it and the uploader boots without new errors. Keep this
+admin build setting for future deployments; making it and compiled-asset regression
+durable in repository deployment guidance/tests is a separate repository follow-up,
+not another release performed by this gate. Other first-run stops were ignored
+helper issues only: relative Wrangler output path, roster-order selector and a
+sorted-key expectation. Retained failed receipts are not product failures or
+permission to weaken validation.
+
+Used only the generated fictional-runner PNG, SHA-256
+35b6566479871ad6e72465699a2f3a6d3b0d4888fcf924333ebb4826bae7b4db,
+2,262,136 bytes, natural dimensions 1254 x 1254 (detector input is bounded to 1024).
+Its fixture README's earlier no-remote-use statement describes the local-only
+implementation phase; this later explicit synthetic approval authorized this one
+rehearsal. Created three new unmistakably fictional private people, with no public
+athlete mapping. All three possible faces were assigned manually, adjusted and
+visually checked in desktop/mobile crop previews, then explicitly saved privately.
+Framing did not check public-use consent or complete-tags confirmation.
+
+New asset asset_71d4c60f-555d-41c6-a309-7ea620d61b32; fresh consent attempt
+attempt_2812b45c-0ed1-44eb-b291-0b20bbf35938; job
+job_560b7029-074d-44f9-8484-15786e066d7f. Protected archive workflow
+39468391577 on exact main succeeded; prepare completed and verify/reconcile/original
+were skipped. It created https://github.com/johnkevan88888/family-running/pull/142
+and stopped at unmerged-review. Read-only D1 verification matched framing revision 1,
+source/provider receipt, numeric request hash, immutable attempt snapshot and four
+verified staging/approved derivative records. The job completion is recorded, its
+active lock is absent, and no publication, removal, original deletion or purge
+record exists for this asset. This is processing/review evidence, not a purge or
+public-host absence rehearsal; storage absence is never substituted for host proof.
+
+Fresh GitHub reads confirm PR #142 open/unmerged, head
+f954b97f29a0d1362743bde40b316d69751c3d19, exactly one file gallery-data/family.json,
+one generated commit on main 8997625, existing Toronto entry unchanged and one
+added synthetic generation 830e5da9-a61d-4849-8641-b1fe2f5ac639 / item
+photo-ecc6879c-d3b2-47d4-9a49-355e91bca5c6. Exact repository Gallery validation
+and current catalogue checks passed. Private names/IDs/frames are absent; public
+athleteIds is empty and podiumFraming is absent as required for private-only tags.
+Thus the live run proves private framing through fresh review and fail-closed
+public projection, not a positive live public-athlete framing payload. That latter
+projection remains covered by the prior full local/CI suite. Netlify preview build
+succeeded; required PR CI run 39468588875 was still in progress at handoff, not
+reported green. No candidate preview was rendered, avoiding real-photo reads.
+
+Fresh GETs of only the three public Gallery JSONs match canonical bytes exactly:
+Family 1 / Everyone 0. No new site publication, Pages release, real-media use,
+purge, original deletion or media-delivery deployment occurred in this gate.
+The existing Toronto photo, original, tags and review history were not changed.
+No further live action is authorized. Recommended next explicit gate: review the
+synthetic result, then approve closing #142 and removing only its synthetic
+derivatives with public-host absence verification, retaining original/tags/history.
+Any real-photo framing review or publication remains separately approved.
+
+Ignored evidence under test-artifacts/: framing-activation-provider-preflight.json,
+framing-activation-provider-postflight.json, framing-activation-provider-postflight-v2.json,
+framing-activation-local-bundle-audit.json, framing-activation-admin-serialization-v3-audit.json,
+framing-activation-compiled-browser.json, framing-synthetic-candidate-pr142-v3.json,
+framing-synthetic-142-d1-verification.json and framing-activation/synthetic-live-preview-a.png.
+Stored D1 review head and SHA-256 manifest digest match the fresh GitHub candidate;
+the stored digest's required sha256: algorithm prefix was explicitly verified.
+Only local handoff prose in this file and the shared checkout's active-work file
+was edited; preserve other shared changes. No push/merge of these notes is included.
+
+## Framing repository release — live verified, 20 October 2026
+
+Completed John's explicit repository-release approval through standard PR #141:
+https://github.com/johnkevan88888/family-running/pull/141 . Final pushed head
+e83ac838593739b5961b466bf3311fdcada51886 contains the synchronized tested code
+plus only the three release-status documentation edits described below.
+Required Test static site passed in run 39460823398, including the full runner
+and responsive smoke. Netlify preview succeeded; both modes at desktop/mobile
+passed review, with all eight screenshots visually inspected. The owner-only
+PR preflight confirmed unchanged ruleset 18119142, exact current main/head,
+successful required App15368 check, complete conversations and no change request.
+John's owner account merged at 17:04:05 UTC, merge commit
+8997625e30c5ade195af5d78a56d9dce9fa9f30c. No rule or setting was changed.
+
+Normal push-triggered Pages run 39462840908 succeeded. Its github-pages artifact
+12283722114 was bounded, parsed in memory without extraction and verified against
+all 117 canonical file hashes. ZIP SHA-256
+36aeda01e28f00263ed21755c267cf1a8b854a20e741399223486b459b2b704e matches
+the provider digest. Fresh no-cache production GETs also matched all 117 files
+byte-for-byte, including empty .nojekyll, CNAME, all 72 CSVs and three Gallery
+files, with no normalization or preview exception. Four production mode/device
+runs and all eight visually inspected screenshots passed. John's existing
+Toronto podium image now shows his face; Gallery keeps the whole photo and
+exported result details. Rankings and Gallery membership remain unchanged:
+Family 1 / Everyone 0.
+
+Ignored final evidence: framing-owner-merge-preflight-pr141-e83ac8385937.json,
+framing-release-preview-141-v4-verification.json,
+framing-release-pages-artifact-verification.json and
+framing-release-production-v4-verification.json under test-artifacts/.
+Corresponding preview/production v4 screenshot directories contain eight each.
+Preview evidence explicitly accounts only for this deploy's exact 221-byte
+Netlify toolbar and four exact anchor rewrites; its Pages-only .nojekyll returns
+HEAD 404, not fabricated bytes. Earlier failed v1/v2/v3 verifier receipts remain:
+they identified provider transforms and an incorrectly desktop-applied mobile
+height assertion in the ignored review helper, not product changes. Production
+has zero allowances. The first artifact preflight stopped before download on a
+briefly stale in-progress job status; fresh completed/success readback allowed
+the explicit successful verification. No safety check was bypassed.
+
+This completes the static repository/UI release only. No migration, Worker
+deployment, credentials/settings change, live synthetic workflow, new photo
+processing/publication, original access or purge occurred. Rendering already-
+public derivatives was limited to the approved UI review; it is not independent
+media-byte, withdrawal or host-absence evidence. Automatic protected-uploader
+face suggestions remain inactive. Next separate approval: verify configuration,
+apply only migration 0029, deploy only the five changed existing services (admin,
+processing, promotion, withdrawal-finalizer, public-host-verifier), verify their
+access/catalogues and perform one synthetic fresh-framing review, stopping at
+an unmerged one-file candidate PR. Media delivery is unchanged. No real media,
+purge or further publication is included. This handoff is local prose only and
+is not another pushed release; preserve the shared checkout's unrelated edits.
+
 ## Framing repository release preparation — 20 October 2026
 
 John asked to continue from the repository-release gate. Synchronize this

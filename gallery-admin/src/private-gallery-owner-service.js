@@ -2,6 +2,7 @@ import { readPrivateGalleryAsset } from './private-gallery-asset-service.js';
 import { preparePrivateArchiveIntake,storePrivateArchiveOriginal,deletePrivateArchiveOriginal } from './private-archive-service.js';
 import { reservePrivateGalleryAttempt } from './private-gallery-attempt-service.js';
 import {readPrivateArchiveJobs,queuePrivateArchiveJob} from './private-gallery-job-service.js';
+import {readPrivateArchiveBatches,queuePrivateArchiveBatch} from './private-gallery-batch-service.js';
 import { hashIdentity } from './session.js';
 
 // Called only after the admin router's verified owner, signed inherited-area
@@ -65,9 +66,10 @@ export async function readPrivateOwnerBody(request,maximumBytes,contentType,time
 
 export async function handlePrivatePhotoOwnerOperation(request,env,identity,site,route,catalog,dependencies={}) {
     try {
-        if(['archive-intake','archive-jobs'].includes(route.kind) && request.method==='GET') {
+        if(['archive-intake','archive-jobs','archive-batches'].includes(route.kind) && request.method==='GET') {
             if(request.body || request.headers.has('Content-Type') || request.headers.has('Transfer-Encoding') ||
                 ![null,'0'].includes(request.headers.get('Content-Length'))) return failure(400);
+            if(route.kind==='archive-batches') return readPrivateArchiveBatches(env,identity,site);
             return route.kind==='archive-jobs'?readPrivateArchiveJobs(env,identity,site,route.assetId):readPrivateArchiveStatus(env,identity,site,route.assetId);
         }
         if(route.kind==='archive-original') {
@@ -79,11 +81,12 @@ export async function handlePrivatePhotoOwnerOperation(request,env,identity,site
             if(!body.ok) return body;
             return storePrivateArchiveOriginal(env,identity,site,route.assetId,new Blob([body.bytes]).stream(),dependencies);
         }
-        if(request.method!=='POST') return {...failure(405),allow:route.kind==='archive-intake'?'GET, POST':'POST'};
+        if(request.method!=='POST') return {...failure(405),allow:['archive-intake','archive-batches'].includes(route.kind)?'GET, POST':'POST'};
         const body=await readPrivateOwnerBody(request,32768,'application/json',dependencies.bodyTimeoutMilliseconds);
         if(!body.ok) return body;
         let input;
         try {input=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(body.bytes));} catch {return failure(400);}
+        if(route.kind==='archive-batches') return queuePrivateArchiveBatch(env,identity,site,input);
         if(route.kind==='archive-jobs') return queuePrivateArchiveJob(env,identity,site,route.assetId,input);
         if(route.kind==='archive-intake') return preparePrivateArchiveIntake(env,identity,site,route.assetId,input);
         if(route.kind==='archive-attempt') return reservePrivateGalleryAttempt(env,identity,site,route.assetId,input,catalog);

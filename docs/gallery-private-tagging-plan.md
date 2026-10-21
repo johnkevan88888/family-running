@@ -1,5 +1,41 @@
 # Protected Gallery tagging and reversible visibility
 
+## Protected batch review bridge — local only, 20 October 2026
+
+An additive owner queue now freezes 1–20 independently consented attempts from
+one inherited area. Each photo is still uploaded, tagged, framed and consented
+separately. Only the review is combined: one common-main, one-file manifest
+candidate and one protected GitHub PR. The page's unsubmitted selection is
+tab-local; protected membership and recovery evidence are immutable in D1.
+
+Migration0030, ledger-only `private-gallery-batch-service.js`, promotion-only
+`private-gallery-batch-promotion.js`, the protected batch runner and separate
+bounded GitHub client preserve all existing per-photo checks. No single-photo
+review is rewritten. The existing workflow still accepts only an opaque job ID;
+its protected environments, Access identities, bindings and concurrency do not
+change. SQL rechecks every member before candidate/write/open, including races.
+
+An unmerged batch holds the existing global claim. Failure/revocation closes the
+batch's attempts and reconciles its whole PR; each photo still needs separate
+current host and main absence evidence. Completed cleanup is not replayed. The
+owner list links to the recorded review without asserting its current GitHub
+state. Unavailable main does not authorize cleaning unclosed generations.
+
+Local evidence: 136 storage cases, 74 GitHub cases, both-area responsive actual
+owner-router/SQLite tests, per-photo real-decoder stripping/framing/recovery,
+20-photo synthetic capacity, cancellation-to-fresh-single-review compatibility,
+strict service bundle checks and the full95 groups passed. Exact receipts and
+file list are in active-work. Canonical public output is unchanged (117 files,
+72 CSVs, Family2/Everyone0 against pinned main82); no fresh live proof is claimed.
+
+This remains REVIEW ONLY, not routine batch launch readiness. No batch
+publication-preparation/completion, published-batch removal proposal or shared
+metadata-purge path exists. They fail closed, including attempted one-photo
+publication of a batch member. Original retention and consent deadlines are not
+extended. Complete those integrations before enabling routine publication;
+release, remote0030/service activation and synthetic rehearsal need explicit
+separate approval. No real media, remote change or publication occurred here.
+
 ## Current local completion — 11 October 2026
 
 All 75 local check groups passed at 23:03:10 UTC, including the actual D1 engine,

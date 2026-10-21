@@ -48,10 +48,12 @@ export function syntheticBucket() {
 export function syntheticGitHub() {
     const empty={schemaVersion:'1.0',items:[]};
     const state={main:'a'.repeat(40),manifests:{family:structuredClone(empty),everyone:structuredClone(empty)},
-        refs:new Map(),commits:new Map(),blobs:new Map(),trees:new Map(),pulls:[],requests:[],unavailable:false,hook:null};
+        refs:new Map(),commits:new Map(),blobs:new Map(),trees:new Map(),pulls:[],requests:[],unavailable:false,hook:null,
+        suppression:{schemaVersion:'1.0',hiddenAthleteIds:[]}};
     const json=(status,value)=>({ok:status>=200&&status<300,status,json:async()=>structuredClone(value)});
     const sha=label=>digest(`${label}:${state.requests.length}`).slice(0,40);
-    const mainContents=()=>Object.fromEntries(['family','everyone'].map(site=>[`gallery-data/${site}.json`,`${JSON.stringify(state.manifests[site],null,2)}\n`]));
+    const mainContents=()=>({...Object.fromEntries(['family','everyone'].map(site=>[`gallery-data/${site}.json`,`${JSON.stringify(state.manifests[site],null,2)}\n`])),
+        'gallery-data/hidden-athlete-ids.json':`${JSON.stringify(state.suppression,null,2)}\n`});
     const isAncestor=(base,head,seen=new Set())=>{
         if(base===head) return true;
         if(seen.has(head)) return false;

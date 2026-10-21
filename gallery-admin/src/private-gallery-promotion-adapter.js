@@ -3,10 +3,11 @@ import {adminFailure,adminJson} from './responses.js';
 import {readArchivePhotoAttempt,storeArchivePhotoDerivative,readArchivePhotoCandidateItem,closeArchivePhotoAttempt,removeArchivePhotoCopies} from './private-gallery-photo-lifecycle.js';
 import {readBoundedBytes,sha256Hex} from './media-byte-verification.js';
 import {isArchiveJobPath,handleArchiveJobRequest} from './private-gallery-job-request.js';
+import {archiveBatchOperation} from './private-gallery-batch-promotion.js';
 const config=Object.freeze({purpose:'promotion',identity:'PROMOTER_IDENTITIES',origin:'PROMOTION_ORIGIN',
     buckets:['APPROVED_MEDIA','DERIVATIVE_STAGING'],operations:['promote','candidate','review','review-reserve','review-open','review-close','review-write','review-terminal','removal-reserve','removal-open','manifest-absence','close','cleanup']});
 export function handleArchivePromotionRequest(request,env,catalog,dependencies={}) {
-    if(isArchiveJobPath(request)) return handleArchiveJobRequest(request,env,config,dependencies);
+    if(isArchiveJobPath(request)) return handleArchiveJobRequest(request,env,config,dependencies,undefined,catalog,archiveBatchOperation);
     return handleScopedArchiveRequest(request,env,config,catalog,dependencies,dispatch);
 }
 async function dispatch({env,scope,site,attemptId,catalog,operation,input}) {

@@ -1,4 +1,5 @@
 import {runProtectedArchiveReview,resumeProtectedArchiveRemoval} from './protected-archive-lifecycle.mjs';
+import {runProtectedArchiveBatchReview,resumeProtectedArchiveBatchRemoval} from './protected-archive-batch.mjs';
 import {readGalleryReviewMain,readExistingGalleryReview,readMergedGalleryReview,reconcileArchiveGalleryReview} from './github-review-client.mjs';
 const pending=()=>({ok:false,state:'pending',publicationEnabled:false});
 async function checked(service,id,operation,value) {
@@ -21,6 +22,19 @@ export async function runProtectedArchiveJob({jobId,runReference,phase,jobs,proc
         const snapshotVerifier=async attemptId=>({ok:true,value:{hostDeletionConfirmed:(await checked(promotion,attemptId,'review')).hostDeletionConfirmed===true}});
         if(!['running','queued'].includes(job.state) && !['verify','finalize'].includes(phase))
             return {ok:true,...job.result,replayed:true,publicationEnabled:false};
+        if(job.action==='batch-review') {
+            const context={jobId,runReference,job,jobs,processing,promotion,github};
+            if(phase==='review') return runProtectedArchiveBatchReview(context);
+            if(phase==='verify') {
+                for(const id of job.attempts) if((await checked(verifier,id,'verify')).hostDeletionConfirmed!==true) return pending();
+                return {ok:true,state:'host-ready',publicationEnabled:false};
+            }
+            if(phase==='reconcile') return resumeProtectedArchiveBatchRemoval(context);
+            // A batch review has no authority to finalize original deletion,
+            // publish, or purge. Its completed recovery retains every original.
+            if(phase==='finalize' && job.state==='removed') return {ok:true,state:'hidden-original-retained',publicationEnabled:false};
+            return pending();
+        }
         if(phase==='review') {
             if(job.action!=='review' || !job.attemptId) return pending();
             const result=await runProtectedArchiveReview({attemptId:job.attemptId,processing,promotion,github});

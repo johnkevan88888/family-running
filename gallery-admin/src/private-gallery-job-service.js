@@ -1,5 +1,6 @@
 import {hashIdentity} from './session.js';
 import {sha256Hex} from './media-byte-verification.js';
+import {readArchiveBatchJob,claimArchiveBatchJob,completeArchiveBatchJob} from './private-gallery-batch-service.js';
 const digest=value=>sha256Hex(new TextEncoder().encode(value));
 export const archiveJobHash=id=>digest(`private-gallery-job-v1\0${id}`);
 export const archiveRunHash=reference=>digest(`private-gallery-run-v1\0${reference}`);
@@ -64,11 +65,16 @@ export async function readArchiveJob(env,jobId) {
     const row=await first(env,`SELECT j.*,c.run_reference,d.state AS completed_state,d.result_json
         FROM private_gallery_owner_jobs j LEFT JOIN private_gallery_job_claims c USING(job_id)
         LEFT JOIN private_gallery_job_completions d USING(job_id) WHERE j.job_id=?1`,jobId);
-    if(!row) throw new Error('Unavailable');return row;
+    if(!row) {
+        const batch=await readArchiveBatchJob(env,jobId);
+        if(!batch) throw new Error('Unavailable');return batch;
+    }
+    return row;
 }
 export async function claimArchiveJob(env,jobId,runReference,purpose) {
     if(!run.test(runReference||'')) throw new Error('Unavailable');
     const row=await readArchiveJob(env,jobId);
+    if(row.action==='batch-review') return claimArchiveBatchJob(env,row,runReference,purpose);
     if((['purge','purge-inspect'].includes(row.action)?'finalizer':'promotion')!==purpose) throw new Error('Unavailable');
     if(row.run_reference && row.run_reference!==runReference) throw new Error('Rerun the original protected run.');
     if(!row.run_reference) {
@@ -82,6 +88,7 @@ export async function claimArchiveJob(env,jobId,runReference,purpose) {
 }
 export async function completeArchiveJob(env,jobId,runReference,result) {
     const row=await readArchiveJob(env,jobId);
+    if(row.action==='batch-review') return completeArchiveBatchJob(env,row,runReference,result);
     if(row.run_reference!==runReference || !run.test(runReference||'') || result?.ok!==true || result.publicationEnabled!==false ||
         !['unmerged-review','unmerged-removal-review','removed','publication-observed','publication-revoked','purge-eligible'].includes(result.state) ||
         new TextEncoder().encode(JSON.stringify(result)).length>32768) throw new Error('Unavailable');
