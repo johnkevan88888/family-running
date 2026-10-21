@@ -39,6 +39,34 @@
           "zoom": 5.85
         }
       }
+    },
+    {
+      "id": "photo-4d624062-6401-4b0c-b04c-073ce28d4b75",
+      "type": "photo",
+      "title": "Photo",
+      "caption": "",
+      "alt": "Photo",
+      "raceDate": "2026-10-17",
+      "raceEvent": "Worcester Parkrun",
+      "raceDistance": "5 km",
+      "sourceUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v2/26f74df4-862f-4f30-8b41-28125d66ee71/461b176bc05ce7cb06f0d5f330550681a948c684ea2cb5749f6e8a6af1866985/display.webp",
+      "thumbnailUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v2/26f74df4-862f-4f30-8b41-28125d66ee71/722623487839c79de261556bd7de9bc989dc6e40bf107ee8feb72c95edb13e6d/thumbnail.webp",
+      "featured": false,
+      "athleteIds": []
+    },
+    {
+      "id": "photo-699799d3-c96d-4414-8093-3fadc4255b60",
+      "type": "photo",
+      "title": "Photo",
+      "caption": "",
+      "alt": "Photo",
+      "raceDate": "2026-10-17",
+      "raceEvent": "Worcester Parkrun",
+      "raceDistance": "5 km",
+      "sourceUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v2/5bbc5f93-61a3-412f-a68b-58746381177a/974ee4366f40e15050d496171e35d5f28017a51d3cd4365641cb3a4b207b9f97/display.webp",
+      "thumbnailUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v2/5bbc5f93-61a3-412f-a68b-58746381177a/ec4333f0d057c0abb9c018bab51afa09a924b57f2b0ecbac3e799d967a901721/thumbnail.webp",
+      "featured": false,
+      "athleteIds": []
     }
   ]
 }
