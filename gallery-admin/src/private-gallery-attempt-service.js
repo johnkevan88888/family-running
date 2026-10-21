@@ -7,6 +7,7 @@ import { readPrivateGalleryAssetEligibility } from './private-gallery-visibility
 import { readPrivateGalleryTags } from './private-gallery-tag-service.js';
 import {assertArchiveIdentityAvailable} from './private-gallery-retirement.js';
 import { readPrivateGalleryAttemptFraming } from './private-gallery-framing-service.js';
+import {requireFamilyPermission} from './family-permission.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const revision = /^sha256:[0-9a-f]{64}$/;
@@ -23,7 +24,8 @@ export async function reservePrivateGalleryAttempt(env,identity,site,assetId,inp
     if (identity?.type !== 'browser' || typeof identity.subject !== 'string' || !identity.subject.trim() ||
         !['family','everyone'].includes(site)) return failure(403);
     const hasFramingVersion = input && Object.hasOwn(input, 'framingVersion');
-    const requestFields = hasFramingVersion ? [...fields, 'framingVersion'].sort() : fields;
+    const standing = input && Object.hasOwn(input, 'standingPermissionVersion');
+    const requestFields = [...fields,...(hasFramingVersion?['framingVersion']:[]),...(standing?['standingPermissionVersion']:[])].sort();
     if (!input || typeof input !== 'object' || Array.isArray(input) ||
         Object.keys(input).sort().join('|') !== requestFields.join('|') || !uuid.test(input.idempotencyKey) ||
         (hasFramingVersion && (!Number.isSafeInteger(input.framingVersion) || input.framingVersion < 0)) ||
@@ -37,6 +39,10 @@ export async function reservePrivateGalleryAttempt(env,identity,site,assetId,inp
         const prior = () => env.DB.prepare('SELECT *, (unixepoch(created_at)+86400 > unixepoch(\'now\')) AS unexpired FROM private_gallery_attempts WHERE idempotency_key = ?1')
             .bind(input.idempotencyKey).first();
         const snapshot = async () => {
+            if (standing) {
+                try { await requireFamilyPermission(env,owner,site,input.standingPermissionVersion,input.containsMinors); }
+                catch { return failure(409); }
+            }
             const tags = await readPrivateGalleryTags(env,identity,site,assetId);
             if (!tags.ok) return tags;
             if (tags.correctionBlocked || tags.tagVersion !== input.tagVersion) return failure(409);
@@ -116,14 +122,15 @@ export async function reservePrivateGalleryAttempt(env,identity,site,assetId,inp
                  roster_generation,tag_version,person_ids_json,visibility_json,public_athlete_ids_json,eligibility_revision,
                  export_bundle_id,source_revision,suppression_revision,race_date,race_event,race_distance,
                  original_byte_count,original_sha256,original_provider_version,original_provider_etag,
-                 complete_tags_confirmed,public_use_confirmed,contains_minors,guardian_approval_confirmed${hasFramingVersion ? ',framing_version' : ''})
-                VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,1,1,?25,?26${hasFramingVersion ? ',?27' : ''})`)
+                 complete_tags_confirmed,public_use_confirmed,contains_minors,guardian_approval_confirmed${hasFramingVersion ? ',framing_version' : ''}${standing?',standing_permission_version':''})
+                VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,1,1,?25,?26${hasFramingVersion ? ',?27' : ''}${standing?',?'+(hasFramingVersion?28:27):''})`)
                 .bind(attemptId,assetId,site,generationId,itemId,input.idempotencyKey,owner,hash,
                     current.generation,current.tags.tagVersion,JSON.stringify(current.tags.personIds),JSON.stringify(current.visibility),
                     JSON.stringify(current.eligibility.publicAthleteIds),current.eligibility.revision,catalog.exportBundleId,catalog.sourceRevision,
                     catalog.suppressionRevision,current.race.raceDate,current.race.raceEvent,current.race.raceDistance,
                     current.original.byte_count,current.original.sha256,current.original.provider_version,current.original.provider_etag,
-                    Number(input.containsMinors),Number(input.guardianApprovalConfirmed),...(hasFramingVersion ? [input.framingVersion] : [])).run();
+                    Number(input.containsMinors),Number(input.guardianApprovalConfirmed),...(hasFramingVersion ? [input.framingVersion] : []),
+                    ...(standing?[input.standingPermissionVersion]:[])).run();
             if (result?.success !== true) throw new Error('Unavailable');
         } catch {
             const recovered = await prior();

@@ -1,5 +1,41 @@
 # Decision Log
 
+## Trusted Family uploads use standing permission and independent saved photo cards — 21 October 2026
+
+- **Status:** Implementation complete on `codex/gallery-family-uploader` and
+  approved for repository release; remote activation remains separate. Evidence
+  uses generated photos and simulated external services only.
+- **Decision:** The Family owner confirms one standing policy for private
+  retention and website use. A separate optional guardian confirmation covers
+  photos the owner explicitly marks as containing children. Each new review
+  still records an independent, fresh consent snapshot with its exact policy
+  version, tags, source, framing and existing deadline. No existing consent is
+  rewritten or backfilled. A policy change invalidates older standing snapshots;
+  re-enabling permission cannot silently revive an old review.
+- **Exceptions:** Existing hidden people, pending exclusions, photo-level
+  withdrawals and terminal deletion override standing permission. A photo-level
+  exception closes all its generations. Allowing a fresh review does not reopen
+  them or reuse retired URLs. Cleanup and independent public-host verification
+  remain necessary before claiming public removal; originals are not purged.
+- **Usability:** The owner selects existing Family athletes by stable ID, with
+  saved private people available separately. Every selected image has its own
+  durable photo identity, regardless of matching tags or file format. Saved
+  drafts use versioned writes and exact retry keys. One checked batch uses the
+  existing combined-review pipeline; the page has no publication action.
+- **Preview boundary:** This slice keeps previews on the owner's device. Reopen
+  saved metadata without downloading an original; reselect the matching local
+  file to adjust its framing. Already-checked retained photos can enter review
+  without reselecting files. A new private-preview storage lifecycle is deferred.
+- **Dispatch boundary:** An optional, separately configured admin credential can
+  start only the fixed existing workflow from this server path. Durable admission
+  fences uncertain acknowledgements and retries reuse the existing job. No
+  credential, protected-environment approval or merge authority is added by a
+  repository release. Missing configuration is shown honestly as owner action
+  required, not as a running or successful review.
+- **Scope:** Family owner use only. Everyone, contributor accounts, commercial
+  moderation, real-media work, live purge and publication are unchanged. Forward
+  migration 0032 and service activation remain separate from this local evidence.
+
 ## Batch publication keeps individual permission and explicit shared history — 21 October 2026
 
 - **Status:** Local continuation of PR #145; not released or remotely activated.

@@ -1,6 +1,7 @@
 import '../../gallery-contract.js';
 import toolchain from '../../scripts/gallery-media-toolchain.json' with {type:'json'};
 import { reservePrivateGalleryAttempt } from './private-gallery-attempt-service.js';
+import {standingPermissionReplayInput} from './family-permission.js';
 import {readPrivateGalleryAttemptFraming,privateGalleryAttemptFramingReplayInput} from './private-gallery-framing-service.js';
 import {assertArchiveIdentityAvailable} from './private-gallery-retirement.js';
 import {archiveOperationOwner,isArchiveServiceAuthority,archiveServiceTier,
@@ -53,7 +54,8 @@ export async function readArchivePhotoAttempt(env,identity,site,attemptId,catalo
         idempotencyKey:row.idempotency_key,tagVersion:row.tag_version,eligibilityRevision:row.eligibility_revision,
         sourceRevision:row.source_revision,suppressionRevision:row.suppression_revision,raceIndex,
         completeTagsConfirmed:true,publicUseConfirmed:true,containsMinors:Boolean(row.contains_minors),
-        guardianApprovalConfirmed:Boolean(row.guardian_approval_confirmed),...privateGalleryAttemptFramingReplayInput(row)},catalog);
+        guardianApprovalConfirmed:Boolean(row.guardian_approval_confirmed),...privateGalleryAttemptFramingReplayInput(row),
+        ...standingPermissionReplayInput(row)},catalog);
     if(!checked.ok || checked.attemptId!==attemptId || !await first(env,
         'SELECT 1 FROM private_gallery_current_attempt_permissions WHERE attempt_id=?1',attemptId)) throw new Error('Changed');
     return row;

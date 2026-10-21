@@ -1,5 +1,136 @@
 # Active Work
 
+## Simplified Family uploader — repository release preparation, 21 October 2026
+
+John explicitly approved synchronization/retest, push, an ordinary code PR,
+required checks and both-mode preview, then merge. Normal Pages is allowed only
+with unchanged public output and Family 2/Everyone 0. This supersedes the
+repository-release approval gate in the local implementation entry below;
+remote activation remains separate.
+
+Fresh main is still `0f4352d5ffc5bbd372df4291394e88adc41eb567`. The exact
+22-file uploader change passed a new source-frozen full run: all 101 groups,
+436 source files unchanged, exit 0, 1866.042 seconds. This includes 85 Family
+integration checks, 87 route-boundary checks, generated-photo desktop/mobile
+journeys, actual pinned local D1 compatibility, artifact safety and both-mode
+responsive browser smoke. The desktop/mobile uploader screenshots were reviewed.
+Only this handoff and the decision status are updated after that run; no
+implementation or test code is changed.
+
+Fresh pre-release evidence binds successful normal Pages run 39637089118 to
+that main commit. Its downloaded archive and the 117 live static response
+bodies match the canonical raw-Git build exactly, including all 72 CSVs, CNAME
+and Family 2/Everyone 0. Eight desktop/mobile public checks passed with all
+external media and analytics blocked. This is not real-photo delivery evidence.
+
+Ignored evidence: `test-artifacts/family-uploader-release-validation.json`,
+`family-uploader-before-release-{canonical-proof,pages-archive-proof}.json`,
+and `release-verification-family-uploader-before/report.json`, all under
+`test-artifacts/`. Full-run log SHA256:
+`326f7466fc5224127ba143d0e9662a4a10f8f19c03fa50bcc47b3f6ffe69a5fb`.
+
+The PR's required exact-head checks, successful both-mode Netlify preview and
+unchanged committed artifact remain pre-merge gates. The resulting normal Pages
+artifact and live static site must be verified again after merge. No migration
+0032, Worker deployment, credential change, live media workflow, real photo,
+purge or photo publication is authorized. The optional dispatcher remains
+unconfigured. Repository release alone cannot activate the simplified uploader.
+
+## Simplified Family uploader — local implementation, 21 October 2026
+
+John approved building/testing the Family uploader with direct athlete selection,
+standing permission and saved batches, using synthetic photos only. This work
+is on local branch `codex/gallery-family-uploader` in the existing isolated
+`test-artifacts/gallery-podium-framing` checkout, based on stored origin/main
+`0f4352d5ffc5bbd372df4291394e88adc41eb567`. No fresh fetch, push, PR, remote
+migration, credential, deployment, real-media processing, live purge, merge or
+publication is part of this pass. Unrelated shared-root edits are preserved.
+
+The protected Family-only page provides four steps: choose several photos,
+select an event and existing athletes, check automatic/manual thumbnail framing,
+then send one ready batch for review. Matching tags never collapse different
+photos into one reservation. Saved metadata, original/framing progress and exact
+retry keys survive reopening; matching local files are required only to upload
+unretained bytes or change framing. No private-original GET or new preview-object
+lifecycle is introduced. The Everyone and advanced recovery interfaces remain.
+
+Forward migration 0032 adds owner standing-policy history, overriding photo
+exceptions, independent saved photo cards and dispatch receipts. It backfills
+no consent, preserves legacy snapshots and retains current exclusion, guardian,
+metadata-stripping, review-deadline, retention and public-host-removal contracts.
+New reviews get independent current policy/source/tag/framing evidence per photo.
+Stopping permission blocks dependent reviews; allowing a photo never reopens an
+old generation. New photo-linked metadata follows the existing exact coordinated
+retirement boundary, exercised only with generated fixtures.
+
+The optional fixed-workflow dispatcher is implemented but UNCONFIGURED. Unknown
+acknowledgements stay fenced; it cannot approve environments, merge or publish.
+Without its separately approved credential, the page says owner action is needed
+instead of claiming processing started. Local intercepted transport is not live
+dispatch evidence. The complete implementation and activation boundary are in
+`docs/gallery-family-uploader.md`.
+
+Validation PASSED all 101 full-suite groups, including the final pinned local D1
+migration/trigger checks, public artifact safety and both-mode responsive browser
+smoke. Final focused reruns passed 85 integration cases, 87 route-boundary cases
+and desktop/mobile journeys using three generated face photos, the actual pinned
+detector, manual zoom, saved/reopened batches and lost-reply retry. These reruns
+also cover the final dispatch-timeout and UI refinements after their initial
+full-run groups, including a close/reload warning for unsaved framing. This is
+not a source-frozen release receipt. Final source syntax, whitespace and new-file
+safety checks passed. No real-media fixture, credential or generated artifact
+is included in the change.
+
+Public evidence is local only: the built 117-file artifact validates and every
+canonical published file matches stored main 0f4352d. Family remains 2 photos and
+Everyone 0. The final comparison checked each artifact file against its canonical
+Git blob at that baseline, with the generated empty `.nojekyll` checked separately.
+No public runtime, data, manifest or media file changes. Windows checkout line
+endings are not asserted to be a fresh Pages-byte comparison; no live deployment
+verification was performed. Generated screenshots and the artifact remain ignored:
+`test-artifacts/screenshots/family-uploader-{desktop,mobile}.png` and
+`test-artifacts/uploader-public-proof/`.
+
+No local implementation blocker remains for this defined Family-owner slice.
+The final local source/test summary is
+`test-artifacts/family-uploader-local-validation.json`; it is not a remote
+activation or live dispatch receipt.
+
+Exactly 22 isolated source/document/test paths are in this local change:
+
+```text
+docs/active-work.md
+docs/decision-log.md
+docs/gallery-family-uploader.md
+docs/testing-and-release-protocol.md
+gallery-admin/migrations/0032_family_uploader.sql
+gallery-admin/src/admin-worker.js
+gallery-admin/src/family-permission.js
+gallery-admin/src/family-review-dispatch.js
+gallery-admin/src/family-uploader-assets.js
+gallery-admin/src/family-uploader-service.js
+gallery-admin/src/private-archive-service.js
+gallery-admin/src/private-gallery-assets.js
+gallery-admin/src/private-gallery-attempt-service.js
+gallery-admin/src/private-gallery-face-assets.js
+gallery-admin/src/private-gallery-owner-service.js
+gallery-admin/src/private-gallery-photo-lifecycle.js
+scripts/run-all-tests.mjs
+tests/gallery-d1-expression-depth.mjs
+tests/gallery-family-uploader-boundaries.mjs
+tests/gallery-family-uploader-browser.mjs
+tests/gallery-family-uploader.mjs
+tests/helpers/family-uploader-fixture.mjs
+```
+
+The remaining gates are release/activation, not permission to use real photos.
+Next explicit approval: synchronize/retest, push the ordinary code PR, complete
+required checks and both-mode preview, then merge with public output unchanged
+and Family 2/Everyone 0. Migration 0032, affected-service deployments, credentials
+and a synthetic live rehearsal require separate explicit scope; real media,
+cleanup/purge and publication remain excluded. This local pass does not satisfy
+those live gates and does not claim an automatic one-click live review yet.
+
 ## Optional public-athlete associations in batch review — 21 October 2026
 
 John approved the runner correction, synchronization/retest, ordinary PR/checks/

@@ -1,5 +1,46 @@
 # Testing And Release Protocol
 
+## Simplified Family uploader — local implementation, 21 October 2026
+
+This is a code and forward-migration change, not a photo-only review. Run the
+complete 101-group suite, including the three new `gallery-family-uploader`,
+`gallery-family-uploader-boundaries` and `gallery-family-uploader-browser`
+groups. The actual local D1 expression-depth test also compiles migration 0032's
+tables and trigger graphs and exercises policy, draft and photo-exception writes.
+Use generated images, disposable local databases/buckets and intercepted fake
+GitHub/host transport only. Do not substitute remote D1 for local validation.
+
+Required evidence covers independent same-tag photos; direct stable-ID athlete
+selection without undoing an existing hidden state; exact standing-policy and
+guardian scope; no legacy grant backfill; photo withdrawal blocking the advanced
+attempt path too; current permission at upload, processing, review and publication;
+two-tab/stale-write refusal; lost-save and partial-submit recovery; matching-file
+reselection without an original GET; real pinned face suggestions plus manual
+adjustment; and one combined unmerged candidate through the existing processor.
+Recheck metadata stripping, retention, independent public-host absence and exact
+coordinated metadata retirement using synthetic fixtures, never a live purge.
+
+Dispatch tests must prove the fixed repository/workflow/main/input, one durable
+admission, a total bounded acknowledgement timeout (including response-body
+handling), no automatic redispatch after uncertainty, reuse of an existing claim,
+no credential exposure and honest missing-configuration status. No browser test
+may call GitHub or a production media service. The page must never report that a
+recorded job or observed merge is proof of a verified live website.
+
+Review desktop 1440px and mobile 390px screenshots and both public-site modes. Public
+runtime inputs, manifests, data and media files must be unchanged. The local
+117-file artifact must validate, with Family 2/Everyone 0. Compare canonical
+published content against the recorded baseline, distinguishing Windows checkout
+line endings from repository content. A later release needs fresh main/preview/
+Pages evidence; this local comparison is not deployment verification.
+
+Local approval does not authorize a push, PR, remote migration, credential,
+deployment, protected workflow or publication. The eventual repository PR needs
+standard checks and preview. Activation needs separately verified 0032 and the
+affected admin/processing/promotion/verifier/finalizer bundles, then a separately
+authorized synthetic rehearsal stopping at an unmerged candidate. See
+`docs/gallery-family-uploader.md` for the retained advanced-recovery boundary.
+
 ## Optional public associations in batch review — 21 October 2026
 
 The batch GitHub client accepts the existing public contract's empty

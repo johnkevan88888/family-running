@@ -59,8 +59,18 @@ export function privateFaceEditorScript() {
 function faceEditorBrowser() {
     'use strict';
     // No identity model, camera, upload, public URL, third-party fetch or storage.
-    window.privateGalleryFaceFraming = Object.freeze({ create });
-    function create({ site, api, getContext }) {
+    window.privateGalleryFaceFraming = Object.freeze({ create, inspectFile });
+    async function inspectFile(file) {
+        if (!(file instanceof File) || file.size<1 || file.size>26214400) throw new Error('Choose a JPEG or PNG up to 25 MiB.');
+        const bytes=new Uint8Array(await file.arrayBuffer()),header=imageHeader(bytes);
+        if (!header.width || !header.height || header.width*header.height>50000000) throw new Error('Photo dimensions exceed the supported limit.');
+        const originalFormat=bytes[0]===255?'jpg':'png';
+        if (!['image/jpeg','image/png',''].includes(file.type) || file.type && file.type!==(originalFormat==='jpg'?'image/jpeg':'image/png')) throw new Error('Photo type does not match its bytes.');
+        const digest=await crypto.subtle.digest('SHA-256',bytes);
+        return {originalFormat,byteCount:file.size,sha256:Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,'0')).join(''),
+            width:header.orientation>=5?header.height:header.width,height:header.orientation>=5?header.width:header.height};
+    }
+    function create({ site, api, getContext, suggestSingleFace=false, confirmOnSave=false, onSaved }) {
         const byId = id => document.getElementById(id);
         const panel = byId('private-framing-panel');
         const workspace = byId('private-framing-workspace');
@@ -84,7 +94,8 @@ function faceEditorBrowser() {
             confirm.checked = false; frames = {}; frame = null; dirty = false; pendingSave = null; detectedFaces = []; localChoiceUnsafe=false; updateSave();
         }
         function controlsBusy() {return saving || getContext().busy===true;}
-        function canSave() {return !controlsBusy() && Boolean(bitmap && current && current.sourceSha256===localSha && confirm.checked && dirty && !localChoiceUnsafe);}
+        function canSave() {return !controlsBusy() && Boolean(bitmap && current && current.sourceSha256===localSha &&
+            (confirmOnSave || confirm.checked) && (confirmOnSave || dirty) && !localChoiceUnsafe);}
         function updateSave() {
             save.disabled=!canSave();
             const disabled=controlsBusy() || !bitmap || !people.length;
@@ -190,7 +201,15 @@ function faceEditorBrowser() {
                         }); candidates.append(button);
                     });
                     render();updateSave();
-                    detectionStatus.textContent = candidates.childElementCount ? 'Possible faces found. Select a person, then the correct suggestion. Check every result yourself.' : 'No face was found. Click the face or use the position controls; detection never proves complete tags.';
+                    const singleSuggestion=suggestSingleFace && detectedFaces.length===1 && people.length===1 && !dirty && !Object.keys(frames).length;
+                    if(singleSuggestion) {
+                        const face=detectedFaces[0],next={x:Math.round(face.x*10)/10,y:Math.round(face.y*10)/10,
+                            zoom:Math.round(clamp(65/Math.max(1,face.width),1,8)*20)/20};
+                        frames[people[0].id]=next;frame=next;dirty=true;confirm.checked=false;
+                        for(const key of Object.keys(controls)) controls[key].value=next[key];
+                        render();updateSave();
+                    }
+                    detectionStatus.textContent = singleSuggestion ? 'One face suggested for the selected person. Check both views and adjust before saving.' : candidates.childElementCount ? 'Possible faces found. Select a person, then the correct suggestion. Check every result yourself.' : 'No face was found. Click the face or use the position controls; detection never proves complete tags.';
                 };
                 const pixels = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0,0,canvas.width,canvas.height).data;
                 worker.postMessage({id,width:canvas.width,height:canvas.height,pixels}, [pixels.buffer]);
@@ -258,6 +277,7 @@ function faceEditorBrowser() {
                 current=result;
                 frames=structuredClone(current.frames); dirty=false; pendingSave=null; confirm.checked=false;
                 note('Checked framing saved privately. Tags, consent, original photo and publication were not changed.');
+                if(onSaved) await onSaved({assetId:selectedAsset,version:current.version});
             } catch (error) { if(selected===selection && selectedAsset===activeAsset) note(error.message+' No automatic save retry was attempted.'); }
             finally { saving=false; updateSave(); }
         });
@@ -275,6 +295,7 @@ function faceEditorBrowser() {
                 return snapshot.version;
             },
             clear:clearLocal,
+            hasUnsavedChanges:()=>dirty,
             refreshControls:updateSave
         });
     }

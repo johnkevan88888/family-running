@@ -13,7 +13,7 @@ export async function readPrivateArchiveStatus(env,identity,site,assetId) {
     const asset=await readPrivateGalleryAsset(env,identity,site,assetId);
     if(!asset.ok) return asset;
     try {
-        const row=await env.DB.prepare(`SELECT s.tag_version,i.contains_minors,o.asset_id AS retained,
+        const row=await env.DB.prepare(`SELECT i.*,s.tag_version,o.asset_id AS retained,
             d.reason,r.asset_id AS deleted FROM private_gallery_assets a
             JOIN private_gallery_current_tag_sets s USING(asset_id)
             LEFT JOIN private_archive_intakes i USING(asset_id)
@@ -24,6 +24,7 @@ export async function readPrivateArchiveStatus(env,identity,site,assetId) {
             .bind(assetId,await hashIdentity(identity),site).first();
         if(!row || !Number.isSafeInteger(row.tag_version)) return failure(503);
         return {ok:true,status:200,assetId,tagVersion:row.tag_version,containsMinors:row.contains_minors===1,
+            ...(row.standing_permission_version!=null?{standingPermissionRequired:true}:{}),
             state:row.deleted?'private-original-deleted':row.reason?'deletion-pending':row.retained?'quarantined':'awaiting-original',
             publicationEnabled:false};
     } catch {return failure(503);}

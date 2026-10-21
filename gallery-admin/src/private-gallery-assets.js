@@ -336,8 +336,15 @@ export function privateGalleryScript() {
             const current = await api('/api/browser/private-assets/' + activeAssetId + '/archive-intake');
             const eligibility = await api('/api/browser/private-assets/' + activeAssetId + '/eligibility');
             const framingVersion = await framing?.beforeConsent();
+            let standingPermissionVersion;
+            if(current.standingPermissionRequired){
+                const policy=await api('/api/browser/family-permission');
+                if(!policy.active)throw new Error('Family standing permission is stopped. Do not create a replacement consent attempt.');
+                standingPermissionVersion=policy.version;
+            }
             const data = {tagVersion:current.tagVersion,eligibilityRevision:eligibility.revision,sourceRevision:catalog.sourceRevision,
                 ...(Number.isSafeInteger(framingVersion) ? {framingVersion} : {}),
+                ...(standingPermissionVersion?{standingPermissionVersion}:{}),
                 suppressionRevision:catalog.suppressionRevision,raceIndex:Number(document.getElementById('private-race').value),
                 completeTagsConfirmed:document.getElementById('private-complete-tags').checked,
                 publicUseConfirmed:document.getElementById('private-public-use').checked,
