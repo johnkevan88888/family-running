@@ -4,6 +4,7 @@ import {readArchivePhotoAttempt,storeArchivePhotoDerivative,readArchivePhotoCand
 import {readBoundedBytes,sha256Hex} from './media-byte-verification.js';
 import {isArchiveJobPath,handleArchiveJobRequest} from './private-gallery-job-request.js';
 import {archiveBatchOperation} from './private-gallery-batch-promotion.js';
+import {readArchiveBatchMemberOrigin} from './private-gallery-batch-service.js';
 const config=Object.freeze({purpose:'promotion',identity:'PROMOTER_IDENTITIES',origin:'PROMOTION_ORIGIN',
     buckets:['APPROVED_MEDIA','DERIVATIVE_STAGING'],operations:['promote','candidate','review','review-reserve','review-open','review-close','review-write','review-terminal','removal-reserve','removal-open','manifest-absence','close','cleanup']});
 export function handleArchivePromotionRequest(request,env,catalog,dependencies={}) {
@@ -49,7 +50,7 @@ async function archiveReviewOperation(env,scope,site,attemptId,catalog,operation
     const intent=()=>env.DB.prepare('SELECT * FROM private_gallery_pipeline_review_intents WHERE attempt_id=?1').bind(attemptId).first();
     const opened=()=>env.DB.prepare('SELECT review_json FROM private_gallery_pipeline_reviews WHERE attempt_id=?1').bind(attemptId).first();
     if(operation==='review') {
-        const saved=await intent(),review=await opened();
+        const saved=await intent(),review=await opened(),batchOrigin=await readArchiveBatchMemberOrigin(env,attemptId);
         const terminal=await env.DB.prepare(`SELECT 1 FROM private_gallery_pipeline_review_closures WHERE attempt_id=?1
             UNION ALL SELECT 1 FROM private_gallery_review_terminals WHERE attempt_id=?1 AND kind='addition'`).bind(attemptId).first();
         const removals=await env.DB.prepare(`SELECT i.base_sha,i.removal_json,r.review_json,t.evidence_json
@@ -74,7 +75,7 @@ async function archiveReviewOperation(env,scope,site,attemptId,catalog,operation
         return adminJson(200,{site,state:saved?'prepared':'not-prepared',historical,reviewTerminal:Boolean(terminal),hostDeletionConfirmed:Boolean(host),
             removals:removals.results.map(row=>({baseSha:row.base_sha,removal:JSON.parse(row.removal_json),terminal:Boolean(row.evidence_json)})),
             ...(saved?{baseSha:saved.base_sha,candidate:JSON.parse(saved.candidate_json)}:{}),
-            ...(review?{review:JSON.parse(review.review_json)}:{})});
+            ...(review?{review:JSON.parse(review.review_json)}:{}),...(batchOrigin?{batchOrigin}:{})});
     }
     if(operation==='review-write' || operation==='review-terminal') {
         const fields=operation==='review-write'?'baseSha|kind':'baseSha|evidence|kind';
@@ -155,13 +156,17 @@ async function archiveReviewOperation(env,scope,site,attemptId,catalog,operation
         }
         return adminJson(200,{state:'manifest-absence-recorded',mainSha:input.baseSha});
     }
-    const saved=await intent();if(!saved) return adminFailure(409);
-    const candidate=JSON.parse(saved.candidate_json);
+    const saved=await intent();
     if(operation==='removal-reserve') {
         if(!validMain(input)) return adminFailure(422);
-        const item=JSON.parse(candidate.manifestText).items.find(row=>row.id===candidate.itemId);
+        const batchOrigin=saved?null:await readArchiveBatchMemberOrigin(env,attemptId);
+        // A shared addition is never represented as a fabricated one-photo
+        // intent. Only its explicit durable member origin authorizes removal.
+        if(!saved && (!batchOrigin?.evidence || !batchOrigin.item)) return adminFailure(409);
+        const candidate=saved?JSON.parse(saved.candidate_json):batchOrigin.candidate;
+        const item=saved?JSON.parse(candidate.manifestText).items.find(row=>row.id===candidate.itemId):batchOrigin.item;
         const urls=[item?.sourceUrl,item?.thumbnailUrl];
-        const uses=row=>row.id===item.id || ['sourceUrl','thumbnailUrl','posterUrl'].some(field=>urls.includes(row[field]));
+        const uses=row=>row.id===item?.id || ['sourceUrl','thumbnailUrl','posterUrl'].some(field=>urls.includes(row[field]));
         const own=input.manifestsBySite[site],other=input.manifestsBySite[site==='family'?'everyone':'family'];
         if(!item || own.items.filter(uses).length!==1 || other.items.some(uses) ||
             JSON.stringify(own.items.find(row=>row.id===item.id))!==JSON.stringify(item)) return adminFailure(409);
@@ -190,6 +195,8 @@ async function archiveReviewOperation(env,scope,site,attemptId,catalog,operation
         }
         return (await prior()).review_json===text?adminJson(200,{state:'unmerged-removal-review',publicationEnabled:false}):adminFailure(409);
     }
+    if(!saved) return adminFailure(409);
+    const candidate=JSON.parse(saved.candidate_json);
     if(operation==='review-open') {
         if(!input || Object.keys(input).join('|')!=='review') return adminFailure(422);
         const review=input.review;

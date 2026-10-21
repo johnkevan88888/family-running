@@ -4,7 +4,9 @@ import {privateGalleryBatchFixture,batchRun} from './helpers/private-gallery-bat
 import {runProtectedArchiveJob} from '../scripts/gallery-media/protected-archive-job.mjs';
 import {changePrivateGalleryVisibility} from '../gallery-admin/src/private-gallery-visibility-service.js';
 import {queuePrivateArchiveJob} from '../gallery-admin/src/private-gallery-job-service.js';
-import {readPrivateArchiveBatches} from '../gallery-admin/src/private-gallery-batch-service.js';
+import {readPrivateArchiveBatches,requestPrivateArchiveBatchPublication} from '../gallery-admin/src/private-gallery-batch-service.js';
+import {readMergedGalleryBatchPublication} from '../scripts/gallery-media/github-batch-review-client.mjs';
+import {deletePrivateArchiveOriginal} from '../gallery-admin/src/private-archive-service.js';
 
 const execute=(f,phase,overrides={})=>runProtectedArchiveJob({jobId:f.jobId,runReference:batchRun,phase,...f.c,
     jobs:f.c.jobs[['verify','finalize'].includes(phase)?'finalizer':'promotion'],github:f.github,...overrides});
@@ -25,6 +27,32 @@ async function finishRemoval(f) {
     assert.equal((await execute(f,'finalize')).state,'hidden-original-retained');
     assert.equal(f.original.objects.size,2);assert.deepEqual(f.db.prepare('PRAGMA foreign_key_check').all(),[]);
     return removed;
+}
+async function grantPublication(f) {
+    const result=await requestPrivateArchiveBatchPublication(f.env,f.owner,f.site,f.jobId,{idempotencyKey:crypto.randomUUID()});
+    assert.equal(result.ok,true,JSON.stringify(result));return result;
+}
+function ownerMerge(f,review) {
+    f.github.ownerMerge(review); // The only merge capability is this fixture.
+    f.github.state.pulls.find(pull=>pull.number===review.pullRequest.number).merged_by={login:'johnkevan88888'};
+}
+async function publishFixture(f) {
+    const reviewed=await execute(f,'review');assert.equal(reviewed.state,'unmerged-review',JSON.stringify(reviewed));
+    await grantPublication(f);
+    const ready=await execute(f,'review');assert.equal(ready.state,'ready-for-separate-owner-merge',JSON.stringify(ready));
+    assert.equal(ready.claimHeld,true);assert.equal(count(f,'private_gallery_active_job'),1);
+    assert.equal(f.github.state.pulls[0].state,'open','The runner has no merge capability');
+    ownerMerge(f,reviewed.review);
+    const observed=await execute(f,'review');assert.equal(observed.state,'publication-observed',JSON.stringify(observed));
+    assert.equal(count(f,'private_gallery_active_job'),0);
+    return {reviewed,ready,observed};
+}
+async function individualJob(f,member,action='removal',extra={}) {
+    const queued=await queuePrivateArchiveJob(f.env,f.owner,f.site,member.assetId,{action,idempotencyKey:crypto.randomUUID(),...extra});
+    assert.equal(queued.ok,true,JSON.stringify(queued));
+    const runReference=`https://github.com/johnkevan88888/family-running/actions/runs/${500+count(f,'private_gallery_owner_jobs')}`;
+    return phase=>runProtectedArchiveJob({jobId:queued.job.jobId,runReference,phase,...f.c,
+        jobs:f.c.jobs[['verify','finalize','purge'].includes(phase)?'finalizer':'promotion'],github:f.github});
 }
 
 for(const site of ['family','everyone']) {
@@ -69,7 +97,7 @@ for(const site of ['family','everyone']) {
             assert.equal(count(f,'private_gallery_pipeline_closures'),0);f.github.state.unavailable=false;
             await revoke(f);assert.equal((await execute(f,'review')).ok,false,'One revoked member stops the whole review');
             assert.equal(count(f,'private_gallery_pipeline_closures'),2);
-            assert.equal(f.github.state.pulls[0].state,'open','Closure is a separately verified GitHub reconciliation');
+            assert.equal(f.github.state.pulls[0].state,'closed','Failed review positively closes the unmerged PR before unclosed byte cleanup');
             assert.equal((await execute(f,'reconcile')).ok,false,'Storage cleanup is not public-host absence');
             assert.equal(count(f,'private_gallery_active_job'),1);
             await finishRemoval(f);assert.equal(f.github.state.pulls[0].state,'closed');
@@ -88,9 +116,9 @@ for(const site of ['family','everyone']) {
             assert.equal((await execute(f,'review')).ok,false);f.c.setReplyHook(null);
             assert.equal(f.github.state.pulls.length,1);assert.equal(count(f,'private_gallery_batch_reviews'),1);
             assert.equal(count(f,'private_gallery_pipeline_closures'),2);
-            const priorDeletes=deletes(f);f.github.state.unavailable=true;
+            const priorDeletes=deletes(f),priorTerminals=count(f,'private_gallery_batch_terminals');f.github.state.unavailable=true;
             assert.equal((await execute(f,'reconcile')).ok,false);assert.ok(deletes(f)>=priorDeletes);
-            assert.equal(count(f,'private_gallery_batch_terminals'),0);assert.equal(count(f,'private_gallery_active_job'),1);
+            assert.equal(count(f,'private_gallery_batch_terminals'),priorTerminals,'Current outage preserves previously completed terminal evidence');assert.equal(count(f,'private_gallery_active_job'),1);
             f.github.state.unavailable=false;await finishRemoval(f);
             assert.equal(f.github.state.pulls[0].state,'closed');assert.equal(retained(f),before);
         } finally {f.db.close();}
@@ -106,8 +134,10 @@ for(const site of ['family','everyone']) {
             assert.equal(count(f,'private_gallery_batch_write_admissions'),1);
             assert.equal((await execute(f,'reconcile')).ok,false);
             assert.equal(count(f,'private_gallery_batch_terminals'),0,'No-PR observation cannot erase an admitted uncertain POST');
+            assert.equal(count(f,'private_gallery_pipeline_closures'),0,'Uncertain no-PR cannot manufacture later cleanup authority');
             assert.equal(count(f,'private_gallery_active_job'),1);
-            release();assert.equal((await running).ok,false);f.github.state.hook=null;
+            release();assert.equal((await running).state,'unmerged-review');f.github.state.hook=null;
+            assert.equal((await execute(f,'reconcile')).state,'pending','Separate cancellation closes the now-observable shared PR before host verification');
             await finishRemoval(f);assert.equal(f.github.state.pulls.length,1);assert.equal(f.github.state.pulls[0].state,'closed');
             assert.equal(f.github.state.requests.filter(r=>r.method==='POST' && r.path==='/pulls').length,1);
         } finally {release?.();f.db.close();}
@@ -182,5 +212,193 @@ for(const site of ['family','everyone']) {
             assert.equal(count(f,'private_gallery_pipeline_byte_receipts'),8,'Every tier and role still has its own verified receipt');
         } finally {f.db.close();}
     }
+    // A main snapshot is not a merge lock. If the owner merges between it and
+    // the exact PR read, neither review error recovery nor cancellation can
+    // create closures/deletion authority for unclosed, potentially-live photos.
+    for(const phase of ['review','reconcile']) {
+        const f=await privateGalleryBatchFixture(site);
+        try {
+            const review=await execute(f,'review');let merged=false;
+            const before=deletes(f);
+            f.github.state.hook=async(path,method)=>{
+                if(!merged && method==='GET' && path==='/pulls') {merged=true;ownerMerge(f,review.review);}
+            };
+            assert.equal((await execute(f,phase)).state,'pending');f.github.state.hook=null;
+            assert.equal(merged,true);assert.equal(deletes(f),before);
+            assert.equal(count(f,'private_gallery_pipeline_closures'),0,'A stale absent snapshot cannot manufacture future cleanup permission');
+            assert.equal(count(f,'private_gallery_active_job'),1);
+        } finally {f.db.close();}
+    }
+    // The separate owner grant selects publication on the original held job.
+    // All-member observation releases it, while immutable member origins make
+    // later strict one-photo removal independent of already-removed siblings.
+    {
+        const f=await privateGalleryBatchFixture(site),before=retained(f);
+        try {
+            const {observed}=await publishFixture(f);
+            assert.equal(observed.evidence.state,'merged-by-owner');
+            assert.equal(count(f,'private_gallery_batch_publications'),1);
+            assert.equal(count(f,'private_gallery_batch_member_origins'),2);
+            assert.equal(count(f,'private_gallery_pipeline_review_intents'),0,'No synthetic single-photo addition receipt');
+            assert.equal(count(f,'private_gallery_pipeline_reviews'),0);
+            assert.equal(retained(f),before);
+            const readCount=f.github.state.requests.length;
+            assert.equal((await execute(f,'review')).replayed,true);
+            assert.equal(f.github.state.requests.length,readCount,'Completed publication replay is read-only');
+            for(const [index,member] of f.members.entries()) {
+                const sibling=f.members[1-index],siblingItem=f.github.state.manifests[site].items.find(item=>
+                    item.id===f.db.prepare('SELECT public_item_id FROM private_gallery_attempts WHERE attempt_id=?').get(sibling.attemptId).public_item_id);
+                const job=await individualJob(f,member);
+                assert.equal((await job('cleanup')).state,'cleanup-ready');
+                assert.equal((await job('verify')).state,'host-ready');
+                const removal=await job('reconcile');assert.equal(removal.state,'unmerged-removal-review',JSON.stringify(removal));
+                assert.equal(JSON.parse(f.db.prepare('SELECT removal_json FROM private_gallery_manifest_removal_intents WHERE attempt_id=? ORDER BY created_at DESC').get(member.attemptId).removal_json).manifestText.includes('private-'),false);
+                assert.equal(f.original.objects.size,2,'Hide/removal retains both originals');
+                if(siblingItem) assert.deepEqual(f.github.state.manifests[site].items.find(item=>item.id===siblingItem.id),siblingItem);
+                ownerMerge(f,removal.review);
+                // The ordinary request that produced a review is complete;
+                // a fresh owner removal job observes its merge and absence.
+                const reconcile=await individualJob(f,member);
+                assert.equal((await reconcile('cleanup')).state,'cleanup-ready');
+                assert.equal((await reconcile('verify')).state,'host-ready');
+                assert.equal((await reconcile('reconcile')).state,'removed');
+                assert.equal((await reconcile('finalize')).state,'hidden-original-retained');
+                assert.equal(f.github.state.manifests[site].items.length,1-index);
+                assert.equal(retained(f),before,'Originals, tags, consent and framing remain unchanged after removal');
+            }
+            assert.equal(count(f,'private_gallery_batch_member_origins'),2,'Removing photos does not erase shared publication history');
+            // Refresh the first photo's older absence receipt through another
+            // ordinary protected removal job at the latest shared main. No
+            // direct SQL receipt fabrication or timestamp reset is involved.
+            for(const member of f.members) {
+                const refresh=await individualJob(f,member);
+                assert.equal((await refresh('cleanup')).state,'cleanup-ready');
+                assert.equal((await refresh('verify')).state,'host-ready');
+                assert.equal((await refresh('reconcile')).state,'removed');
+                assert.equal((await deletePrivateArchiveOriginal(f.env,f.owner,site,member.assetId,'owner-delete')).ok,true);
+            }
+            const proofs=[];
+            for(const member of f.members) {
+                const inspect=await individualJob(f,member,'purge-inspect');
+                const proof=await inspect('purge');assert.equal(proof.state,'purge-eligible',JSON.stringify(proof));proofs.push(proof.proofHash);
+            }
+            const leader=await individualJob(f,f.members[0],'purge',{expectedProofHash:proofs[0],purgeKey:crypto.randomUUID()});
+            assert.equal((await leader('purge')).state,'pending','One member cannot authorize deletion of shared siblings');
+            assert.equal(count(f,'private_gallery_assets'),2);assert.equal(count(f,'private_gallery_batch_member_origins'),2);
+            await individualJob(f,f.members[1],'purge',{expectedProofHash:proofs[1],purgeKey:crypto.randomUUID()});
+            const purged=await leader('purge');assert.equal(purged.state,'private-records-purged',JSON.stringify(purged));
+            assert.equal(count(f,'private_gallery_assets'),0);assert.equal(count(f,'private_gallery_batch_jobs'),0);
+            assert.equal(count(f,'private_gallery_batch_member_origins'),0,'No private shared manifest/review JSON remains after coordinated terminal purge');
+            assert.equal(count(f,'private_archive_purge_receipts'),2);assert.equal(f.original.objects.size,0);
+            assert.equal((await leader('purge')).replayed,true,'Retired protected leader job replays without old member records');
+            assert.deepEqual(f.db.prepare('PRAGMA foreign_key_check').all(),[]);
+        } finally {f.db.close();}
+    }
+    // Revocation before the separate owner merge closes the exact shared PR,
+    // retaining the batch claim until independent host and stable-main proof.
+    {
+        const f=await privateGalleryBatchFixture(site);
+        try {
+            assert.equal((await execute(f,'review')).state,'unmerged-review');await grantPublication(f);
+            await revoke(f);assert.equal((await execute(f,'review')).state,'pending');
+            assert.equal(f.github.state.pulls[0].state,'closed');assert.equal(count(f,'private_gallery_batch_publications'),0);
+            assert.equal(count(f,'private_gallery_active_job'),1);await finishRemoval(f);
+        } finally {f.db.close();}
+    }
+    // A revoked member after the owner merge must not deadlock the shared
+    // claim or pretend publication passed. Positive merge history is retained;
+    // all cleanup/host checks and separate -1 owner reviews are still required.
+    {
+        const f=await privateGalleryBatchFixture(site),before=retained(f);
+        try {
+            const review=await execute(f,'review');await grantPublication(f);
+            ownerMerge(f,review.review);await revoke(f);
+            const closed=count(f,'private_gallery_pipeline_closures');
+            const unclosed=f.members.filter(member=>!f.db.prepare('SELECT 1 FROM private_gallery_pipeline_closures WHERE attempt_id=?').get(member.attemptId));
+            const protectedKeys=unclosed.flatMap(member=>f.db.prepare('SELECT object_key FROM private_gallery_pipeline_outputs WHERE attempt_id=?').all(member.attemptId).map(row=>row.object_key));
+            const deleted=deletes(f);f.github.state.unavailable=true;
+            assert.equal((await execute(f,'review')).state,'pending');
+            assert.equal(count(f,'private_gallery_pipeline_closures'),closed,'Outage cannot manufacture new closure authority');
+            for(const key of protectedKeys) assert.equal([...f.staging.calls,...f.approved.calls].slice().filter(call=>call[0]==='delete' && call[1]===key).length,0,'Only the already-revoked member may clean during an outage');
+            assert.ok(deletes(f)>=deleted);f.github.state.unavailable=false;
+            assert.equal((await execute(f,'review')).state,'pending');
+            assert.equal(count(f,'private_gallery_batch_publications'),1,'Exact merge origin is retained, not successful publication');
+            assert.equal(count(f,'private_gallery_batch_completions'),0);assert.equal(count(f,'private_gallery_active_job'),1);
+            assert.equal((await execute(f,'verify')).state,'host-ready');
+            for(let index=0;index<2;index++) {
+                const removal=await execute(f,'reconcile');assert.equal(removal.state,'unmerged-removal-review',JSON.stringify(removal));
+                assert.equal(removal.claimHeld,true);assert.equal(count(f,'private_gallery_active_job'),1);
+                ownerMerge(f,removal.review);
+            }
+            assert.equal((await execute(f,'reconcile')).state,'removed');
+            assert.equal(count(f,'private_gallery_active_job'),0);assert.equal(retained(f),before);
+            assert.equal(f.original.objects.size,2);assert.equal((await execute(f,'finalize')).state,'hidden-original-retained');
+        } finally {f.db.close();}
+    }
+    // The completion response may be lost after commit, or while the accepted
+    // RPC still waits to commit. Even with an origin already saved, a failed
+    // ledger read cannot authorize closing/deleting a successful publication.
+    for(const timing of ['committed','in-flight']) {
+        const f=await privateGalleryBatchFixture(site);let release,late;
+        try {
+            const reviewed=await execute(f,'review');await grantPublication(f);ownerMerge(f,reviewed.review);
+            const candidate=JSON.parse(f.db.prepare('SELECT candidate_json FROM private_gallery_batch_intents').get().candidate_json);
+            const evidence=await readMergedGalleryBatchPublication(candidate,reviewed.review,
+                {expectedBaseSha:reviewed.review.baseSha,token:f.github.token,fetchImpl:f.github.fetchImpl});
+            assert.equal((await f.c.jobs.promotion(f.jobId,'batch-publication-observe',{runReference:batchRun,evidence})).ok,true);
+            const before=deletes(f);let uncertain=false;
+            const jobs=async(...args)=>{
+                if(uncertain && args[1]==='read') return {ok:false};
+                if(args[1]==='complete') {
+                    uncertain=true;
+                    if(timing==='committed') await f.c.jobs.promotion(...args);
+                    else {const gate=new Promise(resolve=>{release=resolve;});late=gate.then(()=>f.c.jobs.promotion(...args));}
+                    throw new Error('Synthetic completion response lost');
+                }
+                return f.c.jobs.promotion(...args);
+            };
+            assert.equal((await execute(f,'review',{jobs})).state,'pending');
+            assert.equal(deletes(f),before);assert.equal(count(f,'private_gallery_pipeline_closures'),0);
+            if(late) {assert.equal(count(f,'private_gallery_active_job'),1);release();assert.equal((await late).ok,true);}
+            assert.equal(count(f,'private_gallery_active_job'),0);
+            assert.equal((await execute(f,'review')).replayed,true);assert.equal(deletes(f),before);
+        } finally {release?.();await late;f.db.close();}
+    }
+    // A terminal checkpoint may commit before its reply is lost and before
+    // object cleanup starts. The next real prepare→verify→reconcile sequence
+    // resumes closed-only cleanup instead of looping forever at verification.
+    for(const publication of [false,true]) {
+        const f=await privateGalleryBatchFixture(site);let lose=true;
+        try {
+            assert.equal((await execute(f,'review')).state,'unmerged-review');
+            if(publication) {await grantPublication(f);await revoke(f);}
+            f.c.setReplyHook(async(request,response)=>{
+                if(lose && request.url.endsWith('/batch-terminal') && response.ok) {lose=false;throw new Error('Synthetic committed terminal response lost');}
+            });
+            assert.equal((await execute(f,publication?'review':'reconcile')).state,'pending');f.c.setReplyHook(null);
+            assert.equal(count(f,'private_gallery_batch_terminals'),1);assert.equal(count(f,'private_gallery_pipeline_closures'),2);
+            assert.equal(f.approved.objects.size,5,'Durable terminal committed before derivative cleanup');
+            assert.equal((await execute(f,'review')).state,'pending');
+            await finishRemoval(f);assert.equal(f.approved.objects.size,1,'Only the synthetic binding witness remains');
+        } finally {f.db.close();}
+    }
+    // Positive merge history alone cannot complete publication. A catalogue
+    // change after origin storage is caught by the second all-member check.
+    {
+        const f=await privateGalleryBatchFixture(site);let changed=false;
+        try {
+            const reviewed=await execute(f,'review');await grantPublication(f);ownerMerge(f,reviewed.review);
+            f.c.setReplyHook(async(request,response)=>{
+                if(!changed && request.url.endsWith('/batch-publication-observe') && response.ok) {
+                    changed=true;f.catalog.sourceRevision=`sha256:${'c'.repeat(64)}`;
+                }
+            });
+            assert.equal((await execute(f,'review')).state,'pending');f.c.setReplyHook(null);
+            assert.equal(changed,true);assert.equal(count(f,'private_gallery_batch_publications'),1);
+            assert.equal(count(f,'private_gallery_batch_completions'),0,'Origin proof does not replace fresh catalogue/consent/bytes eligibility');
+            assert.equal(count(f,'private_gallery_active_job'),1);assert.equal(count(f,'private_gallery_pipeline_closures'),2);
+            assert.equal(f.original.objects.size,2);
+        } finally {f.db.close();}
+    }
 }
-console.log('Protected batch queue -> split authenticated processing -> one combined review, unchanged per-photo consent/framing, same-run recovery, revocation, lost/delayed replies and independent host absence pass both areas with generated images only.');
+console.log('Protected batch review/publication, per-photo removal, coordinated purge, same-run recovery, owner-merge races, revocation, lost/delayed writes and independent host absence pass both areas with generated images only.');

@@ -1,5 +1,42 @@
 # Curated Gallery Publishing Workflow
 
+## Local batch publication/removal continuation — 21 October 2026
+
+PR #145 released the repository review bridge, not remote migration0030 or batch
+activation. The following continuation is local only and adds migration0031.
+Do not use this document as approval to deploy, run media jobs, merge or purge.
+
+After an independently prepared batch has one saved unmerged review, its owner
+card offers an explicit confirmation and “Prepare batch for separate owner
+merge”. This saves only a grant for that exact immutable review. Resume the SAME
+original protected run, not a new run: it checks every member and stops at
+`ready-for-separate-owner-merge`. A separate explicit owner merge and required
+preview/checks remain necessary. Rerun the original run immediately before that
+merge and afterward to observe it; keep the global claim until checked
+publication observation or complete safe removal. Consent is never extended.
+
+If one member is revoked during preparation/merge, recovery retains shared
+GitHub history but does not call it current consent. It closes/removes affected
+generations, independently proves fixed-origin public-host absence, and proposes
+one exact member removal review at a time if main still contains those items.
+Those reviews need separate owner handling; no runner merges them. After a
+successful batch publication, ordinary per-photo hide/removal jobs use explicit
+batch origins and still remove only that photo's exact item, leaving siblings.
+Unavailable main/review evidence is pending, not permission to delete unclosed
+possibly-published copies or release the claim.
+
+Normal hiding does not delete originals or purge metadata. Shared batch metadata
+purge requires every connected photo to have its own separately approved terminal
+original deletion and exact purge job/proof, with all current storage, host and
+main checks complete. One leader run may then retire the whole shared record and
+each independently approved asset atomically. Missing or stale sibling consent
+or evidence leaves everything intact. Never offer this as independent one-photo
+metadata purge while siblings still need the shared review history.
+
+See active-work for local validation and the next explicit repository-release
+gate. Remote migration/service activation and a generated-photo rehearsal remain
+separate from that release and from real-photo publication.
+
 ## Protected batch reviews — local-only boundary, 20 October 2026
 
 The local protected library can select/order 1–20 saved photo-consent attempts

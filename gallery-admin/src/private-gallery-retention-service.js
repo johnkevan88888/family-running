@@ -39,9 +39,12 @@ async function checkedRows(env,sql,...args) {
     if(result?.success!==true || !Array.isArray(result.results) || result.results.length>1000) throw new Error('Unavailable');
     return result.results;
 }
-async function proof(env,identity,site,assetId,main) {
+async function proof(env,identity,site,assetId,main,coordinatedOwner=null) {
     if(!validMain(main)) throw new Error('Main unavailable');
-    const owner=await ownerHash(env,identity,site,assetId),epoch=await readArchiveMediaEpoch(env);
+    // Internal group proof consumes independently stored owner requests, not a
+    // fabricated browser identity or a wider service authority. The leader's
+    // authenticated asset scope is checked before obtaining this owner hash.
+    const owner=coordinatedOwner||await ownerHash(env,identity,site,assetId),epoch=await readArchiveMediaEpoch(env);
     const stored=await first(env,'SELECT snapshot_json FROM private_archive_purge_snapshots WHERE asset_id=?1',assetId);
     if(!stored || typeof stored.snapshot_json!=='string' || stored.snapshot_json.length>2097152) throw new Error('Terminal evidence pending');
     const snapshot=JSON.parse(stored.snapshot_json);
@@ -85,10 +88,64 @@ async function proof(env,identity,site,assetId,main) {
         reservationHash:await archiveRetirementHash('reservation',JSON.stringify([owner,site,snapshot.reservation])),proofHash,
         attemptCount:snapshot.attempts.length,outputCount:snapshot.outputs.length};
 }
+async function batchGroup(env,owner,site,assetId) {
+    const rows=await checkedRows(env,`SELECT m.job_id,m.asset_id,c.result_json FROM private_gallery_batch_members m
+        LEFT JOIN private_gallery_batch_completions c USING(job_id)
+        WHERE m.owner_hash=?1 AND m.site_mode=?2 ORDER BY m.job_id,m.ordinal LIMIT 1001`,owner,site);
+    if(!rows.some(row=>row.asset_id===assetId)) return null;
+    const assets=new Set([assetId]),jobs=new Set();let changed=true;
+    while(changed) {
+        changed=false;
+        for(const row of rows) if(assets.has(row.asset_id)||jobs.has(row.job_id)) {
+            if(!row.result_json || !['removed','publication-observed'].includes(JSON.parse(row.result_json).state)) throw new Error('Shared review still active');
+            if(!assets.has(row.asset_id)) {assets.add(row.asset_id);changed=true;}
+            if(!jobs.has(row.job_id)) {jobs.add(row.job_id);changed=true;}
+        }
+    }
+    if(assets.size>1000 || jobs.size>1000) throw new Error('Group unavailable');
+    return {assets:[...assets].sort(),jobs:[...jobs].sort()};
+}
+async function groupProofs(env,identity,site,assetId,main,leader) {
+    const group=await batchGroup(env,leader.owner,site,assetId);
+    if(!group) return null;
+    const proofs=[];
+    for(const id of group.assets) proofs.push({assetId:id,value:id===assetId?leader:await proof(env,identity,site,id,main,leader.owner)});
+    if(proofs.some(row=>row.value.epochHash!==leader.epochHash || row.value.mainSha!==leader.mainSha || row.value.manifestHash!==leader.manifestHash))
+        throw new Error('Changed shared proof');
+    return {...group,proofs};
+}
+async function purgeBatchGroup(env,identity,site,assetId,main,leader,scopeHash) {
+    const group=await groupProofs(env,identity,site,assetId,main,leader);
+    if(!group) return false;
+    const active=await first(env,`SELECT job_id FROM private_gallery_active_job WHERE asset_id=?1 AND owner_hash=?2
+        AND action='purge' AND expected_proof_hash=?3 AND purge_scope_hash=?4`,assetId,leader.owner,leader.proofHash,scopeHash);
+    if(!active) throw new Error('Exact active coordinator unavailable');
+    const grants=[];
+    for(const {assetId:id,value:p} of group.proofs) {
+        const job=await first(env,`SELECT j.job_id,j.purge_scope_hash FROM private_gallery_owner_jobs j
+            WHERE j.asset_id=?1 AND j.owner_hash=?2 AND j.site_mode=?3 AND j.action='purge' AND j.expected_proof_hash=?4
+            AND NOT EXISTS(SELECT 1 FROM private_gallery_job_completions c WHERE c.job_id=j.job_id)
+            AND (j.job_id=?5 OR NOT EXISTS(SELECT 1 FROM private_gallery_job_claims c WHERE c.job_id=j.job_id))
+            AND (?1!=?6 OR j.job_id=?5) ORDER BY j.created_at,j.job_id LIMIT 1`,id,leader.owner,site,p.proofHash,active.job_id,assetId);
+        if(!job) throw new Error('Each member needs its own exact owner-confirmed purge');
+        grants.push({assetId:id,ownerHash:p.owner,epochHash:p.epochHash,mainSha:p.mainSha,manifestHash:p.manifestHash,
+            snapshotJson:p.snapshot,retirementsJson:JSON.stringify(p.retirements),assetHash:p.assetHash,reservationHash:p.reservationHash,
+            scopeHash:job.purge_scope_hash,proofHash:p.proofHash,jobId:job.job_id});
+    }
+    const groupHash=await hash(JSON.stringify(['private-gallery-batch-group-purge-v1',group.jobs,
+        grants.map(g=>[g.jobId,g.assetHash,g.scopeHash,g.proofHash])]));
+    const result=await env.DB.prepare(`INSERT INTO private_gallery_batch_purge_operations
+        (coordinator_job_id,owner_hash,batch_job_ids_json,grants_json,group_proof_hash) VALUES(?1,?2,?3,?4,?5)`)
+        .bind(active.job_id,leader.owner,JSON.stringify(group.jobs),JSON.stringify(grants),groupHash).run();
+    if(result?.success!==true) throw new Error('Unavailable');return true;
+}
 export async function inspectPrivateArchivePurge(env,identity,site,assetId,main) {
     if(!await validScope(env,identity,site,assetId)) return fail(403);
     try {
-        const p=await proof(primary(env),identity,site,assetId,main);
+        env=primary(env);const p=await proof(env,identity,site,assetId,main);
+        // Inspection has no deletion authority. For a shared group, every
+        // sibling must already be terminal and independently cleanup-ready.
+        await groupProofs(env,identity,site,assetId,main,p);
         return {ok:true,status:200,state:'purge-eligible',dryRun:true,proofHash:p.proofHash,
             mainSha:p.mainSha,attemptCount:p.attemptCount,outputCount:p.outputCount,publicationEnabled:false};
     } catch {return fail(409);}
@@ -115,9 +172,11 @@ export async function purgePrivateArchiveMetadata(env,identity,site,assetId,inpu
         try {
             // One INSERT's guarded trigger records hash-only retirement and
             // deletes all owned operational rows atomically; no persisted grant.
-            const result=await env.DB.prepare(ARCHIVE_PURGE_INSERT).bind(assetId,p.owner,p.epochHash,p.mainSha,p.manifestHash,p.snapshot,
-                JSON.stringify(p.retirements),p.assetHash,p.reservationHash,scopeHash,p.proofHash).run();
-            if(result?.success!==true) throw new Error('Unavailable');
+            if(!await purgeBatchGroup(env,identity,site,assetId,input.main,p,scopeHash)) {
+                const result=await env.DB.prepare(ARCHIVE_PURGE_INSERT).bind(assetId,p.owner,p.epochHash,p.mainSha,p.manifestHash,p.snapshot,
+                    JSON.stringify(p.retirements),p.assetHash,p.reservationHash,scopeHash,p.proofHash).run();
+                if(result?.success!==true) throw new Error('Unavailable');
+            }
         } catch {const recovered=await done();return recovered||fail(409);}
         const completed=await done();
         return completed?.ok?{...completed,replayed:false}:fail(503);

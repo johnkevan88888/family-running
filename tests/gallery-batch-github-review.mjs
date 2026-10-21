@@ -7,7 +7,8 @@ const clone=value=>JSON.parse(JSON.stringify(value));
 const options=github=>({expectedBaseSha:baseSha,token,fetchImpl:github.fetch});
 const create=async (value,github,admitPullRequest=async()=>{})=>batch.createOrReconcileArchiveGalleryBatchReview(value,{...options(github),admitPullRequest});
 let checks=0;
-assert.deepEqual(Object.keys(batch),['createOrReconcileArchiveGalleryBatchReview','readExistingGalleryBatchReview','readMergedGalleryBatchReview','reconcileArchiveGalleryBatchReview']);
+assert.deepEqual(Object.keys(batch),['createOrReconcileArchiveGalleryBatchReview','readExistingGalleryBatchReview',
+    'readMergedGalleryBatchMemberReview','readMergedGalleryBatchPublication','readMergedGalleryBatchReview','reconcileArchiveGalleryBatchReview']);
 const source=await fs.readFile(new URL('../scripts/gallery-media/github-batch-review-client.mjs',import.meta.url),'utf8');
 assert.doesNotMatch(source,/['"](?:DELETE|PUT)['"]|process\.env|fetch\(/);checks++;
 
@@ -156,5 +157,119 @@ for(const corruption of ['none','merged-bytes','opposite-merge-duplication','hea
     } else await assert.rejects(batch.readMergedGalleryBatchReview(valid,saved,options(github)));
     assert.equal(github.state.requests.slice(before).some(r=>r.method!=='GET'),false);checks++;
 }
+
+const sharedKeys=['baseRef','baseSha','branchRef','headSha','itemIds','mainSha','manifestSha256','mergeSha','pullRequest',
+    'repository','schemaVersion','state','targetRelativePath'].sort();
+const readPublication=(value,review,github)=>batch.readMergedGalleryBatchPublication(value,review,options(github));
+const readMember=(value,review,itemId,github)=>batch.readMergedGalleryBatchMemberReview(value,review,itemId,options(github));
+for(const site of ['family','everyone']) for(const count of [1,2,20]) {
+    const old=batchPhoto(100),value=batchCandidate({site,baseItems:[old],newItems:Array.from({length:count},(_,i)=>batchPhoto(i+1))});
+    const github=batchGitHub({candidate:value,baseItems:[old]}),review=await create(value,github);github.merge();
+    const before=github.state.requests.length,proof=await readPublication(value,review,github);
+    assert.deepEqual(Object.keys(proof).sort(),sharedKeys);assert.deepEqual(proof.itemIds,value.itemIds);
+    assert.equal(proof.state,'merged-by-owner');assert.equal(proof.pullRequest.state,'closed');
+    assert.equal(proof.headSha,review.headSha);assert.equal(proof.baseSha,baseSha);assert.equal(proof.mainSha,github.state.mergeSha);
+    assert.equal(Object.isFrozen(proof),true);assert.equal(Object.isFrozen(proof.itemIds),true);assert.equal(Object.isFrozen(proof.pullRequest),true);
+    assert.equal('itemId' in proof,false,'Batch evidence never impersonates a single-photo addition');
+    assert.equal('manifestText' in proof,false,'Projected proof does not duplicate the candidate public metadata');
+    for(const itemId of value.itemIds) assert.deepEqual(await readMember(value,review,itemId,github),proof);
+    assert.equal(github.state.requests.slice(before).some(r=>r.method!=='GET'),false);checks++;
+}
+for(const site of ['family','everyone']) {
+    const value=batchCandidate({site}),github=batchGitHub({candidate:value}),review=await create(value,github);github.merge();
+    github.state.mainSha='9'.repeat(40);
+    github.state.currentText=batchCanonical({schemaVersion:'1.0',items:[...JSON.parse(value.manifestText).items,batchPhoto(100)]});
+    github.state.currentOtherText=batchCanonical({schemaVersion:'1.0',items:[batchPhoto(101)]});
+    assert.equal((await readPublication(value,review,github)).mainSha,github.state.mainSha,'Unrelated current-main additions are permitted');checks++;
+}
+for(const site of ['family','everyone']) for(const corruption of [
+    'missing-member','changed-caption','changed-framing','changed-tags','reordered-members','malformed-own','malformed-other',
+    'suppressed','malformed-suppression','opposite-id','opposite-url','opposite-generation','own-url','own-generation'
+]) {
+    const value=batchCandidate({site}),github=batchGitHub({candidate:value}),review=await create(value,github);github.merge();
+    const current=JSON.parse(value.manifestText),other={schemaVersion:'1.0',items:[]};github.state.mainSha='9'.repeat(40);
+    if(corruption==='missing-member') current.items.pop();
+    if(corruption==='changed-caption') current.items[1].caption='Different owner editorial text';
+    if(corruption==='changed-framing') current.items[1].podiumFraming['synthetic-ben'].x=46;
+    if(corruption==='changed-tags') {current.items[1].athleteIds=['synthetic-ada'];delete current.items[1].podiumFraming;}
+    if(corruption==='reordered-members') current.items.reverse();
+    if(corruption==='suppressed') github.state.currentSuppressionText=batchCanonical({schemaVersion:'1.0',hiddenAthleteIds:['synthetic-ben']});
+    if(corruption==='malformed-suppression') github.state.currentSuppressionText='{}\n';
+    if(corruption==='opposite-id') other.items=[batchPhoto(1)];
+    if(['opposite-url','opposite-generation','own-url','own-generation'].includes(corruption)) {
+        const duplicate=batchPhoto(100);
+        duplicate.sourceUrl=current.items[0].sourceUrl;
+        duplicate.thumbnailUrl=current.items[0].thumbnailUrl;
+        if(corruption.endsWith('generation')) {
+            duplicate.sourceUrl=duplicate.sourceUrl.replace('/'+(2).toString(16).padStart(64,'0')+'/', '/'+(999).toString(16).padStart(64,'0')+'/');
+            duplicate.thumbnailUrl=duplicate.thumbnailUrl.replace('/'+(3).toString(16).padStart(64,'0')+'/', '/'+(1000).toString(16).padStart(64,'0')+'/');
+        }
+        (corruption.startsWith('own-')?current.items:other.items).push(duplicate);
+    }
+    github.state.currentText=corruption==='malformed-own'?'{}\n':batchCanonical(current);
+    github.state.currentOtherText=corruption==='malformed-other'?'{}\n':batchCanonical(other);
+    const before=github.state.requests.length;await assert.rejects(readPublication(value,review,github));
+    assert.equal(github.state.requests.slice(before).some(r=>r.method!=='GET'),false);checks++;
+}
+// Historical batch origin stays independently usable for privacy removal.
+// Neither a changed present-day suppression list nor a sibling's completed
+// removal grants publication, but neither rewrites the original shared merge.
+for(const site of ['family','everyone']) for(const history of ['sibling-removed','all-removed','suppressed','malformed-current']) {
+    const value=batchCandidate({site}),github=batchGitHub({candidate:value}),review=await create(value,github);github.merge();
+    github.state.mainSha='9'.repeat(40);
+    const retained=history==='all-removed'?[]:history==='sibling-removed'?[batchPhoto(1)]:JSON.parse(value.manifestText).items;
+    github.state.currentText=history==='malformed-current'?'{}\n':batchCanonical({schemaVersion:'1.0',items:retained});
+    github.state.currentSuppressionText=history==='suppressed'?batchCanonical({schemaVersion:'1.0',hiddenAthleteIds:['synthetic-ada']}):'{}\n';
+    const before=github.state.requests.length,proof=await readMember(value,review,value.itemIds[0],github);
+    assert.deepEqual(Object.keys(proof).sort(),sharedKeys);assert.deepEqual(proof.itemIds,value.itemIds);
+    assert.equal(proof.mainSha,github.state.mainSha);
+    assert.equal(github.state.requests.slice(before).some(r=>r.method!=='GET'),false);
+    assert.equal(github.state.requests.slice(before).some(r=>r.path.startsWith('/contents/') &&
+        r.search===`?ref=${github.state.mainSha}`),false,'Historical origin cannot pretend to validate current publication');checks++;
+}
+for(const itemId of [undefined,null,'',batchPhoto(100).id,{itemId:valid.itemIds[0]}]) {
+    await assert.rejects(batch.readMergedGalleryBatchMemberReview(valid,{},itemId,{expectedBaseSha:baseSha,token,fetchImpl:noNetwork}));checks++;
+}
+for(const owner of [undefined,null,{login:'other-owner'},{login:'johnkevan88888[bot]'},{login:'JohnKevan88888'},'johnkevan88888']) {
+    const github=batchGitHub(),review=await create(valid,github);github.merge();github.state.pulls[0].merged_by=owner;
+    const before=github.state.requests.length;await assert.rejects(readPublication(valid,review,github));
+    const origin=await readMember(valid,review,valid.itemIds[0],github);
+    assert.deepEqual(origin.itemIds,valid.itemIds,'Unavailable/non-owner attribution cannot block historical privacy cleanup');
+    assert.equal(origin.mergeSha,github.state.mergeSha);
+    await assert.rejects(readPublication(valid,review,github),'Historical origin never upgrades to owner publication authority');
+    assert.equal(github.state.requests.slice(before).some(r=>r.method!=='GET'),false);checks++;
+}
+for(const read of [readPublication,(value,review,github)=>readMember(value,review,value.itemIds[0],github)]) {
+    for(const corruption of ['open','head','body','title','foreign-repository','extra-file','candidate-bytes','merged-bytes','head-ancestry','main-ancestry',
+        'branch-race','terminal-race','merge-race','main-race','main-outage']) {
+        const github=batchGitHub(),review=await create(valid,github);github.merge();
+        if(corruption==='open') {github.state.pulls[0].state='open';github.state.pulls[0].merged_at=null;}
+        if(corruption==='head') github.state.pulls[0].head.sha='9'.repeat(40);
+        if(corruption==='body') github.state.pulls[0].body+='changed';
+        if(corruption==='title') github.state.pulls[0].title='Other title';
+        if(corruption==='foreign-repository') github.state.pulls[0].base.repo.full_name='other/repository';
+        if(corruption==='extra-file') github.state.extraFiles=[{filename:'index.html',status:'modified'}];
+        if(corruption==='candidate-bytes') github.state.branchManifestText+=' ';
+        if(corruption==='merged-bytes') github.state.mergedText=batchCanonical({schemaVersion:'1.0',items:[batchPhoto(1)]});
+        if(corruption==='head-ancestry') github.state.badHeadAncestry=true;
+        if(corruption==='main-ancestry') github.state.badMainAncestry=true;
+        let branchReads=0,mainReads=0,pullReads=0;
+        github.state.onRequest=({method,path,state})=>{
+            if(method!=='GET') return;
+            if(corruption==='branch-race' && path.startsWith('/git/ref/heads/gallery-media/') && ++branchReads===3) state.branchSha='8'.repeat(40);
+            if(corruption==='terminal-race' && path==='/pulls/1' && ++pullReads===2) state.pulls[0].title='Changed terminal identity';
+            if(corruption==='merge-race' && path==='/pulls/1' && ++pullReads===2) state.pulls[0].merge_commit_sha='8'.repeat(40);
+            if(corruption==='main-race' && path==='/git/ref/heads/main' && ++mainReads===3) state.mainSha='9'.repeat(40);
+            if(corruption==='main-outage' && path==='/git/ref/heads/main') throw new Error('Synthetic main outage');
+        };
+        const before=github.state.requests.length;await assert.rejects(read(valid,review,github));
+        assert.equal(github.state.requests.slice(before).some(r=>r.method!=='GET'),false);checks++;
+    }
+}
+const ownerRace=batchGitHub(),ownerRaceReview=await create(valid,ownerRace);ownerRace.merge();let ownerReads=0;
+ownerRace.state.onRequest=({method,path,state})=>{
+    if(method==='GET' && path==='/pulls/1' && ++ownerReads===2) state.pulls[0].merged_by={login:'other-owner'};
+};
+await assert.rejects(readPublication(valid,ownerRaceReview,ownerRace));checks++;
 
 console.log(`Protected batch GitHub review: ${checks} cases passed (synthetic, no network).`);

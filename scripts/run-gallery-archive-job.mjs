@@ -41,6 +41,9 @@ try {
         if(phase==='prepare') {
             const read=await jobs(jobId,'read',{runReference});
             if(read?.ok!==true || !['review','batch-review','removal','publication'].includes(read.value.job?.action)) throw new Error('Owner job unavailable.');
+            // A batch remains its original protected review job/run. Only its
+            // separately saved owner grant can select publication readiness
+            // and observation; no CLI input supplies merge authority.
             phase={review:'review','batch-review':'review',removal:'cleanup',publication:'publication'}[read.value.job.action];
         }
     } else if(phase==='verify') dependencies.verifier=createArchiveServiceClient(configuration('verifier'));

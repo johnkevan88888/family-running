@@ -92,11 +92,18 @@ try {
     assert.equal(claimCompile.status,0,diagnostic(claimCompile));
     // Compile the additive batch's complete trigger/view graph in the pinned
     // D1 engine too; generic SQLite alone has a more permissive depth limit.
-    for(const table of ['jobs','claims','intents','write_admissions','reviews','terminals','completions']) {
+    for(const table of ['jobs','claims','intents','write_admissions','reviews','terminals','completions',
+        'publication_requests','publications','member_origins','purge_operations']) {
         const compiled=runWrangler(['d1','execute',...commonArguments,'--command',
             `EXPLAIN INSERT INTO private_gallery_batch_${table} DEFAULT VALUES`,'--json'],environment);
         assert.equal(compiled.status,0,diagnostic(compiled));
     }
+    const retiredBatchCompile=runWrangler(['d1','execute',...commonArguments,'--command',
+        'EXPLAIN INSERT INTO private_gallery_retired_batch_jobs DEFAULT VALUES','--json'],environment);
+    assert.equal(retiredBatchCompile.status,0,diagnostic(retiredBatchCompile));
+    const batchCloseCompile=runWrangler(['d1','execute',...commonArguments,'--command',
+        'EXPLAIN INSERT INTO private_gallery_pipeline_closures DEFAULT VALUES','--json'],environment);
+    assert.equal(batchCloseCompile.status,0,diagnostic(batchCloseCompile));
 
     // EXPLAIN compiles each INSERT and all table triggers into bytecode but does
     // not execute them. DEFAULT VALUES deliberately avoids fixture data: these

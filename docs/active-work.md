@@ -1,5 +1,134 @@
 # Active Work
 
+## Approved batch-photo repository release — 21 October 2026
+
+John approved synchronization/retest, push and a standard PR, required checks
+and preview, then merge. Normal Pages is allowed only if public output remains
+byte-identical and Family2/Everyone0. Remote migrations0030/0031, all Worker
+deployments, media workflows/processing and purge remain explicitly excluded.
+Fresh fetch confirms origin/main is still
+`6eb73d632366474222bb1421a86f7d2a3eccbaab`; no code integration was needed.
+Authenticated GitHub account is owner `johnkevan88888`.
+
+The30-path local implementation and existing source-bound98-group/canonical
+receipts remain the reviewed starting point. A fresh release retest will freeze
+all426 source files, exercise only local generated fixtures/temporary databases,
+and record `test-artifacts/batch-publication-release-validation.json` plus
+`batch-publication-release-full-98.log`. The implementation PR must use standard
+preview/full CI; no photo-only or skip-preview exception applies to this code.
+Exact committed artifact, successful preview, required checks and same-head
+review state must be verified before merge. Normal Pages artifact and live
+static readback follow without fetching external photo bytes. This entry grants
+no protected Gallery activation or real-media authority. Final release evidence
+will be recorded in the shared handoff; earlier checkpoints are preserved.
+
+## Batch publication, independent removal and shared retirement — local pass, 21 October 2026
+
+John asked to continue the remaining local implementation. Working branch
+`codex/gallery-batch-publication-local` starts at PR #145's exact merged main,
+`6eb73d632366474222bb1421a86f7d2a3eccbaab`, in the existing isolated checkout.
+The repository-only PR #145 release is complete; it did not apply0030 or deploy
+Gallery services. Shared-root unrelated edits are preserved. This continuation
+authorizes local code/testing only: no push/PR, remote migration, deployment,
+workflow dispatch, credentials/settings changes, real media, live removal,
+purge, merge or publication.
+
+Forward0031 binds an append-only verified owner publication request to the exact
+saved batch review and SAME non-expiring job/run. Every member keeps its original
+consent/deadline, tags, framing, generation and byte evidence. Current catalogue,
+consent/exclusions and actual derivative bytes are rechecked at readiness and
+completion. New publication requires strict exact owner-merged shared history,
+unchanged current members/suppression and stable main; readiness never merges.
+Historical batch member origins are explicit, not fabricated one-photo reviews.
+They allow later ordinary strict one-item removal while siblings stay intact.
+
+Post-merge revocation and uncertain replies retain the claim until checked
+removal. Merge/main-outage races cannot authorize deleting unclosed possibly-live
+generations. SQL arbitrates publication completion against stale service cleanup;
+all automatic privacy closures retain immediate priority. Terminal recovery must
+resume completed evidence without replaying earlier processing or cleanup.
+
+Shared raw metadata retirement requires ALL connected assets terminally deleted,
+each with its OWN exact owner purge job/current storage-host-same-main proof.
+One leader claim coordinates one atomic group retirement and unchanged per-asset
+purge guards. Missing/stale/disconnected/foreign evidence refuses or rolls back
+all writes. An individual hide still retains its original, tags and history;
+one-photo purge cannot implicitly delete sibling metadata. After separate member
+removals, refresh earlier members through fresh normal removal/reconciliation
+jobs so every manifest receipt refers to the same current main before inspection.
+
+Final full validation PASSED all98 groups in1746.784s (29m07), including pinned
+local D1 trigger compilation, strict service bundles, both-area browser smoke and
+responsive screenshots. All426 source files stayed byte-identical during that
+run. Focused coverage includes102 publication ledger cases,52 coordinated purge
+cases,160 batch GitHub cases and136 existing batch storage cases. The expanded
+protected HTTP workflow covers publication, independent member removal, current-
+main receipt refresh, coordinated purge and recovery using generated photos and
+simulated GitHub merges only. Independent review found no remaining concrete
+issue in those inspected paths. Final canonical artifact comparison PASSED:
+all117 public files,72 CSVs,CNAME and Family2/Everyone0 are byte-identical to
+the retained verified PR145 main6eb build. No public input changed. Only this
+handoff document was edited after the full source-frozen run, separately bound
+by the handoff receipt. No local implementation/validation blocker remains for
+the supported coordinated-purge design; no fresh remote or live-media proof is
+claimed. Routine batch activation is still excluded and unproved.
+
+Ignored receipts in this isolated checkout:
+
+- `test-artifacts/batch-publication-local-validation.json` and
+  `batch-publication-full-98.log`: complete source-bound full run.
+- `test-artifacts/batch-publication-handoff-proof.json`: only this final handoff
+  document may change after full validation; all code/tests remain unchanged.
+- `test-artifacts/batch-publication-canonical-proof.json`: raw-Git main6eb plus
+  exact tested overlays, compared with the retained verified PR145 canonical
+  receipt. This is local artifact evidence, not a new deployment/live check.
+- `test-artifacts/batch-publication-local-complete.json`: final cross-bound local
+  source/test/artifact evidence; it is not a release or activation receipt.
+- `test-artifacts/screenshots/private-batch-publication-{family,everyone}-{desktop,mobile}.png`
+  and existing full-run screenshots: generated-media local UI/browser evidence.
+
+Exactly30 isolated source/document/test paths changed:
+
+```text
+docs/active-work.md
+docs/decision-log.md
+docs/gallery-private-tagging-plan.md
+docs/gallery-publishing-workflow.md
+docs/testing-and-release-protocol.md
+gallery-admin/migrations/0031_private_gallery_batch_publication.sql
+gallery-admin/src/admin-worker.js
+gallery-admin/src/private-gallery-assets.js
+gallery-admin/src/private-gallery-batch-promotion.js
+gallery-admin/src/private-gallery-batch-service.js
+gallery-admin/src/private-gallery-job-request.js
+gallery-admin/src/private-gallery-owner-service.js
+gallery-admin/src/private-gallery-promotion-adapter.js
+gallery-admin/src/private-gallery-retention-service.js
+scripts/gallery-media/archive-service-client.mjs
+scripts/gallery-media/github-batch-review-client.mjs
+scripts/gallery-media/protected-archive-batch.mjs
+scripts/gallery-media/protected-archive-job.mjs
+scripts/gallery-media/protected-archive-lifecycle.mjs
+scripts/run-all-tests.mjs
+scripts/run-gallery-archive-job.mjs
+tests/gallery-batch-coordinated-purge.mjs
+tests/gallery-batch-github-review.mjs
+tests/gallery-batch-owner-browser.mjs
+tests/gallery-batch-protected-workflow.mjs
+tests/gallery-batch-publication-owner.mjs
+tests/gallery-batch-publication-storage.mjs
+tests/gallery-d1-expression-depth.mjs
+tests/helpers/gallery-batch-github-fixture.mjs
+tests/helpers/gallery-batch-publication-fixture.mjs
+```
+
+Next explicit approval gate after local success: repository synchronization/
+retest, standard PR/checks/preview and merge, with normal Pages only if all117
+public files remain byte-identical and Family2/Everyone0. Remote0030/0031/service
+activation and a protected synthetic rehearsal remain a SEPARATE approval; no
+real-photo batch or publication is included. Historical checkpoints below are
+retained and superseded only to the extent stated above.
+
 ## Repository-only fast-lane and batch-bridge release — 21 October 2026
 
 John explicitly approved synchronization/retest, push/PR, required checks and

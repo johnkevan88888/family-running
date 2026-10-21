@@ -49,10 +49,19 @@ try {
         f.env.DB.batch=async statements=>{f.db.exec('BEGIN');try{const results=[];for(const statement of statements)results.push(await statement.run());f.db.exec('COMMIT');return results;}catch(error){f.db.exec('ROLLBACK');throw error;}};
         const env={DB:f.env.DB,PRIVATE_ORIGINALS:f.original,ADMIN_ORIGIN:origin,OWNER_IDENTITIES:`subject:${f.owner.subject}`,SESSION_SECRET:'synthetic-batch-browser-session-secret'};
         const context=await browser.newContext({viewport,isMobile:viewport.width<500}),page=await context.newPage();
-        const errors=[],requests=[],responses=[],batchBodies=[];page.on('pageerror',error=>errors.push(error.message));let loseReply=true,showSavedReviewFixture=false;
+        const errors=[],requests=[],responses=[],batchBodies=[],publicationBodies=[];
+        page.on('pageerror',error=>errors.push(error.message));
+        let loseReply=true,showSavedReviewFixture=false,losePublicationReply=true,publicationRequested=false;
         await page.route('**/*',async route=>{
             const incoming=route.request();assert.equal(new URL(incoming.url()).origin,origin,'No external browser request');requests.push(incoming.url());
             const headers=await incoming.allHeaders();if(headers.origin===origin)headers['sec-fetch-site']='same-origin';
+            if(showSavedReviewFixture && incoming.method()==='POST' && /\/private-batches\/job_[0-9a-f-]+\/publication$/.test(new URL(incoming.url()).pathname)) {
+                // Rendering/uncertain-reply fixture only. The actual owner
+                // route + immutable grant are tested in publication-owner.
+                publicationBodies.push(incoming.postDataJSON());
+                if(losePublicationReply) {losePublicationReply=false;await route.fulfill({status:503,contentType:'application/json',body:'{"error":"synthetic-lost-publication-reply"}'});return;}
+                publicationRequested=true;await route.fulfill({status:200,contentType:'application/json',body:'{"ok":true,"publicationEnabled":false}'});return;
+            }
             const request=new Request(incoming.url(),{method:incoming.method(),headers,body:incoming.method()==='GET'?undefined:incoming.postDataBuffer()});
             const response=await handleAdminRequest(request,env,{verifyAccessIdentity:async()=>f.owner});
             responses.push([incoming.method(),new URL(incoming.url()).pathname,response.status]);
@@ -62,7 +71,7 @@ try {
                 // a real stored review projects this owner-only link.
                 const payload=await response.json();payload.batches=payload.batches.map(job=>({...job,state:'running',
                     runReference:'https://github.com/johnkevan88888/family-running/actions/runs/123',
-                    reviewUrl:'https://github.com/johnkevan88888/family-running/pull/999'}));
+                    reviewUrl:'https://github.com/johnkevan88888/family-running/pull/999',publicationRequested}));
                 await route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:JSON.stringify(payload)});return;
             }
             if(incoming.method()==='POST'&&new URL(incoming.url()).pathname==='/api/browser/private-batches') {
@@ -114,6 +123,25 @@ try {
         await page.getByText('Combined review — review recorded; protected claim retained',{exact:true}).waitFor();
         assert.equal(await page.getByRole('link',{name:'Open the recorded combined review',exact:true}).getAttribute('href'),
             'https://github.com/johnkevan88888/family-running/pull/999');
+        const readyScreenshot=new URL(`private-batch-publication-${site}-${viewport.width<500?'mobile':'desktop'}.png`,screenshotDirectory);
+        await page.locator('#private-batches').screenshot({path:readyScreenshot.pathname.replace(/^\/([A-Za-z]:)/,'$1')});
+        const prepare=page.getByRole('button',{name:'Prepare batch for separate owner merge',exact:true});
+        await prepare.click();await page.getByText('Confirm preparation of this exact saved review first.',{exact:true}).waitFor();
+        assert.equal(publicationBodies.length,0,'A displayed review link alone is not publication preparation approval');
+        await page.locator('#private-batches input[type="checkbox"]').check();await prepare.click();
+        await page.getByText('Request stopped.',{exact:false}).waitFor();
+        assert.equal(await page.locator('#private-batches input[type="checkbox"]').isChecked(),true,'Uncertain reply keeps explicit confirmation for the same exact review');
+        await prepare.click();await page.getByText('Exact batch publication preparation request saved.',{exact:false}).waitFor();
+        assert.deepEqual(publicationBodies[0],publicationBodies[1],'Lost publication grant reply keeps its exact idempotency key');
+        assert.deepEqual(Object.keys(publicationBodies[0]),['idempotencyKey'],'Browser cannot choose review, members, area or run');
+        assert.equal(await prepare.count(),0,'A saved grant is displayed instead of offering a replacement');
+        await page.getByText('Publication preparation requested for this exact review.',{exact:false}).waitFor();
+        assert.equal(await page.getByRole('link',{name:'Open the original run to resume',exact:true}).getAttribute('href'),
+            'https://github.com/johnkevan88888/family-running/actions/runs/123');
+        assert.deepEqual(f.db.prepare('SELECT * FROM private_gallery_attempts ORDER BY attempt_id').all(),before);
+        assert.equal(f.original.calls.length,calls,'Publication preparation UI does not read media');
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+        assert.deepEqual(errors,[]);
         await page.locator('#private-batch-heading').scrollIntoViewIfNeeded();
         const screenshot=new URL(`private-batch-${site}-${viewport.width<500?'mobile':'desktop'}.png`,screenshotDirectory);
         await page.screenshot({path:screenshot.pathname.replace(/^\/([A-Za-z]:)/,'$1'),fullPage:true});
@@ -125,4 +153,4 @@ try {
         await context.close();f.db.close();
     }
 } finally {await browser.close();}
-console.log('Protected batch browser passed both areas and responsive views: ordered saved attempts, explicit confirmation, duplicate refusal, lost-response replay, private queue isolation and one stored job without media/dispatch/publication.');
+console.log('Protected batch browser passed both areas and responsive views: ordered saved attempts, explicit review/publication confirmation, lost-response replay, exact owner-grant payload, original-run recovery and no media/dispatch/merge/publication.');

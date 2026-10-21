@@ -2,7 +2,7 @@ import { readPrivateGalleryAsset } from './private-gallery-asset-service.js';
 import { preparePrivateArchiveIntake,storePrivateArchiveOriginal,deletePrivateArchiveOriginal } from './private-archive-service.js';
 import { reservePrivateGalleryAttempt } from './private-gallery-attempt-service.js';
 import {readPrivateArchiveJobs,queuePrivateArchiveJob} from './private-gallery-job-service.js';
-import {readPrivateArchiveBatches,queuePrivateArchiveBatch} from './private-gallery-batch-service.js';
+import {readPrivateArchiveBatches,queuePrivateArchiveBatch,requestPrivateArchiveBatchPublication} from './private-gallery-batch-service.js';
 import { hashIdentity } from './session.js';
 
 // Called only after the admin router's verified owner, signed inherited-area
@@ -87,6 +87,7 @@ export async function handlePrivatePhotoOwnerOperation(request,env,identity,site
         let input;
         try {input=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(body.bytes));} catch {return failure(400);}
         if(route.kind==='archive-batches') return queuePrivateArchiveBatch(env,identity,site,input);
+        if(route.kind==='archive-batch-publication') return requestPrivateArchiveBatchPublication(env,identity,site,route.jobId,input);
         if(route.kind==='archive-jobs') return queuePrivateArchiveJob(env,identity,site,route.assetId,input);
         if(route.kind==='archive-intake') return preparePrivateArchiveIntake(env,identity,site,route.assetId,input);
         if(route.kind==='archive-attempt') return reservePrivateGalleryAttempt(env,identity,site,route.assetId,input,catalog);

@@ -2,6 +2,7 @@ import {processGalleryPhoto} from './processor.mjs';
 import {assertPhotoFramingSource} from './photo-framing-source.mjs';
 import {readGalleryReviewMain,createOrReconcileArchiveGalleryReview,createOrReconcileArchiveGalleryRemoval,readExistingGalleryReview,
     reconcileArchiveGalleryReview} from './github-review-client.mjs';
+import {readMergedGalleryBatchMemberReview} from './github-batch-review-client.mjs';
 
 // Explicit authenticated transports only. No credential discovery, ambient
 // fetch, dispatch, merge, publication, bucket access or legacy draft replay.
@@ -66,6 +67,20 @@ export async function runProtectedArchiveReview({attemptId,processing,promotion,
 export async function resumeProtectedArchiveRemoval({attemptId,processing,promotion,verifier,github}) {
     input(attemptId,processing,promotion,verifier);
     try {
+        const initial=await checked(promotion,attemptId,'review');
+        if(initial.batchOrigin?.evidence?.state==='merged-by-owner') {
+            // A shared review is NOT a one-photo +1 receipt. Re-prove its
+            // immutable merge and this member's exact membership without
+            // requiring siblings (which may already have been removed).
+            // Read current main before cleaning an unclosed possibly-live
+            // member; an outage is never evidence that it is safe to delete.
+            await readGalleryReviewMain(gh(github));
+            const origin=initial.batchOrigin;
+            const evidence=await readMergedGalleryBatchMemberReview(origin.candidate,origin.review,origin.itemId,
+                {expectedBaseSha:origin.baseSha,...gh(github)});
+            if(Object.keys(origin.evidence).some(key=>key!=='mainSha' &&
+                JSON.stringify(origin.evidence[key])!==JSON.stringify(evidence[key]))) return pending();
+        }
         const cleanup=await Promise.allSettled([processing,promotion].map(async service=>{
             await checked(service,attemptId,'close');return checked(service,attemptId,'cleanup');
         }));
@@ -78,7 +93,7 @@ export async function resumeProtectedArchiveRemoval({attemptId,processing,promot
             await checked(promotion,attemptId,'review-terminal',{kind:'addition',baseSha:saved.baseSha,evidence});
         }
         const main=await readGalleryReviewMain(gh(github));
-        const id=saved.candidate?.itemId;
+        const id=saved.candidate?.itemId || saved.batchOrigin?.itemId;
         if(id && !absent(main,id,[])) {
             const {baseSha,removal}=await checked(promotion,attemptId,'removal-reserve',main);
             const review=await createOrReconcileArchiveGalleryRemoval(removal,{expectedBaseSha:baseSha,...gh(github),
