@@ -1,5 +1,23 @@
 # Testing And Release Protocol
 
+## Optional public associations in batch review — 21 October 2026
+
+The batch GitHub client accepts the existing public contract's empty
+`athleteIds` array. Complete private person tags and each member's current
+consent remain protected admission requirements; missing public profiles must
+not be replaced by invented associations. Run the batch GitHub and protected
+workflow groups for all-unmapped and mixed batches in both areas. Prove exact
+one-file creation, lost-reply replay, private framing/identity omission,
+metadata stripping, withdrawal, host-removal evidence and retained originals,
+tags and consent. Malformed/duplicate public tags and unmapped public framing
+still fail. Historical origin and owner-publication proofs remain separate.
+
+This runner-only correction requires the normal code release checks and
+unchanged public artifact, not a migration or Worker deployment. The photo-only
+CI classifier is unchanged: a photo without public athlete associations still
+selects the full suite. A successful synthetic review stops unmerged and is not
+publication approval or a measurement of the photo fast lane.
+
 ## Batch publication/removal continuation — local-only, 21 October 2026
 
 PR #145 released the review bridge at main6eb73d6 without applying0030 or

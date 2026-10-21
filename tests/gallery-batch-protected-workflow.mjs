@@ -58,8 +58,8 @@ async function individualJob(f,member,action='removal',extra={}) {
 for(const site of ['family','everyone']) {
     // Actual owner-created batch, durable ledger, split Access HTTP adapters,
     // real pinned decoder/EXIF stripping, GitHub mock and framing projection.
-    {
-        const f=await privateGalleryBatchFixture(site),before=retained(f);
+    for(const publicAssociations of ['mapped','unmapped','mixed']) {
+        const f=await privateGalleryBatchFixture(site,{publicAssociations}),before=retained(f);
         try {
             const review=await execute(f,'review');assert.equal(review.state,'unmerged-review',JSON.stringify(review));
             assert.equal(review.claimHeld,true);assert.equal(review.publicationEnabled,false);
@@ -74,9 +74,10 @@ for(const site of ['family','everyone']) {
             const candidate=JSON.parse(f.db.prepare('SELECT candidate_json FROM private_gallery_batch_intents').get().candidate_json);
             const items=JSON.parse(candidate.manifestText).items;
             assert.equal(items.length,2);assert.deepEqual(items.map(item=>item.id),review.review.itemIds);
-            assert.deepEqual(items.map(item=>item.athleteIds),[['fixture-public'],['fixture-public-second']]);
-            assert.deepEqual(items[0].podiumFraming,{'fixture-public':{x:25,y:20,zoom:2}});
-            assert.deepEqual(items[1].podiumFraming,{'fixture-public-second':{x:70,y:60,zoom:3}});
+            assert.deepEqual(items.map(item=>item.athleteIds),[publicAssociations==='unmapped'?[]:['fixture-public'],
+                publicAssociations==='mapped'?['fixture-public-second']:[]]);
+            assert.deepEqual(items[0].podiumFraming,publicAssociations==='unmapped'?undefined:{'fixture-public':{x:25,y:20,zoom:2}});
+            assert.deepEqual(items[1].podiumFraming,publicAssociations==='mapped'?{'fixture-public-second':{x:70,y:60,zoom:3}}:undefined);
             for(const sentinel of ['person_','asset_','attempt_','private-first-camera','private-second-camera','sourceSha256','imageWidth'])
                 assert.equal(candidate.manifestText.includes(sentinel),false,`Private metadata leaked: ${sentinel}`);
             for(const item of items) for(const field of ['sourceUrl','thumbnailUrl']) {

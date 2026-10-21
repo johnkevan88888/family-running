@@ -51,7 +51,9 @@ function candidate(value) {
         !same(value.receipt.itemIds,ids) || value.receipt.manifestSha256!==value.manifestSha256)
         throw new Error('Exact bounded photo-batch candidate required.');
     const valueDocument=document(value.manifestText),items=valueDocument.items.slice(-ids.length);
-    if(!same(items.map(item=>item.id),ids) || items.some(item=>item.type!=='photo' || !item.athleteIds.length))
+    // Public profile associations are optional; complete private tags and each
+    // member's consent are enforced by protected admission, not fabricated here.
+    if(!same(items.map(item=>item.id),ids) || items.some(item=>item.type!=='photo'))
         throw new Error('Batch must be an ordered appended photo suffix.');
     for(const item of items) {
         const display=derivative(item.sourceUrl,'photo-display'),thumbnail=derivative(item.thumbnailUrl,'photo-thumbnail');

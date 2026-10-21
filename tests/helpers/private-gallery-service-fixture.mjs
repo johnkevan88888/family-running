@@ -12,7 +12,7 @@ import {readBoundedBytes,sha256Hex} from '../../gallery-admin/src/media-byte-ver
 import * as delivery from '../../gallery-admin/src/media-delivery-contract.js';
 import {handleMediaRequest} from '../../gallery-admin/src/media-worker.js';
 
-export async function archiveServiceFixture(site='family',{reserveAttempt=true,migrationThrough=Infinity,photoBytes=null,
+export async function archiveServiceFixture(site='family',{reserveAttempt=true,migrationThrough=Infinity,photoBytes=null,publicAssociation=true,
     mediaOrigin='https://synthetic-archive-media.example'}={}) {
     const db=new DatabaseSync(':memory:'),directory=new URL('../../gallery-admin/migrations/',import.meta.url);
     for(const name of (await readdir(directory)).filter(n=>n.endsWith('.sql') && Number(n.slice(0,4))<=migrationThrough).sort()) db.exec(await readFile(new URL(name,directory),'utf8'));
@@ -25,7 +25,7 @@ export async function archiveServiceFixture(site='family',{reserveAttempt=true,m
             async run(){const result=db.prepare(sql).run(...args);return {success:true,meta:{changes:Number(result.changes)}};}};}}};
     const ids=[1,2].map(n=>`person_00000000-0000-4000-8000-00000000000${n}`);
     for(const [index,id] of ids.entries()) {
-        db.prepare('INSERT INTO private_gallery_people VALUES(?,?,?,?,?)').run(id,`Fictitious tagged person ${index}`,index===0?'fixture-public':null,1,1);
+        db.prepare('INSERT INTO private_gallery_people VALUES(?,?,?,?,?)').run(id,`Fictitious tagged person ${index}`,index===0 && publicAssociation?'fixture-public':null,1,1);
         assert.equal((await changePrivateGalleryVisibility(env,owner,site,id,{expectedVersion:1,idempotencyKey:crypto.randomUUID(),preference:'allowed'})).ok,true);
     }
     const catalog={schemaVersion:'1.0',exportBundleId:'synthetic-archive-service-bundle',sourceRevision:`sha256:${'a'.repeat(64)}`,
