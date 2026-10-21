@@ -1,5 +1,41 @@
 # Testing And Release Protocol
 
+## Batch publication/removal continuation — local-only, 21 October 2026
+
+PR #145 released the review bridge at main6eb73d6 without applying0030 or
+deploying Gallery services. The local forward0031 continuation adds an exact
+owner publication-request route, same-run all-member readiness/observation,
+explicit batch-member origins, ordinary independent one-item removal, and
+all-members-individually-approved atomic shared metadata retirement. The older
+review-only implementation boundary below is superseded locally, not remotely.
+
+In addition to all existing checks, run `gallery-batch-publication-owner`,
+`gallery-batch-publication-storage`, `gallery-batch-coordinated-purge` and
+the expanded batch storage/GitHub/protected-workflow/responsive-browser tests.
+Test missing/foreign owner and area/session/CSRF, exact idempotency-only grants,
+saved-review binding/replay, no new claim/deadline/dispatch, fresh byte/framing/
+catalogue/consent checks at completion, strict new owner-merge proof and stable
+main. Historical batch-origin proof must never masquerade as one-photo addition
+or authorize publication. Exercise pre/post-merge revocation, lost replies,
+partial removals preserving siblings, initial/later main outages and owner-merge
+races before cleanup. Unknown admitted PR writes stay fenced and pending.
+
+Purge tests must prove each connected asset has its OWN exact owner-confirmed
+purge job/current proof, terminal original deletion and current storage/host/main
+absence. Missing/stale/foreign/disconnected sibling evidence must refuse or roll
+back every write. Successful retirement must leave no raw shared metadata or
+temporary grant, retain hash-only no-reuse/replay evidence, and not affect an
+unrelated asset. Test actual pinned D1 compilation of every new trigger graph,
+the strict finalizer/promotion capability bundles, and existing one-photo paths.
+Run the complete suite for this code/migration release, not the photo fast lane.
+
+The canonical static artifact must remain byte-identical to main6eb73d6:
+117 files,72 CSVs,CNAME,Family2/Everyone0. Browser fixtures use generated photos
+and block external transport. No local result proves live configuration, Access,
+D1/R2 state, real-photo consent, media delivery or public-host removal. Release,
+remote activation, synthetic rehearsal and publication retain separate approval
+gates; no migration, deployment or workflow is dispatched in this local pass.
+
 ## Protected photo batches: implementation evidence is not publication authority
 
 The local batch review bridge is additive and review-only. Its new checks are

@@ -50,11 +50,15 @@ export function batchGitHub({candidate=batchCandidate(),baseItems=[],otherItems=
             behind_by:state.badMainAncestry?1:0,merge_base_commit:{sha:state.mergeSha}});
         if(method==='GET' && path.startsWith('/contents/gallery-data/')) {
             const at=url.searchParams.get('ref'),target=path.slice('/contents/'.length);
-            if(target==='gallery-data/hidden-athlete-ids.json') return file(target,state.suppressionText);
-            if(target!==candidate.targetRelativePath) return file(target,at===state.mergeSha?(state.mergedOtherText??state.otherText):state.otherText);
+            if(target==='gallery-data/hidden-athlete-ids.json') return file(target,at===batchBaseSha?state.suppressionText:
+                at===state.mergeSha?(state.mergedSuppressionText??state.suppressionText):
+                    at===state.mainSha?(state.currentSuppressionText??state.mergedSuppressionText??state.suppressionText):state.suppressionText);
+            if(target!==candidate.targetRelativePath) return file(target,at===state.mergeSha?(state.mergedOtherText??state.otherText):
+                at===state.mainSha && at!==batchBaseSha?(state.currentOtherText??state.mergedOtherText??state.otherText):state.otherText);
             if(at===batchBaseSha) return file(target,state.baseText);
             if(at===state.mergeSha) return file(target,state.mergedText??state.branchManifestText);
             if(at===state.branchSha) return file(target,state.branchManifestText);
+            if(at===state.mainSha) return file(target,state.currentText??state.mergedText??state.branchManifestText);
             throw new Error('Unknown synthetic content ref');
         }
         if(method==='GET' && path==='/pulls') {
@@ -105,5 +109,6 @@ export function batchGitHub({candidate=batchCandidate(),baseItems=[],otherItems=
         throw new Error(`Unexpected synthetic route ${method} ${path}`);
     }
     return {fetch,state,merge(){state.pulls[0].state='closed';state.pulls[0].merged_at='2026-10-20T20:00:00Z';
+        state.pulls[0].merged_by={login:'johnkevan88888'};
         state.pulls[0].merge_commit_sha=state.mergeSha;state.mainSha=state.mergeSha;}};
 }

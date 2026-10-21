@@ -92,10 +92,34 @@ export async function archiveBatchOperation(env,identity,row,catalog,operation,i
     if(!row.candidate_json) throw new Error('Unavailable');
     const candidate=JSON.parse(row.candidate_json);
     const branchRef=`gallery-media/candidate-${(await digest(`family-running-gallery-review-branch-v1\0${candidate.receipt.operationId}`)).slice(0,32)}`;
-    if(operation==='batch-write' || operation==='batch-open') {
+    if(operation==='batch-write' || operation==='batch-open' || operation==='batch-publication-check') {
         const items=await checkedItems(env,identity,row,catalog);
         const savedItems=JSON.parse(candidate.manifestText).items.slice(-items.length);
         if(JSON.stringify(items)!==JSON.stringify(savedItems)) throw new Error('Changed photo');
+    }
+    if(operation==='batch-publication-check') {
+        if(!row.publication_request_json || row.evidence_json || !row.review_json || row.publication_request_json!==row.review_json)
+            throw new Error('Unavailable');
+        return {state:'ready-for-owner-merge',claimHeld:true,publicationEnabled:false};
+    }
+    if(operation==='batch-publication-observe') {
+        if(!row.publication_request_json || row.evidence_json || !row.review_json || row.publication_request_json!==row.review_json)
+            throw new Error('Unavailable');
+        requireReview(input.evidence,row,candidate,branchRef,true);
+        if(input.evidence.state!=='merged-by-owner') throw new Error('Unavailable');
+        const recorded=JSON.parse(row.review_json);
+        if(recorded.headSha!==input.evidence.headSha || recorded.pullRequest.number!==input.evidence.pullRequest.number ||
+            recorded.pullRequest.url!==input.evidence.pullRequest.url) throw new Error('Unavailable');
+        const text=JSON.stringify(input.evidence);
+        // Positive merge history is needed for cleanup even when permission
+        // changed during GitHub I/O. The separate completion boundary must
+        // still pass every actual-byte/catalogue/consent/framing recheck.
+        if(!row.publication_evidence_json) {
+            try {await write(env,'INSERT INTO private_gallery_batch_publications(job_id,evidence_json) VALUES(?1,?2)',row.job_id,text);}
+            catch {if(!(await readArchiveBatchJob(env,row.job_id))?.publication_evidence_json) throw new Error('Unavailable');}
+        }
+        if((await readArchiveBatchJob(env,row.job_id)).publication_evidence_json!==text) throw new Error('Changed replay');
+        return {state:'publication-origin-recorded',publicationEnabled:false};
     }
     if(operation==='batch-write') {
         await write(env,'INSERT INTO private_gallery_batch_write_admissions(job_id) VALUES(?1)',row.job_id);

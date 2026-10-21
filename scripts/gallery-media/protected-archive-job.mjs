@@ -1,5 +1,5 @@
 import {runProtectedArchiveReview,resumeProtectedArchiveRemoval} from './protected-archive-lifecycle.mjs';
-import {runProtectedArchiveBatchReview,resumeProtectedArchiveBatchRemoval} from './protected-archive-batch.mjs';
+import {runProtectedArchiveBatchReview,runProtectedArchiveBatchPublication,resumeProtectedArchiveBatchRemoval} from './protected-archive-batch.mjs';
 import {readGalleryReviewMain,readExistingGalleryReview,readMergedGalleryReview,reconcileArchiveGalleryReview} from './github-review-client.mjs';
 const pending=()=>({ok:false,state:'pending',publicationEnabled:false});
 async function checked(service,id,operation,value) {
@@ -24,15 +24,16 @@ export async function runProtectedArchiveJob({jobId,runReference,phase,jobs,proc
             return {ok:true,...job.result,replayed:true,publicationEnabled:false};
         if(job.action==='batch-review') {
             const context={jobId,runReference,job,jobs,processing,promotion,github};
-            if(phase==='review') return runProtectedArchiveBatchReview(context);
+            if(phase==='review' || phase==='publication') return job.publicationRequested===true?
+                runProtectedArchiveBatchPublication(context):phase==='review'?runProtectedArchiveBatchReview(context):pending();
             if(phase==='verify') {
                 for(const id of job.attempts) if((await checked(verifier,id,'verify')).hostDeletionConfirmed!==true) return pending();
                 return {ok:true,state:'host-ready',publicationEnabled:false};
             }
             if(phase==='reconcile') return resumeProtectedArchiveBatchRemoval(context);
-            // A batch review has no authority to finalize original deletion,
-            // publish, or purge. Its completed recovery retains every original.
-            if(phase==='finalize' && job.state==='removed') return {ok:true,state:'hidden-original-retained',publicationEnabled:false};
+            // Shared recovery never deletes originals or purges. A pending
+            // owner removal PR keeps the original global batch claim held.
+            if(phase==='finalize') return {ok:true,state:job.state==='removed'?'hidden-original-retained':'awaiting-owner-removal-review',publicationEnabled:false};
             return pending();
         }
         if(phase==='review') {

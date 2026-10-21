@@ -70,6 +70,7 @@ export function privateGalleryScript() {
     // Selection is private to this page instance: no cross-owner/tab/area
     // browser storage and no copied consent, filenames or face information.
     const batchSelection = [];
+    const batchPublicationRequests = new Map();
     const choices = document.getElementById('private-tag-choices');
     const framing = window.privateGalleryFaceFraming?.create({site,api,getContext:()=>({assetId:activeAssetId,people:privatePeople,busy})});
     document.getElementById('private-photo').addEventListener('change',event=>{ void framing?.selectFile(event.target.files[0]); });
@@ -192,6 +193,29 @@ export function privateGalleryScript() {
             if (job.reviewUrl || job.result?.reviewUrl) {
                 const review = document.createElement('a'); review.textContent = 'Open the recorded combined review'; review.href = job.reviewUrl || job.result.reviewUrl;
                 review.target = '_blank'; review.rel = 'noopener noreferrer'; card.append(review);
+            }
+            if (job.reviewUrl && job.state === 'running') {
+                if (job.publicationRequested) {
+                    const saved = document.createElement('p');
+                    saved.textContent = 'Publication preparation requested for this exact review. Resume the original protected run before a separate owner merge; no merge has been performed here.';
+                    card.append(saved);
+                } else {
+                    const label = document.createElement('label'); label.className = 'check-line important-check';
+                    const confirmed = document.createElement('input'); confirmed.type = 'checkbox';
+                    const text = document.createElement('span');
+                    text.textContent = 'I approve preparing this exact batch for a separate owner merge. Every photo must still pass its own consent and safety checks. Nothing publishes automatically.';
+                    label.append(confirmed,text);
+                    const prepare = document.createElement('button'); prepare.type = 'button'; prepare.className = 'button button-secondary';
+                    prepare.textContent = 'Prepare batch for separate owner merge';
+                    prepare.addEventListener('click',()=>action(async()=>{
+                        if (!confirmed.checked) throw new Error('Confirm preparation of this exact saved review first.');
+                        if (!batchPublicationRequests.has(job.jobId)) batchPublicationRequests.set(job.jobId,uuid());
+                        await api('/api/browser/private-batches/' + job.jobId + '/publication',{idempotencyKey:batchPublicationRequests.get(job.jobId)});
+                        await refreshBatches();
+                        note('Exact batch publication preparation request saved. Resume the original protected run for fresh checks. This does not merge or publish the review.');
+                    }));
+                    card.append(label,prepare);
+                }
             }
             list.append(card);
         }

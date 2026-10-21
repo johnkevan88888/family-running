@@ -585,6 +585,8 @@ async function createSyntheticRecord(request, env, identity, now) {
 
 function matchPhaseCRoute(pathname) {
     if (pathname === '/api/browser/private-batches') return {kind:'archive-batches'};
+    const batchPublicationMatch = /^\/api\/browser\/private-batches\/(job_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/publication$/.exec(pathname);
+    if (batchPublicationMatch) return {kind:'archive-batch-publication',jobId:batchPublicationMatch[1]};
     const archiveMatch = /^\/api\/browser\/private-assets\/(asset_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(archive-intake|archive-original|archive-attempt|archive-deletion|archive-jobs)$/.exec(pathname);
     if (archiveMatch) return {kind:archiveMatch[2],assetId:archiveMatch[1]};
     if (pathname === '/api/browser/private-preferences') return {kind:'private-preferences'};

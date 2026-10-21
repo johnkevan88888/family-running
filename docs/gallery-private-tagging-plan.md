@@ -1,5 +1,45 @@
 # Protected Gallery tagging and reversible visibility
 
+## Batch publication and independent removal — local continuation, 21 October 2026
+
+The repository-only review bridge was released in PR #145 at
+`6eb73d632366474222bb1421a86f7d2a3eccbaab`. That did not apply migration0030,
+activate batch services or authorize publication. This local continuation adds
+forward migration0031; neither migration has been applied remotely by this pass.
+
+The owner can request publication preparation for the exact recorded batch
+review. The protected browser sends only an opaque idempotency key through its
+existing owner/session/Origin/CSRF and inherited-area gates. D1 binds it to the
+saved review and SAME non-expiring job/run, not a new claim or extended consent.
+The runner rechecks every photo's current consent, complete tags, catalogue,
+exclusions, framing and independently read derivative bytes. Readiness stops at
+the separate owner merge; the runner has no merge capability. Successful
+observation requires exact owner-merged shared GitHub history, unchanged current
+members, suppression and stable main, then another per-member safety recheck.
+
+Immutable batch origins explicitly bind each member to the shared reviewed
+addition. They never masquerade as one-photo addition receipts. An origin is
+historical removal evidence, not current consent or permission to publish.
+Revocation racing a merge keeps the same claim until each member's cleanup,
+fixed-origin host proof and same-main absence finish. Later ordinary removal
+proposes a strict one-item subtraction, preserving the other photos and shared
+history. Missing main/review evidence cannot authorize deleting unclosed,
+possibly-published generations. Existing completed cleanup is not replayed.
+
+Hiding remains per photo and retains originals, tags and history. Irreversible
+metadata purge is different: raw shared review JSON links all connected batch
+members. It may be retired only when EVERY affected asset has terminal original
+deletion, current cleanup/host/main proof and its OWN separately confirmed purge
+job. One original leader claim coordinates one atomic group retirement plus the
+unchanged per-asset purge guards; a missing/stale sibling approval rolls it all
+back. Only hash-only retirement/replay evidence remains. A one-photo confirmation
+cannot silently authorize sibling deletion or report purge while raw links remain.
+
+This is local implementation/testing, not live batch readiness. Exact validation
+and remaining gates are recorded in active-work. No remote changes, real media,
+workflow dispatch, purge or publication are included. The older review-only
+checkpoint below remains as historical evidence and is superseded locally only.
+
 ## Protected batch review bridge — local only, 20 October 2026
 
 An additive owner queue now freezes 1–20 independently consented attempts from

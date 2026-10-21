@@ -172,6 +172,27 @@ function checkedReview(review,value,baseSha) {
         review.pullRequest.url!==`https://github.com/${repository}/pull/${review.pullRequest.number}`) throw new Error('Exact saved batch review required.');
     return review;
 }
+function mergedResult(value,baseSha,review,proof) {
+    // This is explicitly shared batch evidence. It is never a one-photo +1
+    // candidate/review receipt, even when a batch has only one member.
+    return {schemaVersion:'1.0',repository,baseRef:'main',baseSha,branchRef:branch(value),headSha:review.headSha,
+        targetRelativePath:value.targetRelativePath,itemIds:[...value.itemIds],manifestSha256:value.manifestSha256,
+        state:'merged-by-owner',pullRequest:{number:review.pullRequest.number,url:review.pullRequest.url,state:'closed'},
+        mergeSha:proof.mergeSha,mainSha:proof.mainSha};
+}
+function collides(item,other) {
+    const generation=derivative(item.sourceUrl,'photo-display').generationId;
+    return other.id===item.id || [other.sourceUrl,other.thumbnailUrl,other.posterUrl].filter(Boolean).some(url=>
+        url===item.sourceUrl || url===item.thumbnailUrl ||
+        parseV2PhotoDerivativeKey(new URL(url).pathname.slice(1))?.generationId===generation);
+}
+async function stableMerged(github,value,review,proof,owner=false) {
+    if(await ref(github,branch(value))!==review.headSha) throw new Error('Batch branch changed during merged proof.');
+    const pull=checkedPull(await github('GET',`/pulls/${review.pullRequest.number}`),value,review.baseSha,review.headSha,['closed'],false);
+    if(pull.merge_commit_sha!==proof.mergeSha || typeof pull.merged_at!=='string' || Number.isNaN(Date.parse(pull.merged_at)) ||
+        owner && pull.merged_by?.login!=='johnkevan88888') throw new Error('Batch terminal review changed during merged proof.');
+    await current(github,proof.mainSha);
+}
 
 export async function createOrReconcileArchiveGalleryBatchReview(candidateValue,configuration={}) {
     const value=candidate(candidateValue),github=options(configuration,true),baseSha=configuration.expectedBaseSha;
@@ -243,13 +264,55 @@ async function merged(github,value,baseSha,headSha,pull) {
     await current(github,mainSha);
     return {state:'merged-by-owner',pullRequestNumber:pull.number,mergeSha:pull.merge_commit_sha,mainSha,headSha};
 }
-export async function readMergedGalleryBatchReview(candidateValue,reviewValue,configuration={}) {
-    const value=candidate(candidateValue),github=options(configuration),baseSha=configuration.expectedBaseSha;
+async function readMerged(github,value,reviewValue,baseSha) {
     const review=checkedReview(reviewValue,value,baseSha),existing=await pulls(github,value);
     if(existing.length!==1 || existing[0].number!==review.pullRequest.number) throw new Error('Changed batch review identity.');
     const pull=checkedPull(await github('GET',`/pulls/${review.pullRequest.number}`),value,baseSha,review.headSha,['closed'],false);
     await verifyBranch(github,value,baseSha,review.headSha);
-    return freeze(await merged(github,value,baseSha,review.headSha,pull));
+    return {review,pull,proof:await merged(github,value,baseSha,review.headSha,pull)};
+}
+export async function readMergedGalleryBatchReview(candidateValue,reviewValue,configuration={}) {
+    const value=candidate(candidateValue),github=options(configuration),baseSha=configuration.expectedBaseSha;
+    const {proof}=await readMerged(github,value,reviewValue,baseSha);
+    return freeze(proof);
+}
+
+export async function readMergedGalleryBatchPublication(candidateValue,reviewValue,configuration={}) {
+    const value=candidate(candidateValue),github=options(configuration),baseSha=configuration.expectedBaseSha;
+    const {review,pull,proof}=await readMerged(github,value,reviewValue,baseSha);
+    if(pull.merged_by?.login!=='johnkevan88888') throw new Error('Exact owner merge required for new batch publication.');
+    const own=document(await text(github,value.targetRelativePath,proof.mainSha));
+    const other=document(await text(github,paths.find(path=>path!==value.targetRelativePath),proof.mainSha));
+    const suppressionText=await text(github,'gallery-data/hidden-athlete-ids.json',proof.mainSha),suppression=JSON.parse(suppressionText);
+    if(canonical(suppression)!==suppressionText || galleryContract.validateGallerySuppressionDocument(suppression).length)
+        throw new Error('Valid current suppression required for batch publication.');
+    const items=document(value.manifestText).items.slice(-value.itemIds.length);
+    if(!same(own.items.filter(item=>value.itemIds.includes(item.id)).map(item=>item.id),value.itemIds))
+        throw new Error('All exact ordered batch members must remain on current main.');
+    for(const item of items) {
+        if(!same(own.items.find(currentItem=>currentItem.id===item.id),item) ||
+            item.athleteIds.some(id=>suppression.hiddenAthleteIds.includes(id)) ||
+            [...own.items.filter(old=>old.id!==item.id),...other.items].some(old=>collides(item,old)))
+            throw new Error('Changed, suppressed or reused batch member cannot complete publication.');
+    }
+    await stableMerged(github,value,review,proof,true);
+    return freeze(mergedResult(value,baseSha,review,proof));
+}
+
+export async function readMergedGalleryBatchMemberReview(candidateValue,reviewValue,itemId,configuration={}) {
+    const value=candidate(candidateValue);
+    if(typeof itemId!=='string' || !value.itemIds.includes(itemId)) throw new Error('Exact original batch member required.');
+    const github=options(configuration),baseSha=configuration.expectedBaseSha;
+    const {review,proof}=await readMerged(github,value,reviewValue,baseSha);
+    // Historical origin proof deliberately does not re-authorize publication.
+    // It remains usable for removal after consent/suppression changes or after
+    // a sibling has already been removed. The caller must separately establish
+    // the member's current exact presence/absence before a strict -1 removal.
+    // The wire state's legacy name, "merged-by-owner", is not owner attribution
+    // here: missing/changed merged_by must not prevent privacy cleanup. Only
+    // readMergedGalleryBatchPublication establishes owner publication authority.
+    await stableMerged(github,value,review,proof);
+    return freeze(mergedResult(value,baseSha,review,proof));
 }
 
 export async function reconcileArchiveGalleryBatchReview(candidateValue,configuration={}) {

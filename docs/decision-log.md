@@ -1,5 +1,34 @@
 # Decision Log
 
+## Batch publication keeps individual permission and explicit shared history — 21 October 2026
+
+- **Status:** Local continuation of PR #145; not released or remotely activated.
+- **Decision:** Publication preparation is an append-only verified owner grant
+  on the exact recorded batch review and SAME non-expiring job/run. It creates
+  no new claim, consent deadline, workflow input or merge capability. All-member
+  current consent/catalogue/exclusion/framing/actual-byte checks precede readiness
+  and successful owner-merge observation.
+- **History versus authority:** Each member has an explicit immutable batch
+  origin, not a fabricated strict-one-photo addition receipt. Positive historical
+  merge evidence can be stored after revocation for removal without conferring
+  publication authority. New publication alone requires the strict owner-merge
+  reader plus fresh unchanged current members/suppression/stable main. The legacy
+  historical wire state name is not owner attribution or current permission.
+- **Removal:** A later ordinary member removal uses the shared origin but
+  proposes an unchanged strict one-item subtraction, preserving siblings. Merge
+  races and main outages cannot authorize deleting unclosed possibly-live copies.
+  Completed cleanup, retained originals/tags and retirement protections survive.
+- **Purge tradeoff:** Raw shared review JSON cannot be retained while reporting a
+  member metadata-purged. The smallest supported purge coordinates ALL connected
+  terminal assets, each with its own exact owner purge confirmation and current
+  proof, under one existing leader claim and atomic transaction. No sibling is
+  implicitly approved; a failure rolls back all deletion and only hash-only
+  retirement/replay survives successful purge. Hiding remains independent.
+- **Boundary:** Forward0031 does not edit0030 or relax single-photo contracts.
+  Owner/finalizer ledger imports remain separated from promotion capabilities.
+  Local tests do not authorize repository release, remote migration/deployment,
+  workflow dispatch, real media, purge, merge or publication.
+
 ## A photo batch selects independent consent; it does not combine it — 20 October 2026
 
 - **Status:** Implemented/tested locally for review only; not released or activated.

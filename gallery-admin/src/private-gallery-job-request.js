@@ -4,7 +4,7 @@ import {readPrivateOwnerBody} from './private-gallery-owner-service.js';
 import {readArchiveMediaEpoch} from './private-gallery-service-authority.js';
 import {readArchiveJob,claimArchiveJob,completeArchiveJob,archiveJobSummary,readRetiredArchiveJob} from './private-gallery-job-service.js';
 import {archiveBatchSummary} from './private-gallery-batch-service.js';
-const path=/^\/api\/service\/archive-jobs\/(job_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(read|claim|complete|purge-inspect|purge|batch-reserve|batch-write|batch-open|batch-terminal)$/;
+const path=/^\/api\/service\/archive-jobs\/(job_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(read|claim|complete|purge-inspect|purge|batch-reserve|batch-write|batch-open|batch-terminal|batch-publication-check|batch-publication-observe)$/;
 export function isArchiveJobPath(request) {return new URL(request.url).pathname.startsWith('/api/service/archive-jobs/');}
 export async function handleArchiveJobRequest(request,env,config,dependencies={},executePurge,catalog=null,executeBatchOperation) {
     const purpose=config.purpose;
@@ -28,7 +28,7 @@ export async function handleArchiveJobRequest(request,env,config,dependencies={}
         if(!body.ok) return adminFailure(body.status);
         const input=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(body.bytes));
         const expected=['purge-inspect','purge','batch-reserve'].includes(operation)?'main|runReference':operation==='complete'?'result|runReference':
-            operation==='batch-open'?'review|runReference':operation==='batch-terminal'?'evidence|runReference':'runReference';
+            operation==='batch-open'?'review|runReference':['batch-terminal','batch-publication-observe'].includes(operation)?'evidence|runReference':'runReference';
         if(Object.keys(input||{}).sort().join('|')!==expected || !/^https:\/\/github\.com\/johnkevan88888\/family-running\/actions\/runs\/[1-9][0-9]*$/.test(input.runReference||'')) return adminFailure(422);
         env={...env,DB:env.DB.withSession?.('first-primary')||env.DB,ARCHIVE_SERVICE_IDENTITY:env[config.identity]};
         if(purpose==='finalizer') {
@@ -42,7 +42,16 @@ export async function handleArchiveJobRequest(request,env,config,dependencies={}
         // step; it cannot claim/complete that job or act as the promoter.
         if(required!==purpose && !(purpose==='finalizer' && operation==='read' && ['review','removal','batch-review'].includes(row.action) && row.run_reference===input.runReference)) return adminFailure(403);
         if(operation!=='read' && row.run_reference!==input.runReference) return adminFailure(409);
-        if(operation==='complete') return adminJson(200,{ok:true,job:await completeArchiveJob(env,jobId,input.runReference,input.result)});
+        if(operation==='complete') {
+            if(row.action==='batch-review' && input.result?.state==='publication-observed' && !row.result_json) {
+                // Ledger completion is deliberately capability-free. Only the
+                // promoter can recheck current catalogue, framing and actual
+                // bytes here; the finalizer never imports that implementation.
+                if(purpose!=='promotion' || typeof executeBatchOperation!=='function') return adminFailure(404);
+                await executeBatchOperation(env,identity,row,catalog,'batch-publication-check',{runReference:input.runReference});
+            }
+            return adminJson(200,{ok:true,job:await completeArchiveJob(env,jobId,input.runReference,input.result)});
+        }
         if(operation.startsWith('batch-')) return adminJson(200,await executeBatchOperation(env,identity,row,catalog,operation,input));
         if(row.action==='batch-review') return adminJson(200,{ok:true,job:await archiveBatchSummary(env,row)});
         if(['purge-inspect','purge'].includes(operation)) {
