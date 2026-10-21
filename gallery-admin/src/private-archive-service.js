@@ -5,6 +5,7 @@ import { readPrivateGalleryAsset } from './private-gallery-asset-service.js';
 import { loadPrivateGalleryRoster } from './private-gallery-roster-service.js';
 import { resolvePrivateGalleryTags } from './private-gallery-roster.js';
 import {isArchiveServiceAuthority,archiveOperationOwner} from './private-gallery-service-authority.js';
+import {requireFamilyPermission} from './family-permission.js';
 
 const policy = mediaPolicyModule?.default || mediaPolicyModule;
 const maximumBytes = 25 * 1024 * 1024;
@@ -24,7 +25,7 @@ async function context(env, identity, site, assetId) {
     if (!service && !selected.ok) throw Object.assign(new Error('Unavailable'), {status:selected.status});
     const owner = service?await archiveOperationOwner(env,identity,site,assetId,'finalize'):await hashIdentity(identity);
     const row = await env.DB.prepare(`SELECT a.original_format, a.private_object_key,
-        i.request_hash, i.roster_generation, i.byte_count, i.sha256, s.tag_version, s.current_person_ids_json,
+        i.*, s.tag_version, s.current_person_ids_json,
         (unixepoch(i.created_at) + 86400 > unixepoch('now')) AS unexpired,
         (i.roster_generation = v.generation) AS roster_current,
         u.provider_upload_id, o.provider_version, o.provider_etag,
@@ -45,13 +46,18 @@ async function context(env, identity, site, assetId) {
         row.private_object_key !== `private-archive/v1/${site}/${assetId}/original.${row.original_format}` ||
         (row.provider_upload_id !== null && !safeProvider(row.provider_upload_id,1024))) throw new Error('Unavailable');
     if(service && !row.deletion_reason) throw new Error('Owner request required');
-    return {...row,owner,personIds:service?[]:selected.asset.personIds};
+    let standingCurrent = true;
+    if (row.standing_permission_version != null) {
+        try { await requireFamilyPermission(env,owner,site,row.standing_permission_version,Boolean(row.contains_minors)); }
+        catch { standingCurrent = false; }
+    }
+    return {...row,owner,standingCurrent,personIds:service?[]:selected.asset.personIds};
 }
 async function run(env, sql, ...bindings) {
     const result = await env.DB.prepare(sql).bind(...bindings).run();
     if (result?.success !== true) throw new Error('Unavailable');
 }
-const blocked = row => Boolean(row.deletion_reason) || row.unexpired !== 1 || row.roster_current !== 1;
+const blocked = row => Boolean(row.deletion_reason) || row.unexpired !== 1 || row.roster_current !== 1 || !row.standingCurrent;
 const state = row => row.original_absent === 1 ? 'private-original-deleted' : row.deletion_reason ? 'deletion-pending' :
     row.provider_version ? 'quarantined' : row.request_hash ? 'awaiting-upload' : 'awaiting-consent';
 const publicError = error => failure([403,404,409,422].includes(error?.status) ? error.status : 503);
@@ -65,7 +71,9 @@ export async function preparePrivateArchiveIntake(env, identity, site, assetId, 
         // Existing version-one callers remain valid only for uncorrected tags.
         // A corrected set requires the owner's explicit current tag version.
         const tagVersion = input?.tagVersion ?? 1;
-        const inputFields = input && Object.hasOwn(input,'tagVersion') ? [...intakeFields,'tagVersion'].sort() : intakeFields;
+        const standing = input && Object.hasOwn(input,'standingPermissionVersion');
+        const inputFields = [...intakeFields,...(input && Object.hasOwn(input,'tagVersion')?['tagVersion']:[]),
+            ...(standing?['standingPermissionVersion']:[])].sort();
         if (!input || typeof input !== 'object' || Array.isArray(input) ||
             Object.keys(input).sort().join('|') !== inputFields.join('|') ||
             !Number.isSafeInteger(tagVersion) || tagVersion < 1 ||
@@ -75,20 +83,25 @@ export async function preparePrivateArchiveIntake(env, identity, site, assetId, 
             input.guardianApprovalConfirmed !== input.containsMinors ||
             typeof input.rosterRevision !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(input.rosterRevision)) return failure(422);
         if (tagVersion !== row.tag_version) return failure(409);
+        if (standing) {
+            try { await requireFamilyPermission(env,row.owner,site,input.standingPermissionVersion,input.containsMinors); }
+            catch { return failure(409); }
+        }
         const attestation = intakeFields.map(key=>input[key]);
         // Preserve the exact v1 fingerprint for pre-0021 intake replays; an
         // additive corrected-tag fingerprint must never rewrite old evidence.
         const fingerprint = await sha256Hex(new TextEncoder().encode(JSON.stringify(
-            tagVersion === 1 ? attestation : [tagVersion,...attestation])));
+            standing ? ['family-standing-v1',input.standingPermissionVersion,tagVersion,...attestation] :
+                tagVersion === 1 ? attestation : [tagVersion,...attestation])));
         if (row.request_hash) return row.request_hash === fingerprint ? response(200,state(row)) : failure(409);
         const {document,generation} = await loadPrivateGalleryRoster(env,site);
         try { resolvePrivateGalleryTags(document,site,row.personIds,input.rosterRevision); }
         catch { return failure(409); }
         try {
             await run(env,`INSERT INTO private_archive_intakes
-                (asset_id,roster_generation,request_hash,byte_count,sha256,private_retention_confirmed,contains_minors,guardian_approval_confirmed,tag_version)
-                VALUES (?1,?2,?3,?4,?5,1,?6,?7,?8)`,assetId,generation,fingerprint,input.byteCount,input.sha256,
-                Number(input.containsMinors),Number(input.guardianApprovalConfirmed),row.tag_version);
+                (asset_id,roster_generation,request_hash,byte_count,sha256,private_retention_confirmed,contains_minors,guardian_approval_confirmed,tag_version${standing?',standing_permission_version':''})
+                VALUES (?1,?2,?3,?4,?5,1,?6,?7,?8${standing?',?9':''})`,assetId,generation,fingerprint,input.byteCount,input.sha256,
+                Number(input.containsMinors),Number(input.guardianApprovalConfirmed),row.tag_version,...(standing?[input.standingPermissionVersion]:[]));
         } catch {
             const recovered = await context(env,identity,site,assetId);
             if (recovered.deletion_reason) return failure(409);

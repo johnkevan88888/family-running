@@ -16,6 +16,7 @@ import { reservePrivateGalleryAttempt } from '../gallery-admin/src/private-galle
 import { readPrivateGalleryAssetEligibility,changePrivateGalleryVisibility } from '../gallery-admin/src/private-gallery-visibility-service.js';
 import {queuePrivateArchiveJob,claimArchiveJob} from '../gallery-admin/src/private-gallery-job-service.js';
 import {savePrivateGalleryFraming,readPrivateGalleryAttemptFraming} from '../gallery-admin/src/private-gallery-framing-service.js';
+import {familyPermission,familyPhotoPermission,createFamilyDraft} from '../gallery-admin/src/family-uploader-service.js';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -104,6 +105,12 @@ try {
     const batchCloseCompile=runWrangler(['d1','execute',...commonArguments,'--command',
         'EXPLAIN INSERT INTO private_gallery_pipeline_closures DEFAULT VALUES','--json'],environment);
     assert.equal(batchCloseCompile.status,0,diagnostic(batchCloseCompile));
+    const familyCompile=runWrangler(['d1','execute',...commonArguments,'--command',
+        ['permissions','photo_permissions','drafts','draft_photos','draft_writes','dispatches'].map(table=>
+            `EXPLAIN INSERT INTO family_gallery_${table} DEFAULT VALUES;`).join('\n')+
+        '\nEXPLAIN UPDATE family_gallery_draft_photos SET attempt_id=NULL;\nEXPLAIN DELETE FROM family_gallery_draft_photos;',
+        '--json'],environment);
+    assert.equal(familyCompile.status,0,diagnostic(familyCompile));
 
     // EXPLAIN compiles each INSERT and all table triggers into bytecode but does
     // not execute them. DEFAULT VALUES deliberately avoids fixture data: these
@@ -364,7 +371,15 @@ try {
         assert.ok(parseWranglerJson(compiled)[0].results.length>0);
     }
 
-    console.log('Gallery D1 expression-depth parity, private roster, tag correction, archive intake/cleanup, private framing/fresh-consent snapshot and atomic metadata-purge trigger compilation passed.');
+    const familyPolicy=await familyPermission(assetEnv,owner,'family',{expectedVersion:0,idempotencyKey:crypto.randomUUID(),active:true,guardians:false});
+    assert.equal(familyPolicy.ok,true);assert.equal(familyPolicy.version,1);
+    const familyDraft=await createFamilyDraft(assetEnv,owner,'family',{idempotencyKey:crypto.randomUUID()});
+    assert.equal(familyDraft.ok,true);assert.equal(familyDraft.draft.photos.length,0);
+    const hiddenPhoto=await familyPhotoPermission(assetEnv,owner,'family',{assetId:reservation.asset.assetId,expectedVersion:0,
+        idempotencyKey:crypto.randomUUID(),preference:'hidden'});
+    assert.equal(hiddenPhoto.ok,true);assert.equal(hiddenPhoto.removalVerified,false);
+    assert.equal(await assetEnv.DB.prepare('SELECT 1 FROM private_gallery_current_attempt_permissions WHERE attempt_id=?1').bind(attempt.attemptId).first(),null);
+    console.log('Gallery D1 expression-depth parity, private roster, archive intake/cleanup, framing/consent, Family standing permission/draft/photo opt-out and atomic metadata-purge trigger compilation passed.');
 } finally {
     const resolvedTemporaryRoot = await fs.realpath(temporaryRoot);
     assert.equal(path.dirname(resolvedTemporaryRoot), temporaryParent);

@@ -11,6 +11,9 @@ import { handlePrivatePhotoOwnerOperation, readPrivateOwnerBody } from './privat
 import { readPrivateGalleryFraming, savePrivateGalleryFraming } from './private-gallery-framing-service.js';
 import { privateFaceWorkerScript, privateFaceEditorScript, privateFaceEditorStylesheet } from './private-gallery-face-assets.js';
 import podiumFraming from '../../gallery-podium-framing.js';
+import {familyUploaderDocument,familyUploaderScript,familyUploaderStyles} from './family-uploader-assets.js';
+import {familyPermission,familyPhotoPermission,resolveFamilyAthlete,readFamilyDrafts,createFamilyDraft,saveFamilyDraft,
+    prepareFamilyPhoto,submitFamilyDraft,familyDraftProgress} from './family-uploader-service.js';
 import {
     adminClientScript,
     adminShellDocument,
@@ -171,12 +174,23 @@ async function handleBrowserRoute(
             return adminFailure(405, { Allow: 'GET' });
         }
         return adminHtml(200, adminShellDocument(siteMode).replace('<main id="main-content"',
-            `<p><a href="/private-gallery?site=${siteMode}">Protected photo library and complete athlete tags</a></p><main id="main-content"`));
+            `<p><a href="${siteMode==='family'?'/family-uploader':'/private-gallery'}?site=${siteMode}">${siteMode==='family'?'Add Family photos or continue a saved batch':'Protected photo library and complete athlete tags'}</a></p><main id="main-content"`));
+    }
+
+    if (['/family-uploader','/family-uploader.js','/family-uploader.css'].includes(pathname)) {
+        if(siteMode!=='family') return adminFailure(404);
+        if(request.method!=='GET') return adminFailure(405,{Allow:'GET'});
+        if(pathname.endsWith('.js')) return adminScript(200,familyUploaderScript());
+        if(pathname.endsWith('.css')) return adminStyles(200,familyUploaderStyles());
+        const response=adminHtml(200,familyUploaderDocument());
+        response.headers.set('Content-Security-Policy',response.headers.get('Content-Security-Policy')+"; worker-src 'self'");
+        return response;
     }
 
     if (pathname === '/private-gallery') {
         if (request.method !== 'GET') return adminFailure(405, {Allow:'GET'});
-        const response = adminHtml(200, privateGalleryDocument(siteMode));
+        const response = adminHtml(200, privateGalleryDocument(siteMode).replace('<main class="admin-main">',
+            '<main class="admin-main">'+(siteMode==='family'?'<p><a class="button button-primary" href="/family-uploader?site=family">Add Family photos with the simple uploader</a></p>':'')));
         // Only this protected page may start the same-origin detection worker.
         // No camera, blob worker, CDN, outside connection or eval is enabled.
         response.headers.set('Content-Security-Policy',
@@ -277,6 +291,35 @@ async function handleBrowserRoute(
     if (route.kind.startsWith('archive-')) {
         const result=await handlePrivatePhotoOwnerOperation(request,env,identity,siteMode,route,catalogSnapshot,dependencies);
         return result?.status===405 ? adminFailure(405,{Allow:result.allow}) : serviceResultResponse(result);
+    }
+
+    if (route.kind.startsWith('family-')) {
+        if(siteMode!=='family') return adminFailure(403);
+        if(!['GET','POST'].includes(request.method)) return adminFailure(405,{Allow:'GET, POST'});
+        try {
+            let input;
+            if(request.method==='POST') {
+                const body=await readPrivateOwnerBody(request,JSON_BODY_LIMIT,'application/json',dependencies.bodyTimeoutMilliseconds);
+                if(!body.ok) return serviceResultResponse(body);
+                try {input=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(body.bytes));}catch{return adminFailure(400);}
+            } else if(request.body||request.headers.has('Content-Type')||request.headers.has('Transfer-Encoding')||
+                ![null,'0'].includes(request.headers.get('Content-Length'))) return adminFailure(400);
+            const localEnv={...env,DB:env.DB.withSession?.('first-primary')||env.DB};
+            let result;
+            if(route.kind==='family-permission') result=await familyPermission(localEnv,identity,siteMode,input);
+            else if(request.method==='GET' && route.kind==='family-drafts') result=await readFamilyDrafts(localEnv,identity,siteMode,route.draftId);
+            else if(request.method==='GET' && route.kind==='family-progress') result=await familyDraftProgress(localEnv,identity,siteMode,route.draftId);
+            else if(request.method!=='POST') return adminFailure(405,{Allow:'POST'});
+            else if(route.kind==='family-photo-permission') result=await familyPhotoPermission(localEnv,identity,siteMode,input);
+            else if(route.kind==='family-athletes') result=await resolveFamilyAthlete(localEnv,identity,siteMode,input,catalogSnapshot);
+            else if(route.kind==='family-drafts') result=route.draftId
+                ?await saveFamilyDraft(localEnv,identity,siteMode,route.draftId,input,catalogSnapshot)
+                :await createFamilyDraft(localEnv,identity,siteMode,input);
+            else if(route.kind==='family-prepare') result=await prepareFamilyPhoto(localEnv,identity,siteMode,route.draftId,input,catalogSnapshot);
+            else if(route.kind==='family-submit') result=await submitFamilyDraft(localEnv,identity,siteMode,route.draftId,input,catalogSnapshot,dependencies);
+            else return adminFailure(405,{Allow:'GET'});
+            return serviceResultResponse(result);
+        } catch {return serviceResultResponse({ok:false,status:409,code:'family-draft-unavailable-or-changed'});}
     }
 
     if (route.kind === 'private-people') {
@@ -584,6 +627,12 @@ async function createSyntheticRecord(request, env, identity, now) {
 }
 
 function matchPhaseCRoute(pathname) {
+    if(pathname==='/api/browser/family-permission') return {kind:'family-permission'};
+    if(pathname==='/api/browser/family-photo-permission') return {kind:'family-photo-permission'};
+    if(pathname==='/api/browser/family-athletes') return {kind:'family-athletes'};
+    if(pathname==='/api/browser/family-drafts') return {kind:'family-drafts'};
+    const familyMatch=/^\/api\/browser\/family-drafts\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})(?:\/(prepare|submit|progress))?$/.exec(pathname);
+    if(familyMatch) return {kind:familyMatch[2]?`family-${familyMatch[2]}`:'family-drafts',draftId:familyMatch[1]};
     if (pathname === '/api/browser/private-batches') return {kind:'archive-batches'};
     const batchPublicationMatch = /^\/api\/browser\/private-batches\/(job_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/publication$/.exec(pathname);
     if (batchPublicationMatch) return {kind:'archive-batch-publication',jobId:batchPublicationMatch[1]};
@@ -898,7 +947,7 @@ function normalizeConfiguredOrigin(value) {
 }
 
 function isBrowserPath(pathname) {
-    return PRIVATE_FRAMING_ASSET_PATHS.has(pathname) ||
+    return ['/family-uploader','/family-uploader.js','/family-uploader.css'].includes(pathname) || PRIVATE_FRAMING_ASSET_PATHS.has(pathname) ||
         pathname === '/private-gallery' || pathname === '/private-gallery.js' || pathname === ADMIN_SHELL_PATH ||
         pathname === ADMIN_STYLES_PATH ||
         pathname === ADMIN_SCRIPT_PATH ||
@@ -909,7 +958,7 @@ function isBrowserPath(pathname) {
 }
 
 function isAreaScopedBrowserPath(pathname) {
-    return PRIVATE_FRAMING_ASSET_PATHS.has(pathname) ||
+    return ['/family-uploader','/family-uploader.js','/family-uploader.css'].includes(pathname) || PRIVATE_FRAMING_ASSET_PATHS.has(pathname) ||
         pathname === '/private-gallery' || pathname === ADMIN_SHELL_PATH ||
         pathname === BROWSER_SESSION_PATH ||
         pathname === SYNTHETIC_RECORDS_PATH ||
