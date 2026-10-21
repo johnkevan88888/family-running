@@ -1,5 +1,31 @@
 # Curated Gallery Publishing Workflow
 
+## Protected batch reviews — local-only boundary, 20 October 2026
+
+The local protected library can select/order 1–20 saved photo-consent attempts
+in one inherited area and request one combined review job. Prepare every photo's
+original, complete tags, checked framing and fresh consent independently first.
+The job never creates aggregate consent, copies private tags into Git or selects
+a caller-supplied destination. The same opaque-job workflow derives/rechecks
+each item, then the strict batch client proposes one appended manifest file.
+
+Do not merge a batch candidate from this slice. It deliberately stops unmerged
+and retains the existing global claim. Batch publication preparation/completion,
+published-batch removal proposals and shared-member metadata purge remain
+unimplemented and blocked. A single-photo publication job cannot reinterpret
+batch membership. Future publication must revalidate ALL members, then preserve
+correct individual withdrawal and shared review/purge coordination.
+
+On revocation/failure, rerun the SAME protected run. Unknown writes stay pending;
+an admitted PR POST is not absence proof. Close/reconcile the shared PR and prove
+each member's storage, current fixed-origin host and same-main absence separately.
+Existing completed evidence and originals/tags/history are retained; no retention
+clock is reset. Missing main cannot authorize cleaning an unclosed photo.
+
+The new migration0030/services and CI fast lane are local and unreleased. Passing
+local/synthetic checks is not activation, consent for real media or permission to
+merge/publish. See active-work for exact95-group, capacity and byte-proof evidence.
+
 Phase 1 is an owner-curated public gallery. It deliberately does not accept
 visitor uploads and does not put photographs or videos into Git or the GitHub
 Pages artifact.
@@ -402,7 +428,13 @@ affected-service deployment; the earlier static-only approval does not activate 
 
 ## Validation And Release
 
-Run `pnpm test`. Gallery validation rejects malformed JSON, unsafe or non-HTTPS
+Implementation changes run `pnpm test`. A strictly eligible one-file append-only
+new-photo review (or future protected batch of up to20 photos) may use the focused regression scope described in
+[the testing protocol](testing-and-release-protocol.md). All other changes retain
+the full suite. This changes no protected processing or publication checks and
+does not make a public manifest proof of private consent or stripped bytes.
+Normal Netlify preview, explicit owner approval and fresh protected publication
+preparation remain mandatory. Gallery validation rejects malformed JSON, unsafe or non-HTTPS
 URLs, duplicate IDs, unsupported fields, invalid dates, unknown athlete IDs,
 invalid or duplicate suppression IDs, and differing copies of a shared item.
 The browser fails closed if the suppression list is missing or malformed. The

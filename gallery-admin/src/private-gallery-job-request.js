@@ -3,9 +3,10 @@ import {adminFailure,adminJson} from './responses.js';
 import {readPrivateOwnerBody} from './private-gallery-owner-service.js';
 import {readArchiveMediaEpoch} from './private-gallery-service-authority.js';
 import {readArchiveJob,claimArchiveJob,completeArchiveJob,archiveJobSummary,readRetiredArchiveJob} from './private-gallery-job-service.js';
-const path=/^\/api\/service\/archive-jobs\/(job_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(read|claim|complete|purge-inspect|purge)$/;
+import {archiveBatchSummary} from './private-gallery-batch-service.js';
+const path=/^\/api\/service\/archive-jobs\/(job_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(read|claim|complete|purge-inspect|purge|batch-reserve|batch-write|batch-open|batch-terminal)$/;
 export function isArchiveJobPath(request) {return new URL(request.url).pathname.startsWith('/api/service/archive-jobs/');}
-export async function handleArchiveJobRequest(request,env,config,dependencies={},executePurge) {
+export async function handleArchiveJobRequest(request,env,config,dependencies={},executePurge,catalog=null,executeBatchOperation) {
     const purpose=config.purpose;
     try {
         const identity=await (dependencies.verifyAccessIdentity?dependencies.verifyAccessIdentity():verifyWorkerAccessIdentity(dependencies.accessContext,request));
@@ -22,10 +23,12 @@ export async function handleArchiveJobRequest(request,env,config,dependencies={}
         if(request.method!=='POST') return adminFailure(405,{Allow:'POST'});
         const [jobId,operation]=route.slice(1);
         if(['purge-inspect','purge'].includes(operation) && purpose!=='finalizer') return adminFailure(404);
-        const body=await readPrivateOwnerBody(request,['purge-inspect','purge'].includes(operation)?2097152:32768,'application/json',dependencies.bodyTimeoutMilliseconds);
+        if(operation.startsWith('batch-') && (purpose!=='promotion' || typeof executeBatchOperation!=='function')) return adminFailure(404);
+        const body=await readPrivateOwnerBody(request,['purge-inspect','purge','batch-reserve'].includes(operation)?2097152:32768,'application/json',dependencies.bodyTimeoutMilliseconds);
         if(!body.ok) return adminFailure(body.status);
         const input=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(body.bytes));
-        const expected=['purge-inspect','purge'].includes(operation)?'main|runReference':operation==='complete'?'result|runReference':'runReference';
+        const expected=['purge-inspect','purge','batch-reserve'].includes(operation)?'main|runReference':operation==='complete'?'result|runReference':
+            operation==='batch-open'?'review|runReference':operation==='batch-terminal'?'evidence|runReference':'runReference';
         if(Object.keys(input||{}).sort().join('|')!==expected || !/^https:\/\/github\.com\/johnkevan88888\/family-running\/actions\/runs\/[1-9][0-9]*$/.test(input.runReference||'')) return adminFailure(422);
         env={...env,DB:env.DB.withSession?.('first-primary')||env.DB,ARCHIVE_SERVICE_IDENTITY:env[config.identity]};
         if(purpose==='finalizer') {
@@ -37,9 +40,11 @@ export async function handleArchiveJobRequest(request,env,config,dependencies={}
         const required=['purge','purge-inspect'].includes(row.action)?'finalizer':'promotion';
         // The finalizer can read a claimed removal job for its ORIGINAL-only
         // step; it cannot claim/complete that job or act as the promoter.
-        if(required!==purpose && !(purpose==='finalizer' && operation==='read' && ['review','removal'].includes(row.action) && row.run_reference===input.runReference)) return adminFailure(403);
+        if(required!==purpose && !(purpose==='finalizer' && operation==='read' && ['review','removal','batch-review'].includes(row.action) && row.run_reference===input.runReference)) return adminFailure(403);
         if(operation!=='read' && row.run_reference!==input.runReference) return adminFailure(409);
         if(operation==='complete') return adminJson(200,{ok:true,job:await completeArchiveJob(env,jobId,input.runReference,input.result)});
+        if(operation.startsWith('batch-')) return adminJson(200,await executeBatchOperation(env,identity,row,catalog,operation,input));
+        if(row.action==='batch-review') return adminJson(200,{ok:true,job:await archiveBatchSummary(env,row)});
         if(['purge-inspect','purge'].includes(operation)) {
             if(!['purge','purge-inspect'].includes(row.action) || row.completed_state || operation==='purge' && row.action!=='purge') return adminFailure(409);
             if(typeof executePurge!=='function') return adminFailure(404);

@@ -76,7 +76,8 @@ export function createArchiveJobClient({purpose,origin,clientId,clientSecret,fet
     const request=fixedJsonTransport({origin,approved,clientId,clientSecret,fetchImpl,timeoutMilliseconds});
     return (jobId,operation,value)=>{
         if(!/^job_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(jobId||'') ||
-            !['read','claim','complete','purge-inspect','purge'].includes(operation) || purpose!=='finalizer' && operation.startsWith('purge')) throw new Error('Unavailable');
+            !['read','claim','complete','purge-inspect','purge','batch-reserve','batch-write','batch-open','batch-terminal'].includes(operation) ||
+            purpose!=='finalizer' && operation.startsWith('purge') || purpose!=='promotion' && operation.startsWith('batch-')) throw new Error('Unavailable');
         return request(`/api/service/archive-jobs/${jobId}/${operation}`,value);
     };
 }

@@ -48,6 +48,13 @@ ${privateFaceEditorPanel(site)}
 <label class="check-line important-check"><input id="private-job-confirm" type="checkbox" required><span>I approve this exact protected action. Hide retains the original; deletion/consent withdrawal and purge are separate decisions.</span></label>
 <button class="button button-primary" type="submit">Request protected job</button></form>
 <button id="private-jobs-refresh" class="button button-secondary" type="button">Refresh saved jobs</button><div id="private-jobs" class="draft-list" role="status" aria-live="polite"></div>
+<section aria-labelledby="private-batch-heading"><h3 id="private-batch-heading">One review for several photos</h3>
+<p>Upload, tag, frame and save consent for each photo separately. Open each saved photo here, select its saved consent attempt above, then add it to this ordered selection. This selection is held in this tab only until you request the saved batch job. Reloading discards an unsubmitted selection, not saved photos or jobs.</p>
+<button id="private-batch-add" class="button button-secondary" type="button">Add selected consent attempt to batch</button>
+<p id="private-batch-selection-status" role="status" aria-live="polite">0 of 20 photos selected.</p><ol id="private-batch-selection" class="draft-list"></ol>
+<form id="private-batch-form"><label class="check-line important-check"><input id="private-batch-confirm" type="checkbox" required><span>I approve one combined, unmerged review for this exact ordered selection. Each photo keeps its own consent and safety checks. Nothing publishes automatically.</span></label>
+<button class="button button-primary" type="submit">Request combined review job</button></form>
+<button id="private-batches-refresh" class="button button-secondary" type="button">Refresh saved batches</button><div id="private-batches" class="draft-list" role="status" aria-live="polite"></div></section>
 <form id="private-delete-form"><h3>Separate terminal original removal</h3><label class="form-field">Reason<select id="private-delete-reason"><option value="owner-delete">Owner requests original deletion</option><option value="consent-withdrawal">Private retention consent withdrawn</option></select></label>
 <label class="check-line important-check"><input id="private-delete-confirm" type="checkbox" required><span>I request irreversible original deletion, not reversible hiding. Public removal must finish first. This does not authorize metadata purge.</span></label><button class="button button-secondary" type="submit">Request terminal original removal</button></form>
 <p>Rerun the original GitHub run to recover an active job. Its lock never expires automatically. Before merging, recheck this publication run; keep its lock until that same run confirms the merge or safely cancels it. No real-photo operation is approved by this local preparation.</p></section></main>
@@ -59,7 +66,10 @@ export function privateGalleryScript() {
     'use strict';
     const site = new URLSearchParams(location.search).get('site');
     const status = document.getElementById('private-status');
-    let csrf, revision, catalog, busy = false, personRequest, assetRequest, attemptRequest, jobRequest, activeAssetId, privatePeople = [];
+    let csrf, revision, catalog, busy = false, personRequest, assetRequest, attemptRequest, jobRequest, batchRequest, activeAssetId, privatePeople = [];
+    // Selection is private to this page instance: no cross-owner/tab/area
+    // browser storage and no copied consent, filenames or face information.
+    const batchSelection = [];
     const choices = document.getElementById('private-tag-choices');
     const framing = window.privateGalleryFaceFraming?.create({site,api,getContext:()=>({assetId:activeAssetId,people:privatePeople,busy})});
     document.getElementById('private-photo').addEventListener('change',event=>{ void framing?.selectFile(event.target.files[0]); });
@@ -146,6 +156,69 @@ export function privateGalleryScript() {
             list.append(card);
         }
     }
+    function renderBatchSelection() {
+        const list = document.getElementById('private-batch-selection'); list.replaceChildren();
+        document.getElementById('private-batch-selection-status').textContent = batchSelection.length + ' of 20 photos selected. Each consent attempt will be rechecked.';
+        for (const [index,member] of batchSelection.entries()) {
+            const row = document.createElement('li'); row.className = 'draft-card';
+            const asset = document.createElement('strong'); asset.textContent = 'Photo ' + (index + 1) + ': ' + member.assetId;
+            const attempt = document.createElement('span'); attempt.textContent = 'Saved consent: ' + member.attemptId;
+            row.append(asset,attempt);
+            for (const [label,move] of [['Move earlier',-1],['Move later',1],['Remove from selection',0]]) {
+                if (move && (index + move < 0 || index + move >= batchSelection.length)) continue;
+                const button = document.createElement('button'); button.type = 'button'; button.className = 'button button-secondary'; button.textContent = label;
+                button.addEventListener('click',()=>action(async()=>{
+                    if (move) [batchSelection[index],batchSelection[index + move]] = [batchSelection[index + move],batchSelection[index]];
+                    else batchSelection.splice(index,1);
+                    batchRequest = null; document.getElementById('private-batch-confirm').checked = false;
+                    renderBatchSelection(); note('Unsubmitted selection changed. Saved photos, tags and consent were not changed.');
+                }));
+                row.append(button);
+            }
+            list.append(row);
+        }
+    }
+    async function refreshBatches() {
+        const result = await api('/api/browser/private-batches');
+        const list = document.getElementById('private-batches'); list.replaceChildren();
+        for (const job of result.batches) {
+            const card = document.createElement('div'); card.className = 'draft-card';
+            const title = document.createElement('strong'); title.textContent = 'Combined review — ' + (job.reviewUrl && job.state === 'running' ? 'review recorded; protected claim retained' : job.state);
+            const id = document.createElement('span'); id.textContent = 'Workflow job ID: ' + job.jobId;
+            const count = document.createElement('span'); count.textContent = job.attemptIds.length + ' photo(s) in this saved batch; processing and review checks remain required.';
+            const link = document.createElement('a'); link.textContent = job.runReference ? 'Open the original run to resume' : 'Open the protected workflow; enter this job ID';
+            link.href = job.runReference || 'https://github.com/johnkevan88888/family-running/actions/workflows/gallery-archive-job.yml';
+            link.target = '_blank'; link.rel = 'noopener noreferrer'; card.append(title,id,count,link);
+            if (job.reviewUrl || job.result?.reviewUrl) {
+                const review = document.createElement('a'); review.textContent = 'Open the recorded combined review'; review.href = job.reviewUrl || job.result.reviewUrl;
+                review.target = '_blank'; review.rel = 'noopener noreferrer'; card.append(review);
+            }
+            list.append(card);
+        }
+    }
+    document.getElementById('private-batch-add').addEventListener('click',()=>action(async()=>{
+        const attemptId = document.getElementById('private-job-attempt').value;
+        if (!activeAssetId || !attemptId) throw new Error('Open a saved photo and select its saved consent attempt first.');
+        if (batchSelection.length >= 20) throw new Error('A combined review accepts at most 20 photos.');
+        if (batchSelection.some(member=>member.assetId === activeAssetId || member.attemptId === attemptId)) throw new Error('This photo is already selected. Remove it first to change its consent attempt.');
+        const current = await api('/api/browser/private-assets/' + activeAssetId + '/archive-jobs');
+        if (!current.attempts.some(attempt=>attempt.attemptId === attemptId && !attempt.closed)) throw new Error('This saved attempt is unavailable. Refresh the photo before continuing.');
+        batchSelection.push({assetId:activeAssetId,attemptId}); batchRequest = null;
+        document.getElementById('private-batch-confirm').checked = false; renderBatchSelection();
+        note('Saved attempt selected for the batch. Consent is not extended and no processing has run.');
+    }));
+    document.getElementById('private-batch-form').addEventListener('submit',event=>{
+        event.preventDefault(); action(async()=>{
+            if (!document.getElementById('private-batch-confirm').checked || batchSelection.length < 1 || batchSelection.length > 20) throw new Error('Select 1 to 20 photos and confirm this exact combined review.');
+            const attemptIds = batchSelection.map(member=>member.attemptId), fingerprint = JSON.stringify(attemptIds);
+            if (!batchRequest || batchRequest.fingerprint !== fingerprint) batchRequest = {fingerprint,key:uuid()};
+            await api('/api/browser/private-batches',{attemptIds,idempotencyKey:batchRequest.key});
+            await refreshBatches();
+            batchSelection.splice(0); batchRequest = null; document.getElementById('private-batch-confirm').checked = false; renderBatchSelection();
+            note('Combined review job saved. Open its protected workflow and enter its job ID. It stops at one unmerged PR; nothing has run or published yet.');
+        });
+    });
+    document.getElementById('private-batches-refresh').addEventListener('click',()=>action(refreshBatches));
     document.getElementById('private-open-form').addEventListener('submit',event=>{
         event.preventDefault(); action(async()=>{
             const id = document.getElementById('private-open-id').value.trim();

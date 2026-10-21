@@ -40,8 +40,8 @@ try {
         dependencies.promotion=createArchivePromotionClient(configuration('promotion'));
         if(phase==='prepare') {
             const read=await jobs(jobId,'read',{runReference});
-            if(read?.ok!==true || !['review','removal','publication'].includes(read.value.job?.action)) throw new Error('Owner job unavailable.');
-            phase={review:'review',removal:'cleanup',publication:'publication'}[read.value.job.action];
+            if(read?.ok!==true || !['review','batch-review','removal','publication'].includes(read.value.job?.action)) throw new Error('Owner job unavailable.');
+            phase={review:'review','batch-review':'review',removal:'cleanup',publication:'publication'}[read.value.job.action];
         }
     } else if(phase==='verify') dependencies.verifier=createArchiveServiceClient(configuration('verifier'));
     else if(phase==='finalize') dependencies.finalizer=createArchiveFinalizerClient(configuration('finalizer'));

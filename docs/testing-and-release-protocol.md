@@ -1,8 +1,83 @@
 # Testing And Release Protocol
 
+## Protected photo batches: implementation evidence is not publication authority
+
+The local batch review bridge is additive and review-only. Its new checks are
+`gallery-batch-storage`, `gallery-batch-owner`, `gallery-batch-owner-browser`,
+`gallery-batch-github-review` and `gallery-batch-protected-workflow` under tests/;
+the full runner now has95 groups. The D1 expression-depth test also compiles all
+seven new batch insert/trigger graphs through pinned local D1 after migration0030.
+Run the existing finalizer Worker/bundle, promotion config and single-owner
+workflow suites too: shared job/ledger imports must not pull promotion/bucket
+capabilities into the removal-only finalizer. Do not relax these boundary tests.
+
+Required batch evidence includes immutable ordered1–20 membership, owner/area
+isolation, no repointed single-photo history, individual consent/framing/byte
+checks at every write, late revocation/source/catalogue change, fixed-origin and
+cross-area reuse rejection, one PR POST, lost/delayed replies, same-run recovery,
+safe main outages, and independent per-member host plus same-main absence.
+Test both inherited areas and desktop/mobile. Small photos may have matching
+display/thumbnail hashes while the exact role-specific URLs/receipts stay distinct.
+
+An unmerged batch retains its non-expiring global claim. No-PR evidence cannot
+retire an admitted unknown POST. Batch publication, published-batch removal
+proposals and shared-member metadata purge are not implemented by this slice;
+single-photo operations must not bypass that boundary. Original retention and
+consent clocks stay unchanged. Before routine batch activation, implement/test
+the all-member publication and subsequent individual withdrawal/purge paths.
+Neither local95-group success nor a one-file PR authorizes a remote migration,
+deployment, real-media processing, merge, purge or publication.
+
 This project is a static GitHub Pages site. Excel/VBA remains the private source of truth for calculations and exports CSV files for the website. JavaScript must only render exported data; it must not calculate age grades, rankings, crowns, medal positions, target times, records, or championship status.
 
 ## Local Setup
+
+### Photo-only review regression scope — local implementation, 20 October 2026
+
+`node scripts/run-gallery-photo-checks.mjs` runs the focused photo review checks.
+It is regression evidence only, not permission to process, consent to, merge or
+publish a photo. The protected processing/promotion/publication workflows and
+their current consent, complete tagging, exclusion, metadata-stripping,
+generation, retirement and withdrawal checks are unchanged.
+
+The existing required `Test static site` job still runs for every PR. Its local
+Git classifier selects the focused runner only for exactly one modified existing
+Family OR Everyone manifest, appending 1–20 new tagged photos. Existing
+items/order and every other file must remain unchanged. Canonical bounded JSON,
+public schema/framing, valid suppression, canonical fixed-origin v2 display and
+thumbnail URLs in a distinct fresh generation per photo, and no within-batch,
+old or cross-area ID/URL/generation reuse are required. Both-mode Gallery validation checks exported races and
+public tags. Public CI does not claim to inspect private consent or source bytes.
+
+Classification binds exact base/head/checkout SHAs, requires an ancestor base,
+and verifies that the tested tree equals the candidate, including the normal
+GitHub test-merge parents. Dirty/missing/invalid/ambiguous evidence selects the
+full suite. Removals, replacements, insertions/reorders, videos, larger batches or
+mixed changes, and changes to this classifier/runner/workflow also use full CI.
+No title, label, author, branch-name or manual switch grants fast eligibility.
+
+The focused runner retains repository/vendor/CSV/Gallery/framing validation,
+consent/media/candidate contract tests, suppression/results/crop browser checks,
+artifact safety/build and actual-candidate both-mode responsive Gallery review.
+All checks are mandatory and sequential; failure fails the same required job.
+Screenshots retain the existing artifact name/path. External media requests are
+blocked in automated browser checks: inspect the actual Netlify preview pixels
+separately. Netlify preview, explicit owner publication approval, protected final
+consent/exclusion rechecks and normal Pages/live verification remain required.
+
+Batch CI eligibility is not a batch publishing implementation. The additive
+review-only bridge described above binds each immutable attempt and current
+consent/exclusion to one exact combined manifest/PR without rewriting existing
+single-photo reviews. It does not implement batch publication or published-batch
+individual withdrawal/purge coordination; those paths remain blocked and require
+separate implementation/testing. Do not merge a batch candidate from this slice.
+Existing queued reviews are never silently combined by the CI classifier.
+
+This CI implementation must itself pass the complete local suite and standard
+both-mode preview release before activation. There are no changed GitHub settings
+or Worker/database resources. Missing classifier output never skips full CI.
+GitHub documents the [test-merge checkout](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request)
+and why [path-filtering a required workflow can leave it pending](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onpull_requestpull_request_targetpathspaths-ignore).
 
 ### Automatic uploader face framing — local only, 20 October 2026
 
@@ -1869,8 +1944,9 @@ approval for the merge; other pathways still require separate PR approval.
 ## Pull Request Checks And Preview URLs
 
 GitHub Actions runs `.github/workflows/pr-checks.yml` on the Pull Request commit
-for release-path classification, the complete test suite, and responsive
-screenshots. This is a regression and review gate, not a separate adversarial
+for release-path classification, the complete test suite (or the strictly
+eligible photo-only scope above), and responsive screenshots. This is a
+regression and review gate, not a separate adversarial
 trust boundary: any change to the validator, its artifact-list source, or a
 workflow must use the standard preview pathway and receive separate John review.
 

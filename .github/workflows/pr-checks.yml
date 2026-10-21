@@ -52,11 +52,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Select regression scope from exact committed diff
+        id: regression
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/classify-gallery-photo-review.mjs
+
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run repository checks
+        if: steps.regression.outputs.suite != 'photo-only'
         run: pnpm test
+
+      - name: Run focused photo-only checks
+        if: steps.regression.outputs.suite == 'photo-only'
+        run: node scripts/run-gallery-photo-checks.mjs
 
       - name: Upload responsive screenshots
         if: always()

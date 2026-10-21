@@ -1,5 +1,60 @@
 # Decision Log
 
+## A photo batch selects independent consent; it does not combine it — 20 October 2026
+
+- **Status:** Implemented/tested locally for review only; not released or activated.
+- **Decision:** A verified owner may freeze an ordered selection of 1–20 distinct
+  saved attempts/assets in one inherited area. Original, complete private tags,
+  consent, framing, generation, retention clocks and byte evidence stay per photo.
+  A separate immutable batch candidate appends the server-derived items at one
+  pinned main; it never concatenates or repoints existing single-photo reviews.
+- **Safety:** Every member is rechecked by the existing per-photo authority and
+  actual-byte path, and SQL checks current eligibility again at intent, PR-write
+  admission and review recording. The separate bounded batch GitHub client
+  proves one complete manifest change. The single-photo exact-one-addition guard
+  remains unchanged. Display/thumbnail bytes may legitimately match for small
+  originals; exact generation/role URLs and independent receipts remain required.
+- **Coordination:** The existing non-expiring global claim remains held at an
+  unmerged batch. Unknown writes cannot become no-PR evidence. Recovery uses the
+  same run, settles the shared review, and proves every member's current storage,
+  public-host and same-main absence before completion. Missing main is not
+  authority to clean an unclosed possibly owner-published generation.
+- **Capability boundary:** Promotion-only code is isolated from the owner and
+  finalizer ledger/bundles. No new secrets, bindings, settings or workflow inputs
+  are introduced. Batch publication and member metadata purge are deliberately
+  unavailable in this slice; a one-photo operation cannot bypass ownership.
+- **Consequences:** This completes only the queue-to-unmerged-review bridge.
+  Before routine batch publication, implement/test all-member publication and
+  subsequent individual withdrawal/purge coordination. A repository release,
+  remote migration/service activation, rehearsal, merge and publication remain
+  distinct approval boundaries. Local tests and an unmerged PR prove none of them.
+
+## Photo-only PRs select regression scope, never publication authority — 20 October 2026
+
+Keep the required Test static site job and standard preview/publication pathway.
+An exact Git-diff classifier may select focused checks only for one canonical,
+existing area manifest with 1–20 appended new public photos, preserving all old
+items/order and all other bytes. Every fixed-origin v2 generation must be fresh:
+no within-batch, old or opposite-area identity/URL/generation reuse. Unknown/mixed/invalid or stale
+Git evidence falls back to full checks; code and gate changes cannot self-qualify.
+No path-filtered workflow, opt-in label/title, skipped required job, secrets,
+permission expansion or new merge capability is introduced.
+
+The focused suite retains static safety, both-mode data/Gallery validation,
+suppression, result display, framing, candidate/consent/media contracts, artifact
+boundaries and responsive browser review. Unchanged services/database/workbook
+regressions need not rerun for that narrow data addition. Protected processing,
+metadata stripping, fresh consent/exclusion, publication coordination, withdrawal
+and host-absence/purge contracts remain separate and unchanged. Public CI never
+claims access to private consent evidence. Replacements/removals and broader
+editorial changes deliberately retain full CI in this first small slice.
+
+Local tests do not activate the fast lane. Its standard repository release,
+required checks, preview and explicit merge approval remain a separate gate.
+Batch eligibility does not implement a protected batch producer: that later
+coordinator needs individual immutable consent/review bindings and group recovery.
+The existing one-photo protected path must not be bypassed to fabricate a batch.
+
 ## Upload detection suggests framing; only a confirmed fresh review can carry it — 20 October 2026
 
 John approved automatic browser face detection, manual protected-uploader

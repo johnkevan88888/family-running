@@ -12,13 +12,14 @@ import {readBoundedBytes,sha256Hex} from '../../gallery-admin/src/media-byte-ver
 import * as delivery from '../../gallery-admin/src/media-delivery-contract.js';
 import {handleMediaRequest} from '../../gallery-admin/src/media-worker.js';
 
-export async function archiveServiceFixture(site='family',{reserveAttempt=true,migrationThrough=Infinity,photoBytes=null}={}) {
+export async function archiveServiceFixture(site='family',{reserveAttempt=true,migrationThrough=Infinity,photoBytes=null,
+    mediaOrigin='https://synthetic-archive-media.example'}={}) {
     const db=new DatabaseSync(':memory:'),directory=new URL('../../gallery-admin/migrations/',import.meta.url);
     for(const name of (await readdir(directory)).filter(n=>n.endsWith('.sql') && Number(n.slice(0,4))<=migrationThrough).sort()) db.exec(await readFile(new URL(name,directory),'utf8'));
     const original=syntheticBucket(),staging=syntheticBucket(),approved=syntheticBucket();
     const owner={type:'browser',subject:'fictional-archive-service-owner'};
     const env={PRIVATE_ORIGINALS:original,PRIVATE_DERIVATIVE_STAGING:staging,APPROVED_MEDIA:approved,
-        APPROVED_MEDIA_ORIGIN:'https://synthetic-archive-media.example',EXPECTED_MEDIA_VERSION:'12345678-1234-5678-9abc-1234567890ab',
+        APPROVED_MEDIA_ORIGIN:mediaOrigin,EXPECTED_MEDIA_VERSION:'12345678-1234-5678-9abc-1234567890ab',
         DB:{prepare(sql){let args=[];return {bind(...values){args=values;return this;},
             async first(){return db.prepare(sql).get(...args)??null;},async all(){return {success:true,results:db.prepare(sql).all(...args)};},
             async run(){const result=db.prepare(sql).run(...args);return {success:true,meta:{changes:Number(result.changes)}};}};}}};
