@@ -14,6 +14,7 @@ import podiumFraming from '../../gallery-podium-framing.js';
 import {familyUploaderDocument,familyUploaderScript,familyUploaderStyles} from './family-uploader-assets.js';
 import {familyPermission,familyPhotoPermission,resolveFamilyAthlete,readFamilyDrafts,createFamilyDraft,saveFamilyDraft,
     prepareFamilyPhoto,submitFamilyDraft,familyDraftProgress} from './family-uploader-service.js';
+import {prepareFamilySavedFile,storeFamilySavedFile,readFamilySavedFile,deleteFamilySavedFile,familySavedFileByteLimit} from './family-saved-file-service.js';
 import {
     adminClientScript,
     adminShellDocument,
@@ -293,6 +294,30 @@ async function handleBrowserRoute(
         return result?.status===405 ? adminFailure(405,{Allow:result.allow}) : serviceResultResponse(result);
     }
 
+    if (['family-file','family-file-read','family-file-delete'].includes(route.kind)) {
+        if(siteMode!=='family')return adminFailure(403);
+        const localEnv={...env,DB:env.DB.withSession?.('first-primary')||env.DB};
+        if(request.method==='PUT'&&route.kind==='family-file') {
+            const limit=await familySavedFileByteLimit(localEnv,identity,siteMode,route.draftId,route.photoId);
+            if(!limit.ok)return serviceResultResponse(limit);
+            const body=await readPrivateOwnerBody(request,limit.byteCount,'application/octet-stream',dependencies.bodyTimeoutMilliseconds);
+            return serviceResultResponse(body.ok?await storeFamilySavedFile(localEnv,identity,siteMode,route.draftId,route.photoId,body.bytes):body);
+        }
+        if(request.method!=='POST')return adminFailure(405,{Allow:route.kind==='family-file'?'POST, PUT':'POST'});
+        const body=await readPrivateOwnerBody(request,JSON_BODY_LIMIT,'application/json',dependencies.bodyTimeoutMilliseconds);
+        if(!body.ok)return serviceResultResponse(body);
+        let input;try{input=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(body.bytes));}catch{return adminFailure(400);}
+        if(route.kind==='family-file')return serviceResultResponse(await prepareFamilySavedFile(localEnv,identity,siteMode,route.draftId,route.photoId,input));
+        if(!input||Array.isArray(input)||typeof input!=='object'||Object.keys(input).length)return adminFailure(422);
+        if(route.kind==='family-file-delete')return serviceResultResponse(await deleteFamilySavedFile(localEnv,identity,siteMode,route.draftId,route.photoId));
+        const file=await readFamilySavedFile(localEnv,identity,siteMode,route.draftId,route.photoId);
+        if(!file.ok)return serviceResultResponse(file);
+        const headers=new Headers(adminJson(200,{}).headers);
+        headers.set('Content-Type','application/octet-stream');headers.set('Cache-Control','private, no-store');
+        headers.set('Content-Disposition','attachment; filename="photo"');headers.set('Content-Security-Policy',"default-src 'none'; sandbox; frame-ancestors 'none'");
+        return new Response(file.bytes,{headers});
+    }
+
     if (route.kind.startsWith('family-')) {
         if(siteMode!=='family') return adminFailure(403);
         if(!['GET','POST'].includes(request.method)) return adminFailure(405,{Allow:'GET, POST'});
@@ -315,7 +340,7 @@ async function handleBrowserRoute(
             else if(route.kind==='family-drafts') result=route.draftId
                 ?await saveFamilyDraft(localEnv,identity,siteMode,route.draftId,input,catalogSnapshot)
                 :await createFamilyDraft(localEnv,identity,siteMode,input);
-            else if(route.kind==='family-prepare') result=await prepareFamilyPhoto(localEnv,identity,siteMode,route.draftId,input,catalogSnapshot);
+            else if(route.kind==='family-prepare') result=await prepareFamilyPhoto(localEnv,identity,siteMode,route.draftId,input,catalogSnapshot,dependencies);
             else if(route.kind==='family-submit') result=await submitFamilyDraft(localEnv,identity,siteMode,route.draftId,input,catalogSnapshot,dependencies);
             else return adminFailure(405,{Allow:'GET'});
             return serviceResultResponse(result);
@@ -631,6 +656,8 @@ function matchPhaseCRoute(pathname) {
     if(pathname==='/api/browser/family-photo-permission') return {kind:'family-photo-permission'};
     if(pathname==='/api/browser/family-athletes') return {kind:'family-athletes'};
     if(pathname==='/api/browser/family-drafts') return {kind:'family-drafts'};
+    const familyFile=/^\/api\/browser\/family-drafts\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/files\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})(?:\/(read|delete))?$/.exec(pathname);
+    if(familyFile)return {kind:familyFile[3]?`family-file-${familyFile[3]}`:'family-file',draftId:familyFile[1],photoId:familyFile[2]};
     const familyMatch=/^\/api\/browser\/family-drafts\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})(?:\/(prepare|submit|progress))?$/.exec(pathname);
     if(familyMatch) return {kind:familyMatch[2]?`family-${familyMatch[2]}`:'family-drafts',draftId:familyMatch[1]};
     if (pathname === '/api/browser/private-batches') return {kind:'archive-batches'};

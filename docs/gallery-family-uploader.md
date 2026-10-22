@@ -1,12 +1,46 @@
 # Simplified Family uploader
 
+## Save-first private files — local-only, 22 October 2026
+
+Adding a new photo now immediately saves its bytes in the existing protected
+originals bucket, before event, person or under-18 answers are requested. The
+owner must already have active standing private-retention permission. The card
+shows progress and only says Saved privately after bounded JPEG/PNG/hash checks,
+exact provider readback and durable closure of its sole multipart writer. A
+failed upload remains visibly unfinished and has an explicit same-photo retry.
+No tags, ages, guardian answers, consent attempts or public URLs are invented.
+
+Forward migration `0034` records this pre-tag file separately from the existing
+tagged archive intake. The original keeps one server-owned private-archive key;
+the normal reservation adopts that identity only after all existing tag, event,
+runner-distance, minors and permission checks pass. The existing intake verifies
+the same provider version/hash, without copying or uploading the original again.
+Review, stripping, framing, suppression and publication retain their own gates.
+
+New saved files can reopen through an owner-only, Family-session, same-origin
+CSRF-protected POST read. Responses are no-store, non-embeddable attachments;
+the browser verifies the exact fingerprint before decoding. There is no public
+or presigned original URL, arbitrary-key fetch, third-party image processing,
+GET download endpoint or new preview-object lifecycle. This supersedes the
+earlier local-file-only preview decision for new save-first files only. Existing
+legacy metadata-only cards keep their original matching-file recovery route.
+
+Before tagged adoption, an explicit owner cancellation can fence and close the
+registered writer, delete only that untagged original and verify storage absence.
+It works after permission withdrawal too. It keeps terminal draft history and
+never claims purge or public-host removal; start a fresh batch after cancelling
+such a draft. Once adopted, the existing archive deletion/removal process is the
+only deletion route. Its coordinated purge also retires the new file evidence.
+No current real batch or original is removed by this local implementation.
+
 ## Event and runner selection
 
 The multi-distance extension groups events by exact exported event name and date,
 across all distances. Runners at this event lists only the selected Family
 catalogue's participants. Each selected runner retains their own distance; if
 the athlete has several distances at that event, the owner chooses one explicitly
-before the photo can be retained. No event, result, time, age or AG is guessed.
+before thumbnails can be checked or review prepared. No event, result, time,
+age or AG is guessed.
 
 Other people pictured is a separate tag selection, including public athletes
 who did not participate, supporters and saved private/excluded people. Moving
@@ -42,12 +76,13 @@ roles, public registration or commercial moderation system are added.
 
 1. Choose up to 20 JPEG or PNG photos. Each card gets an independent random
    identity; filenames and matching athlete tags do not identify a photo.
-   Choosing files saves draft metadata, not image bytes.
+   Choosing files automatically saves the original privately as well as its card.
+   Wait for Saved privately; an unsuccessful upload offers Retry private save.
 2. Select an event and its runners, plus other people pictured. The event
-   is never guessed. Apply the event and people to other unsaved cards if useful,
+   is never guessed. Apply the event and people to other unchecked cards if useful,
    then check everyone pictured and answer the under-18 question for each photo.
    Saved private people remain selectable even if absent from the public roster.
-3. Save each original privately and check the desktop/mobile thumbnails. One
+3. Choose Check thumbnails and check the desktop/mobile previews. One
    face with one selected person receives a suggestion, not an identity claim.
    Multiple suggestions need a choice; manual positioning, zoom and whole-photo
    fallback remain available. Use these thumbnail views explicitly saves the
@@ -71,12 +106,12 @@ source reservation is bound to one saved photo identity. Three JPEGs with the
 same people and event therefore remain three photos; a retry of one source
 keeps that source's reservation. Duplicate bytes within a draft are rejected.
 
-After reopening a batch, saved tags and progress are available. Uploading an
-unretained photo or adjusting thumbnails requires its matching local file.
-There is no browser original-download route and no new private-preview object
-lifecycle. Already-retained, checked photos can be submitted without selecting
-the local files again. Leaving local-only files or unsaved framing warns or
-stops the user rather than silently discarding the work.
+After reopening a batch, saved tags and progress are available. Check a new
+privately saved photo to load its exact original securely for tagging/framing;
+it does not ask for the local file again. Older metadata-only uploads and failed
+private saves still need their matching local file. Already-retained, checked
+photos can be submitted without fetching originals. Leaving unfinished uploads
+or unsaved framing warns or stops the user rather than silently discarding work.
 
 Submitting freezes the batch. A partial submission resumes its saved attempt
 keys; it cannot replace consent or steal an existing workflow claim. Changed

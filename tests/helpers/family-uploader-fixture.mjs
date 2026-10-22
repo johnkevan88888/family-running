@@ -6,13 +6,14 @@ import {familyPermission,createFamilyDraft,saveFamilyDraft,prepareFamilyPhoto,su
 import {storePrivateArchiveOriginal} from '../../gallery-admin/src/private-archive-service.js';
 import {savePrivateGalleryFraming} from '../../gallery-admin/src/private-gallery-framing-service.js';
 import {readBoundedBytes,sha256Hex} from '../../gallery-admin/src/media-byte-verification.js';
+import {prepareFamilySavedFile,storeFamilySavedFile} from '../../gallery-admin/src/family-saved-file-service.js';
 
 export function transactionalDB(f) {
     f.env.DB.batch=async statements=>{f.db.exec('BEGIN');try{const results=[];
         for(const statement of statements)results.push(await statement.run());f.db.exec('COMMIT');return results;
     }catch(error){f.db.exec('ROLLBACK');throw error;}};
 }
-export async function familyUploaderFixture({ready=false,submitted=false,count=3,publicAssociation=true}={}) {
+export async function familyUploaderFixture({ready=false,submitted=false,count=3,publicAssociation=true,saveFirst=false}={}) {
     const f=await archiveServiceFixture('family',{reserveAttempt:false,publicAssociation,mediaOrigin:'https://family-running-gallery-media-dev.family-running.workers.dev'});
     transactionalDB(f);
     f.catalog.sites.family.rosterEntries=[{athleteId:'fixture-public',participant:'Fictional family runner'},
@@ -27,8 +28,13 @@ export async function familyUploaderFixture({ready=false,submitted=false,count=3
         personIds:[f.ids[0]],raceIndex:0,containsMinors:false}));
     f.saveInput={expectedVersion:0,idempotencyKey:crypto.randomUUID(),photos:f.photos};
     const saved=await saveFamilyDraft(f.env,f.owner,f.site,f.draft.id,f.saveInput,f.catalog);assert.equal(saved.ok,true,JSON.stringify(saved));f.draft=saved.draft;
+    if(saveFirst)for(let index=0;index<count;index++){
+        assert.equal((await prepareFamilySavedFile(f.env,f.owner,f.site,f.draft.id,f.photos[index].photoId,{permissionVersion:1})).ok,true);
+        assert.equal((await storeFamilySavedFile(f.env,f.owner,f.site,f.draft.id,f.photos[index].photoId,f.bytes[index])).ok,true);
+    }
     f.prepare=async index=>{
-        const result=await prepareFamilyPhoto(f.env,f.owner,f.site,f.draft.id,{photoId:f.photos[index].photoId,permissionVersion:1},f.catalog);
+        const result=await prepareFamilyPhoto(f.env,f.owner,f.site,f.draft.id,{photoId:f.photos[index].photoId,permissionVersion:1},f.catalog,{
+            digestReadable:async body=>sha256Hex(await readBoundedBytes(body,26214400))});
         assert.equal(result.ok,true,JSON.stringify(result));f.draft=result.draft;return f.draft.photos[index];
     };
     f.retain=async index=>{

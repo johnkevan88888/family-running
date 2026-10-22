@@ -1,5 +1,109 @@
 # Active Work
 
+## Family save-first uploader — approved release in progress, 22 October 2026
+
+John requested saving each photo privately immediately when added, before
+tagging. He also allowed abandoning the current six-photo draft and starting
+fresh. Work is local on `codex/gallery-save-first` from the released PR152 tree;
+the shared dirty root and prior handoff note are preserved. No live draft,
+original, tags, consent or published photo has been changed or removed.
+
+Additive migration `0034` and the owner-only saved-file bridge separate pre-tag storage from
+the unchanged checked archive intake. New cards upload immediately, can reopen
+their exact private original without local-file reselection, and adopt the same
+server-owned object for normal tagging/framing/review. Interrupted saves have an
+explicit retry; untagged cancellation is terminal and closes the writer before
+deletion. Existing tagged deletion and coordinated metadata retirement remain
+authoritative. No public runtime, manifest, CSV, binding or Access change exists.
+
+All 104 full-suite groups passed with the source frozen throughout the run
+(`16:22:24Z`–`16:58:13Z`, 22 October). This includes the actual pinned local D1
+migration/trigger checks, both-mode browser smoke tests and responsive screenshots.
+Focused evidence includes 51 save-first checks, 129 owner-route boundary checks,
+85 Family lifecycle checks, and desktop/mobile save/reopen/tag/frame/review journeys.
+All media and storage/GitHub transports in these new tests are synthetic. Desktop
+and mobile uploader screenshots were also visually inspected. Final documentation
+handoff wording was updated after the passing source-frozen run; code is unchanged.
+
+The canonical public build remains byte-identical to released PR152/main
+`68df4cb0b3f00d8fedab36a5252d3a74289d329e`: all 117 files, all 72 CSVs,
+suppression and Family 2 / Everyone 0 are unchanged. Five local dry-run bundle
+comparisons identify **admin only** as affected. Processing, promotion, public-host
+verifier and withdrawal-finalizer bundles are byte-identical to the baseline;
+no configuration, binding or Access setting changed. Evidence stays ignored under
+`test-artifacts/save-first-validation.json`, `save-first-full.log`,
+`save-first-artifact-bundles.json` and `screenshots/`.
+
+Exact changed paths (17, including this handoff and the preserved PR152 note):
+
+- `gallery-admin/migrations/0034_family_saved_files.sql`.
+- `gallery-admin/src/admin-worker.js`, `family-saved-file-service.js`,
+  `family-uploader-assets.js`, `family-uploader-service.js`,
+  `private-gallery-asset-service.js` (all under that same `src/` directory).
+- `scripts/run-all-tests.mjs`.
+- `tests/gallery-d1-expression-depth.mjs`, `gallery-family-saved-files.mjs`,
+  `gallery-family-uploader-boundaries.mjs`, `gallery-family-uploader-browser.mjs`,
+  `gallery-family-uploader.mjs` (all under `tests/`), and
+  `tests/helpers/family-uploader-fixture.mjs`.
+- `docs/active-work.md`, `docs/decision-log.md`,
+  `docs/gallery-family-uploader.md`, `docs/testing-and-release-protocol.md`.
+
+No local test blocker remains. John explicitly approved synchronization/retest,
+PR/checks/preview/merge with unchanged public output, configuration verification,
+additive migration `0034`, admin-only deployment and synthetic
+private-save/reopen/tagging/framing checks. Fresh main readback remains
+`68df4cb0b3f00d8fedab36a5252d3a74289d329e`; activation is not yet claimed.
+Stop before review submission, real-media use, original deletion, purge or
+photo publication. No current user draft is modified. The earlier six-photo continuation
+instruction below is superseded: John chose a fresh batch after activation;
+previously retained originals and history must remain intact.
+
+## Multi-distance Family uploader released and activated — 22 October 2026
+
+PR [#152](https://github.com/johnkevan88888/family-running/pull/152) merged through
+the existing owner-only PR route at `68df4cb0b3f00d8fedab36a5252d3a74289d329e`.
+The exact-head required run `39801410719` passed the full 103-group suite in
+10m58s; the standard Netlify preview and eight both-mode desktop/mobile checks
+passed. Normal Pages run `39803382231`, downloaded artifact `12435824050`, and
+all 117 live response bodies match the canonical merged build. Only the three
+planned public JavaScript files changed; all 72 CSVs, suppression and Family 2 /
+Everyone 0 manifests stayed byte-identical. The earlier local resize failure
+and successful unchanged rerun remain recorded below.
+
+Additive migration 0033 is applied. All 72 existing application-table metadata
+fingerprints match before and after activation, with no active jobs and no
+rewritten originals, tags, consent, attempts, saved batches or cleanup history.
+Only these reviewed bundles were deployed and read back byte-for-byte:
+
+- Admin: `3226f349-5fe9-4266-90e5-b653a1c3fc50`.
+- Processing: `055628ba-3663-4af2-9007-7555e7c170fd`.
+- Promotion: `962c8079-671b-4346-83b1-fb4c746f3627`.
+- Public-host verifier: `77897c1d-f89f-4321-9aa5-437367c94351`.
+- Withdrawal finalizer: `ef946ee8-d1b3-40dc-a2d7-71f7d838bee5`.
+
+Bindings, variables' fingerprints, compatibility settings, schedules, subdomains
+and lifecycle policies are unchanged. The media Worker remains at
+`ea4a6eb4-3e44-41a2-beaf-746951df4415`. Anonymous denial passed for all five;
+fresh owner access and the updated event-filtered picker were verified in a
+separate uploader tab. No Access/credential changes or new service-token job ran.
+CLI Access enumeration is not authoritative policy evidence.
+
+The fresh tab opened the existing six-photo draft read-only and is left on
+Photo 2. Its event offers the four exported runners across 1 Mile, 10 km and
+half marathon; the existing two selections remain intact. One photo is retained
+with checked framing, while remaining photos need their matching local files
+and/or details. The old five-card tab is preserved with its local selections;
+do not close or refresh it until John reconciles those with the six saved cards.
+No new batch, review request, real-photo processing, purge or publication occurred.
+
+Next: review the six intended photos with John, confirm event/runner/distance and
+other-person tags, then continue toward one unmerged combined review PR. Photo
+publication remains separately approved. Activation evidence is under ignored
+`test-artifacts/event-runners-activation/`, with the canonical/preview/Pages/live
+receipts alongside it. The exact 24 released paths are recorded in
+`test-artifacts/event-runners-commit.json`. This completion note is a local
+post-release handoff update, not an additional pushed change.
+
 ## Multi-distance Family photo release in progress — 22 October 2026
 
 John approved local implementation/tests, synchronization, push and feature

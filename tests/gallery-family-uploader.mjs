@@ -140,7 +140,7 @@ let checks=0;
     }finally{f.db.close();}
 }
 {
-    const f=await familyUploaderFixture({submitted:true});try{
+    const f=await familyUploaderFixture({submitted:true,saveFirst:true});try{
         f.attemptId=f.db.prepare('SELECT attempt_id FROM private_gallery_attempts LIMIT 1').get().attempt_id;
         const c=await privateGalleryJobFixture(f),github=syntheticGitHub(),runReference='https://github.com/johnkevan88888/family-running/actions/runs/654';
         const execute=phase=>runProtectedArchiveJob({jobId:f.jobId,runReference,phase,...c,jobs:c.jobs[phase==='verify'?'finalizer':'promotion'],github});
@@ -174,6 +174,7 @@ let checks=0;
         const purged=await purgePrivateArchiveMetadata(narrow,f.owner,f.site,members[0].assetId,confirmations[0].input);
         assert.equal(purged.ok,true,JSON.stringify({purged,sqlError}));
         assert.equal(count(f,'family_gallery_draft_photos'),0,'New draft metadata participates in coordinated purge');
+        assert.equal(count(f,'family_gallery_saved_files'),0,'Save-first file evidence retires with the same coordinated purge');
         assert.equal(count(f,'family_gallery_photo_permissions'),0,'Photo-linked exception metadata is retired too');
         assert.equal(count(f,'family_gallery_permissions'),1,'Independent owner policy remains');
         assert.equal((await readFamilyDrafts(f.env,f.owner,f.site,f.draft.id)).draft.jobId,null);

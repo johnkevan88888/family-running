@@ -39,7 +39,7 @@ try{for(const mobile of [false,true]){
         const response=await handleAdminRequest(request,env,{verifyAccessIdentity:async()=>owner,
             digestReadable:async body=>sha256Hex(await readBoundedBytes(body,26214400))});
         if(loseSave&&incoming.method()==='POST'&&/family-drafts\/[0-9a-f-]+$/.test(url.pathname)&&response.ok){loseSave=false;return route.fulfill({status:503,contentType:'application/json',body:'{"ok":false}'});}
-        return route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:await response.text()});
+        return route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:Buffer.from(await response.arrayBuffer())});
     });
     const idle=()=>page.waitForFunction(()=>!document.getElementById('family-files').disabled);
     const status=text=>page.locator('#family-status').filter({hasText:text}).waitFor();
@@ -49,7 +49,19 @@ try{for(const mobile of [false,true]){
         await page.getByRole('button',{name:'Use standing Family permission',exact:true}).click();await status('Standing Family permission saved');await idle();
         await page.locator('#family-files').setInputFiles(photos.map((buffer,index)=>({name:`synthetic-${index}.jpg`,mimeType:'image/jpeg',buffer})));
         await status('Choose the event and people next');await idle();assert.equal(await page.locator('.family-photo-card').count(),3);
-        assert.equal(bucket.objects.size,0,'File selection and metadata autosave do not upload pixels');
+        assert.equal(bucket.objects.size,3,'Adding photos saves the originals before any tags are selected');
+        assert.equal(db.prepare('SELECT count(*) n FROM private_archive_intakes').get().n,0,'Private saving does not invent tagged intake evidence');
+        assert.equal(db.prepare('SELECT count(*) n FROM private_gallery_attempts').get().n,0,'Private saving never grants public review');
+        const id=db.prepare('SELECT draft_id FROM family_gallery_drafts').get().draft_id;
+        const uploadCount=requests.filter(([method])=>method==='PUT').length;
+        assert.equal(await page.evaluate(()=>{const event=new Event('beforeunload',{cancelable:true});window.dispatchEvent(event);return event.defaultPrevented;}),false,
+            'Privately saved but untagged photos survive closing the tab');
+        await page.reload();await status('Family library ready');await idle();
+        await page.locator('#family-drafts').selectOption(id);await page.getByRole('button',{name:'Open batch',exact:true}).click();await status('Saved batch opened');await idle();
+        await page.getByRole('button',{name:'Check photo 1',exact:true}).click();await status('Privately saved photo opened');await idle();
+        assert.equal(await page.locator('#family-reselect-label').isVisible(),false,'The saved photo opens without a local-file chooser');
+        assert.equal(requests.filter(([method])=>method==='PUT').length,uploadCount,'Reopening never uploads again');
+        assert.equal(bucket.calls.filter(([method])=>method==='part').length,3);
         const johnRace=catalog.sites.family.resultEntries.find(row=>row.athleteId==='john-kevan');
         const chooseEvent=async race=>{await page.locator('#family-event-search').fill(race.raceEvent);
             const option=await page.locator('#family-event option').allTextContents();
@@ -59,12 +71,11 @@ try{for(const mobile of [false,true]){
         await page.locator('#family-athlete-search').fill('John Kevan');
         await page.locator('#family-athletes').getByRole('checkbox').check();await status('People saved');await idle();
         assert.equal(db.prepare('SELECT count(*) n FROM private_gallery_people').get().n,1,'Direct public athlete selection creates one protected association');
-        await page.getByRole('button',{name:'Use this event and people on other unsaved photos'}).click();await status('Event and people copied');await idle();
-        const id=db.prepare('SELECT draft_id FROM family_gallery_drafts').get().draft_id;
+        await page.getByRole('button',{name:'Use this event and people on other unchecked photos'}).click();await status('Event and people copied');await idle();
         for(let index=0;index<3;index++){
             await page.getByRole('button',{name:index?'Next photo':'Check photo 1',exact:true}).click();await idle();
             await page.locator('#family-minors').selectOption('no');await idle();
-            await page.getByRole('button',{name:'Save photo privately and check thumbnails'}).click();await status('Saved privately. Check');await idle();
+            await page.getByRole('button',{name:'Check thumbnails',exact:true}).click();await status('Saved privately. Check');await idle();
             await page.waitForFunction(()=>document.getElementById('private-face-candidates').childElementCount>=1,null,{timeout:15000});
             if(index===0)await page.locator('#private-face-detection').filter({hasText:'One face suggested'}).waitFor();
             else await page.locator('#private-face-candidates button').first().click();
@@ -78,6 +89,7 @@ try{for(const mobile of [false,true]){
         assert.equal(await page.evaluate(()=>{const event=new Event('beforeunload',{cancelable:true});window.dispatchEvent(event);return event.defaultPrevented;}),false,
             'Fully saved framing does not leave a misleading unsaved-work warning');
         assert.equal(bucket.objects.size,3);assert.equal(db.prepare('SELECT count(DISTINCT asset_id) n FROM family_gallery_draft_photos').get().n,3);
+        assert.equal(bucket.calls.filter(([method])=>method==='part').length,3,'Tagging adopts the saved objects without copying or re-upload');
         assert.equal(db.prepare('SELECT count(*) n FROM family_gallery_permissions').get().n,1,'No repeated per-photo permission forms');
         assert.equal(db.prepare('SELECT count(*) n FROM private_gallery_attempts').get().n,0,'Saving thumbnails never queues review');
         await page.screenshot({path:fileURLToPath(new URL(`family-uploader-${mobile?'mobile':'desktop'}.png`,screenshots)),fullPage:true});
@@ -99,6 +111,7 @@ try{for(const mobile of [false,true]){
         await status('The save could not be confirmed');await idle();
         await page.getByRole('button',{name:'Save details',exact:true}).click();await status('Photo details saved.');await idle();
         assert.equal(db.prepare('SELECT count(*) n FROM family_gallery_draft_photos').get().n,4,'Unknown-save retry adds no duplicate card');
+        await page.getByRole('button',{name:'Retry private save',exact:true}).click();await status('Photo saved privately.');await idle();
         // An event with different distances shows each eligible runner once.
         const multi=catalog.sites.family.resultEntries.find(r=>r.athleteId==='jack-graham-kevan'&&r.raceEvent==='Sutcliffe & Co Worcester City');
         await chooseEvent(multi);await page.locator('#family-athlete-search').fill('');
@@ -122,8 +135,9 @@ try{for(const mobile of [false,true]){
         await page.locator('#family-athletes').getByRole('checkbox',{name:'Blake Coleman',exact:true}).check();await status('People saved');await idle();
         const distance=page.getByRole('combobox',{name:'Distance for Blake Coleman',exact:true});assert.equal(await distance.inputValue(),'');
         await page.locator('#family-minors').selectOption('no');await idle();
-        await page.getByRole('button',{name:'Save photo privately and check thumbnails'}).click();await status('Choose a distance for each selected runner');await idle();
-        assert.equal(bucket.objects.size,3,'Ambiguous distance cannot retain new bytes');
+        await page.getByRole('button',{name:'Check thumbnails',exact:true}).click();await status('Choose a distance for each selected runner');await idle();
+        assert.equal(bucket.objects.size,4,'Ambiguous distance does not discard the already saved private original');
+        assert.equal(db.prepare('SELECT count(*) n FROM private_archive_original_receipts').get().n,3,'Ambiguous distance still blocks tagged intake');
         await distance.selectOption({label:'H. Mar'});await status('Runner distance saved');await idle();
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
         assert.deepEqual(errors,[]);assert.deepEqual(unexpected,[]);assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
