@@ -39,6 +39,34 @@
           "zoom": 5.85
         }
       }
+    },
+    {
+      "id": "photo-09ada579-b873-4d43-90ff-4d550ba898a3",
+      "type": "photo",
+      "title": "Photo",
+      "caption": "",
+      "alt": "Photo",
+      "raceDate": "2026-09-06",
+      "raceEvent": "Training",
+      "raceDistance": "5 km",
+      "sourceUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v2/2e10a76f-fab4-4ab6-af25-89b752ea4ce7/55d45c10ee1c9ccd2d77152247137bed60022e097e792106a7166957cb7ba20e/display.webp",
+      "thumbnailUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v2/2e10a76f-fab4-4ab6-af25-89b752ea4ce7/b11f75f0256bef48457032d80c0279efd5190b8b77cedc97a03e01012ecd1d84/thumbnail.webp",
+      "featured": false,
+      "athleteIds": []
+    },
+    {
+      "id": "photo-a7ee1824-5732-4c99-b38c-ab8ea253beea",
+      "type": "photo",
+      "title": "Photo",
+      "caption": "",
+      "alt": "Photo",
+      "raceDate": "2026-09-06",
+      "raceEvent": "Training",
+      "raceDistance": "5 km",
+      "sourceUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v2/c9f147c8-e11a-4a69-89b9-795267156c2e/8c0b7d0cafda476197445cc5557115b9b0eb098544336aa97529b7870f8477ed/display.webp",
+      "thumbnailUrl": "https://family-running-gallery-media-dev.family-running.workers.dev/media/v2/c9f147c8-e11a-4a69-89b9-795267156c2e/80eb979ab1a8cf95ae03be6d5a9452e6c75c36244ae06d449fc461f288233092/thumbnail.webp",
+      "featured": false,
+      "athleteIds": []
     }
   ]
 }
