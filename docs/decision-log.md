@@ -1,5 +1,23 @@
 # Decision Log
 
+## Photo participation is per runner within one exact event and date — 22 October 2026
+
+The Family uploader groups exported races by exact event name and race date,
+then offers only that event's result-bearing athletes as runners. Distance is
+selected independently for each pictured runner, with an explicit choice if an
+athlete has multiple distances. Other people pictured remain separate complete
+private tags without an inferred performance. No fuzzy event matching or result
+calculation moves out of Excel/VBA.
+
+The additive public `raceResults` field carries only public athlete/distance
+associations. Protected new attempts freeze those associations in nullable
+`race_results_json`; old attempts retain NULL and their unchanged single-distance
+contract. Server-derived associations are rechecked at review/publication, and
+the website looks up exact exported values. The scalar race distance remains an
+exported anchor for compatibility, never a substitute for each new runner's
+distance. Missing/ambiguous results remain unavailable. Consent, tagging,
+suppression, independent host verification and withdrawal/purge rules do not change.
+
 ## Trusted Family uploads use standing permission and independent saved photo cards — 21 October 2026
 
 - **Status:** Implementation complete on `codex/gallery-family-uploader` and

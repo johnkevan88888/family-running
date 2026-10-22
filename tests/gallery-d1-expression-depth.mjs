@@ -300,6 +300,7 @@ try {
         suppressionRevision:`sha256:${'b'.repeat(64)}`,suppressionDocument:{schemaVersion:'1.0',hiddenAthleteIds:[]},
         sites:{family:{catalog:{exportBundleId:'synthetic-d1-bundle',sourceRevision:`sha256:${'a'.repeat(64)}`,
             races:[{raceDate:'2026-01-01',raceEvent:'Synthetic D1 Race',raceDistance:'5 km'}],athleteIds:[]}}}};
+    attemptCatalog.sites.family.resultEntries=[];
     const eligible = await readPrivateGalleryAssetEligibility(assetEnv,owner,'family',reservation.asset.assetId,attemptCatalog);
     assert.equal(eligible.visibilityEligible,true,JSON.stringify(eligible));
     const attempt=await reservePrivateGalleryAttempt(assetEnv,owner,'family',reservation.asset.assetId,{
@@ -320,12 +321,15 @@ try {
         idempotencyKey:crypto.randomUUID(),tagVersion:2,eligibilityRevision:eligible.revision,
         sourceRevision:attemptCatalog.sourceRevision,suppressionRevision:attemptCatalog.suppressionRevision,
         raceIndex:0,completeTagsConfirmed:true,publicUseConfirmed:true,containsMinors:false,guardianApprovalConfirmed:false,
-        framingVersion:1
+        framingVersion:1,raceResults:[]
     },attemptCatalog);
     assert.equal(framedAttempt.status,201,JSON.stringify(framedAttempt));
     const framedRow=await assetEnv.DB.prepare('SELECT * FROM private_gallery_attempts WHERE attempt_id=?1')
         .bind(framedAttempt.attemptId).first();
     const framingSnapshot=await readPrivateGalleryAttemptFraming(assetEnv,framedRow);
+    assert.equal(framedRow.race_results_json,'[]','Additive result column and trigger compile in actual D1');
+    const oldResult=await assetEnv.DB.prepare('SELECT race_results_json FROM private_gallery_attempts WHERE attempt_id=?1').bind(attempt.attemptId).first();
+    assert.equal(oldResult.race_results_json,null,'Legacy attempt remains unmodified');
     assert.equal(framingSnapshot.version,1);
     assert.equal(framingSnapshot.sourceSha256,'a'.repeat(64));
     assert.deepEqual(framingSnapshot.podiumFraming,{},'Private-only D1 person never becomes public framing');

@@ -2,6 +2,7 @@ import '../../gallery-upload-contract.js';
 import {loadPrivateGalleryRoster} from './private-gallery-roster-service.js';
 import {hashIdentity} from './session.js';
 import {sha256Hex} from './media-byte-verification.js';
+import {checkPhotoRaceResults,photoRaceResultsReplay} from './photo-event-results.js';
 import {PUBLIC_HOST_VERIFIER_SQL} from './public-host-verifier-service.js';
 import {MEDIA_BINDING_WITNESS_KEY,MEDIA_BINDING_WITNESS_SHA256,MEDIA_BINDING_WITNESS_SIZE,
     MEDIA_BINDING_WITNESS_CONTENT_TYPE,MEDIA_DELIVERY_CONTRACT_VALUE} from './media-delivery-contract.js';
@@ -93,12 +94,14 @@ export async function recheckArchiveServiceConsent(env,row,catalog) {
         row.guardian_approval_confirmed!==row.contains_minors || !await env.DB.prepare(
             'SELECT 1 FROM private_gallery_current_attempt_permissions WHERE attempt_id=?1').bind(row.attempt_id).first()) throw new Error('Changed');
     const race={raceDate:row.race_date,raceEvent:row.race_event,raceDistance:row.race_distance};
+    const results=photoRaceResultsReplay(row);
+    if(Object.hasOwn(results,'raceResults')) checkPhotoRaceResults(results.raceResults,race,JSON.parse(row.public_athlete_ids_json),catalog.sites[row.site_mode]);
     const consentRevision=`consent_${row.idempotency_key}`;
     const view={schemaVersion:'1.0',draftId:`draft_${row.idempotency_key}`,state:'draft',stateVersion:0,siteModes:[row.site_mode],
         exportBundleId:row.export_bundle_id,sourceRevision:row.source_revision,suppressionRevision:row.suppression_revision,
         itemRevision:`item_${row.idempotency_key}`,manifestItem:null,withdrawalEvidence:null,
         itemInput:{id:row.public_item_id,type:'photo',title:'Photo',caption:'',alt:'Photo',...race,featured:false,
-            athleteIds:JSON.parse(row.public_athlete_ids_json)},
+            athleteIds:JSON.parse(row.public_athlete_ids_json),...results},
         consent:{publicUseConfirmed:true,containsMinors:Boolean(row.contains_minors),
             guardianApprovalConfirmed:Boolean(row.guardian_approval_confirmed),revision:consentRevision}};
     if(globalThis.galleryUploadContract.validateGalleryUploadApproval(view,{consentRevision,

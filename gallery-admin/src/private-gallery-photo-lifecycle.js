@@ -2,6 +2,7 @@ import '../../gallery-contract.js';
 import toolchain from '../../scripts/gallery-media-toolchain.json' with {type:'json'};
 import { reservePrivateGalleryAttempt } from './private-gallery-attempt-service.js';
 import {standingPermissionReplayInput} from './family-permission.js';
+import {photoRaceResultsReplay} from './photo-event-results.js';
 import {readPrivateGalleryAttemptFraming,privateGalleryAttemptFramingReplayInput} from './private-gallery-framing-service.js';
 import {assertArchiveIdentityAvailable} from './private-gallery-retirement.js';
 import {archiveOperationOwner,isArchiveServiceAuthority,archiveServiceTier,
@@ -55,7 +56,7 @@ export async function readArchivePhotoAttempt(env,identity,site,attemptId,catalo
         sourceRevision:row.source_revision,suppressionRevision:row.suppression_revision,raceIndex,
         completeTagsConfirmed:true,publicUseConfirmed:true,containsMinors:Boolean(row.contains_minors),
         guardianApprovalConfirmed:Boolean(row.guardian_approval_confirmed),...privateGalleryAttemptFramingReplayInput(row),
-        ...standingPermissionReplayInput(row)},catalog);
+        ...standingPermissionReplayInput(row),...photoRaceResultsReplay(row)},catalog);
     if(!checked.ok || checked.attemptId!==attemptId || !await first(env,
         'SELECT 1 FROM private_gallery_current_attempt_permissions WHERE attempt_id=?1',attemptId)) throw new Error('Changed');
     return row;
@@ -212,7 +213,7 @@ export async function readArchivePhotoCandidateItem(env,identity,site,attemptId,
     const item={id:a.public_item_id,type:'photo',title:'Photo',caption:'',alt:'Photo',raceDate:a.race_date,raceEvent:a.race_event,
         raceDistance:a.race_distance,sourceUrl:`${current.approvedOrigin}/${approved.find(r=>r.role==='photo-display').object_key}`,
         thumbnailUrl:`${current.approvedOrigin}/${approved.find(r=>r.role==='photo-thumbnail').object_key}`,
-        featured:false,athleteIds:JSON.parse(a.public_athlete_ids_json)};
+        featured:false,athleteIds:JSON.parse(a.public_athlete_ids_json),...photoRaceResultsReplay(a)};
     const framing=await readPrivateGalleryAttemptFraming(env,a);
     if(framing && Object.keys(framing.podiumFraming).length) item.podiumFraming=framing.podiumFraming;
     if(globalThis.galleryContract.validateGalleryDocument({schemaVersion:'1.0',items:[item]}).length) throw new Error('Invalid public item');

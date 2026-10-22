@@ -43,6 +43,7 @@ const checks = [
     ['Gallery protected owner/workflow review recovery and publication/purge coordination', ['tests/gallery-private-owner-workflow.mjs']],
     ['Gallery protected batch queue and database guards', ['tests/gallery-batch-storage.mjs']],
     ['Simplified Family uploader permission and saved batch integration', ['tests/gallery-family-uploader.mjs']],
+    ['Gallery event-filtered runners and per-athlete distances', ['tests/gallery-event-runners.mjs']],
     ['Simplified Family uploader protected route boundaries', ['tests/gallery-family-uploader-boundaries.mjs']],
     ['Simplified Family uploader desktop and mobile journey', ['tests/gallery-family-uploader-browser.mjs']],
     ['Gallery protected batch owner route boundaries', ['tests/gallery-batch-owner.mjs']],

@@ -8,6 +8,7 @@ import {loadPlaywright,findChromiumExecutable} from '../scripts/browser-runtime.
 import {syntheticBucket,digest} from './helpers/private-gallery-lifecycle-fixtures.mjs';
 import {transactionalDB} from './helpers/family-uploader-fixture.mjs';
 import {readBoundedBytes,sha256Hex} from '../gallery-admin/src/media-byte-verification.js';
+import catalog from '../gallery-admin/generated/catalog-snapshot.js';
 
 const root=new URL('../gallery-admin/migrations/',import.meta.url);
 const migrations=await Promise.all((await readdir(root)).filter(n=>n.endsWith('.sql')).sort().map(n=>readFile(new URL(n,root),'utf8')));
@@ -49,7 +50,12 @@ try{for(const mobile of [false,true]){
         await page.locator('#family-files').setInputFiles(photos.map((buffer,index)=>({name:`synthetic-${index}.jpg`,mimeType:'image/jpeg',buffer})));
         await status('Choose the event and people next');await idle();assert.equal(await page.locator('.family-photo-card').count(),3);
         assert.equal(bucket.objects.size,0,'File selection and metadata autosave do not upload pixels');
-        await page.locator('#family-event').selectOption({index:1});await idle();
+        const johnRace=catalog.sites.family.resultEntries.find(row=>row.athleteId==='john-kevan');
+        const chooseEvent=async race=>{await page.locator('#family-event-search').fill(race.raceEvent);
+            const option=await page.locator('#family-event option').allTextContents();
+            const label=option.find(text=>text.startsWith(race.raceDate+' · '+race.raceEvent+' · '));
+            assert.ok(label);await page.locator('#family-event').selectOption({label});await idle();};
+        await chooseEvent(johnRace);
         await page.locator('#family-athlete-search').fill('John Kevan');
         await page.locator('#family-athletes').getByRole('checkbox').check();await status('People saved');await idle();
         assert.equal(db.prepare('SELECT count(*) n FROM private_gallery_people').get().n,1,'Direct public athlete selection creates one protected association');
@@ -88,10 +94,38 @@ try{for(const mobile of [false,true]){
         assert.equal(requests.some(([method,path])=>method==='GET'&&path.endsWith('/archive-original')),false);
         // A new draft keeps its stable save key across an uncertain response.
         await page.getByRole('button',{name:'Start a new batch'}).click();await status('New saved Family batch');await idle();loseSave=true;
+        assert.equal(await page.locator('#family-review-status').textContent(),'','Old batch progress is not shown for the new draft');
         await page.locator('#family-files').setInputFiles({name:'synthetic-retry.jpg',mimeType:'image/jpeg',buffer:photos[0]});
         await status('The save could not be confirmed');await idle();
         await page.getByRole('button',{name:'Save details',exact:true}).click();await status('Photo details saved.');await idle();
         assert.equal(db.prepare('SELECT count(*) n FROM family_gallery_draft_photos').get().n,4,'Unknown-save retry adds no duplicate card');
+        // An event with different distances shows each eligible runner once.
+        const multi=catalog.sites.family.resultEntries.find(r=>r.athleteId==='jack-graham-kevan'&&r.raceEvent==='Sutcliffe & Co Worcester City');
+        await chooseEvent(multi);await page.locator('#family-athlete-search').fill('');
+        const participantIds=[...new Set(catalog.sites.family.resultEntries.filter(r=>r.raceEvent===multi.raceEvent&&r.raceDate===multi.raceDate).map(r=>r.athleteId))];
+        assert.equal(await page.locator('#family-athletes input').count(),participantIds.length);
+        assert.equal(await page.locator('#family-athletes').getByRole('checkbox',{name:/John Kevan/}).count(),0,'Non-participant absent from runners');
+        await page.locator('#family-athletes').getByRole('checkbox',{name:/Jack Graham-Kevan/}).check();await status('People saved');await idle();
+        await page.locator('#family-athletes').getByRole('checkbox',{name:/David Graham-Kevan/}).check();await status('People saved');await idle();
+        await page.locator('#family-other-people summary').click();
+        await page.locator('#family-private-people').getByRole('checkbox',{name:'John Kevan',exact:true}).check();await status('People saved');await idle();
+        const savedCard=db.prepare("SELECT p.photo_id,p.metadata_json FROM family_gallery_draft_photos p JOIN family_gallery_drafts d USING(draft_id) WHERE d.state='editing'").get();
+        const mixed=JSON.parse(savedCard.metadata_json);
+        assert.equal(mixed.personIds.length,3);assert.equal(mixed.runnerResults.length,2);
+        assert.deepEqual(mixed.runnerResults.map(r=>catalog.sites.family.catalog.races[r.raceIndex].raceDistance),['10 km','H. Mar']);
+        await page.screenshot({path:fileURLToPath(new URL(`family-event-runners-${mobile?'mobile':'desktop'}.png`,screenshots)),fullPage:true});
+        // Two distances for one athlete require an explicit choice, not first-row guessing.
+        const double=catalog.sites.family.resultEntries.find(r=>r.athleteId==='blake-coleman'&&r.raceEvent==='Great Birmingham Run');
+        await chooseEvent(double);
+        const moved=JSON.parse(db.prepare('SELECT metadata_json FROM family_gallery_draft_photos WHERE photo_id=?').get(savedCard.photo_id).metadata_json);
+        assert.deepEqual(moved.personIds,mixed.personIds,'Changing event preserves every tag');assert.deepEqual(moved.runnerResults,[]);
+        await page.locator('#family-athletes').getByRole('checkbox',{name:'Blake Coleman',exact:true}).check();await status('People saved');await idle();
+        const distance=page.getByRole('combobox',{name:'Distance for Blake Coleman',exact:true});assert.equal(await distance.inputValue(),'');
+        await page.locator('#family-minors').selectOption('no');await idle();
+        await page.getByRole('button',{name:'Save photo privately and check thumbnails'}).click();await status('Choose a distance for each selected runner');await idle();
+        assert.equal(bucket.objects.size,3,'Ambiguous distance cannot retain new bytes');
+        await distance.selectOption({label:'H. Mar'});await status('Runner distance saved');await idle();
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
         assert.deepEqual(errors,[]);assert.deepEqual(unexpected,[]);assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
     }catch(error){await page.screenshot({path:fileURLToPath(new URL(`family-uploader-failure-${mobile?'mobile':'desktop'}.png`,screenshots)),fullPage:true});
         console.error('Local synthetic UI status:',await page.locator('#family-status').textContent(),errors);throw error;

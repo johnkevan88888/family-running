@@ -25,7 +25,8 @@
         'thumbnailUrl',
         'featured',
         'athleteIds',
-        'podiumFraming'
+        'podiumFraming',
+        'raceResults'
     ]);
 
     function validateGalleryDocument(documentValue) {
@@ -111,6 +112,12 @@
                 });
             }
 
+            if (Object.hasOwn(item, 'raceResults')) {
+                const descriptor = Object.getOwnPropertyDescriptor(item, 'raceResults');
+                if (!descriptor.enumerable || !Object.hasOwn(descriptor, 'value')) problems.push(`${label}.raceResults must be an own JSON data field.`);
+                else validateRaceResults(descriptor.value, item, label, problems);
+            }
+
             if (Object.hasOwn(item, 'podiumFraming')) {
                 const descriptor = Object.getOwnPropertyDescriptor(item, 'podiumFraming');
                 if (!descriptor.enumerable || !Object.hasOwn(descriptor, 'value')) {
@@ -127,6 +134,21 @@
     // New-photo framing is public presentation only. Its public person keys
     // must already be tags on this exact approved photo; it cannot add a person,
     // choose a different photo or carry a private identity/biometric record.
+    function validateRaceResults(value, item, label, problems) {
+        const prefix = `${label}.raceResults`, seen = new Set();
+        if (item.type !== 'photo' || !Array.isArray(value) || value.length > 100) {
+            problems.push(`${prefix} must be a photo-only array of at most 100 result associations.`);
+            return;
+        }
+        for (const entry of value) {
+            if (!isJsonRecord(entry) || Object.keys(entry).sort().join('|') !== 'athleteId|raceDistance' ||
+                !athleteIdPattern.test(entry.athleteId) || !Array.isArray(item.athleteIds) || !item.athleteIds.includes(entry.athleteId) ||
+                seen.has(entry.athleteId) || !hasShortText(entry.raceDistance, 300)) {
+                problems.push(`${prefix} must contain unique tagged public athletes and exact distances only.`);
+            } else seen.add(entry.athleteId);
+        }
+    }
+
     function validatePodiumFraming(value, item, label, problems) {
         const prefix = `${label}.podiumFraming`;
         if (item.type !== 'photo') {
