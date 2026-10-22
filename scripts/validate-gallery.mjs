@@ -146,6 +146,9 @@ function matchesExportedRace(item, athleteResults, siteAthleteIds) {
     }
 
     const exportedDate = `${dateMatch[3]}/${dateMatch[2]}/${dateMatch[1]}`;
+    if (Object.hasOwn(item, 'raceResults') && (!Array.isArray(item.raceResults) || item.raceResults.some(result =>
+        !athleteResults.some(row => siteAthleteIds.has(row.AthleteID) && row.AthleteID === result?.athleteId &&
+            row.Date === exportedDate && row.Event === item.raceEvent && row.Distance === result.raceDistance)))) return false;
     return athleteResults.some(row =>
         siteAthleteIds.has(row.AthleteID) &&
         row.Date === exportedDate &&

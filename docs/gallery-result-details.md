@@ -8,6 +8,21 @@ approved separately from publication of the photo candidate.
 
 ## Presentation and authority
 
+New multi-distance photo reviews may include optional `raceResults`: unique
+already-tagged public athlete IDs paired with an exact exported distance. Event
+and date are common to the photo; distance, time, AG and race-day age are shown
+per runner. A tag with no result association is explicitly another person
+pictured and is not assigned a performance, even if they have another result
+at the event. Old photos without this field keep the original single-distance
+lookup. Missing or duplicate matching performances remain unavailable; selecting
+a distance does not permit choosing the first of ambiguous result rows.
+
+Protected admission and service rechecks verify every association against the
+current selected-area catalogue. Repository Gallery validation independently
+checks every public association against the exported result rows. The optional
+field cannot add an untagged athlete, private identity, time, age or AG. All
+public suppression and complete private tagging rules still apply.
+
 Gallery photo cards and their enlarged viewer show only race name, distance,
 race date, and each tagged athlete's name, time, AG and age at that race. Photo
 titles/captions remain unchanged manifest fields but are not displayed as extra

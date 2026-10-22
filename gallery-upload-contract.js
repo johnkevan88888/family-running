@@ -55,7 +55,8 @@
         'raceEvent',
         'raceDistance',
         'featured',
-        'athleteIds'
+        'athleteIds',
+        'raceResults'
     ]);
     const allowedManifestItemKeys = new Set([
         ...allowedItemInputKeys,
@@ -1071,6 +1072,10 @@
                     problems.push(
                         `Gallery upload race is not available in the "${siteMode}" site catalog.`
                     );
+                }
+                if (Array.isArray(draft.itemInput.raceResults) && draft.itemInput.raceResults.some(result =>
+                    !catalog.races.some(race => sameRace(race, {...draft.itemInput,raceDistance:result.raceDistance})))) {
+                    problems.push(`Gallery upload per-athlete distance is not available in the "${siteMode}" event.`);
                 }
             }
 

@@ -220,7 +220,7 @@
         const meta = document.createElement('p');
         meta.className = 'gallery-card-meta';
         const date = window.dateDisplay?.format?.(item.raceDate) || item.raceDate;
-        meta.textContent = `${formatRaceDistance(item.raceDistance)} · ${date}`;
+        meta.textContent = Object.hasOwn(item, 'raceResults') ? date : `${formatRaceDistance(item.raceDistance)} · ${date}`;
         container.append(meta);
         const athletes = photoResults?.forPhoto(item) || item.athleteIds.map(() => ({
             name: 'Athlete unavailable', time: 'Unavailable', ageGrade: 'Unavailable', age: 'Unavailable'
@@ -237,7 +237,10 @@
             const name = document.createElement('h4');
             name.textContent = athlete.name;
             const fields = document.createElement('dl');
-            for (const [label, value] of [['Time', athlete.time], ['AG', athlete.ageGrade], ['Age at race', athlete.age]]) {
+            const values = athlete.otherPerson ? [['Pictured', 'Other person — no race result assigned']] :
+                [...(Object.hasOwn(item,'raceResults') ? [['Distance', athlete.distance ? formatRaceDistance(athlete.distance) : 'Unavailable']] : []),
+                    ['Time', athlete.time], ['AG', athlete.ageGrade], ['Age at race', athlete.age]];
+            for (const [label, value] of values) {
                 const group = document.createElement('div');
                 const term = document.createElement('dt');
                 const detail = document.createElement('dd');
@@ -532,6 +535,10 @@
     }
 
     function formatRaceLabel(item) {
+        if (Object.hasOwn(item,'raceResults')) {
+            const distances = [...new Set(item.raceResults.map(result => result.raceDistance))].map(formatRaceDistance);
+            return [item.raceEvent, ...distances].join(' · ');
+        }
         return `${item.raceEvent} · ${formatRaceDistance(item.raceDistance)}`;
     }
 

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
+import {checkPhotoRaceResults} from '../../gallery-admin/src/photo-event-results.js';
 
 const require = createRequire(import.meta.url);
 
@@ -125,6 +126,8 @@ function prepareCandidate(candidatePackage, currentState, refresh) {
     } else {
         validateFreshCatalog(candidatePackage, currentState.catalogSnapshot, targetSite);
     }
+    if (Object.hasOwn(draft.itemInput,'raceResults')) checkPhotoRaceResults(draft.itemInput.raceResults,
+        draft.itemInput,draft.itemInput.athleteIds,currentState.catalogSnapshot.sites[targetSite]);
 
     const manifestsBySite = cloneAndValidateManifests(currentState.manifestsBySite);
     validateExistingSharedItems(manifestsBySite);
@@ -389,11 +392,12 @@ function pickPublicItem(value) {
         }
         result[field] = cloneJson(value[field]);
     }
+    if (Object.hasOwn(value, 'raceResults')) result.raceResults = cloneJson(value.raceResults);
     return result;
 }
 
 function assertExactPublicItem(value) {
-    requireExactObject(value, publicItemFields, 'Gallery manifest public item');
+    requireExactObject(value, [...publicItemFields,...(Object.hasOwn(value,'raceResults')?['raceResults']:[])], 'Gallery manifest public item');
     const problems = galleryContract.validateGalleryDocument({
         schemaVersion: galleryContract.schemaVersion,
         items: [value]

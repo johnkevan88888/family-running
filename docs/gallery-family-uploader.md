@@ -1,10 +1,40 @@
 # Simplified Family uploader
 
-## Local scope
+## Event and runner selection
+
+The multi-distance extension groups events by exact exported event name and date,
+across all distances. Runners at this event lists only the selected Family
+catalogue's participants. Each selected runner retains their own distance; if
+the athlete has several distances at that event, the owner chooses one explicitly
+before the photo can be retained. No event, result, time, age or AG is guessed.
+
+Other people pictured is a separate tag selection, including public athletes
+who did not participate, supporters and saved private/excluded people. Moving
+to another event keeps every person tag but clears result associations and asks
+the owner to choose that event's runners. An opted-out person still blocks the
+whole photo, regardless of which selection they appear in.
+
+New draft metadata adds `runnerResults` with private person and exact catalogue
+race indices, checked server-side against the saved source revision. New consent
+attempts freeze a server-derived public athlete/distance projection through
+forward migration `0033_photo_event_results.sql`. Public items may carry
+`raceResults`; private identities and performance values are never copied into
+it. The common date/event applies to every projected result. The legacy scalar
+`raceDistance` remains an exact exported event anchor, not a shared distance for
+every pictured person. Public displays use each runner's association instead.
+
+Existing drafts and attempts omit these optional fields and keep their original
+meaning and exact evidence. Migration0033 adds a nullable immutable field without
+backfilling, rewriting tags or resubmitting batches. Reserved source/people details
+remain fixed. Unreserved legacy cards convert only after an explicit owner edit;
+opening a saved batch does not rewrite it. Fresh multi-distance consent, processing,
+promotion and publication all recheck current result membership alongside the
+unchanged permission, complete-tag, suppression, byte and framing checks.
+
+## Scope
 
 The owner uploader at `/family-uploader?site=family` accepts several new photos
-and prepares one combined review. It is local implementation work approved on
-21 October 2026, not an activated production service. The existing Everyone
+and prepares one combined review. The existing Everyone
 uploader and advanced Family library remain available. No accounts, contributor
 roles, public registration or commercial moderation system are added.
 
@@ -13,7 +43,7 @@ roles, public registration or commercial moderation system are added.
 1. Choose up to 20 JPEG or PNG photos. Each card gets an independent random
    identity; filenames and matching athlete tags do not identify a photo.
    Choosing files saves draft metadata, not image bytes.
-2. Select an event and people from the existing Family athlete list. The event
+2. Select an event and its runners, plus other people pictured. The event
    is never guessed. Apply the event and people to other unsaved cards if useful,
    then check everyone pictured and answer the under-18 question for each photo.
    Saved private people remain selectable even if absent from the public roster.

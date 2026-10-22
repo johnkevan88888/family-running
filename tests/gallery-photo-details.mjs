@@ -29,6 +29,13 @@ const item = { id: 'photo-details-test', type: 'photo', title: 'Do not display e
     sourceUrl: 'https://media.example.com/details.svg', thumbnailUrl: 'https://media.example.com/details.svg',
     featured: false, athleteIds: ['runner-one','runner-two','supporter'] };
 const lookup = (rows = source) => buildIndex(rows, roster, manifest('family', rows.length - 1), 'family');
+const mixedSource=structuredClone(source);mixedSource[2][3]='10 km';
+const mixedItem={...item,raceResults:[{athleteId:'runner-one',raceDistance:'5 km'},{athleteId:'runner-two',raceDistance:'10 km'}]};
+assert.equal(lookup(mixedSource).forPhoto(mixedItem)[1].time,'00:24:12.345');
+assert.equal(lookup(mixedSource).forPhoto(mixedItem)[1].distance,'10 km');
+assert.equal(lookup(mixedSource).forPhoto(mixedItem)[2].otherPerson,true);
+assert.equal(lookup(mixedSource).forPhoto({...mixedItem,raceResults:[]})[0].time,'Unavailable','Supporter is not assigned an event result');
+assert.equal(lookup([...mixedSource,mixedSource[2]]).forPhoto(mixedItem)[1].time,'Unavailable','Different-distance selection cannot bypass duplicate-result refusal');
 assert.deepEqual(lookup().forPhoto(item), [
     { name: 'Runner One', time: '00:22:31', ageGrade: '62.9%', age: '46' },
     { name: 'Runner Two', time: '00:24:12.345', ageGrade: '71.123%', age: '29' },
@@ -66,7 +73,7 @@ try {
             const context = await browser.newContext(mobile
                 ? {viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:3}
                 : {viewport:{width:1440,height:1000}});
-            async function scenario({hidden = [], brokenSuppression = false, stale = false} = {}) {
+            async function scenario({hidden = [], brokenSuppression = false, stale = false, mixed = false} = {}) {
                 const page = await context.newPage();
                 let mediaRequests = 0, resultRequests = 0;
                 await page.route('**/gallery-data/*.json', route => {
@@ -74,14 +81,14 @@ try {
                     assert.ok([`${site}.json`,'hidden-athlete-ids.json'].includes(file));
                     return route.fulfill({contentType:'application/json',body:JSON.stringify(file === 'hidden-athlete-ids.json'
                         ? (brokenSuppression ? {} : {schemaVersion:'1.0',hiddenAthleteIds:hidden})
-                        : {schemaVersion:'1.0',items:[item]})});
+                        : {schemaVersion:'1.0',items:[mixed?mixedItem:item]})});
                 });
                 await page.route('**/data/**/*.csv', route => {
                     const file = new URL(route.request().url()).pathname.slice(1);
                     if (file === `data/${site}/siteinfo.csv`) return route.continue();
                     assert.ok(['data/athlete_results.csv','data/export_manifest.csv',`data/${site}/age_grade_standards.csv`].includes(file));
                     resultRequests++;
-                    const rows = file === 'data/athlete_results.csv' ? structuredClone(source)
+                    const rows = file === 'data/athlete_results.csv' ? structuredClone(mixed?mixedSource:source)
                         : file === 'data/export_manifest.csv' ? manifest(site) : roster;
                     if (stale && file === 'data/athlete_results.csv') rows[1][9] = 'stale';
                     return route.fulfill({contentType:'text/csv',body:csv(rows)});
@@ -110,6 +117,14 @@ try {
             assert.doesNotMatch(await page.locator('#gallery-viewer-copy').innerText(), /editorial/);
             await page.keyboard.press('Escape');
             await page.close();
+            const mixed=await scenario({mixed:true});await mixed.page.goto(url);await mixed.page.locator('.gallery-photo-athlete').last().waitFor();
+            const mixedCopy=mixed.page.locator('.gallery-card-copy');
+            assert.deepEqual(await mixedCopy.locator('dd').allTextContents(),['5 km','00:22:31','62.9%','46','10 km','00:24:12.345','71.123%','29','Other person — no race result assigned']);
+            assert.equal(await mixed.page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+            await mixed.page.screenshot({path:path.join(root,'test-artifacts','screenshots',`gallery-mixed-distances-${site}-${mobile?'mobile':'desktop'}.png`),fullPage:true,scale:'css'});
+            await mixed.page.locator('.gallery-card-open').click();
+            assert.deepEqual(await mixed.page.locator('#gallery-viewer-copy dd').allTextContents(),await mixedCopy.locator('dd').allTextContents());
+            await mixed.page.close();
             const {page: stalePage} = await scenario({stale:true});
             await stalePage.goto(url); await stalePage.locator('.gallery-photo-athlete').last().waitFor();
             assert.ok((await stalePage.locator('.gallery-photo-athlete dd').allTextContents()).every(text => text === 'Unavailable'));

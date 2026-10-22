@@ -10,6 +10,7 @@ import {readPrivateGalleryFraming} from './private-gallery-framing-service.js';
 import {reservePrivateGalleryAttempt} from './private-gallery-attempt-service.js';
 import {queuePrivateArchiveBatch,readPrivateArchiveBatches} from './private-gallery-batch-service.js';
 import {dispatchFamilyReview} from './family-review-dispatch.js';
+import {projectFamilyRunnerResults} from './photo-event-results.js';
 
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const sha=/^[0-9a-f]{64}$/;
@@ -146,14 +147,18 @@ export async function createFamilyDraft(env,identity,site,input) {
 }
 
 async function validatePhoto(env,photo,roster,catalog) {
-    if(!exact(photo,['photoId','originalFormat','byteCount','sha256','personIds','raceIndex','containsMinors']) ||
+    if(!exact(photo,['photoId','originalFormat','byteCount','sha256','personIds','raceIndex','containsMinors',
+        ...(photo && Object.hasOwn(photo,'runnerResults')?['runnerResults']:[]),
+        ...(photo && Object.hasOwn(photo,'sourceRevision')?['sourceRevision']:[])]) ||
         !uuid.test(photo.photoId) || !['jpg','png'].includes(photo.originalFormat) ||
         !Number.isSafeInteger(photo.byteCount)||photo.byteCount<1||photo.byteCount>26214400||!sha.test(photo.sha256)||
         !Array.isArray(photo.personIds)||photo.personIds.length>100 ||
         photo.raceIndex!==null && (!Number.isSafeInteger(photo.raceIndex)||photo.raceIndex<0||!catalog.sites.family.catalog.races[photo.raceIndex]) ||
-        photo.containsMinors!==null && typeof photo.containsMinors!=='boolean') throw new Error('Invalid photo');
+        photo.containsMinors!==null && typeof photo.containsMinors!=='boolean' ||
+        Object.hasOwn(photo,'sourceRevision') && photo.sourceRevision!==catalog.sourceRevision) throw new Error('Invalid photo');
     if(photo.personIds.length) resolvePrivateGalleryTags(roster,'family',photo.personIds,roster.revision);
-    const {photoId,...metadata}=photo;
+    projectFamilyRunnerResults(photo,roster,catalog,{allowIncomplete:true});
+    const {photoId,sourceRevision,...metadata}=photo;
     // Save event values, not an index that could silently point to another race.
     return {photoId,metadata:{...metadata,race:photo.raceIndex===null?null:catalog.sites.family.catalog.races[photo.raceIndex],
         sourceRevision:catalog.sourceRevision}};
@@ -176,6 +181,10 @@ export async function saveFamilyDraft(env,identity,site,id,input,catalog) {
     // A retained photo's tags/source are immutable in this flow. Advanced tag
     // correction remains separately audited; changing metadata is not re-upload.
     const old=new Map(draft.photos.map(row=>[row.photo_id,row]));
+    // An old open browser may omit the new revision input. It cannot silently
+    // reinterpret saved indices after the catalogue has changed.
+    for(const photo of input.photos) if(old.has(photo.photoId) && !Object.hasOwn(photo,'sourceRevision') &&
+        JSON.parse(old.get(photo.photoId).metadata_json).sourceRevision!==catalog.sourceRevision) return failure(409,'family-race-catalogue-changed');
     for(const item of items) if(old.get(item.photoId)?.reservation_json &&
         old.get(item.photoId).metadata_json!==JSON.stringify(item.metadata)) return failure(409,'family-reserved-photo-changed');
     if(draft.photos.some(row=>row.reservation_json&&!items.some(item=>item.photoId===row.photo_id))) return failure(409,'family-retained-photo-cannot-be-discarded');
@@ -201,6 +210,8 @@ export async function prepareFamilyPhoto(env,identity,site,id,input,catalog) {
     if(!photo||draft.state!=='editing'||photo.deleted) return failure();
     const data=JSON.parse(photo.metadata_json);
     if(!data.personIds.length||typeof data.containsMinors!=='boolean'||!data.race||data.sourceRevision!==catalog.sourceRevision) return failure(409,'family-photo-details-needed');
+    try {projectFamilyRunnerResults(data,(await loadPrivateGalleryRoster(env,site)).document,catalog);}
+    catch {return failure(409,'family-runner-distance-needed');}
     await requireFamilyPermission(env,owner,site,input.permissionVersion,data.containsMinors);
     if(!photo.reservation_json) {
         const {document}=await loadPrivateGalleryRoster(env,site);
@@ -254,11 +265,14 @@ export async function submitFamilyDraft(env,identity,site,id,input,catalog,depen
         const eligibility=await readPrivateGalleryAssetEligibility(env,identity,site,photo.asset_id,catalog);
         const framing=await readPrivateGalleryFraming(env,identity,site,photo.asset_id);
         if(!eligibility.ok||!eligibility.visibilityEligible||!framing.ok||framing.stale||framing.version<1) return failure(409,'family-photo-not-eligible');
+        const {document}=await loadPrivateGalleryRoster(env,site);
+        let results;try {results=projectFamilyRunnerResults(data,document,catalog);}
+        catch {return failure(409,'family-race-catalogue-changed');}
         const attempt=await reservePrivateGalleryAttempt(env,identity,site,photo.asset_id,{
             idempotencyKey:photo.attempt_key,tagVersion:framing.tagVersion,eligibilityRevision:eligibility.revision,
             sourceRevision:catalog.sourceRevision,suppressionRevision:catalog.suppressionRevision,raceIndex,
             completeTagsConfirmed:true,publicUseConfirmed:true,containsMinors:data.containsMinors,guardianApprovalConfirmed:data.containsMinors,
-            framingVersion:framing.version,standingPermissionVersion:input.permissionVersion},catalog);
+            framingVersion:framing.version,standingPermissionVersion:input.permissionVersion,...results},catalog);
         if(!attempt.ok) return attempt;
         await write(env,'UPDATE family_gallery_draft_photos SET attempt_id=?1 WHERE photo_id=?2 AND attempt_id IS NULL',attempt.attemptId,photo.photo_id);
         attempts.push(attempt.attemptId);

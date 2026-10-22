@@ -147,6 +147,18 @@ function currentItem(id) {
 
 // One inherited area, exact public projection, and canonical bytes.
 const familyResult = prepare();
+// The older one-photo client must also preserve optional per-runner metadata,
+// never silently discard it while constructing canonical public bytes.
+{
+    const mixed=clone(candidatePackage),snapshot=clone(catalogSnapshot);
+    const results=[{athleteId:'carolyn-kevan',raceDistance:race.raceDistance}];
+    mixed.draft.itemInput.raceResults=results;mixed.draft.manifestItem.raceResults=results;
+    snapshot.sites.family.resultEntries=[{athleteId:'carolyn-kevan',...race}];
+    const result=prepare(mixed,{catalogSnapshot:snapshot});
+    assert.deepEqual(JSON.parse(result.manifestText).items[0].raceResults,results);
+    snapshot.sites.family.resultEntries=[];
+    assert.throws(()=>prepare(mixed,{catalogSnapshot:snapshot}),/event result changed/);
+}
 
 // Refresh validates historical derivative evidence AND a separate current
 // catalogue view, without overwriting any of the historical revisions.

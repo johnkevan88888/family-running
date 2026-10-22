@@ -1,5 +1,28 @@
 # Testing And Release Protocol
 
+## Multi-distance photos and event-filtered runners — 22 October 2026
+
+Run the complete code suite, including `gallery-event-runners`, expanded Family
+uploader desktop/mobile and both-mode photo-detail tests, manifest-candidate
+tests and actual local D1 parity. Synthetic cases cover mixed distances in one
+photo, ambiguous runner distance, wrong event/date/participation, supporters,
+hidden private tags, saved-batch reopening, lost replies, legacy nullable
+attestations and immutable new result snapshots. The local protected batch must
+produce one fake unmerged review and complete withdrawal with independent host
+proof while preserving originals, tags and result history. No test uses live
+media, storage or GitHub mutations.
+
+Use the standard PR/checks/preview release route. Existing Family 2/Everyone 0
+manifest bytes, suppression, all 72 CSVs and photo bytes remain unchanged. Only
+the intended public runtime files change; verify their exact reviewed artifact
+and both-mode responsive preview before release. Activation needs additive0033
+and the exact admin, processing, promotion, verifier and finalizer bundles, with
+existing bindings and Access settings preserved. Save a read-only metadata
+fingerprint before activation and prove the user's saved draft is unchanged.
+Never refresh a live uploader tab containing local files to test a deployment.
+The approved feature release does not submit or publish the user's saved batch;
+review those photos together before requesting publication authority.
+
 ## Processing handoff diagnostics — local-only correction, 21 October 2026
 
 This runner change needs the full 102-group code suite, not the photo-only fast

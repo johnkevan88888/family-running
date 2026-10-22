@@ -1,5 +1,58 @@
 # Active Work
 
+## Multi-distance Family photo release in progress — 22 October 2026
+
+John approved local implementation/tests, synchronization, push and feature
+release, followed by additive migration 0033 and deployment of only admin,
+processing, promotion, public-host verifier and withdrawal finalizer. The saved
+real-photo batch must remain unchanged and unpublished; review it together after
+the feature is live. No live media processing, review dispatch, purge, credential
+change or other service deployment is included.
+
+Implementation is isolated on `codex/gallery-event-runners` from freshly fetched
+main `296cddddfc6d4969fd5636dcf26d4cb1c849abbc`. The shared root's unrelated edits
+are preserved. Exact event/date grouping offers only result-bearing runners,
+independent distances and a separate other-people picker. Explicit per-runner
+choices are immutable review evidence; private tags, opt-outs and original
+retention stay unchanged. Legacy saved records are not backfilled. Revision-bound
+draft saves refuse stale catalogue indices, including older open tabs.
+
+Focused contract, candidate, local synthetic batch and both-mode photo-detail
+checks pass. The mixed-distance synthetic review remains fake/unmerged; its
+independent host-removal and retained-original/history assertions pass. Expanded
+desktop/mobile uploader checks cover event filtering, supporters, ambiguous
+distance selection and saved-batch recovery. All 103 local groups have passing
+evidence with one qualification: the source-frozen full run passed its first
+102 groups, then failed Everyone progression-chart resizing at 1920/2560px.
+The unchanged browser-smoke rerun passed; no chart code or test assertion changed.
+All 441 source files stayed unchanged across those checks. The initial failed
+run is retained, not relabelled as a successful full run. Evidence:
+`test-artifacts/event-runners-validation.json`, the full-run log
+`event-runners-full-1792679478702.log` (SHA256
+`fd7877c51be59f6434fab8de5963ff9b20232b6ea3429bb0e5abb7578e3e3b8d`)
+and `event-runners-browser-rerun.json`. Full exact-head GitHub CI remains a
+mandatory merge gate. Desktop/mobile uploader, mixed-distance result cards and
+both public modes passed visual review.
+
+Fresh main remains `296cddddfc6d4969fd5636dcf26d4cb1c849abbc`. Its canonical
+117-file build matches all 117 current live bodies; eight both-mode desktop/mobile
+browser checks pass with external media blocked. All 72 CSVs and Family 2 /
+Everyone 0 manifest bytes remain unchanged. The three intended public runtime
+files change to render per-runner distances. No live photo processing occurred.
+
+Read-only configuration checks match the last verified six-service settings;
+only the approved five will deploy. Saved metadata fingerprints cover 72 tables,
+including the existing six-photo real draft; active jobs are zero. The open
+uploader shows five local cards and a stale-state warning against six saved
+photos. It is deliberately not reloaded or edited. Reconcile that saved/local
+view with John after release. Access application enumeration returns no usable
+policy evidence with the existing CLI token; this is not evidence that Access
+is absent. Anonymous denial checks passed and no Access change is planned.
+
+Standard PR/checks/preview, normal Pages verification and approved remote
+activation remain pending at this checkpoint. This handoff is the only tracked
+file updated after the source-frozen validation.
+
 ## Processing handoff reporting repository release preparation — 21 October 2026
 
 John approved synchronization/retest, push, a standard runner-only PR, required

@@ -81,11 +81,15 @@
         return Object.freeze({
             forPhoto(item) {
                 return item.athleteIds.map(id => {
-                    const matches = performances.get(key(id, item.raceDate, item.raceEvent, item.raceDistance)) || [];
+                    const perRunner = Object.hasOwn(item, 'raceResults');
+                    const choices = Array.isArray(item.raceResults) ? item.raceResults.filter(result => result.athleteId === id) : [];
+                    const distance = perRunner ? (choices.length === 1 ? choices[0].raceDistance : null) : item.raceDistance;
+                    const matches = distance ? performances.get(key(id, item.raceDate, item.raceEvent, distance)) || [] : [];
                     const row = matches.length === 1 ? matches[0] : null;
                     return { name: names.get(id) || 'Athlete unavailable',
                         time: row?.Time || 'Unavailable', ageGrade: row?.AgeGrade || 'Unavailable',
-                        age: row?.AgeAtRace || 'Unavailable' };
+                        age: row?.AgeAtRace || 'Unavailable',
+                        ...(perRunner ? {distance: distance || null, otherPerson: choices.length === 0} : {}) };
                 });
             }
         });

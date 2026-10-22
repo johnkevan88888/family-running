@@ -18,8 +18,9 @@ export function familyUploaderDocument() {
 <section class="admin-panel" id="family-details" hidden><h2>2 Event and people</h2><p id="family-selected"></p>
 <label class="form-field">Find the event<input id="family-event-search" type="search" placeholder="Event, date or distance"></label>
 <label class="form-field">Event<select id="family-event"><option value="">Choose the event</option></select></label>
-<label class="form-field">Find a Family athlete<input id="family-athlete-search" type="search" placeholder="Type a name"></label>
-<div id="family-athletes" class="athlete-choices"></div><details><summary>Other saved people</summary><div id="family-private-people" class="athlete-choices"></div><p>People without public results can still be tagged. Use the advanced library to add a new private-only person.</p></details>
+<label class="form-field">Find a runner or other person<input id="family-athlete-search" type="search" placeholder="Type a name"></label>
+<h3>Runners at this event</h3><p id="family-runners-note">Choose an event to see its runners. Each runner keeps their own distance.</p>
+<div id="family-athletes" class="athlete-choices"></div><details id="family-other-people"><summary>Other people pictured</summary><div id="family-private-people" class="athlete-choices"></div><p>Tag supporters or anyone else pictured here, without assigning a race result. Private and excluded people remain available; opt-outs still block website use. Use the advanced library to add a new private-only person.</p></details>
 <label class="form-field">Does this photo include anyone under 18?<select id="family-minors"><option value="">Choose an answer</option><option value="no">No</option><option value="yes">Yes</option></select></label>
 <p>Include every person pictured. The face detector suggests framing; it does not identify people.</p>
 <div class="family-toolbar"><button id="family-apply-details" class="button button-secondary">Use this event and people on other unsaved photos</button><button id="family-save-details" class="button button-secondary">Save details</button><button id="family-retain" class="button button-primary">Save photo privately and check thumbnails</button></div>
@@ -56,7 +57,8 @@ function familyUploaderBrowser() {
         let result;try{result=await response.json();}catch{throw new Error('The saved state could not be checked. Your local choices have been kept.');}
         if(!response.ok) {
             const message=response.status===403?'Sign in again, then open this saved batch. Local-only files will need to be selected again.':
-                result.code==='family-duplicate-photo'?'That photo is already in this batch.':
+                result.error==='family-duplicate-photo'?'That photo is already in this batch.':
+                result.error==='family-runner-distance-needed'?'Choose a distance for each selected runner before saving the photo privately.':
                 response.status===409?'This photo, permission or saved batch changed. Check the saved batch before continuing; no duplicate was submitted.':
                 response.status===422?'Check the event, people and file details for this photo.':'The save could not be confirmed. Retry the same action; your local choices have been kept.';
             throw new Error(message);
@@ -70,7 +72,7 @@ function familyUploaderBrowser() {
     function setBusy() {
         for(const control of document.querySelectorAll('button,input,select')) if(!control.closest('#private-framing-panel')) control.disabled=busy;
         if(active()?.reserved || draft?.state!=='editing') {
-            for(const control of document.querySelectorAll('#family-athletes input,#family-private-people input,#family-event,#family-minors')) control.disabled=true;
+            for(const control of document.querySelectorAll('#family-athletes input,#family-athletes select,#family-private-people input,#family-event,#family-minors')) control.disabled=true;
         }
         $('family-submit').disabled=busy||!permission?.active||!draft||!['editing','submitting'].includes(draft.state)||detailsDirty||!draft.photos.length||draft.photos.some(p=>!p.retained||!p.framingVersion||p.deleted||p.preference==='hidden'||p.peopleBlocked);
         $('family-photo-hide').disabled=busy||!active()?.assetId||active()?.preference==='hidden';
@@ -91,7 +93,9 @@ function familyUploaderBrowser() {
         newKey ||= uuid();draft=(await api('/api/browser/family-drafts',{idempotencyKey:newKey})).draft;newKey=null;await refreshList();
     }
     function plainPhoto(photo) {return {photoId:photo.photoId,originalFormat:photo.originalFormat,byteCount:photo.byteCount,
-        sha256:photo.sha256,personIds:photo.personIds,raceIndex:photo.raceIndex,containsMinors:photo.containsMinors};}
+        sha256:photo.sha256,personIds:photo.personIds,raceIndex:photo.raceIndex,containsMinors:photo.containsMinors,
+        sourceRevision:photo.sourceRevision??catalog.sourceRevision,
+        ...(Object.hasOwn(photo,'runnerResults')?{runnerResults:photo.runnerResults}:{})};}
     async function saveDetails() {
         await ensureDraft();
         const photos=draft.photos.map(plainPhoto),fingerprint=JSON.stringify([draft.id,draft.version,photos]);
@@ -100,18 +104,54 @@ function familyUploaderBrowser() {
         draft=saved.draft;pendingSave=null;detailsDirty=false;await refreshList();render();
     }
     function events() {
-        const choice=active()?.raceIndex,search=$('family-event-search').value.trim().toLowerCase();
+        const photo=active(),choice=photo?.sourceRevision&&photo.sourceRevision!==catalog.sourceRevision?null:photo?.raceIndex,search=$('family-event-search').value.trim().toLowerCase();
         $('family-event').replaceChildren(new Option('Choose the event',''));
+        const groups=new Map();
         catalog.sites.family.races.forEach((race,index)=>{
-            const label=[race.raceDate,race.raceEvent,race.raceDistance].join(' · ');
-            if(!search||label.toLowerCase().includes(search)||index===choice)$('family-event').add(new Option(label,String(index)));
+            const key=JSON.stringify([race.raceDate,race.raceEvent]);
+            if(!groups.has(key))groups.set(key,{race,indices:[],distances:[]});
+            groups.get(key).indices.push(index);groups.get(key).distances.push(race.raceDistance);
+        });
+        groups.forEach(({race,indices,distances})=>{
+            const label=[race.raceDate,race.raceEvent,distances.join(' / ')].join(' · ');
+            const index=indices.includes(choice)?choice:indices[0];
+            if(!search||label.toLowerCase().includes(search)||indices.includes(choice))$('family-event').add(new Option(label,String(index)));
         });$('family-event').value=choice==null?'':String(choice);
     }
-    function personOption(person,label,parent,athleteId) {
+    function runnerChoices(athleteId,photo=active()) {
+        if(photo?.sourceRevision&&photo.sourceRevision!==catalog.sourceRevision)return [];
+        const race=catalog.sites.family.races[photo?.raceIndex];
+        if(!race)return [];
+        return catalog.sites.family.races.map((r,index)=>({race:r,index})).filter(({race:r})=>
+            r.raceDate===race.raceDate && r.raceEvent===race.raceEvent && catalog.sites.family.results.some(result=>
+                result.athleteId===athleteId && result.raceDate===r.raceDate && result.raceEvent===r.raceEvent && result.raceDistance===r.raceDistance));
+    }
+    function runnerResults(photo=active()) {
+        if(Object.hasOwn(photo,'runnerResults'))return photo.runnerResults;
+        // Display a legacy card without rewriting its saved bytes. Convert only
+        // when the owner explicitly edits its people or event before retention.
+        return photo.personIds.flatMap(personId=>{
+            const person=people.find(p=>p.personId===personId);
+            return runnerChoices(person?.publicAthleteId,photo).some(r=>r.index===photo.raceIndex)?[{personId,raceIndex:photo.raceIndex}]:[];
+        });
+    }
+    function personOption(person,label,parent,athleteId,choices=null) {
         const line=document.createElement('label');line.className='athlete-option';
-        const check=document.createElement('input');check.type='checkbox';check.checked=Boolean(person&&active()?.personIds.includes(person.personId));
+        const runner=person&&runnerResults().find(result=>result.personId===person.personId);
+        const check=document.createElement('input');check.type='checkbox';check.checked=Boolean(person&&active()?.personIds.includes(person.personId)&&(choices?runner:!runner));
         check.disabled=busy||Boolean(active()?.reserved)||draft?.state!=='editing';
-        const text=document.createElement('span');text.textContent=label+(person?.preference==='hidden'?' — kept off website':'');line.append(check,text);parent.append(line);
+        const text=document.createElement('span');text.textContent=label+(choices?.length===1?' — '+choices[0].race.raceDistance:'')+(person?.preference==='hidden'?' — kept off website':'');line.append(check,text);parent.append(line);
+        if(choices?.length>1&&runner){
+            const field=document.createElement('label');field.className='form-field';field.textContent='Distance for '+label;
+            const select=document.createElement('select');select.setAttribute('aria-label','Distance for '+label);select.add(new Option('Choose their distance',''));
+            for(const choice of choices)select.add(new Option(choice.race.raceDistance,String(choice.index)));
+            select.value=runner?.raceIndex==null?'':String(runner.raceIndex);select.disabled=busy||Boolean(active()?.reserved)||!runner;
+            select.addEventListener('change',()=>action(async()=>{
+                const photo=active();photo.runnerResults=runnerResults().map(result=>result.personId===person.personId?
+                    {...result,raceIndex:select.value===''?null:Number(select.value)}:result);
+                detailsDirty=true;await saveDetails();note('Runner distance saved.');
+            }));field.append(select);parent.append(field);
+        }
         check.addEventListener('change',()=>action(async()=>{
             let match=person;
             if(check.checked&&!match) {
@@ -121,19 +161,24 @@ function familyUploaderBrowser() {
                 await refreshPeople();
             }
             if(!match)return;
-            const photo=active();photo.personIds=check.checked?[...new Set([...photo.personIds,match.personId])]:photo.personIds.filter(id=>id!==match.personId);
+            const photo=active();photo.runnerResults=runnerResults().filter(result=>result.personId!==match.personId);
+            if(check.checked&&choices)photo.runnerResults.push({personId:match.personId,raceIndex:choices.length===1?choices[0].index:null});
+            photo.personIds=check.checked?[...new Set([...photo.personIds,match.personId])]:photo.personIds.filter(id=>id!==match.personId);
             detailsDirty=true;await saveDetails();note('People saved with this photo. Include everyone pictured.');
         }));
     }
     function renderPeople() {
         $('family-athletes').replaceChildren();$('family-private-people').replaceChildren();
         const search=$('family-athlete-search').value.toLowerCase();
+        $('family-runners-note').textContent=active()?.raceIndex==null?'Choose an event to see its runners.':'Only athletes with an exported result at this event and date appear below. Choose a distance if more than one is listed.';
         for(const athlete of catalog.sites.family.roster) if(athlete.participant.toLowerCase().includes(search)) {
-            personOption(people.find(p=>p.publicAthleteId===athlete.athleteId),athlete.participant,$('family-athletes'),athlete.athleteId);
+            const person=people.find(p=>p.publicAthleteId===athlete.athleteId),choices=runnerChoices(athlete.athleteId);
+            if(choices.length)personOption(person,athlete.participant,$('family-athletes'),athlete.athleteId,choices);
+            personOption(person,athlete.participant,$('family-private-people'),athlete.athleteId);
         }
         // A private tag must not disappear merely because its public athlete
         // was excluded from today's export. Existing opt-outs still block review.
-        for(const person of people.filter(p=>!catalog.sites.family.roster.some(a=>a.athleteId===p.publicAthleteId)))personOption(person,person.displayName,$('family-private-people'));
+        for(const person of people.filter(p=>!catalog.sites.family.roster.some(a=>a.athleteId===p.publicAthleteId) && p.displayName.toLowerCase().includes(search)))personOption(person,person.displayName,$('family-private-people'));
     }
     function render() {
         $('family-cards').replaceChildren();const photos=draft?.photos||[];
@@ -143,8 +188,11 @@ function familyUploaderBrowser() {
             const canvas=document.createElement('canvas');canvas.width=240;canvas.height=160;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',`Photo ${index+1} preview`);
             const preview=previews.get(photo.photoId);if(preview){const ratio=Math.min(canvas.width/preview.width,canvas.height/preview.height);canvas.getContext('2d').drawImage(preview,(240-preview.width*ratio)/2,(160-preview.height*ratio)/2,preview.width*ratio,preview.height*ratio);}
             const title=document.createElement('strong');title.textContent=`Photo ${index+1}`;
-            const names=document.createElement('small');names.textContent=photo.personIds.map(id=>people.find(p=>p.personId===id)?.displayName||'Saved person').join(', ')||'Choose the people';
-            const race=document.createElement('small');race.textContent=photo.race?[photo.race.raceDate,photo.race.raceEvent,photo.race.raceDistance].join(' · '):'Choose the event';
+            const names=document.createElement('small');names.textContent=photo.personIds.map(id=>{
+                const name=people.find(p=>p.personId===id)?.displayName||'Saved person',result=runnerResults(photo).find(r=>r.personId===id);
+                return name+' — '+(result?(photo.sourceRevision&&photo.sourceRevision!==catalog.sourceRevision?'saved distance — recheck catalogue':catalog.sites.family.races[result.raceIndex]?.raceDistance||'choose distance'):'other person');
+            }).join(', ')||'Choose the people';
+            const race=document.createElement('small');race.textContent=photo.race?[photo.race.raceDate,photo.race.raceEvent].join(' · '):'Choose the event';
             const state=document.createElement('small');state.textContent=photo.deleted?'Blocked — original removal requested':photo.preference==='hidden'||photo.peopleBlocked?'Private only — a photo or athlete opt-out applies':photo.framingVersion?'Thumbnail views saved':photo.retained?'Saved privately — check thumbnails':files.has(photo.photoId)?'Only on this device — details saved':'Details saved — choose the local file';
             const edit=document.createElement('button');edit.className='button button-secondary';edit.textContent='Check photo '+(index+1);edit.addEventListener('click',()=>action(()=>openPhoto(photo.photoId)));
             card.append(canvas,title,names,race,state,edit);
@@ -155,7 +203,7 @@ function familyUploaderBrowser() {
         }
         const photo=active();$('family-details').hidden=!photo;$('family-reselect-label').hidden=!photo||files.has(photo.photoId);
         if(photo){$('family-selected').textContent='Photo '+(photos.indexOf(photo)+1);events();renderPeople();$('family-minors').value=photo.containsMinors==null?'':photo.containsMinors?'yes':'no';
-            $('family-detail-note').textContent=photo.reserved?'These saved source and people details are fixed. Advanced corrections preserve the original history.':'Details are saved automatically; saving the original is a separate action.';}
+            $('family-detail-note').textContent=photo.sourceRevision&&photo.sourceRevision!==catalog.sourceRevision?'The results catalogue changed. Saved details are kept; reselect the event and runners for an unsaved photo. Retained photos need the advanced recovery route.':photo.reserved?'These saved source and people details are fixed. Advanced corrections preserve the original history.':'Details are saved automatically; saving the original is a separate action.';}
         const ready=photos.filter(p=>p.retained&&p.framingVersion&&!p.deleted&&p.preference!=='hidden'&&!p.peopleBlocked).length;
         $('family-ready').textContent=`${ready} of ${photos.length} photos ready. Nothing is published automatically.`;
         $('family-submit').textContent=draft?.state==='submitting'?'Resume this review request':`Send ${photos.length||''} photo${photos.length===1?'':'s'} for review`;setBusy();
@@ -189,7 +237,7 @@ function familyUploaderBrowser() {
                 const info=await window.privateGalleryFaceFraming.inspectFile(file);
                 if(draft.photos.some(p=>p.sha256===info.sha256))throw new Error('A duplicate photo was skipped.');
                 const photoId=uuid();await rememberFile(photoId,file,info);
-                draft.photos.push({photoId,originalFormat:info.originalFormat,byteCount:info.byteCount,sha256:info.sha256,personIds:[],raceIndex:null,containsMinors:null});
+                draft.photos.push({photoId,originalFormat:info.originalFormat,byteCount:info.byteCount,sha256:info.sha256,personIds:[],raceIndex:null,containsMinors:null,runnerResults:[]});
                 selected ||= photoId;detailsDirty=true;
             }catch(error){errors.push(error.message);}
         }
@@ -198,13 +246,17 @@ function familyUploaderBrowser() {
     $('family-event-search').addEventListener('input',events);$('family-athlete-search').addEventListener('input',renderPeople);
     for(const id of ['family-event','family-minors'])$(id).addEventListener('change',()=>action(async()=>{
         if(active()?.reserved)throw new Error('This photo is already retained. Use the advanced correction route to change its saved details.');
-        const photo=active();photo.raceIndex=$('family-event').value===''?null:Number($('family-event').value);photo.containsMinors=$('family-minors').value===''?null:$('family-minors').value==='yes';
+        const photo=active(),raceIndex=$('family-event').value===''?null:Number($('family-event').value),changed=photo.raceIndex!==raceIndex||Boolean(photo.sourceRevision&&photo.sourceRevision!==catalog.sourceRevision);
+        if(changed)photo.runnerResults=[]; // Keep every person tag; never carry a result into another event.
+        if(id==='family-event')photo.sourceRevision=catalog.sourceRevision;
+        photo.raceIndex=raceIndex;photo.containsMinors=$('family-minors').value===''?null:$('family-minors').value==='yes';
         detailsDirty=true;await saveDetails();note('Photo details saved.');
+        if(changed&&photo.personIds.length){$('family-other-people').open=true;note('Event saved. Existing people are kept under Other people pictured. Tick the runners for this event to assign their distances.');}
     }));
     $('family-save-details').addEventListener('click',()=>action(async()=>{await saveDetails();note('Photo details saved.');}));
     $('family-apply-details').addEventListener('click',()=>action(async()=>{
         const source=active();if(!source)throw new Error('Choose a photo first.');
-        for(const photo of draft.photos)if(!photo.reserved){photo.personIds=[...source.personIds];photo.raceIndex=source.raceIndex;}
+        for(const photo of draft.photos)if(!photo.reserved){photo.personIds=[...source.personIds];photo.raceIndex=source.raceIndex;photo.runnerResults=runnerResults(source).map(result=>({...result}));photo.sourceRevision=source.sourceRevision??catalog.sourceRevision;}
         detailsDirty=true;await saveDetails();note('Event and people copied to unsaved photos. Check each picture and its under-18 answer.');
     }));
     $('family-retain').addEventListener('click',()=>action(async()=>{
@@ -235,11 +287,11 @@ function familyUploaderBrowser() {
         if(draft?.photos.some(p=>files.has(p.photoId)&&!p.retained)&&!window.confirm('Your details are saved, but some photos are still only on this device. You will need to choose those files again. Leave this batch?'))return false;
         files.clear();previews.clear();return true;
     }
-    $('family-new').addEventListener('click',()=>action(async()=>{if(detailsDirty)await saveDetails();if(!leaveBatch())return;draft=null;selected=null;framing.clear();$('family-framing').hidden=true;await ensureDraft();render();note('New saved Family batch ready. Choose photos.');}));
+    $('family-new').addEventListener('click',()=>action(async()=>{if(detailsDirty)await saveDetails();if(!leaveBatch())return;draft=null;selected=null;framing.clear();$('family-review-status').replaceChildren();$('family-framing').hidden=true;await ensureDraft();render();note('New saved Family batch ready. Choose photos.');}));
     $('family-open').addEventListener('click',()=>action(async()=>{
         const id=$('family-drafts').value;if(!id)throw new Error('Choose a saved batch first.');if(detailsDirty)await saveDetails();
         if(!leaveBatch())return;
-        draft=(await api('/api/browser/family-drafts/'+id)).draft;selected=draft.photos[0]?.photoId??null;framing.clear();$('family-framing').hidden=true;
+        draft=(await api('/api/browser/family-drafts/'+id)).draft;selected=draft.photos[0]?.photoId??null;framing.clear();$('family-review-status').replaceChildren();$('family-framing').hidden=true;
         await refreshPeople();render();note('Saved batch opened. Local files are needed only for uploads or thumbnail adjustments, not to send already-checked photos.');
     }));
     async function progress(){
