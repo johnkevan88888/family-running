@@ -4,6 +4,7 @@ import {runProtectedArchiveJob} from './gallery-media/protected-archive-job.mjs'
 import {verifyGalleryReviewBoundary} from './gallery-media/github-review-boundary.mjs';
 import {readGalleryReviewMain} from './gallery-media/github-review-client.mjs';
 import {readBoundedBytes} from '../gallery-admin/src/media-byte-verification.js';
+import {formatArchiveDiagnostic} from './gallery-media/archive-diagnostics.mjs';
 const required=name=>{const value=process.env[name];if(typeof value!=='string' || !value) throw new Error('Protected configuration missing.');return value;};
 // The CLI is an Actions-only boundary; importing core libraries never discovers
 // credentials or executes it. No arguments, arbitrary ref, destination or media.
@@ -14,6 +15,8 @@ try {
     const jobId=required('GALLERY_ARCHIVE_JOB_ID'),runReference=required('GALLERY_WORKFLOW_RUN_REFERENCE');
     let phase=required('GALLERY_ARCHIVE_PHASE');
     if(!['prepare','verify','reconcile','finalize','purge'].includes(phase)) throw new Error('Unknown phase.');
+    let reportedFailures=0;
+    const reportFailure=event=>{if(reportedFailures++<32) process.stderr.write(formatArchiveDiagnostic(event));};
     const githubFetch=async (url,options)=>{
         const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
         try {
@@ -25,11 +28,11 @@ try {
     };
     const configuration=purpose=>{
         const prefix=purpose==='verifier'?'GALLERY_PUBLIC_HOST_VERIFIER':purpose==='finalizer'?'GALLERY_WITHDRAWAL_FINALIZER':`GALLERY_${purpose.toUpperCase()}`;
-        return {purpose,origin:required(prefix+'_ORIGIN'),clientId:required(prefix+'_ACCESS_CLIENT_ID'),clientSecret:required(prefix+'_ACCESS_CLIENT_SECRET'),fetchImpl:fetch};
+        return {purpose,origin:required(prefix+'_ORIGIN'),clientId:required(prefix+'_ACCESS_CLIENT_ID'),clientSecret:required(prefix+'_ACCESS_CLIENT_SECRET'),fetchImpl:fetch,reportFailure};
     };
     const finalization=['verify','finalize','purge'].includes(phase),purpose=finalization?'finalizer':'promotion';
     const jobs=createArchiveJobClient(configuration(purpose));
-    const dependencies={jobId,runReference,jobs};
+    const dependencies={jobId,runReference,jobs,reportFailure};
     if(!finalization) {
         const github={token:required('GALLERY_GITHUB_APP_TOKEN'),fetchImpl:githubFetch};
         // Re-prove the App restriction against CURRENT main even on a resumed
@@ -55,7 +58,10 @@ try {
     if(!states.includes(result.state)) throw new Error('Unknown result.');
     if(process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT,`state=${result.state}\n`);
     process.stdout.write(`${JSON.stringify({ok:result.ok===true,state:result.state,publicationEnabled:false})}\n`);
-    if(result.ok!==true) process.exitCode=1;
+    if(result.ok!==true) {
+        process.stderr.write('Review did not complete. Check the failed step and recovery result; do not replay a closed photo attempt. Storage cleanup alone is not public-host verification.\n');
+        process.exitCode=1;
+    }
 } catch {
-    process.stderr.write('Protected archive job stopped; retain its claim and rerun the original run after reconciliation.\n');process.exitCode=1;
+    process.stderr.write('Protected archive job stopped before a confirmed result. Check its saved claim and recovery evidence; do not start a replacement run or replay a closed photo attempt.\n');process.exitCode=1;
 }

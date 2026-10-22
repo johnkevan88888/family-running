@@ -12,8 +12,8 @@ export function transactionalDB(f) {
         for(const statement of statements)results.push(await statement.run());f.db.exec('COMMIT');return results;
     }catch(error){f.db.exec('ROLLBACK');throw error;}};
 }
-export async function familyUploaderFixture({ready=false,submitted=false,count=3}={}) {
-    const f=await archiveServiceFixture('family',{reserveAttempt:false,mediaOrigin:'https://family-running-gallery-media-dev.family-running.workers.dev'});
+export async function familyUploaderFixture({ready=false,submitted=false,count=3,publicAssociation=true}={}) {
+    const f=await archiveServiceFixture('family',{reserveAttempt:false,publicAssociation,mediaOrigin:'https://family-running-gallery-media-dev.family-running.workers.dev'});
     transactionalDB(f);
     f.catalog.sites.family.rosterEntries=[{athleteId:'fixture-public',participant:'Fictional family runner'},
         {athleteId:'fixture-new',participant:'Fictional new runner'}];
