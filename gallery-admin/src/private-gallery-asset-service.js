@@ -53,7 +53,7 @@ async function readStored(env, owner, site, field, value) {
 
 // Called only after the Worker's single-owner, area-session and CSRF checks.
 // This is NOT photo intake or consent: it performs no object-storage operation.
-export async function reservePrivateGalleryAsset(env, identity, site, input) {
+export async function reservePrivateGalleryAsset(env, identity, site, input, options={}) {
     if (!validContext(identity, site)) return { ok: false, status: 403 };
     if (!input || typeof input !== 'object' || Array.isArray(input) ||
         Object.keys(input).sort().join('|') !== fields.join('|') ||
@@ -76,7 +76,14 @@ export async function reservePrivateGalleryAsset(env, identity, site, input) {
         const { document, generation } = await loadPrivateGalleryRoster(env, site);
         try { resolvePrivateGalleryTags(document, site, input.personIds, input.rosterRevision); }
         catch { return conflict(); }
-        const assetId = `asset_${crypto.randomUUID()}`;
+        // A save-first Family file already owns a private key and a closed
+        // writer. Adopt that server-owned identity only; all tag/reservation
+        // guards below remain mandatory. The caller cannot supply an asset ID.
+        const savedFile = site === 'family' && options.familySavedFile === true ? await env.DB.prepare(`SELECT * FROM family_gallery_saved_files
+            WHERE photo_id=?1 AND owner_hash=?2`).bind(input.idempotencyKey,owner).first() : null;
+        if (savedFile && (!savedFile.provider_version || !savedFile.writer_closed ||
+            savedFile.original_format !== input.originalFormat)) return conflict();
+        const assetId = savedFile?.asset_id || `asset_${crypto.randomUUID()}`;
         await assertArchiveIdentityAvailable(env,'asset',assetId);
         try {
             const result = await env.DB.prepare(`INSERT INTO private_gallery_assets

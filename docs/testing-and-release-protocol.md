@@ -1,5 +1,30 @@
 # Testing And Release Protocol
 
+## Family save-first private files — local-only, 22 October 2026
+
+Run the complete 104-group code suite, including new `gallery-family-saved-files`
+checks, the expanded owner-route, responsive uploader, synthetic batch lifecycle
+and pinned local D1 tests. Validate immediate private storage before tags,
+reopening without a file chooser, same-key adoption with no second upload,
+unchanged consent/review gates, exact source fingerprints, one closed writer,
+late permission withdrawal, lost replies and safe explicit retry. Test both
+pre-tag cancellation and existing post-adoption original deletion/retirement;
+neither may permit a late writer to recreate the original. Use synthetic pixels
+and fake storage/GitHub only, retaining independent public-host-removal tests.
+
+Private reads require owner Access, signed Family scope, same-origin CSRF and an
+exact saved-file association. Reject unknown owners/areas, service identities,
+GET embedding, injected paths, changed bytes, deleted sources and malformed or
+oversized/stalled bodies. Inspect desktop/mobile screenshots and preserve both
+public modes, all 72 CSVs, Family 2 / Everyone 0, suppression and the 117-file artifact.
+This code/migration change does not qualify for the photo-only fast lane.
+
+No current batch, real media, remote migration, Worker deployment or publication
+is implementation evidence. After local checks, synchronization, PR/checks/preview/
+merge require approval. Applying `0034` and activating the exact affected bundle(s)
+also require approval; compare compiled services to identify that scope. The
+fresh user batch is reviewed separately and cannot be published automatically.
+
 ## Multi-distance photos and event-filtered runners — 22 October 2026
 
 Run the complete code suite, including `gallery-event-runners`, expanded Family

@@ -5,7 +5,8 @@ import {loadPrivateGalleryRoster} from './private-gallery-roster-service.js';
 import {resolvePrivateGalleryTags} from './private-gallery-roster.js';
 import {reservePrivateGalleryAsset} from './private-gallery-asset-service.js';
 import {readPrivateGalleryAssetEligibility} from './private-gallery-visibility-service.js';
-import {preparePrivateArchiveIntake} from './private-archive-service.js';
+import {preparePrivateArchiveIntake,storePrivateArchiveOriginal} from './private-archive-service.js';
+import {readFamilySavedFile} from './family-saved-file-service.js';
 import {readPrivateGalleryFraming} from './private-gallery-framing-service.js';
 import {reservePrivateGalleryAttempt} from './private-gallery-attempt-service.js';
 import {queuePrivateArchiveBatch,readPrivateArchiveBatches} from './private-gallery-batch-service.js';
@@ -106,8 +107,9 @@ async function storedDraft(env,owner,id) {
     if(!uuid.test(id||'')) throw new Error('Invalid draft');
     const draft=await first(env,'SELECT * FROM family_gallery_drafts WHERE draft_id=?1 AND owner_hash=?2',id,owner);
     if(!draft) throw new Error('Draft unavailable');
-    const photos=await rows(env,`SELECT p.*,o.asset_id AS retained,
-        EXISTS(SELECT 1 FROM private_archive_deletion_requests x WHERE x.asset_id=p.asset_id) AS deleted,
+    const photos=await rows(env,`SELECT p.*,o.asset_id AS retained,f.photo_id AS file_prepared,f.provider_version AS saved_file_version,
+        (EXISTS(SELECT 1 FROM private_archive_deletion_requests x WHERE x.asset_id=p.asset_id) OR coalesce(f.delete_requested,0)=1) AS deleted,
+        f.original_absent AS file_deleted,
         (SELECT max(version) FROM private_gallery_frame_revisions f WHERE f.asset_id=p.asset_id) AS framing_version,
         (SELECT version FROM family_gallery_current_photo_permission f WHERE f.asset_id=p.asset_id) AS preference_version,
         (SELECT preference FROM family_gallery_current_photo_permission f WHERE f.asset_id=p.asset_id) AS preference,
@@ -117,6 +119,7 @@ async function storedDraft(env,owner,id) {
             WHERE person.person_id IS NULL OR person.family!=1 OR v.preference IS NOT 'allowed'
                 OR EXISTS(SELECT 1 FROM pending_athlete_exclusions e WHERE e.athlete_id=person.public_athlete_id AND e.resolved_at IS NULL)) AS people_blocked
         FROM family_gallery_draft_photos p LEFT JOIN private_archive_original_receipts o ON o.asset_id=p.asset_id
+        LEFT JOIN family_gallery_saved_files f ON f.photo_id=p.photo_id
         WHERE p.draft_id=?1 ORDER BY p.ordinal LIMIT 21`,id);
     if(photos.length>20) throw new Error('Oversized draft');
     return {...draft,photos};
@@ -125,6 +128,8 @@ function publicDraft(draft) {
     return {ok:true,status:200,draft:{id:draft.draft_id,version:draft.version,state:draft.state,
         jobId:draft.job_id,photos:draft.photos.map(row=>({photoId:row.photo_id,...JSON.parse(row.metadata_json),
             assetId:row.asset_id,reserved:Boolean(row.reservation_json),retained:Boolean(row.retained),deleted:row.deleted===1,
+            filePrepared:Boolean(row.file_prepared),savedPrivately:Boolean(row.saved_file_version||row.retained),
+            fileDeleted:row.file_deleted===1,
             framingVersion:row.framing_version??0,preferenceVersion:row.preference_version??0,
             preference:row.preference??'allowed',peopleBlocked:row.people_blocked===1}))},publicationEnabled:false};
 }
@@ -187,22 +192,25 @@ export async function saveFamilyDraft(env,identity,site,id,input,catalog) {
         JSON.parse(old.get(photo.photoId).metadata_json).sourceRevision!==catalog.sourceRevision) return failure(409,'family-race-catalogue-changed');
     for(const item of items) if(old.get(item.photoId)?.reservation_json &&
         old.get(item.photoId).metadata_json!==JSON.stringify(item.metadata)) return failure(409,'family-reserved-photo-changed');
-    if(draft.photos.some(row=>row.reservation_json&&!items.some(item=>item.photoId===row.photo_id))) return failure(409,'family-retained-photo-cannot-be-discarded');
+    if(draft.photos.some(row=>(row.reservation_json||row.file_prepared)&&!items.some(item=>item.photoId===row.photo_id))) return failure(409,'family-retained-photo-cannot-be-discarded');
     const statements=[statement(env,`INSERT INTO family_gallery_draft_writes(idempotency_key,draft_id,expected_version,request_hash)
         VALUES(?1,?2,?3,?4)`,input.idempotencyKey,id,input.expectedVersion,hash)];
     // Move existing ordinals out of the unique range with a delete/reinsert only
     // for unreserved cards. Reserved cards cannot be silently removed or replaced.
-    if(draft.photos.some(row=>row.reservation_json) && items.some((item,index)=>old.has(item.photoId)&&old.get(item.photoId).ordinal!==index)) {
+    if(draft.photos.some(row=>row.reservation_json||row.file_prepared) && items.some((item,index)=>old.has(item.photoId)&&old.get(item.photoId).ordinal!==index)) {
         return failure(409,'family-reserved-order-fixed');
     }
-    for(const row of draft.photos) if(!row.reservation_json) statements.push(statement(env,'DELETE FROM family_gallery_draft_photos WHERE photo_id=?1',row.photo_id));
-    for(const [ordinal,item] of items.entries()) if(!old.get(item.photoId)?.reservation_json) statements.push(statement(env,
-        'INSERT INTO family_gallery_draft_photos(photo_id,draft_id,ordinal,metadata_json) VALUES(?1,?2,?3,?4)',item.photoId,id,ordinal,JSON.stringify(item.metadata)));
+    for(const row of draft.photos) if(!row.reservation_json&&!row.file_prepared) statements.push(statement(env,'DELETE FROM family_gallery_draft_photos WHERE photo_id=?1',row.photo_id));
+    for(const [ordinal,item] of items.entries()) if(!old.get(item.photoId)?.reservation_json) {
+        if(old.get(item.photoId)?.file_prepared)statements.push(statement(env,
+            'UPDATE family_gallery_draft_photos SET metadata_json=?1 WHERE photo_id=?2',JSON.stringify(item.metadata),item.photoId));
+        else statements.push(statement(env,'INSERT INTO family_gallery_draft_photos(photo_id,draft_id,ordinal,metadata_json) VALUES(?1,?2,?3,?4)',item.photoId,id,ordinal,JSON.stringify(item.metadata)));
+    }
     try {await batch(env,statements);} catch {const recovered=await previous();return recovered?replay(recovered):failure();}
     return publicDraft(await storedDraft(env,owner,id));
 }
 
-export async function prepareFamilyPhoto(env,identity,site,id,input,catalog) {
+export async function prepareFamilyPhoto(env,identity,site,id,input,catalog,dependencies={}) {
     if(!safeContext(identity,site)) return failure(403);
     if(!exact(input,['photoId','permissionVersion'])||!uuid.test(input.photoId)) return failure(422);
     const owner=await hashIdentity(identity);let draft=await storedDraft(env,owner,id);
@@ -222,7 +230,7 @@ export async function prepareFamilyPhoto(env,identity,site,id,input,catalog) {
         if(!photo?.reservation_json||photo.metadata_json!==JSON.stringify(data)) return failure();
     }
     if(!photo.asset_id) {
-        const result=await reservePrivateGalleryAsset(env,identity,site,JSON.parse(photo.reservation_json));
+        const result=await reservePrivateGalleryAsset(env,identity,site,JSON.parse(photo.reservation_json),{familySavedFile:Boolean(photo.file_prepared)});
         if(!result.ok) return result;
         await write(env,'UPDATE family_gallery_draft_photos SET asset_id=?1 WHERE photo_id=?2 AND asset_id IS NULL',result.asset.assetId,photo.photo_id);
         photo=(await storedDraft(env,owner,id)).photos.find(row=>row.photo_id===input.photoId);
@@ -238,6 +246,12 @@ export async function prepareFamilyPhoto(env,identity,site,id,input,catalog) {
     if(!photo.retained) {
         const intake=await preparePrivateArchiveIntake(env,identity,site,photo.asset_id,JSON.parse(photo.intake_json));
         if(!intake.ok) return intake;
+        if(photo.saved_file_version) {
+            const original=await readFamilySavedFile(env,identity,site,id,photo.photo_id);
+            if(!original.ok)return original;
+            const retained=await storePrivateArchiveOriginal(env,identity,site,photo.asset_id,new Blob([original.bytes]).stream(),dependencies);
+            if(!retained.ok)return retained;
+        }
     }
     return publicDraft(await storedDraft(env,owner,id));
 }

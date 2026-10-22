@@ -11,7 +11,9 @@ const request=(path,body,extra={})=>new Request(origin+path+'?site=family',{meth
 const run=(r,overrides={})=>handleAdminRequest(r,env,{...deps,...overrides});let checks=0;
 try{
     const routes=['family-permission','family-photo-permission','family-athletes','family-drafts',
-        `family-drafts/${f.draft.id}`,`family-drafts/${f.draft.id}/prepare`,`family-drafts/${f.draft.id}/submit`];
+        `family-drafts/${f.draft.id}`,`family-drafts/${f.draft.id}/prepare`,`family-drafts/${f.draft.id}/submit`,
+        `family-drafts/${f.draft.id}/files/${f.photos[0].photoId}`,`family-drafts/${f.draft.id}/files/${f.photos[0].photoId}/read`,
+        `family-drafts/${f.draft.id}/files/${f.photos[0].photoId}/delete`];
     for(const name of routes){
         const path='/api/browser/'+name;
         for(const [extra,identity] of [[{Cookie:''},f.owner],[{'X-CSRF-Token':'wrong'},f.owner],[{Origin:'https://untrusted.example'},f.owner],
@@ -40,5 +42,20 @@ try{
     assert.equal(f.db.prepare('SELECT count(*) n FROM private_gallery_batch_jobs').get().n,0);
     assert.equal(f.db.prepare('SELECT count(*) n FROM private_gallery_attempts').get().n,0);
     assert.equal(f.original.objects.size,1,'Invalid requests did not touch the fixture original');checks+=4;
+    const filePath=`/api/browser/family-drafts/${f.draft.id}/files/${f.photos[0].photoId}`;
+    assert.equal((await run(request(filePath,{permissionVersion:1}))).status,200);
+    const binary=(extra={},bytes=f.bytes[0])=>new Request(origin+filePath+'?site=family',{method:'PUT',headers:{...headers,'Content-Type':'application/octet-stream',...extra},body:bytes});
+    for(const [extra,status] of [[{'X-CSRF-Token':'wrong'},403],[{'Content-Encoding':'gzip'},400],[{'Content-Type':'image/jpeg'},400],[{'Content-Length':'999999999'},413]])
+        assert.equal((await run(binary(extra))).status,status);
+    assert.equal((await run(binary({},new Uint8Array([1,2,3])))).status,422);
+    assert.equal((await run(binary())).status,200);
+    assert.equal((await run(request(filePath+'/read'))).status,405,'Original read is POST plus owner/session/CSRF, never an embeddable GET URL');
+    assert.equal((await run(request(filePath+'/read',{key:'injected'}))).status,422);
+    const preview=await run(request(filePath+'/read',{}));assert.equal(preview.status,200);
+    assert.equal(preview.headers.get('Cache-Control'),'private, no-store');assert.equal(preview.headers.get('X-Content-Type-Options'),'nosniff');
+    assert.equal(preview.headers.get('Cross-Origin-Resource-Policy'),'same-origin');
+    assert.equal(preview.headers.get('X-Robots-Tag'),'noindex, nofollow, noarchive');
+    assert.deepEqual(new Uint8Array(await preview.arrayBuffer()),new Uint8Array(f.bytes[0]));
+    assert.equal(f.db.prepare('SELECT count(*) n FROM private_gallery_attempts').get().n,0);checks+=15;
 }finally{f.db.close();}
 console.log(`PASS ${checks} new Family route checks: owner Access, service/anonymous denial, signed area, CSRF, exact bodies, bounded reads and no-store assets.`);

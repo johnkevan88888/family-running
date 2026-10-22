@@ -106,9 +106,10 @@ try {
         'EXPLAIN INSERT INTO private_gallery_pipeline_closures DEFAULT VALUES','--json'],environment);
     assert.equal(batchCloseCompile.status,0,diagnostic(batchCloseCompile));
     const familyCompile=runWrangler(['d1','execute',...commonArguments,'--command',
-        ['permissions','photo_permissions','drafts','draft_photos','draft_writes','dispatches'].map(table=>
+        ['permissions','photo_permissions','drafts','draft_photos','draft_writes','dispatches','saved_files'].map(table=>
             `EXPLAIN INSERT INTO family_gallery_${table} DEFAULT VALUES;`).join('\n')+
-        '\nEXPLAIN UPDATE family_gallery_draft_photos SET attempt_id=NULL;\nEXPLAIN DELETE FROM family_gallery_draft_photos;',
+        '\nEXPLAIN UPDATE family_gallery_draft_photos SET attempt_id=NULL;\nEXPLAIN DELETE FROM family_gallery_draft_photos;'+
+        '\nEXPLAIN UPDATE family_gallery_saved_files SET provider_version=NULL;\nEXPLAIN DELETE FROM family_gallery_saved_files;',
         '--json'],environment);
     assert.equal(familyCompile.status,0,diagnostic(familyCompile));
 
@@ -379,6 +380,22 @@ try {
     assert.equal(familyPolicy.ok,true);assert.equal(familyPolicy.version,1);
     const familyDraft=await createFamilyDraft(assetEnv,owner,'family',{idempotencyKey:crypto.randomUUID()});
     assert.equal(familyDraft.ok,true);assert.equal(familyDraft.draft.photos.length,0);
+    const savedPhoto=crypto.randomUUID(),savedAsset=`asset_${crypto.randomUUID()}`;
+    const savedOwner=(await assetEnv.DB.prepare('SELECT owner_hash FROM family_gallery_drafts WHERE draft_id=?1').bind(familyDraft.draft.id).first()).owner_hash;
+    const metadata=JSON.stringify({originalFormat:'jpg',byteCount:5,sha256:'a'.repeat(64),personIds:[],raceIndex:null,containsMinors:null});
+    const saveFirstProbe=runWrangler(['d1','execute',...commonArguments,'--command',`
+        INSERT INTO family_gallery_draft_photos(photo_id,draft_id,ordinal,metadata_json) VALUES('${savedPhoto}','${familyDraft.draft.id}',0,'${metadata}');
+        INSERT INTO family_gallery_saved_files(photo_id,draft_id,owner_hash,asset_id,original_format,byte_count,sha256,permission_version)
+         VALUES('${savedPhoto}','${familyDraft.draft.id}','${savedOwner}','${savedAsset}','jpg',5,'${'a'.repeat(64)}',1);
+        UPDATE family_gallery_saved_files SET provider_upload_id='synthetic-d1-writer' WHERE photo_id='${savedPhoto}';
+        UPDATE family_gallery_saved_files SET provider_version='synthetic-d1-version',provider_etag='synthetic-d1-etag',writer_closed='abort-confirmed' WHERE photo_id='${savedPhoto}';
+        UPDATE family_gallery_draft_photos SET metadata_json=json_set(metadata_json,'$.containsMinors',json('false')) WHERE photo_id='${savedPhoto}';`,
+        '--json'],environment);
+    assert.equal(saveFirstProbe.status,0,diagnostic(saveFirstProbe));
+    const sourceReplacement=runWrangler(['d1','execute',...commonArguments,'--command',
+        `UPDATE family_gallery_draft_photos SET metadata_json=json_set(metadata_json,'$.sha256','${'b'.repeat(64)}') WHERE photo_id='${savedPhoto}';`,'--json'],environment);
+    assert.notEqual(sourceReplacement.status,0);assert.match(combinedOutput(sourceReplacement),/Stored pixels cannot be replaced/);
+    assert.equal((await assetEnv.DB.prepare('SELECT writer_closed FROM family_gallery_saved_files WHERE photo_id=?1').bind(savedPhoto).first()).writer_closed,'abort-confirmed');
     const hiddenPhoto=await familyPhotoPermission(assetEnv,owner,'family',{assetId:reservation.asset.assetId,expectedVersion:0,
         idempotencyKey:crypto.randomUUID(),preference:'hidden'});
     assert.equal(hiddenPhoto.ok,true);assert.equal(hiddenPhoto.removalVerified,false);

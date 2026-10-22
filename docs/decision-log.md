@@ -1,5 +1,29 @@
 # Decision Log
 
+## Family originals are saved before tagging — 22 October 2026
+
+The owner requested private saving as soon as photos are added, followed by
+tagging, and allowed abandoning the current draft in favour of a fresh batch.
+Implement locally first; release and activation remain separate approvals.
+The source must remain outside Git and the public artifact, under the existing
+owner-only Family storage boundary. Save-first is not a completed tagged intake
+or public-use grant: it makes no claims about unidentified people or their ages.
+
+Additive migration `0034` separates the immutable file/writer receipt from editable draft
+tags. A preallocated server-owned original identity is adopted by the normal
+checked intake, retaining exactly one R2 object and every existing consent,
+minors, result, exclusion and framing requirement. The previous local-preview-only
+decision is superseded narrowly for these saved files: an authenticated owner
+may reopen their original via same-origin CSRF-protected POST, with no-store
+binary responses and fingerprint validation. No reusable original URL or new
+preview derivatives exist. Terminal deletion blocks this read too.
+
+Pre-tag cancellation closes the sole registered writer before deleting its
+exact original. Once a tagged asset exists, only existing archive deletion and
+coordinated purge may operate; the new evidence cascades through that exact purge.
+Abandoning a batch is not permission to delete previously retained originals or
+published photos. No live cleanup or publication accompanies implementation.
+
 ## Photo participation is per runner within one exact event and date — 22 October 2026
 
 The Family uploader groups exported races by exact event name and race date,
