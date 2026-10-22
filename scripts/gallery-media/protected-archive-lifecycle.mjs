@@ -1,5 +1,6 @@
 import {processGalleryPhoto} from './processor.mjs';
 import {assertPhotoFramingSource} from './photo-framing-source.mjs';
+import {archivePhotoStep} from './archive-diagnostics.mjs';
 import {readGalleryReviewMain,createOrReconcileArchiveGalleryReview,createOrReconcileArchiveGalleryRemoval,readExistingGalleryReview,
     reconcileArchiveGalleryReview} from './github-review-client.mjs';
 import {readMergedGalleryBatchMemberReview} from './github-batch-review-client.mjs';
@@ -20,7 +21,7 @@ async function checked(service,attemptId,operation,value) {
     return result.value;
 }
 
-export async function runProtectedArchiveReview({attemptId,processing,promotion,github}) {
+export async function runProtectedArchiveReview({attemptId,processing,promotion,github,reportFailure}) {
     input(attemptId,processing,promotion);
     let saved;
     try {
@@ -32,15 +33,16 @@ export async function runProtectedArchiveReview({attemptId,processing,promotion,
         // photo. Existing publication is a separate reconciliation gate.
         if(saved.candidate && !absent(main,saved.candidate.itemId,[])) return {ok:false,state:'already-published',publicationEnabled:false};
         if(saved.state!=='prepared') {
-            const admission=await checked(processing,attemptId,'start');
-            const source=await checked(processing,attemptId,'original');
-            const processed=await processGalleryPhoto({sourceBytes:Buffer.from(source.bytes),fileExtension:source.mimeType==='image/jpeg'?'jpg':'png',
+            const step=archivePhotoStep(reportFailure);
+            const admission=await step('admission',()=>checked(processing,attemptId,'start'));
+            const source=await step('original-download',()=>checked(processing,attemptId,'original'));
+            const processed=await step('metadata-stripping',()=>processGalleryPhoto({sourceBytes:Buffer.from(source.bytes),fileExtension:source.mimeType==='image/jpeg'?'jpg':'png',
                 declaredMimeType:source.mimeType,expectedSha256:source.sha256,
-                draftBinding:{site:saved.site,draftId:`draft_${attemptId.slice(8)}`,processingRunId:`run_${attemptId.slice(8).replaceAll('-','')}`}});
-            assertPhotoFramingSource(admission.framingSource,processed.source);
-            for(const derivative of processed.derivatives) await checked(processing,attemptId,derivative.storageRole,
-                {bytes:await derivative.payload.arrayBuffer(),toolchain:processed.toolchain});
-            await checked(promotion,attemptId,'promote');
+                draftBinding:{site:saved.site,draftId:`draft_${attemptId.slice(8)}`,processingRunId:`run_${attemptId.slice(8).replaceAll('-','')}`}}));
+            await step('framing-check',()=>assertPhotoFramingSource(admission.framingSource,processed.source));
+            for(const derivative of processed.derivatives) await step(derivative.storageRole,async()=>checked(processing,attemptId,derivative.storageRole,
+                {bytes:await derivative.payload.arrayBuffer(),toolchain:processed.toolchain}));
+            await step('promotion',()=>checked(promotion,attemptId,'promote'));
             saved={...saved,...await checked(promotion,attemptId,'review-reserve',await readGalleryReviewMain(gh(github)))};
         }
         const item=(await checked(promotion,attemptId,'candidate')).item;

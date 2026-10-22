@@ -9,7 +9,7 @@ async function checked(service,id,operation,value) {
 const options=github=>({token:github.token,fetchImpl:github.fetchImpl});
 // Each phase receives ONLY its environment's transports. No cross-environment
 // credential transfer, automatic dispatch, merge, default fetch or bucket I/O.
-export async function runProtectedArchiveJob({jobId,runReference,phase,jobs,processing,promotion,verifier,finalizer,github}) {
+export async function runProtectedArchiveJob({jobId,runReference,phase,jobs,processing,promotion,verifier,finalizer,github,reportFailure}) {
     try {
         if(!['review','cleanup','verify','reconcile','finalize','publication','purge'].includes(phase)) return pending();
         const response=await checked(jobs,jobId,['verify','finalize'].includes(phase)?'read':'claim',{runReference});
@@ -23,7 +23,7 @@ export async function runProtectedArchiveJob({jobId,runReference,phase,jobs,proc
         if(!['running','queued'].includes(job.state) && !['verify','finalize'].includes(phase))
             return {ok:true,...job.result,replayed:true,publicationEnabled:false};
         if(job.action==='batch-review') {
-            const context={jobId,runReference,job,jobs,processing,promotion,github};
+            const context={jobId,runReference,job,jobs,processing,promotion,github,reportFailure};
             if(phase==='review' || phase==='publication') return job.publicationRequested===true?
                 runProtectedArchiveBatchPublication(context):phase==='review'?runProtectedArchiveBatchReview(context):pending();
             if(phase==='verify') {
@@ -38,7 +38,7 @@ export async function runProtectedArchiveJob({jobId,runReference,phase,jobs,proc
         }
         if(phase==='review') {
             if(job.action!=='review' || !job.attemptId) return pending();
-            const result=await runProtectedArchiveReview({attemptId:job.attemptId,processing,promotion,github});
+            const result=await runProtectedArchiveReview({attemptId:job.attemptId,processing,promotion,github,reportFailure});
             return result.ok?await complete(result):result; // Unknown writes keep the durable claim.
         }
         if(['cleanup','verify','reconcile','finalize'].includes(phase)) {

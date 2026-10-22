@@ -5,7 +5,7 @@ import {handleAdminRequest} from '../../gallery-admin/src/admin-worker.js';
 import {createBrowserSession} from '../../gallery-admin/src/session.js';
 import {createArchiveServiceClient,createArchiveProcessingClient,createArchivePromotionClient,createArchiveJobClient,createArchiveFinalizerClient} from '../../scripts/gallery-media/archive-service-client.mjs';
 import * as delivery from '../../gallery-admin/src/media-delivery-contract.js';
-export async function privateGalleryJobFixture(f) {
+export async function privateGalleryJobFixture(f,{reportFailure}={}) {
     const clients={},jobs={},environments={},identities={},requests=[];
     let replyHook;
     for(const [index,purpose] of ['processing','promotion','verifier','finalizer'].entries()) {
@@ -19,7 +19,7 @@ export async function privateGalleryJobFixture(f) {
                     MEDIA_WITNESS_KEY:delivery.MEDIA_BINDING_WITNESS_KEY,MEDIA_WITNESS_SHA256:delivery.MEDIA_BINDING_WITNESS_SHA256,
                     MEDIA_WITNESS_BYTE_COUNT:'28',MEDIA_WITNESS_CONTENT_TYPE:'image/webp'})};
         environments[purpose]=env;identities[purpose]={type:'service',subject};
-        const configuration={purpose,origin,clientId:`fictional-${purpose}`,clientSecret:'fictional-secret',fetchImpl:async request=>{
+        const configuration={purpose,origin,clientId:`fictional-${purpose}`,clientSecret:'fictional-secret',reportFailure,fetchImpl:async request=>{
             assert.equal(request.redirect,'error');assert.equal(request.credentials,'omit');assert.equal(request.headers.get('CF-Access-Client-Secret'),'fictional-secret');
             requests.push([purpose,new URL(request.url).pathname]);
             const dependencies={verifyAccessIdentity:async()=>identities[purpose],fetch:f.publicFetch};

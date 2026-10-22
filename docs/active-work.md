@@ -1,5 +1,130 @@
 # Active Work
 
+## Processing handoff reporting repository release preparation — 21 October 2026
+
+John approved synchronization/retest, push, a standard runner-only PR, required
+checks and both-mode preview, then merge with unchanged public output and Family
+2/Everyone 0. No migration, Worker deployment or live retry is authorized.
+This supersedes only the repository-release gate in the local entry below.
+
+Fresh main is `a3b3463f80f7a202b4e2d66a175e39c303aad4f8`. The isolated branch
+`codex/gallery-processing-handoff` was fast-forwarded onto that merge commit;
+its base source tree is unchanged from the tested `fa609c3` base. The release
+remains exactly the 12 files listed below, with no runtime/manifest/Worker or
+configuration changes. Fresh main was checked again during the final browser
+tests and remained unchanged.
+
+The fresh full 102-group retest PASSED, exit 0 in 1908.144 seconds. All 438
+source files and the staged index were unchanged throughout the run. Browser
+smoke tests and desktop/mobile screenshots for both modes passed review;
+external real media remained blocked. Only this handoff is updated after that
+source-frozen run. Evidence: `test-artifacts/handoff-release-validation.json`
+and `test-artifacts/handoff-release-full-102.log`, log SHA256
+`4415b1e03b2beed1a22242d2c6a021e1e70e2c75fdb95de50037915b1722421e`.
+
+The raw-Git canonical build of current main, its successful normal Pages run
+39680953351 / artifact 12383663356, and a fresh read-only production check all
+agree on the same 117 public files, including all 72 CSVs, CNAME, suppression
+list and Family 2/Everyone 0. Production checks covered all 117 response bodies
+and eight Family/Everyone desktop/mobile Gallery/championship browser views.
+This verifies static output, not media delivery or a processing retry. Ignored
+evidence: `handoff-release-before-canonical-proof.json`,
+`handoff-release-before-pages-archive-proof.json` and
+`release-verification-handoff-release-before/report.json` under `test-artifacts/`.
+
+Required exact-head checks, successful Netlify preview and both-mode review
+remain pre-merge gates. The normal Pages result must match the reviewed
+artifact after merge. The original live handoff cause remains unconfirmed;
+closed attempts must not be replayed.
+
+## Processing handoff investigation and failure reporting — local-only, 21 October 2026
+
+John approved local investigation, correction, clear failure reporting and tests,
+preserving every safety check, original, tag and history. This pass makes no
+remote change, deployment or live retry. Work is isolated on
+`codex/gallery-processing-handoff` at base
+`fa609c3a8aa1f0287b387c9ed9f01ad704910284`; its base tree matches the last
+recorded released main `a3b3463f80f7a202b4e2d66a175e39c303aad4f8`. No fresh
+fetch is claimed. Unrelated shared-root changes are preserved.
+
+The confirmed defect is lost failure information: the released runner returned
+only `pending` after a processing step failed. The corrected runner records a
+bounded photo position, processing stage and allowlisted reason; service errors
+can additionally report a numeric HTTP status. It never prints raw errors,
+response bodies, credentials, URLs, private IDs, hashes, tags or source paths.
+Reporting cannot change the result, retry a write, release a claim or skip
+cleanup. The CLI caps reports at 32 and warns against replaying closed attempts.
+Existing deadlines, fixed origins, response/byte validation, metadata stripping,
+framing, current permission/exclusion checks and independent host verification
+are unchanged. This is runner-only: no Worker, migration, workflow configuration,
+dependency, public runtime or Gallery manifest is changed.
+
+The earlier live handoff failure is NOT reproduced or proven fixed. Both exact
+retained synthetic inputs pass local processing and the combined review path,
+including an actual local D1 parity run. A separate generated two-photo test
+also passes through the actual local processing Worker, D1 and R2: admission,
+original download and both derivative uploads return 200 for each photo, with
+eight output records, unchanged original receipts and one fake unmerged review.
+It uses a test service identity and fake GitHub, not live Access or a real PR.
+The local dispatch harness supplies the same Content-Length as the native Node
+runner; no production request-body guard was relaxed. These results do not
+identify the cause of run 39683348263 or justify a speculative processing change.
+
+Validation PASSED:
+
+- Five focused groups: handoff diagnostics, bounded service timeouts, fresh-photo
+  framing, protected batch workflow and the simplified Family uploader.
+- The complete 102-group suite, exit 0 in 1329.372 seconds. All 438 source files
+  were identical before and after the run, including the two new files.
+- Injected failures at all seven photo stages identify the second photo, retain
+  originals/tags/consent/framing history, close attempts and clean derivatives
+  without purge. Storage cleanup cannot replace independent host verification.
+  Deadline, invalid-response, privacy and throwing-observer checks also pass.
+- A before/after test reproduces the old silent failure and the new safe stage
+  report with identical cleanup outcomes. Single-photo Family and Everyone paths
+  also report correctly without changing their fail-closed result.
+- The canonical local public artifact remains byte-identical across 117 files
+  against the recorded release baseline, including all 72 CSVs, CNAME and the
+  suppression list; Family 2/Everyone 0. Desktop/mobile screenshots for both
+  public modes and the simplified uploader were reviewed. External real media
+  was blocked; this is not live deployment or real-photo delivery evidence.
+
+Ignored evidence under this checkout's `test-artifacts/`:
+`handoff-validation.json`, `handoff-full-102.log`,
+`local-worker-handoff-proof.json`, `handoff-reporting-comparison.json`,
+`handoff-public-output.json`, the local investigation helpers and screenshots.
+Full-run log SHA256:
+`f327b7eb2306fc0b30b685fc5d49d67a2bd8d8d9d397223252bf5b6bc0a62927`.
+Only this handoff and the testing protocol were edited after the source-frozen
+run; implementation and test sources remain the validated versions.
+
+Exact release file set:
+
+- `scripts/gallery-media/archive-diagnostics.mjs` (new).
+- `scripts/gallery-media/archive-service-client.mjs`.
+- `scripts/gallery-media/protected-archive-batch.mjs`.
+- `scripts/gallery-media/protected-archive-job.mjs`.
+- `scripts/gallery-media/protected-archive-lifecycle.mjs`.
+- `scripts/run-gallery-archive-job.mjs`.
+- `scripts/run-all-tests.mjs`.
+- `tests/gallery-archive-handoff.mjs` (new).
+- `tests/helpers/family-uploader-fixture.mjs`.
+- `tests/helpers/private-gallery-job-fixture.mjs`.
+- `docs/active-work.md`.
+- `docs/testing-and-release-protocol.md`.
+
+The shared-root `docs/active-work.md` is updated separately as an operational
+handoff, not as another implementation change. No push, PR, merge, migration,
+deployment, real-media processing, purge, publication or live retry occurred.
+
+Next explicit gate: synchronize/retest and release this diagnostic runner via
+an ordinary PR, required checks and preview, then approved merge with unchanged
+public output and Family 2/Everyone 0. No Worker deployment is needed for this
+change. A later live synthetic review requires explicit approval and fresh
+consent/generations using retained synthetic originals. The previous batch's
+closed attempts must not be replayed; completed cleanup/history stay intact.
+Routine batch readiness remains unproven until a live rehearsal succeeds.
+
 ## Simplified Family uploader — repository release preparation, 21 October 2026
 
 John explicitly approved synchronization/retest, push, an ordinary code PR,

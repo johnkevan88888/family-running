@@ -37,6 +37,7 @@ const checks = [
     ['Gallery split archive service authority and HTTP lifecycle tests', ['tests/gallery-private-service-adapter.mjs']],
     ['Gallery archive multipart containment requirements', ['tests/gallery-archive-containment.mjs']],
     ['Gallery bounded promotion-request timeout regression', ['tests/gallery-archive-service-timeout.mjs']],
+    ['Gallery processing handoff and privacy-safe failure reporting', ['tests/gallery-archive-handoff.mjs']],
     ['Gallery protected archive review and removal integration', ['tests/gallery-protected-archive-lifecycle.mjs']],
     ['Gallery local terminal archive metadata purge', ['tests/gallery-private-retention.mjs']],
     ['Gallery protected owner/workflow review recovery and publication/purge coordination', ['tests/gallery-private-owner-workflow.mjs']],

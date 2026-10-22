@@ -1,5 +1,40 @@
 # Testing And Release Protocol
 
+## Processing handoff diagnostics — local-only correction, 21 October 2026
+
+This runner change needs the full 102-group code suite, not the photo-only fast
+lane. Include `tests/gallery-archive-handoff.mjs` plus the existing bounded
+service-timeout, fresh-photo framing, protected batch and Family uploader groups.
+Use generated photos, disposable local storage and fake service/GitHub transport;
+local runtime parity is not live authentication, processing or review evidence.
+
+Force failures separately at admission, original download, metadata stripping,
+framing validation, display upload, thumbnail upload and promotion. Prove the
+correct photo ordinal/stage is reported while the original fail-closed result,
+claim protection, derivative cleanup, independent public-host verification and
+original/tag/consent/framing history remain unchanged. Include private-only tags
+and both single-photo areas as well as batches. Never substitute storage absence
+for public-host absence or replay a closed consent attempt.
+
+Diagnostics may contain only allowlisted stage/service/operation/reason values,
+a bounded photo position/count and a numeric failure HTTP status. Reject private
+IDs, names, tags, paths, hashes, credentials, arbitrary strings, raw errors and
+response bodies. A throwing or rejected reporter cannot affect processing or
+cleanup. Verify the CLI's report cap, unchanged JSON result/exit semantics,
+unchanged deadlines and zero added retries, including late responses after abort.
+
+Re-run repository/vendor/CSV/Gallery/artifact checks and both-mode desktop/mobile
+browser checks. Preserve the canonical 117-file public artifact and Family
+2/Everyone 0. A source-frozen full run and a local before/after failure-reporting
+test establish this reporting correction, not the cause or repair of an earlier
+live failure. Keep that distinction explicit in the handoff.
+
+Release requires its own sync/retest/PR/checks/preview/merge approval; no migration
+or Worker deployment is needed for this runner-only change. Any later live
+synthetic review needs explicit approval, fresh consent/generations and retained
+synthetic originals, stopping at an unmerged candidate unless separately agreed.
+Completed cleanup and closed attempts are never replayed to gather diagnostics.
+
 ## Simplified Family uploader — local implementation, 21 October 2026
 
 This is a code and forward-migration change, not a photo-only review. Run the

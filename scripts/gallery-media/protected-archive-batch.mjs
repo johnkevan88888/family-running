@@ -1,5 +1,6 @@
 import {processGalleryPhoto} from './processor.mjs';
 import {assertPhotoFramingSource} from './photo-framing-source.mjs';
+import {archivePhotoStep} from './archive-diagnostics.mjs';
 import {readGalleryReviewMain} from './github-review-client.mjs';
 import {createOrReconcileArchiveGalleryBatchReview,readExistingGalleryBatchReview,
     reconcileArchiveGalleryBatchReview,readMergedGalleryBatchPublication,
@@ -82,16 +83,17 @@ export async function runProtectedArchiveBatchReview(context) {
             }
             // Process sequentially: bounded memory, separate original digest,
             // decoder/metadata scan, generation and framing for every photo.
-            for(const id of job.attempts) {
-                const admission=await checked(processing,id,'start');
-                const source=await checked(processing,id,'original');
-                const processed=await processGalleryPhoto({sourceBytes:Buffer.from(source.bytes),fileExtension:source.mimeType==='image/jpeg'?'jpg':'png',
+            for(const [index,id] of job.attempts.entries()) {
+                const step=archivePhotoStep(context.reportFailure,index+1,job.attempts.length);
+                const admission=await step('admission',()=>checked(processing,id,'start'));
+                const source=await step('original-download',()=>checked(processing,id,'original'));
+                const processed=await step('metadata-stripping',()=>processGalleryPhoto({sourceBytes:Buffer.from(source.bytes),fileExtension:source.mimeType==='image/jpeg'?'jpg':'png',
                     declaredMimeType:source.mimeType,expectedSha256:source.sha256,
-                    draftBinding:{site:job.site,draftId:`draft_${id.slice(8)}`,processingRunId:`run_${id.slice(8).replaceAll('-','')}`}});
-                assertPhotoFramingSource(admission.framingSource,processed.source);
-                for(const derivative of processed.derivatives) await checked(processing,id,derivative.storageRole,
-                    {bytes:await derivative.payload.arrayBuffer(),toolchain:processed.toolchain});
-                await checked(promotion,id,'promote');
+                    draftBinding:{site:job.site,draftId:`draft_${id.slice(8)}`,processingRunId:`run_${id.slice(8).replaceAll('-','')}`}}));
+                await step('framing-check',()=>assertPhotoFramingSource(admission.framingSource,processed.source));
+                for(const derivative of processed.derivatives) await step(derivative.storageRole,async()=>checked(processing,id,derivative.storageRole,
+                    {bytes:await derivative.payload.arrayBuffer(),toolchain:processed.toolchain}));
+                await step('promotion',()=>checked(promotion,id,'promote'));
             }
             saved={...job,...await checked(jobs,jobId,'batch-reserve',{runReference,main:await readGalleryReviewMain(gh(github))})};
         }
