@@ -1,9 +1,10 @@
 import {createHash} from 'node:crypto';
 import galleryContract from '../../gallery-contract.js';
 import {parseV2PhotoDerivativeKey} from '../../gallery-admin/src/photo-generation-keys.js';
+import {batchReviewRefreshStep} from './archive-diagnostics.mjs';
 
 // An additive capability: the existing one-photo client and its exact +1 proof
-// are intentionally unchanged. No ambient fetch/token, merge, ref update,
+// are intentionally unchanged. No ambient fetch/token, merge, forced ref update,
 // deletion, workflow dispatch, settings, deployment or publication capability.
 const repository='johnkevan88888/family-running';
 const api=`https://api.github.com/repos/${repository}`;
@@ -80,13 +81,15 @@ function options(value,create=false) {
         throw new Error('Explicit protected batch review capabilities required.');
     return client(value);
 }
-function client({fetchImpl,token}) {
+function client({fetchImpl,token},refreshBranch=null) {
     return async (method,path,bodyValue,missing=false)=>{
         // Every route is constructed internally, never supplied by a caller.
         const get=/^\/git\/ref\/heads\/(?:main|gallery-media\/candidate-[0-9a-f]{32})$|^\/git\/commits\/[0-9a-f]{40}$|^\/compare\/[0-9a-f]{40}\.\.\.[0-9a-f]{40}$|^\/contents\/gallery-data\/(?:family|everyone|hidden-athlete-ids)\.json\?ref=[0-9a-f]{40}$|^\/pulls\/[1-9][0-9]*$|^\/pulls\?state=all&head=johnkevan88888%3Agallery-media%2Fcandidate-[0-9a-f]{32}&base=main&per_page=10$/;
         if(!(method==='GET' && bodyValue===undefined && get.test(path) ||
             method==='POST' && ['/git/blobs','/git/trees','/git/commits','/git/refs','/pulls'].includes(path) && plain(bodyValue) ||
-            method==='PATCH' && /^\/pulls\/[1-9][0-9]*$/.test(path) && same(bodyValue,{state:'closed'})))
+            method==='PATCH' && /^\/pulls\/[1-9][0-9]*$/.test(path) && same(bodyValue,{state:'closed'}) ||
+            method==='PATCH' && refreshBranch && path===`/git/refs/heads/${refreshBranch}` &&
+                plain(bodyValue) && Object.keys(bodyValue).sort().join('|')==='force|sha' && bodyValue.force===false && sha.test(bodyValue.sha||'')))
             throw new Error('Unsupported batch repository operation.');
         let response;
         try {response=await fetchImpl(api+path,{method,redirect:'error',headers:{Accept:'application/vnd.github+json',Authorization:`Bearer ${token}`,
@@ -148,8 +151,8 @@ function checkedPull(pull,value,baseSha,headSha,allowed=['open'],exactBase=true)
         allowed.length===1 && allowed[0]==='open' && pull.merged_at!==null) throw new Error('Changed, stale or unowned batch review.');
     return pull;
 }
-async function verifyBranch(github,value,baseSha,headSha) {
-    if(await ref(github,branch(value))!==headSha) throw new Error('Batch review branch changed.');
+async function verifyBranch(github,value,baseSha,headSha,anchored=false) {
+    if(!anchored && await ref(github,branch(value))!==headSha) throw new Error('Batch review branch changed.');
     const commit=await github('GET',`/git/commits/${headSha}`);
     if(commit?.message!==message(value) || commit.parents?.length!==1 || commit.parents[0]?.sha!==baseSha) throw new Error('Unknown batch commit or parent.');
     const compare=await github('GET',`/compare/${baseSha}...${headSha}`);
@@ -157,7 +160,60 @@ async function verifyBranch(github,value,baseSha,headSha) {
         compare.merge_base_commit?.sha!==baseSha || compare.files?.length!==1 || compare.files[0].filename!==value.targetRelativePath ||
         compare.files[0].status!=='modified' || compare.files[0].previous_filename!==undefined ||
         await text(github,value.targetRelativePath,headSha)!==value.manifestText) throw new Error('Batch branch must contain exactly one unchanged candidate file.');
-    if(await ref(github,branch(value))!==headSha) throw new Error('Batch branch changed during proof.');
+    if(!anchored && await ref(github,branch(value))!==headSha) throw new Error('Batch branch changed during proof.');
+}
+const refreshMessage=(anchor,base)=>`Refresh approved Gallery batch review ${anchor} onto ${base}`;
+async function descendant(github,ancestor,head) {
+    if(ancestor===head) return;
+    const comparison=await github('GET',`/compare/${ancestor}...${head}`);
+    if(comparison?.status!=='ahead' || comparison.behind_by!==0 || comparison.merge_base_commit?.sha!==ancestor)
+        throw new Error('Batch refresh base is not forward main history.');
+}
+// PR metadata may lag the real main ref. Only an already anchored review may
+// accept that snapshot, and only within original-base -> reported-base -> main.
+// The caller independently proves the exact main ref, review history and tree.
+// Creation and unanchored replay still require exact base metadata equality.
+async function checkedAnchoredPull(github,pull,value,originalBase,main,head,step=batchReviewRefreshStep()) {
+    checkedPull(pull,value,main,head,['open'],false);
+    await step('review-base-history',async()=>{
+        if(!sha.test(pull.base.sha||'')) throw new Error('Verified reported batch base required.');
+        await descendant(github,originalBase,pull.base.sha);
+        await descendant(github,pull.base.sha,main);
+    });
+    return pull;
+}
+// The original one-parent commit remains the immutable ledger anchor. Only a
+// bounded, exact two-parent refresh chain may surround it; arbitrary merges,
+// rebases, changed manifests and unrelated files are still rejected.
+async function history(github,value,baseSha,headSha,expectedAnchor=null) {
+    let cursor=headSha,anchor=expectedAnchor;
+    const seen=new Set(),refreshes=[];
+    while(true) {
+        if(seen.has(cursor)) throw new Error('Cyclic batch refresh history.');
+        seen.add(cursor);
+        const commit=await github('GET',`/git/commits/${cursor}`);
+        if(commit?.message===message(value)) break;
+        const match=/^Refresh approved Gallery batch review ([0-9a-f]{40}) onto ([0-9a-f]{40})$/.exec(commit?.message||'');
+        if(refreshes.length>=16 || !match || !Array.isArray(commit.parents) || commit.parents.length!==2 ||
+            !sha.test(commit.parents[0]?.sha||'') || commit.parents[1]?.sha!==match[2] ||
+            commit.parents[0].sha===match[2] || anchor && anchor!==match[1]) throw new Error('Unrecognized batch refresh history.');
+        anchor=match[1];refreshes.push({head:cursor,base:match[2]});cursor=commit.parents[0].sha;
+    }
+    if(anchor && anchor!==cursor) throw new Error('Changed original batch review.');
+    anchor=cursor;await verifyBranch(github,value,baseSha,anchor,true);
+    let previous=baseSha;
+    for(const refresh of refreshes.reverse()) {
+        await descendant(github,previous,refresh.base);
+        if(previous===refresh.base) throw new Error('Repeated batch refresh base.');
+        const comparison=await github('GET',`/compare/${refresh.base}...${refresh.head}`);
+        if(comparison?.status!=='ahead' || comparison.behind_by!==0 || comparison.merge_base_commit?.sha!==refresh.base ||
+            comparison.files?.length!==1 || comparison.files[0].filename!==value.targetRelativePath ||
+            comparison.files[0].status!=='modified' || comparison.files[0].previous_filename!==undefined ||
+            await text(github,value.targetRelativePath,refresh.head)!==value.manifestText) throw new Error('Batch refresh changed candidate or other files.');
+        await prove(github,value,refresh.base);previous=refresh.base;
+    }
+    if(refreshes.length) await descendant(github,previous,await ref(github,'main'));
+    return {anchorSha:anchor,baseSha:previous,refreshCount:refreshes.length};
 }
 function result(value,baseSha,headSha,pull,replayed) {
     return freeze({schemaVersion:'1.0',replayed,repository,baseRef:'main',baseSha,branchRef:branch(value),headSha,
@@ -189,8 +245,8 @@ function collides(item,other) {
         parseV2PhotoDerivativeKey(new URL(url).pathname.slice(1))?.generationId===generation);
 }
 async function stableMerged(github,value,review,proof,owner=false) {
-    if(await ref(github,branch(value))!==review.headSha) throw new Error('Batch branch changed during merged proof.');
-    const pull=checkedPull(await github('GET',`/pulls/${review.pullRequest.number}`),value,review.baseSha,review.headSha,['closed'],false);
+    if(await ref(github,branch(value))!==proof.headSha) throw new Error('Batch branch changed during merged proof.');
+    const pull=checkedPull(await github('GET',`/pulls/${review.pullRequest.number}`),value,review.baseSha,proof.headSha,['closed'],false);
     if(pull.merge_commit_sha!==proof.mergeSha || typeof pull.merged_at!=='string' || Number.isNaN(Date.parse(pull.merged_at)) ||
         owner && pull.merged_by?.login!=='johnkevan88888') throw new Error('Batch terminal review changed during merged proof.');
     await current(github,proof.mainSha);
@@ -234,8 +290,26 @@ export async function createOrReconcileArchiveGalleryBatchReview(candidateValue,
     return result(value,baseSha,headSha,pull,replayed);
 }
 
-export async function readExistingGalleryBatchReview(candidateValue,configuration={}) {
+export async function readExistingGalleryBatchReview(candidateValue,configuration={},storedReview) {
     const value=candidate(candidateValue),github=options(configuration),baseSha=configuration.expectedBaseSha;
+    if(storedReview) {
+        const review=checkedReview(storedReview,value,baseSha),headSha=await ref(github,branch(value));
+        const chain=await history(github,value,baseSha,headSha,review.headSha),main=await ref(github,'main');
+        if(chain.baseSha!==main) {
+            const error=new Error('Batch review needs an explicitly approved refresh.');
+            error.code='BATCH_REVIEW_REFRESH_REQUIRED';throw error;
+        }
+        await prove(github,value,main);
+        const existing=await pulls(github,value);
+        if(existing.length!==1 || existing[0].number!==review.pullRequest.number) throw new Error('Changed batch review identity.');
+        await checkedAnchoredPull(github,existing[0],value,baseSha,main,headSha);
+        const pull=await checkedAnchoredPull(github,await github('GET',`/pulls/${review.pullRequest.number}`),value,baseSha,main,headSha);
+        if(await ref(github,branch(value))!==headSha) throw new Error('Batch branch changed during proof.');
+        await current(github,main);
+        // Wire receipts retain their ORIGINAL head/base; the verified current
+        // tip never overwrites D1 consent, publication or removal evidence.
+        return result(value,baseSha,review.headSha,pull,true);
+    }
     await current(github,baseSha);await prove(github,value,baseSha);
     const headSha=await ref(github,branch(value)),existing=await pulls(github,value);
     if(existing.length!==1) throw new Error('Batch creation remains uncertain.');
@@ -269,9 +343,12 @@ async function merged(github,value,baseSha,headSha,pull) {
 async function readMerged(github,value,reviewValue,baseSha) {
     const review=checkedReview(reviewValue,value,baseSha),existing=await pulls(github,value);
     if(existing.length!==1 || existing[0].number!==review.pullRequest.number) throw new Error('Changed batch review identity.');
-    const pull=checkedPull(await github('GET',`/pulls/${review.pullRequest.number}`),value,baseSha,review.headSha,['closed'],false);
-    await verifyBranch(github,value,baseSha,review.headSha);
-    return {review,pull,proof:await merged(github,value,baseSha,review.headSha,pull)};
+    const headSha=await ref(github,branch(value));
+    await history(github,value,baseSha,headSha,review.headSha);
+    const pull=checkedPull(await github('GET',`/pulls/${review.pullRequest.number}`),value,baseSha,headSha,['closed'],false);
+    const proof=await merged(github,value,baseSha,headSha,pull);
+    if(await ref(github,branch(value))!==headSha) throw new Error('Batch branch changed during merged proof.');
+    return {review,pull,proof};
 }
 export async function readMergedGalleryBatchReview(candidateValue,reviewValue,configuration={}) {
     const value=candidate(candidateValue),github=options(configuration),baseSha=configuration.expectedBaseSha;
@@ -321,11 +398,13 @@ export async function reconcileArchiveGalleryBatchReview(candidateValue,configur
     const value=candidate(candidateValue),github=options(configuration),baseSha=configuration.expectedBaseSha;
     const headSha=await ref(github,branch(value),false),existing=await pulls(github,value);
     if(!headSha && existing.length) throw new Error('Uncertain batch review identity.');
-    if(headSha) {await verifyBranch(github,value,baseSha,headSha);await prove(github,value,baseSha);}
-    const evidence={schemaVersion:'1.0',repository,baseRef:'main',baseSha,branchRef:branch(value),headSha,
+    let chain;
+    if(headSha) {chain=await history(github,value,baseSha,headSha);await prove(github,value,baseSha);}
+    const evidence={schemaVersion:'1.0',repository,baseRef:'main',baseSha,branchRef:branch(value),headSha:chain?.anchorSha??null,
         targetRelativePath:value.targetRelativePath,itemIds:[...value.itemIds],manifestSha256:value.manifestSha256,
         state:'no-pr-created',pullRequest:null,mergeSha:null,mainSha:null};
     if(!existing.length) {
+        if(chain?.refreshCount) throw new Error('Refreshed batch lost its original PR.');
         if(await ref(github,branch(value),false)!==headSha || (await pulls(github,value)).length) throw new Error('Batch changed during reconciliation.');
         return freeze(evidence);
     }
@@ -345,3 +424,78 @@ export async function reconcileArchiveGalleryBatchReview(candidateValue,configur
     if(await ref(github,branch(value))!==headSha) throw new Error('Batch branch changed during reconciliation.');
     return freeze(evidence);
 }
+
+// Explicit refresh capability, separate from create/replay/publication. Service
+// eligibility is re-read before and after the only non-forced branch update.
+export async function refreshStoredGalleryBatchReview(candidateValue,reviewValue,configuration={}) {
+    const step=batchReviewRefreshStep(configuration?.reportFailure);
+    const {value,review,readEligibleCandidate,transport}=await step('review-configuration',async()=>{
+        const value=candidate(candidateValue);
+        keys(configuration,'expectedBaseSha|token|fetchImpl|readEligibleCandidate'+(Object.hasOwn(configuration,'reportFailure')?'|reportFailure':''));
+        const {readEligibleCandidate,reportFailure,...transport}=configuration;
+        options(transport);
+        if(typeof readEligibleCandidate!=='function' || Object.hasOwn(configuration,'reportFailure') && typeof reportFailure!=='function')
+            throw new Error('Fresh per-photo eligibility reader and valid reporting observer required.');
+        const review=checkedReview(reviewValue,value,reviewValue?.baseSha);
+        if(!sha.test(review.baseSha||'')) throw new Error('Original batch base required.');
+        return {value,review,readEligibleCandidate,transport};
+    });
+    const github=client(transport,branch(value)),baseSha=configuration.expectedBaseSha;
+    const eligible=()=>step('eligibility-recheck',async()=>{
+        if(!same(candidate(await readEligibleCandidate()),value)) throw new Error('Batch refresh must preserve every candidate byte.');
+    });
+    const mainCurrent=()=>step('main-ref',()=>current(github,baseSha));
+    const manifestProof=()=>step('manifest-proof',()=>prove(github,value,baseSha));
+    const headCurrent=expected=>step('branch-readback',async()=>{
+        if(await ref(github,branch(value))!==expected) throw new Error('Batch branch changed during refresh.');
+    });
+    const proveHistory=tip=>step('review-history',()=>history(github,value,review.baseSha,tip,review.headSha));
+    await mainCurrent();
+    const prior=await step('branch-readback',()=>ref(github,branch(value))),chain=await proveHistory(prior);
+    const open=tip=>step('review-identity',async()=>{
+        const existing=await pulls(github,value);
+        if(existing.length!==1 || existing[0].number!==review.pullRequest.number) throw new Error('Changed batch review identity.');
+        await checkedAnchoredPull(github,existing[0],value,review.baseSha,baseSha,tip,step);
+        return checkedAnchoredPull(github,await github('GET',`/pulls/${review.pullRequest.number}`),value,review.baseSha,baseSha,tip,step);
+    });
+    await open(prior);await eligible();await manifestProof();await step('main-history',()=>descendant(github,chain.baseSha,baseSha));
+    const receipt=(tip,replayed)=>freeze({schemaVersion:'1.0',repository,branchRef:review.branchRef,originalHeadSha:review.headSha,
+        headSha:tip,baseSha,manifestSha256:value.manifestSha256,pullRequest:review.pullRequest,replayed});
+    if(chain.baseSha===baseSha) {
+        await eligible();await mainCurrent();await open(prior);await headCurrent(prior);
+        return receipt(prior,true);
+    }
+    const commit=await step('refresh-commit',async()=>{
+        if(chain.refreshCount>=16) throw new Error('Batch refresh history limit reached.');
+        const base=await github('GET',`/git/commits/${baseSha}`);
+        if(!sha.test(base?.tree?.sha||'')) throw new Error('Verified base tree required.');
+        const blob=await github('POST','/git/blobs',{content:Buffer.from(value.manifestText,'utf8').toString('base64'),encoding:'base64'});
+        if(!sha.test(blob?.sha||'')) throw new Error('Verified batch blob required.');
+        const tree=await github('POST','/git/trees',{base_tree:base.tree.sha,tree:[{path:value.targetRelativePath,mode:'100644',type:'blob',sha:blob.sha}]});
+        if(!sha.test(tree?.sha||'')) throw new Error('Verified batch tree required.');
+        const commit=await github('POST','/git/commits',{message:refreshMessage(review.headSha,baseSha),tree:tree.sha,parents:[prior,baseSha]});
+        if(!sha.test(commit?.sha||'')) throw new Error('Verified refresh commit required.');
+        return commit;
+    });
+    await proveHistory(commit.sha);
+    await eligible();await manifestProof();await mainCurrent();await open(prior);await headCurrent(prior);
+    // A lost reply is observed, never blindly retried. No forced update or
+    // replacement branch/PR can escape the immutable review identity.
+    let updateError;
+    try {await github('PATCH',`/git/refs/heads/${branch(value)}`,{sha:commit.sha,force:false});} catch(error) {updateError=error;}
+    await step('branch-readback',async()=>{
+        if(await ref(github,branch(value))!==commit.sha) throw updateError||new Error('Uncertain batch refresh update.');
+    });
+    await proveHistory(commit.sha);
+    await open(commit.sha);
+    try {
+        await eligible();await manifestProof();await mainCurrent();await open(commit.sha);await headCurrent(commit.sha);
+    } catch(error) {
+        // Revoke review availability only. This is not storage deletion or
+        // public-host absence; separately approved normal recovery owns that.
+        await step('review-closure',()=>reconcileArchiveGalleryBatchReview(value,transportWithOriginalBase(transport,review)));
+        throw new Error('Refreshed batch review closed after final checks failed.',{cause:error});
+    }
+    return receipt(commit.sha,false);
+}
+function transportWithOriginalBase(transport,review) {return {...transport,expectedBaseSha:review.baseSha};}

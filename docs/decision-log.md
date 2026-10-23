@@ -1,5 +1,54 @@
 # Decision Log
 
+## Anchored batch refresh treats PR base metadata as a checked snapshot — 23 October 2026
+
+The approved local correction covers GitHub returning an older PR `base.sha`
+after the actual main ref has advanced. An anchored review may accept that field
+only after proving `original receipt base -> reported base -> pinned main`
+ancestry. Both the list and detail responses must independently pass this proof
+and every existing PR identity/ownership check. Missing, malformed, unrelated,
+pre-anchor or future snapshots fail closed; neither the field nor the stored
+receipt is rewritten. Creation and unanchored replay retain exact-base equality.
+
+The real main ref, bounded original/refresh history, exact one-file tree,
+unchanged manifest, current per-photo checks and non-forced branch update remain
+the authority. The same bounded snapshot proof applies to subsequent anchored
+reads so a successful refresh cannot be falsely invalidated by still-lagging
+metadata. Terminal merge, withdrawal and host-absence contracts are unchanged.
+
+Refresh errors report only allowlisted stages, optional bounded photo positions
+and existing sanitized transport categories/statuses. No raw errors, responses,
+IDs, URLs, tags, consent, hashes or credentials are printed as diagnostics. A
+reporting failure cannot change the original result or cause a retry. Local
+preparation does not authorize release or another protected refresh of #155.
+
+## Batch review refresh preserves an immutable original anchor — 23 October 2026
+
+John approved local preparation/testing after PR #155 repeatedly received a
+stale GitHub test-merge checkout. An ordinary rebase, empty commit or arbitrary
+merge must not bypass the batch client's exact review proof. A separate protected
+refresh may instead append a bounded, verified two-parent commit: the previous
+review tip and newer main. Relative to newer main, its entire tree must differ
+only in the exact, byte-unchanged candidate manifest. Main must move forward;
+existing photos, ordering, cross-area uniqueness and suppression remain checked.
+A newer main alone leaves a healthy review pending for explicit refresh; it does
+not become permission to cancel the review or delete its derivatives.
+
+The original head/base, shared manifest and D1 receipts remain immutable. Later
+review, owner-publication observation and individual removal validate the exact
+refresh chain back to that original anchor, then return the original receipt
+identity. Historical proof is never renewed consent. Every member's current
+protected eligibility and actual derivative bytes are re-read before and after
+the sole non-forced candidate-branch update. A failed final check can close only
+the positively identified unmerged review; closure is not storage or host absence.
+
+The separate main-only, owner-protected workflow accepts one existing opaque job
+ID and shares publication/purge concurrency. It reads the held job without
+claiming/transferring it, changing consent, accessing originals or processing
+media. It cannot merge, publish, purge or deploy. No Worker or database change is
+required. Release and actual refresh remain separately approved operations;
+this decision does not authorize changing PR #155 in the local preparation pass.
+
 ## Family originals are saved before tagging — 22 October 2026
 
 The owner requested private saving as soon as photos are added, followed by

@@ -49,11 +49,11 @@ export function syntheticGitHub() {
     const empty={schemaVersion:'1.0',items:[]};
     const state={main:'a'.repeat(40),manifests:{family:structuredClone(empty),everyone:structuredClone(empty)},
         refs:new Map(),commits:new Map(),blobs:new Map(),trees:new Map(),pulls:[],requests:[],unavailable:false,hook:null,
-        suppression:{schemaVersion:'1.0',hiddenAthleteIds:[]}};
+        suppression:{schemaVersion:'1.0',hiddenAthleteIds:[]},extraContents:{}};
     const json=(status,value)=>({ok:status>=200&&status<300,status,json:async()=>structuredClone(value)});
     const sha=label=>digest(`${label}:${state.requests.length}`).slice(0,40);
     const mainContents=()=>({...Object.fromEntries(['family','everyone'].map(site=>[`gallery-data/${site}.json`,`${JSON.stringify(state.manifests[site],null,2)}\n`])),
-        'gallery-data/hidden-athlete-ids.json':`${JSON.stringify(state.suppression,null,2)}\n`});
+        'gallery-data/hidden-athlete-ids.json':`${JSON.stringify(state.suppression,null,2)}\n`,...state.extraContents});
     const isAncestor=(base,head,seen=new Set())=>{
         if(base===head) return true;
         if(seen.has(head)) return false;
@@ -86,6 +86,13 @@ export function syntheticGitHub() {
             const [base,head]=path.slice('/compare/'.length).split('...'),commit=state.commits.get(head);
             if(commit?.path && commit.parents?.[0]?.sha===base) return json(200,{status:'ahead',ahead_by:1,behind_by:0,
                 merge_base_commit:{sha:base},total_commits:1,files:[{filename:commit.path,status:'modified'}]});
+            if(commit?.path && base!==head && isAncestor(base,head)) {
+                const contents=state.commits.get(base)?.contents;
+                assert.ok(contents,'Synthetic refresh requires a real pinned base snapshot');
+                const changed=[...new Set([...Object.keys(contents),...Object.keys(commit.contents)])].filter(path=>contents[path]!==commit.contents[path]);
+                return json(200,{status:'ahead',ahead_by:2,behind_by:0,merge_base_commit:{sha:base},total_commits:2,
+                    files:changed.map(filename=>({filename,status:contents[filename]===undefined?'added':commit.contents[filename]===undefined?'removed':'modified'}))});
+            }
             if(commit) return json(200,{status:head===base?'identical':isAncestor(base,head)?'ahead':'diverged',ahead_by:head===base?0:1,
                 behind_by:isAncestor(base,head)?0:1,merge_base_commit:{sha:isAncestor(base,head)?base:state.main},total_commits:1,files:[]});
             return json(200,{status:head===base?'identical':'ahead',ahead_by:1,behind_by:0,merge_base_commit:{sha:base},total_commits:1,files:[]});
@@ -105,6 +112,14 @@ export function syntheticGitHub() {
         }
         if(method==='POST' && path==='/git/refs') {assert.match(body.ref,/^refs\/heads\/gallery-media\/candidate-[0-9a-f]{32}$/);
             state.refs.set(body.ref.slice('refs/heads/'.length),body.sha);return json(201,{object:{sha:body.sha}});}
+        if(method==='PATCH' && path.startsWith('/git/refs/heads/gallery-media/candidate-')) {
+            const branch=path.slice('/git/refs/heads/'.length),prior=state.refs.get(branch);
+            assert.deepEqual(Object.keys(body).sort(),['force','sha']);assert.equal(body.force,false);
+            if(!prior || !isAncestor(prior,body.sha)) return json(422,{});
+            state.refs.set(branch,body.sha);state.pulls.filter(p=>p.head.ref===branch).forEach(p=>{p.head.sha=body.sha;});
+            if(state.loseRefreshReply) {state.loseRefreshReply=false;throw new Error('Synthetic lost ref reply');}
+            return json(200,{object:{sha:body.sha}});
+        }
         if(method==='POST' && path==='/pulls') {
             assert.equal(body.base,'main');const number=state.pulls.length+1;
             const pull={number,state:'open',merged_at:null,draft:false,title:body.title,body:body.body,
@@ -119,7 +134,15 @@ export function syntheticGitHub() {
         }
         assert.fail(`Forbidden/unimplemented synthetic repository request ${method} ${path}`);
     };
-    return {state,fetchImpl,token:'synthetic-private-gallery-token',ownerMerge(review) {
+    return {state,fetchImpl,token:'synthetic-private-gallery-token',advanceMain(extraContents={}, {updatePullBase=true}={}) {
+        const prior=state.main;
+        if(!state.commits.has(prior)) state.commits.set(prior,{sha:prior,tree:{sha:'b'.repeat(40)},parents:[],contents:mainContents()});
+        Object.assign(state.extraContents,extraContents);state.main=sha(`forward-main:${prior}`);
+        state.commits.set(state.main,{sha:state.main,tree:{sha:'b'.repeat(40)},parents:[{sha:prior}],contents:mainContents()});
+        // GitHub may retain the last PR metadata snapshot after main advances.
+        // Explicitly exercise that case without changing the actual Git graph.
+        if(updatePullBase) state.pulls.forEach(pull=>{pull.base.sha=state.main;});return state.main;
+    },ownerMerge(review) {
         const pull=state.pulls.find(p=>p.number===review.pullRequest.number),commit=state.commits.get(review.headSha);
         pull.state='closed';pull.merged_at='2026-10-10T12:00:00.000Z';pull.merge_commit_sha=review.headSha;
         state.main=review.headSha;
