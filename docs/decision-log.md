@@ -1,5 +1,32 @@
 # Decision Log
 
+## Batch review refresh preserves an immutable original anchor — 23 October 2026
+
+John approved local preparation/testing after PR #155 repeatedly received a
+stale GitHub test-merge checkout. An ordinary rebase, empty commit or arbitrary
+merge must not bypass the batch client's exact review proof. A separate protected
+refresh may instead append a bounded, verified two-parent commit: the previous
+review tip and newer main. Relative to newer main, its entire tree must differ
+only in the exact, byte-unchanged candidate manifest. Main must move forward;
+existing photos, ordering, cross-area uniqueness and suppression remain checked.
+A newer main alone leaves a healthy review pending for explicit refresh; it does
+not become permission to cancel the review or delete its derivatives.
+
+The original head/base, shared manifest and D1 receipts remain immutable. Later
+review, owner-publication observation and individual removal validate the exact
+refresh chain back to that original anchor, then return the original receipt
+identity. Historical proof is never renewed consent. Every member's current
+protected eligibility and actual derivative bytes are re-read before and after
+the sole non-forced candidate-branch update. A failed final check can close only
+the positively identified unmerged review; closure is not storage or host absence.
+
+The separate main-only, owner-protected workflow accepts one existing opaque job
+ID and shares publication/purge concurrency. It reads the held job without
+claiming/transferring it, changing consent, accessing originals or processing
+media. It cannot merge, publish, purge or deploy. No Worker or database change is
+required. Release and actual refresh remain separately approved operations;
+this decision does not authorize changing PR #155 in the local preparation pass.
+
 ## Family originals are saved before tagging — 22 October 2026
 
 The owner requested private saving as soon as photos are added, followed by

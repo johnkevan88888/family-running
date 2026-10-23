@@ -312,6 +312,20 @@ try {
     await checkGit('New base not contained in candidate must fall back', {...pinned, baseSha: advancedBase});
     await checkGit('Unrelated histories must fall back', {...pinned, baseSha: independent});
 
+    // The protected refresh preserves the original photo head as its first
+    // parent, adds the newer main as its second, and changes only the same
+    // manifest relative to that newer main. This needs no classifier exception.
+    const refreshedTree = makeTree({family: baseline.headText, readme: 'New main changed\n'});
+    const refreshedHead = commit(refreshedTree, [head, advancedBase]);
+    checkout(refreshedHead);
+    const refreshed = {baseSha: advancedBase, headSha: refreshedHead, checkoutSha: refreshedHead};
+    await checkGit('Anchored refresh with exact newer-main tree', refreshed, 'photo-only');
+    const refreshedMerge = commit(refreshedTree, [advancedBase, refreshedHead]);
+    checkout(refreshedMerge);
+    await checkGit('Fresh GitHub test merge of anchored refresh', {...refreshed, checkoutSha: refreshedMerge}, 'photo-only');
+    checkout(merge);
+    await checkGit('Old cached test merge still cannot prove the refreshed review', {...refreshed, checkoutSha: merge});
+
     for (const familyMode of ['100755', '120000']) {
         const nonregular = commit(makeTree({family: baseline.headText, familyMode}), [base]);
         checkout(nonregular);
