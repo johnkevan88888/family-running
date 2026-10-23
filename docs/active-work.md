@@ -17,6 +17,49 @@ consent writing or GitHub merge capability is added. Existing protected service
 checks and anchored GitHub readers remain authoritative. Validation and release
 evidence will be recorded here before handoff; no local result is live proof.
 
+The focused continuation tests pass all **66 synthetic cases**, and the complete
+**106-group suite passed** with exit 0 and unchanged tracked non-documentation
+source fingerprints. The fixtures use generated
+pixels, actual local SQLite guards and protected HTTP adapters, and fake GitHub
+only. Both modes, original/refreshed reviews, unchanged original claims/data,
+late eligibility failures, owner-only merge observation, lost replies and exact
+durable completion are covered. No real media is a test fixture.
+
+Raw-Git builds of current main and implementation commit `65dca8b` have exactly
+the same **117 public files**, including all 72 CSVs, CNAME, suppression and
+**Family 2 / Everyone 0**. An independent anonymous GET of all 117 production
+files matches current main byte-for-byte; eight both-mode desktop/mobile
+Gallery/championship checks passed and four Gallery captures were inspected.
+External media/analytics were blocked in those automated captures: they prove
+static layout, not media delivery or current private eligibility.
+
+The owner session is restored. Read-only saved-batch inspection confirms the
+original two-photo job and #155 review remain recorded, with its publication
+checkbox still unticked. The 22:34:42 UTC GET-only checkpoint confirms #155's
+head `a96ba33277547ccdb80e3efcf0e8955526a08d52`, exact description and one-file
+manifest are unchanged; it remains open/unmerged. Ruleset 18119142 still permits
+only the owner-role Pull Request exception, and the existing processing
+environment remains owner-protected/main-only. No settings changed.
+
+Ignored evidence: `publication-continuation-before-snapshot.json`,
+`publication-continuation-current-main-canonical-proof.json`,
+`publication-continuation-code-canonical-proof.json`, and
+`release-verification-publication-continuation-before/report.json`, all under
+`test-artifacts/`. Full-suite evidence is in
+`publication-continuation-full-suite.json` and its matching `.log`. This includes
+repository/vendor/CSV/Gallery validation, local D1 expression-depth parity,
+private-service and recovery guards, artifact safety/build, and both-mode
+desktop/mobile smoke tests. Four current championship captures were also
+inspected. A fresh fetch confirms main remains `3d287645dde8ffd539338e480a4245667386b00d`;
+no synchronization change or additional implementation correction was needed.
+No push, PR, deployment,
+publication grant, refresh or photo publication has occurred in this correction
+yet. The already-approved remaining sequence is the correction release with
+unchanged public output, then a protected #155 refresh, fresh checks/preview,
+owner grant, current-code prepare, separate exact-head owner merge, normal
+Pages/live verification and current-code observation of that merge. Stop on any
+failed eligibility check; do not replay processing or replace consent/history.
+
 ## PR #155 publication preflight blocked before mutation — 23 October 2026
 
 John approved protected publication preparation, fresh consent/exclusion checks,
