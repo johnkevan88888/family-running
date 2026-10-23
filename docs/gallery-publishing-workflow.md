@@ -1,5 +1,29 @@
 # Curated Gallery Publishing Workflow
 
+## Current-code publication of an existing batch — 23 October 2026
+
+Use the existing immutable batch and its saved original run, not a new review
+job. If main moved, first complete the approved protected review refresh and
+fresh PR checks/preview while the review is still unmerged and has no publication
+grant. The owner's explicit “Prepare batch for separate owner merge” records the
+grant for that exact review; it does not merge anything or extend consent.
+
+When the original Actions checkout predates the released anchored client, do
+not rerun it. The protected `gallery-batch-publication.yml` continuation runs
+current main with the existing job ID and phase `prepare`. It derives the
+original held run from authenticated storage and rechecks every photo and the
+exact review. Only `ready-for-separate-owner-merge` with the current exact head
+is readiness evidence. Separately approved owner merge, required checks and
+preview remain mandatory. After normal Pages/live verification, run phase
+`observe` from current main; `publication-observed` confirms the positive merge
+evidence and completion of that original held job.
+
+The continuation cannot merge, close a PR, process/upload/read originals, change
+consent, remove derivatives, purge or deploy. Failed/uncertain checks preserve
+the original claim and history and stop for explicitly authorized recovery.
+An observed old publication is not renewed consent. Existing withdrawal and
+fixed-origin host-verification contracts remain unchanged.
+
 ## Local batch publication/removal continuation — 21 October 2026
 
 PR #145 released the repository review bridge, not remote migration0030 or batch
@@ -8,10 +32,10 @@ Do not use this document as approval to deploy, run media jobs, merge or purge.
 
 After an independently prepared batch has one saved unmerged review, its owner
 card offers an explicit confirmation and “Prepare batch for separate owner
-merge”. This saves only a grant for that exact immutable review. Resume the SAME
-original protected run, not a new run: it checks every member and stops at
+merge”. This saves only a grant for that exact immutable review. Continue the SAME
+original protected identity using current code (see the 23 October procedure): it checks every member and stops at
 `ready-for-separate-owner-merge`. A separate explicit owner merge and required
-preview/checks remain necessary. Rerun the original run immediately before that
+preview/checks remain necessary. Check immediately before that
 merge and afterward to observe it; keep the global claim until checked
 publication observation or complete safe removal. Consent is never extended.
 

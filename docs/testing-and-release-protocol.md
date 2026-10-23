@@ -1,5 +1,38 @@
 # Testing And Release Protocol
 
+## Current-code batch publication continuation — 23 October 2026
+
+Run `tests/gallery-batch-publication-continuation.mjs` against generated photos,
+actual local SQLite/protected-service fixtures and injected fake GitHub only.
+Cover both modes, original/refreshed reviews, owner grant, unchanged held claim,
+all immutable data, exact-head readiness and separate owner merge observation.
+Preparation must make no database or storage changes. Observation may add only
+existing publication/member-origin/completion evidence; originals, tags,
+consent, framing and review anchors remain unchanged. A completed repeat must
+read its durable evidence without claiming or resubmitting writes.
+
+Reject missing grants, altered identity/membership, stale main/unrefreshed or
+unknown history, changed head, hidden/excluded/closed people or generations,
+changed catalogue, corrupted staged/approved derivatives, and late eligibility
+failures. Test lost observation/completion replies and no-write failures. A
+failed continuation never closes a PR or cleans media; no uncertain result is
+merge authority. Diagnostics must be bounded and privacy-safe, including real
+CLI configuration/boundary/service/read failures with fake HTTP. Pin actions,
+exact-main checkout, owner environment and shared concurrency; expose no
+processing, verifier, finalizer, migration, deployment or purge capability.
+
+Run the full 106-group code suite, local D1 tests, both-mode responsive browser
+checks, and prove all 117 public artifact files unchanged (72 CSVs, CNAME,
+suppression and Family 2 / Everyone 0 included). Standard PR/checks/both-mode
+preview/merge releases the runner only. After that main advancement, refresh an
+unmerged photo review before recording its owner publication grant, preserving
+the exact candidate manifest and all previous review history. Require fresh
+exact-head checks/preview. Run `prepare` from current main, verify its receipt
+and recheck the exact head before the separately authorized owner merge. Verify
+normal Pages and the live result, then run `observe` from the merged current
+main to record positive publication and release the original held claim. Never
+replay the stale original checkout or fabricate a new job/consent to proceed.
+
 ## Stale-base batch refresh and failure reporting — local-only, 23 October 2026
 
 First reproduce the observed response shape offline: main has moved forward

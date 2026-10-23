@@ -1,5 +1,36 @@
 # Decision Log
 
+## Current-code batch publication keeps the original held run — 23 October 2026
+
+An old Actions rerun executes its original checkout. After an anchored review
+refresh, publication may therefore require a separate current-main continuation.
+The manual `gallery-batch-publication.yml` uses the existing owner-protected
+`gallery-processing` environment and publication/purge concurrency. Inputs are
+only the existing job ID and `prepare`/`observe`; the authenticated stored job,
+not an input, supplies the original claim/run identity. No claim is reset,
+transferred or reacquired. The execution run is separately identified in its
+bounded receipt. This is a runner/workflow change, not a Worker or schema change.
+
+Preparation requires the exact owner publication grant, current per-photo
+consent/visibility/catalogue/tags/framing and actual derivative-byte checks,
+original anchored review history, exact candidate and pinned main/head. It stops
+for the separately authorized owner merge. Observation positively verifies that
+owner merge and all per-photo checks again, then uses the existing publication,
+member-origin and completion ledger operations under the original held run.
+Lost responses are resolved through exact durable reads, not blind retries.
+
+After the existing denied same-SHA main-update probe, GitHub access is GET-only;
+the App token requests read-only PR permission. Neither phase can process media,
+read originals, write consent, close reviews, delete derivatives, purge, merge,
+deploy or change credentials/settings. Failure leaves photos/history and the
+held claim intact for explicitly authorized recovery. This continuation does
+not replace ordinary withdrawal/revocation recovery or infer host absence from
+R2 absence. Errors expose allowlisted stages/positions only, not private values.
+
+John approved local testing and repository release with unchanged public output,
+then final preparation/publication of #155. That authority does not extend to
+new consent, reprocessing, Worker deployment, migration or purge.
+
 ## Anchored batch refresh treats PR base metadata as a checked snapshot — 23 October 2026
 
 The approved local correction covers GitHub returning an older PR `base.sha`

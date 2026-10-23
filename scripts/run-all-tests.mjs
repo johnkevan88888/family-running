@@ -54,6 +54,7 @@ const checks = [
     ['Gallery protected batch responsive owner browser tests', ['tests/gallery-batch-owner-browser.mjs']],
     ['Gallery exact batch GitHub review and recovery client', ['tests/gallery-batch-github-review.mjs']],
     ['Gallery protected batch review refresh and anchored lifecycle recovery', ['tests/gallery-batch-review-refresh.mjs']],
+    ['Gallery protected current-code batch publication continuation', ['tests/gallery-batch-publication-continuation.mjs']],
     ['Gallery protected batch end-to-end processing and removal recovery', ['tests/gallery-batch-protected-workflow.mjs']],
     ['Gallery private visibility and projection tests', ['tests/gallery-private-visibility.mjs']],
     ['Gallery private library browser and SQLite tests', ['tests/gallery-private-library-browser.mjs']],
