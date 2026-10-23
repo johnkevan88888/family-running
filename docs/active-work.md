@@ -1,6 +1,119 @@
 # Active Work
 
-## Guardian confirmation release — approved, 23 October 2026
+## Multi-distance browser-check release — approved, 23 October 2026
+
+John approved synchronization/retest and the standard PR/checks/preview/merge
+release for the test-only correction below, conditional on unchanged public
+output, followed by fresh checks for PR #155 while keeping it unmerged. No
+Worker deployment, migration, re-upload, protected processing/publication job or
+photo publication is authorized. Current remote main remains
+`4a9523b9716ad0b05918c538f38b8847969fc562`; the isolated branch was already
+up to date and all three test-source hashes are unchanged from local validation.
+Fresh synchronized validation passed all 17 focused groups (286.0 seconds) and
+the unchanged complete browser-smoke group for both modes and responsive sizes.
+The three test-source hashes still match the earlier frozen full-suite evidence.
+The correction uses the full-code CI route, not the photo-only exception. The
+earlier intermittent chart-resize failure remains recorded below; no assertion
+or timeout is relaxed. Current main's fresh raw-Git artifact also matches all
+117 baseline files, including 72 CSVs, CNAME and Family 2 / Everyone 0.
+
+PR #155 remains open at `469bad70fd1288e92efe05829c566decc01f9468`, with exactly
+one changed Family manifest and no auto-merge. Its exact title/body/head are part
+of the protected review identity and must not be rewritten to refresh checks.
+
+## Multi-distance photo review browser assertion — local-only, 23 October 2026
+
+John approved a local-only correction to the browser check, preserving his photos
+and unmerged PR #155. The isolated branch is `codex/gallery-review-distance-check`,
+based on the locally recorded main `4a9523b9716ad0b05918c538f38b8847969fc562`.
+No push, remote PR/workflow change, deployment, migration, merge or publication
+is part of this pass. Public runtime code, manifests and exported data are unchanged.
+
+The candidate browser check and existing synthetic photo-details suite now share
+a test-only assertion helper. Legacy photos retain the shared distance/date label;
+photos with `raceResults` require date-only metadata plus each runner's exact
+distance, time, AG and race-day age. Other pictured people must remain explicitly
+unassigned. Exact field labels/order and per-person binding are also checked.
+All existing media URL, suppression, mode, layout, viewport, viewer focus,
+podium selection and resource-failure assertions remain in place.
+
+The old assertion was reproduced against generated fixtures before correction:
+`22 August 2026` versus `5 km · 22 August 2026`. No real photo was read or used.
+Coverage includes both modes/sizes, cards/viewers, a single runner, same/mixed
+distances, Half Marathon display, absent/ambiguous performances and supporter-only
+photos. Deliberately altered headers, names, distances/labels, time precision,
+AG, age, extra/missing fields, assigned supporter results and cross-person moves
+must still fail. Browser fixtures block all off-origin network requests.
+
+Validation: `node scripts/run-gallery-photo-checks.mjs` passed all 17 focused
+photo-review groups on frozen source (282.4 seconds). Eight synthetic layout
+scenarios cover both modes, desktop/mobile
+and cards/viewers; 104 deliberately altered-field probes are rejected. The four
+mixed-distance screenshots were visually reviewed. The exact PR #155 manifest at
+head `469bad70fd1288e92efe05829c566decc01f9468` also passed the corrected browser
+check in an ignored local artifact (30.3 seconds), including all tagged athlete
+pages. Its raw SHA-256 is
+`64639b06c1ccfaa2c16683db37a273b31e79fca2ef0dc02f8ef74b11fe4cb8a1`.
+Off-origin requests were blocked: this proves layout and exported metadata, not
+real-photo pixels, media delivery, or a new live consent/publication check.
+
+`node scripts/run-all-tests.mjs` passed its first 103 groups, including local D1 parity,
+consent, metadata stripping, suppression/exclusion, cleanup/public-host simulation,
+review boundaries, export validation and artifact safety. The last general browser
+smoke group reported five Everyone/desktop progression-chart resize assertions at
+768px and 1920px. This unrelated chart code and its test are unchanged. One exact
+standalone rerun (`node tests/browser-smoke.mjs`) then passed, without relaxed
+assertions or time limits. All 104 groups therefore have passing evidence on the
+same frozen source, but the initial full-suite run was not a clean pass; retain
+this intermittent chart-resize failure in the release handoff.
+
+All 117 public output files are byte-identical to the pre-change build, including
+all 72 CSVs, suppression and CNAME. The local artifact remains Family 2 / Everyone 0.
+`git diff --check` passed. Changes are limited to the candidate browser test,
+synthetic detail regressions, their new test-only helper and this handoff; no
+public source, manifest, export, Worker, workflow or dependency was changed.
+Release and fresh remote checks for the existing candidate remain separate
+approval gates; the local correction must not be described as a repaired or
+published PR #155. No upload or protected batch replay is needed for this test fix.
+Next explicit gate: synchronize/retest and release this test-only correction,
+then obtain fresh checks for PR #155 while leaving that photo PR unmerged. No
+Worker deployment, migration or re-upload is needed for this correction. No
+push, remote mutation, deployment, merge or publication occurred in this pass.
+
+## Owner-submitted two-photo batch — unmerged review, 23 October 2026
+
+After separately saving guardian permission and photo 2's checked framing, John
+submitted the existing two-photo Family batch and manually started protected
+run `39966811134` for `job_dbf12644-dad4-4f89-9409-eca6ba7eafcd`. Read-only
+follow-up confirms success at main `4a9523b9716ad0b05918c538f38b8847969fc562`,
+with result `unmerged-review` and `publicationEnabled: false`. The owner UI
+records that exact run and PR [#155](https://github.com/johnkevan88888/family-running/pull/155)
+as `review recorded; protected claim retained`. Publication preparation has not
+been requested. The earlier deployment snapshot below predates these owner saves.
+
+PR #155 is open/unmerged at `469bad70fd1288e92efe05829c566decc01f9468`. It only
+appends two items to `gallery-data/family.json`, preserving both existing items:
+Carolyn's Northern Counties Womens Relay photo and the four-runner Worcester
+photo, including their individual distances and saved framing. Netlify preview
+succeeded, and actual preview photos and exported details render. Fresh live
+manifest reads still show Family 2 / Everyone 0, with neither new item present.
+
+The photo-only scope was selected correctly, but required run `39967122498`
+failed its final actual-candidate browser group. Its preceding 16 groups passed,
+including consent, suppression, metadata, candidate, framing and artifact checks.
+`tests/gallery-photo-review-browser.mjs:97` still requires the legacy shared
+distance/date label (`5 km · 28 March 2026`); the documented `raceResults` layout
+correctly shows the date there and each runner's distance underneath. The same
+test also omits per-runner distance rows from its expected detail list. This is
+an outdated test expectation, not a reason to replay the upload or batch job.
+
+Next approval: prepare/test the smallest local browser-test correction covering
+legacy and per-runner details without weakening safety assertions. Release and
+fresh candidate checks remain separate; PR #155 must stay unmerged. No code,
+remote settings, workflow retry, media write/removal, deployment, merge or live
+publication was performed during this verification. This handoff is local only.
+
+## Guardian confirmation release — released and activated, 23 October 2026
 
 John approved synchronization/retest, the standard PR/checks/preview/merge
 route with unchanged public output, then deployment of only the admin Worker
@@ -8,12 +121,59 @@ and verification. The live saved batch, originals, tags, framing and permission
 are to remain unchanged. No migration, other Worker deployment, review
 submission, media processing, purge or photo publication is included.
 
-Fresh remote readback confirms main is still
-`056f7c432e0ed40d1f3c94797e587f3b4c987c74`. The isolated correction branch was
-fast-forwarded to that merge commit without changing its tested source tree or
-local edits. The completed 104-group local evidence below remains applicable;
-fresh focused checks, exact committed public-artifact proof, required full CI,
-both-mode preview, production verification and admin activation remain pending.
+The isolated branch was synchronized with main
+`056f7c432e0ed40d1f3c94797e587f3b4c987c74` without changing the tested source.
+Fresh focused repository, vendor, CSV, Gallery, catalogue, artifact, 79 save-first,
+85 uploader, 129 protected-route and desktop/mobile guardian checks passed.
+The prior source-frozen 104-group local evidence below remains applicable.
+PR [#154](https://github.com/johnkevan88888/family-running/pull/154) then passed
+all 104 groups in required run `39954394955` and the both-mode preview, and
+merged through the existing owner-only PR route at
+`4a9523b9716ad0b05918c538f38b8847969fc562`. The exact nine-file reviewed head was
+`cb5fa1cdde162135edd3bb3f1ea505f14d2af05f`; no failed checks or GitHub settings
+were bypassed or changed. CI's browser-dependency installation took 14m50s;
+the successful complete job took 29m54s.
+
+The candidate and merged raw-Git builds, downloaded normal Pages run
+`39958370634` / artifact `12502659963`, and all 117 live response bodies are
+byte-identical to the baseline. All 72 CSVs, suppression, CNAME and Family 2 /
+Everyone 0 are unchanged. Eight Family/Everyone desktop/mobile browser checks
+passed and screenshots were visually reviewed. External media and analytics
+were blocked in these public browser checks; this is not fresh media-delivery
+proof. Netlify's exact current preview-toolbar suffix was separately identified
+and excluded only in the ignored preview evidence helper; no shipping source or
+broader comparison rule was relaxed.
+
+Only admin was deployed, at version `5bcc9ae4-d65d-4f51-a36e-f6eb47a0d991`.
+Its provider-read bundle exactly matches the tested compiled admin SHA-256
+`af850449cf8fd1e76576b70d4cfe13b933c1c8d6d0aaa97d49933ee318db696e`.
+The compiled desktop/mobile synthetic guardian journey passed before deployment.
+Read-only postflight confirms the other five Worker versions/deployments,
+bindings, variable fingerprints, compatibility settings, schedules and storage
+lifecycle policies are unchanged. All 34 migration records and all 73 Gallery
+metadata-table fingerprints match preflight. Saved batch
+`59cab3fc-a058-420e-8920-c25b23a484bb` remains version 10, editing, with no job;
+there are zero active jobs. No permission, original, tag, framing, intake or
+history record was changed. Anonymous admin access is denied with 302 to Access;
+the separate authenticated owner tab loads the updated controls. An empty CLI
+Access enumeration is not evidence of absent applications or verified policies.
+
+The owner's original tab was left untouched. A separate read-only tab opened the
+exact existing batch: photo 1 still shows `Thumbnail views saved`, photo 2 shows
+`Saved privately — guardian permission needed`, and the batch is 1 of 2 ready.
+The new guardian checkbox remains unchecked; no confirmation, thumbnail/media
+read, review submission, workflow, purge or photo publication was performed.
+Evidence is ignored `guardian-release-pins.json`,
+`guardian-premerge-proof.json`, `guardian-release-merged-pages-archive-proof.json`,
+`release-verification-guardian-production/report.json` and
+`guardian-activation/{preflight,dry-run,deploy-admin,postflight}.json` under
+`test-artifacts/`. Live confirmation screenshots are in `guardian-activation/`.
+
+No release or activation blocker remains. The owner can now explicitly confirm
+guardian permission in the new panel, then continue photo 2 from its privately
+saved original; re-uploading and resetting the batch are unnecessary. Review
+submission and publication remain separate. This post-release handoff update is
+local only; no follow-up PR, deployment or additional release was performed.
 
 ## Guardian confirmation flow — local correction, 22 October 2026
 

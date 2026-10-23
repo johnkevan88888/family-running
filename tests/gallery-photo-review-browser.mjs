@@ -8,6 +8,7 @@ import { findChromiumExecutable, loadPlaywright } from '../scripts/browser-runti
 import { parseCsv } from '../scripts/export-bundle-tools.mjs';
 import galleryContract from '../gallery-contract.js';
 import galleryResults from '../gallery-results.js';
+import { assertPhotoReviewDetails } from './helpers/gallery-photo-review-details.mjs';
 
 // This smoke check uses the actual candidate manifest and exported public data.
 // All off-origin requests are aborted before network I/O: screenshots prove
@@ -92,21 +93,16 @@ try {
                     assert.equal(await card.locator('.gallery-card-image').getAttribute('referrerpolicy'), 'no-referrer');
                     if (item.type !== 'photo') continue;
                     assert.equal(await card.locator('h3').innerText(), item.raceEvent);
-                    const raceLabel = `${item.raceDistance === 'H. Mar' ? 'Half Marathon' : item.raceDistance} · ` +
-                        utilityContext.window.dateDisplay.format(item.raceDate);
-                    assert.equal(await card.locator('.gallery-card-meta').first().innerText(), raceLabel);
                     const expected = index.forPhoto(item);
-                    assert.deepEqual(await card.locator('h4').allTextContents(), expected.map(result => result.name));
-                    const details = expected.flatMap(result => [result.time, result.ageGrade, result.age]);
-                    assert.deepEqual(await card.locator('dd').allTextContents(), details, `${label}: exported details only`);
+                    await assertPhotoReviewDetails(card, item, expected, utilityContext.window.dateDisplay.format,
+                        `${label}/${item.id}/card`);
                     assert.equal(await card.locator('.gallery-card-image').evaluate(image => getComputedStyle(image).objectFit), 'contain');
                     await card.locator('.gallery-card-open').click();
                     await page.locator('#gallery-viewer[open]').waitFor({ state: 'visible' });
                     assert.equal(await page.locator('#gallery-viewer-title').innerText(), item.raceEvent);
-                    assert.equal(await page.locator('#gallery-viewer-copy .gallery-card-meta').first().innerText(), raceLabel);
                     assert.equal(await page.locator('#gallery-viewer-media img').getAttribute('src'), item.sourceUrl);
-                    assert.deepEqual(await page.locator('#gallery-viewer-copy h4').allTextContents(), expected.map(result => result.name));
-                    assert.deepEqual(await page.locator('#gallery-viewer-copy dd').allTextContents(), details);
+                    await assertPhotoReviewDetails(page.locator('#gallery-viewer-copy'), item, expected,
+                        utilityContext.window.dateDisplay.format, `${label}/${item.id}/viewer`);
                     await page.keyboard.press('Escape');
                     assert.equal(await card.locator('.gallery-card-open').evaluate(button => button === document.activeElement), true,
                         `${label}: close restores focus`);
