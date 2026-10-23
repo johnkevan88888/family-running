@@ -2,8 +2,11 @@ import {createArchiveJobClient,createArchivePromotionClient} from './gallery-med
 import {runProtectedBatchReviewRefresh} from './gallery-media/batch-review-refresh.mjs';
 import {verifyGalleryReviewBoundary} from './gallery-media/github-review-boundary.mjs';
 import {readBoundedBytes} from '../gallery-admin/src/media-byte-verification.js';
+import {formatArchiveDiagnostic,reportArchiveDiagnostic} from './gallery-media/archive-diagnostics.mjs';
 
 const required=name=>{const value=process.env[name];if(typeof value!=='string' || !value) throw new Error('Protected configuration missing.');return value;};
+let reportedFailures=0,stage='configuration';
+const reportFailure=event=>{if(reportedFailures++<32) process.stderr.write(formatArchiveDiagnostic(event));};
 try {
     if(process.argv.length!==2 || process.env.GITHUB_ACTIONS!=='true' || process.env.GITHUB_REPOSITORY!=='johnkevan88888/family-running' ||
         process.env.GITHUB_REF!=='refs/heads/main' || process.env.GITHUB_EVENT_NAME!=='workflow_dispatch' ||
@@ -23,14 +26,19 @@ try {
     const github={token:required('GALLERY_GITHUB_APP_TOKEN'),fetchImpl};
     const expectedBaseSha=required('GALLERY_BASE_SHA');
     // Existing negative same-SHA main-update probe; it must remain denied.
+    stage='permission-boundary';
     await verifyGalleryReviewBoundary({expectedBaseSha,...github});
+    stage='service-configuration';
     const configuration={purpose:'promotion',origin:required('GALLERY_PROMOTION_ORIGIN'),
-        clientId:required('GALLERY_PROMOTION_ACCESS_CLIENT_ID'),clientSecret:required('GALLERY_PROMOTION_ACCESS_CLIENT_SECRET'),fetchImpl:fetch};
+        clientId:required('GALLERY_PROMOTION_ACCESS_CLIENT_ID'),clientSecret:required('GALLERY_PROMOTION_ACCESS_CLIENT_SECRET'),fetchImpl:fetch,reportFailure};
+    const jobs=createArchiveJobClient(configuration),promotion=createArchivePromotionClient(configuration);
+    stage=null; // The protected runner reports its exact bounded stage from here.
     const result=await runProtectedBatchReviewRefresh({jobId:required('GALLERY_ARCHIVE_JOB_ID'),
         runReference:`https://github.com/johnkevan88888/family-running/actions/runs/${required('GITHUB_RUN_ID')}`,
-        expectedBaseSha,jobs:createArchiveJobClient(configuration),promotion:createArchivePromotionClient(configuration),github});
+        expectedBaseSha,jobs,promotion,github,reportFailure});
     process.stdout.write(`${JSON.stringify({ok:true,state:'unmerged-review-refreshed',...result,publicationEnabled:false})}\n`);
 } catch {
+    if(stage) reportArchiveDiagnostic(reportFailure,{kind:'batch-review-refresh',stage,reason:'step-failed'});
     process.stderr.write('Batch review refresh stopped. Preserve its original claim and receipts; inspect the exact review before retrying. No photo processing, cleanup or publication was requested.\n');
     process.exitCode=1;
 }

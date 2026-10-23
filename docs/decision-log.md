@@ -1,5 +1,27 @@
 # Decision Log
 
+## Anchored batch refresh treats PR base metadata as a checked snapshot — 23 October 2026
+
+The approved local correction covers GitHub returning an older PR `base.sha`
+after the actual main ref has advanced. An anchored review may accept that field
+only after proving `original receipt base -> reported base -> pinned main`
+ancestry. Both the list and detail responses must independently pass this proof
+and every existing PR identity/ownership check. Missing, malformed, unrelated,
+pre-anchor or future snapshots fail closed; neither the field nor the stored
+receipt is rewritten. Creation and unanchored replay retain exact-base equality.
+
+The real main ref, bounded original/refresh history, exact one-file tree,
+unchanged manifest, current per-photo checks and non-forced branch update remain
+the authority. The same bounded snapshot proof applies to subsequent anchored
+reads so a successful refresh cannot be falsely invalidated by still-lagging
+metadata. Terminal merge, withdrawal and host-absence contracts are unchanged.
+
+Refresh errors report only allowlisted stages, optional bounded photo positions
+and existing sanitized transport categories/statuses. No raw errors, responses,
+IDs, URLs, tags, consent, hashes or credentials are printed as diagnostics. A
+reporting failure cannot change the original result or cause a retry. Local
+preparation does not authorize release or another protected refresh of #155.
+
 ## Batch review refresh preserves an immutable original anchor — 23 October 2026
 
 John approved local preparation/testing after PR #155 repeatedly received a
