@@ -1,6 +1,194 @@
 # Active Work
 
-## Family save-first uploader — approved release in progress, 22 October 2026
+## Guardian confirmation release — approved, 23 October 2026
+
+John approved synchronization/retest, the standard PR/checks/preview/merge
+route with unchanged public output, then deployment of only the admin Worker
+and verification. The live saved batch, originals, tags, framing and permission
+are to remain unchanged. No migration, other Worker deployment, review
+submission, media processing, purge or photo publication is included.
+
+Fresh remote readback confirms main is still
+`056f7c432e0ed40d1f3c94797e587f3b4c987c74`. The isolated correction branch was
+fast-forwarded to that merge commit without changing its tested source tree or
+local edits. The completed 104-group local evidence below remains applicable;
+fresh focused checks, exact committed public-artifact proof, required full CI,
+both-mode preview, production verification and admin activation remain pending.
+
+## Guardian confirmation flow — local correction, 22 October 2026
+
+John confirmed that guardian permission is intended and approved only local
+implementation/testing, preserving his saved batch, photos, tags and framing.
+The isolated branch is `codex/gallery-guardian-confirmation`; the shared dirty
+checkout and live uploader were not changed. The permission panel now reports
+guardian coverage and offers an explicit unchecked amendment without stopping
+the existing policy. The affected photo explains the missing permission before
+adoption; the protected server independently returns that specific refusal.
+Exact version/idempotency handling preserves lost-reply retries; a read-only
+permission refresh handles stale tabs without resetting the batch or thumbnails.
+
+The amendment appends a new policy version through the existing API. It does not
+rewrite original intake, tags, framing or prior reviews and does not submit a
+job. Existing pending reviews still require the established recovery path after
+policy changes; no lifetime or freshness guard was relaxed. No migration,
+shared permission helper or public runtime change is needed.
+
+Focused local synthetic checks pass: 79 save-first checks including the exact
+mixed-batch recovery, 85 uploader/service checks, 129 protected route checks,
+and both desktop/mobile uploader journeys including actual pinned face
+detection, lost confirmation reply, stale-tab refusal and preservation of the
+already-checked sibling. The protected HTTP path reports the specific 409 even
+without the client-side check. A restricted-shell run of the existing full
+processing integration exited with an unsettled helper await; rerunning with
+the permitted local image helper passed without any code/test weakening.
+The complete 104-group suite then passed from 21:35:06 to 22:08:08 UTC with
+all 444 tracked/source files unchanged during the run (exit 0). This includes
+the actual pinned local D1 guardian-amendment/replay/history probes, metadata
+stripping, consent/exclusion/withdrawal, both-mode smoke tests and responsive
+screenshots. Evidence is ignored `test-artifacts/guardian-confirmation-full.log`
+and `guardian-confirmation-validation.json`; log SHA-256
+`e9b787a1cbb6a2f6e5fc4395d7c0a3ab9d60d84c1990967572f017bd07f490d2`.
+Only this handoff note was updated after that source-frozen run.
+
+`guardian-confirmation-proof.json` proves all 117 canonical public files are
+byte-identical to released main `056f7c432e0ed40d1f3c94797e587f3b4c987c74`,
+including all 72 CSVs, suppression, CNAME and Family 2 / Everyone 0. An initial
+archive-based scratch comparison encountered Windows line-ending conversion;
+the passing comparison reads raw Git blobs without text normalization. No
+public source was altered. Dry-run builds using the unchanged activation
+configs prove only admin changes: new admin bundle SHA-256
+`af850449cf8fd1e76576b70d4cfe13b933c1c8d6d0aaa97d49933ee318db696e`
+(1,071,406 bytes); processing, promotion, verifier and finalizer bundles match
+their previous bytes. The same desktop/mobile synthetic browser journey also
+passed against that exact compiled admin bundle. Guardian and both-mode public
+Gallery screenshots were visually reviewed; external media is blocked in the
+public checks, so this is not real-media delivery or live activation evidence.
+
+Exact tracked files in this correction:
+- `gallery-admin/src/family-uploader-assets.js`: visible coverage, explicit
+  confirmation, actionable errors, exact retry and read-only permission refresh.
+- `gallery-admin/src/family-uploader-service.js`: specific permission-conflict
+  and missing-guardian refusals, preserving current-version and guardian guards.
+- `tests/gallery-family-uploader.mjs`: specific missing-guardian refusal.
+- `tests/gallery-family-saved-files.mjs`: mixed-batch recovery with unchanged
+  original/provider identity, tags, saved sibling framing and historical intake.
+- `tests/gallery-family-uploader-browser.mjs`: responsive confirmation, protected
+  server refusal, lost reply, stale-tab withdrawal and unchanged batch evidence.
+- `tests/gallery-d1-expression-depth.mjs`: actual local D1 policy/history parity.
+- `docs/gallery-family-uploader.md`, `docs/testing-and-release-protocol.md`,
+  `docs/active-work.md`: behavior, required tests and this handoff; earlier dirty
+  active-work release/diagnostic notes are preserved.
+
+No remote permission write, original read/upload, batch change, processing,
+workflow, review submission, push/PR/merge, deployment, purge or publication
+was performed. No local blocker remains. Next explicit approval gate is
+synchronization/retest and repository PR/checks/merge, with public output
+unchanged and Family 2 / Everyone 0; admin-only deployment/read-only activation
+verification also needs approval. No migration or credential change is needed.
+After activation the owner can confirm the intended guardian coverage and
+continue photo 2 from its saved original. Review submission/publication are not
+part of this correction or its confirmation action.
+
+## Second-photo thumbnail rejection — read-only diagnosis, 22 October 2026
+
+John reported that Check thumbnails did not work for photo 2 of new real batch
+`59cab3fc-a058-420e-8920-c25b23a484bb`. No retry, media fetch/upload, permission
+change, batch edit, review submission or publication was performed. Browser
+readback showed the generic changed-photo/permission/batch error. A narrowly
+scoped SELECT returned `rows_written=0`, `changed_db=false`: draft version 10 is
+editing with no job; both originals have successful private-save receipts and
+closed writers, with no deletion requested. Photo 1 has one saved framing and
+`containsMinors=0`. Photo 2 has four saved person tags, `containsMinors=1`, no
+reservation/adoption/frame/review attempt. Current standing permission v1 is
+active but `guardians=0`.
+
+This is a confirmed permission-scope rejection before face detection, not a
+failed upload or demonstrated detector defect. `requireFamilyPermission` rejects
+minor-containing intake without guardian coverage; the admin catch and uploader
+409 handler hide that cause behind the generic message. `renderPermission` also
+hides the guardian checkbox after any active grant, so there is no clear active-
+permission amendment path in this UI. Do not change the under-18 answer, withdraw
+the entire policy, re-upload photos or bypass the guard as a workaround. Confirm
+John's intended guardian coverage, then separately scope a clear confirmation/
+error-path correction preserving this batch and existing permission evidence.
+No application code, remote resources or user selections were changed.
+
+## Family save-first uploader — released, activated and synthetic save-first checks passed, 22 October 2026
+
+John explicitly approved the owner-only administrative PR route after fresh
+required-check verification. PR [#153](https://github.com/johnkevan88888/family-running/pull/153)
+merged at `056f7c432e0ed40d1f3c94797e587f3b4c987c74`, with the exact reviewed
+head/tree and no GitHub settings changes or failed-check bypass. Required CI
+`39845556959` passed all 104 groups; the standard preview and eight both-mode
+desktop/mobile checks passed. Normal Pages run `39849805787`, downloaded
+artifact `12457575353`, and all 117 live response bodies match the canonical
+merged build byte-for-byte. All 72 CSVs, suppression, CNAME and Family 2 /
+Everyone 0 remain unchanged. Responsive screenshots were visually reviewed
+with external media/analytics blocked; this is not fresh real-media delivery proof.
+
+Only additive migration `0034_family_saved_files.sql` was applied. Its table and
+seven triggers were read back, all 33 earlier migration entries are unchanged,
+and all 72 pre-existing application-table fingerprints remain unchanged. The
+new table was empty after activation. Only admin was deployed, at version
+`30895a33-c1a0-4193-b1bd-84dc0f1d0f5e`; its provider-read bundle matches the
+tested SHA-256 `08537c6686869c9341853a80e2c9446e58357f80b7b4de1e1e08ce0ce84e260c`.
+The other five Worker versions/deployments, bindings, variable fingerprints,
+compatibility settings, schedules and storage lifecycle policies are unchanged.
+Anonymous admin access is denied. The CLI Access enumeration returned no visible
+apps, which is explicitly not evidence of absent applications or verified policies.
+
+John explicitly approved viewing/navigating this uploader's Cloudflare sign-in
+and error pages, with credential entry left to him and no Access-setting change.
+The fresh owner tab authenticated and displayed the released save-first wording.
+No authentication bypass, cookie extraction or credential/settings change was
+used. The earlier sign-in blocker is resolved, not a new release gate.
+
+Live synthetic checks passed on fresh batch
+`880dddc7-6455-4fe9-ac63-4cb3bc1bb5d4`, using only the two generated JPEGs in
+`test-artifacts/family-uploader-synthetic-20261021/`. Both files were saved
+privately with no event, person or minor-status tags; the pre-tag SELECT-only
+readback confirmed exact fixture hashes and sizes plus closed upload writers.
+The tab was reloaded, that exact batch reopened, and each stored photo loaded
+without another file-picker selection. Each was tagged only with its existing
+fictional A/B test person, adult status and the catalogue's 6 September Training
+event as an other-person photo, without fabricated athlete result assignments.
+Automatic detection suggested one face in each. Small manual adjustments were
+visually checked in both desktop and mobile thumbnail shapes and saved privately.
+The UI reached `2 of 2 photos ready`; Send for review was NOT pressed.
+
+The 73-table reconciliation passed: all pre-existing row fingerprints, including
+the existing six-photo user draft and prior cleanup/history, remain unchanged.
+Only this fresh test batch's expected rows were added. Both original provider
+versions, ETags, byte counts and SHA-256 hashes match their pre-tag saved-file
+receipts; each has one confirmed framing revision. No consent/review attempt,
+workflow job, dispatch, publication, purge or deletion was added. The two new
+private assets are `asset_f6672b21-60d0-4574-abea-676c3e5997d1` and
+`asset_f4c678da-b478-472a-b078-997020345c93`; retain them and their evidence.
+Final public metadata GETs at 21:15 UTC confirm Family 2 / Everyone 0 and the
+suppression list are byte-identical to the activation baseline. No public media
+was fetched for that check; database/storage evidence is not public-host absence
+proof. No deployment, migration, real-photo processing or publication occurred
+during this test. Future real-photo review remains a separate user action. The
+uploader was left authenticated at Choose photos with no batch selected; the
+synthetic batch is retained but not sitting on an enabled submission button.
+
+The SELECT-only helper initially omitted two normal reservation/adoption tables
+and incorrectly expected initial tags in the later-correction revision table.
+It was corrected against migrations 0018/0019/0021, then passed with exactly two
+new test-asset-bound rows in every allowed asset table and unchanged prior rows.
+These were local evidence-helper assertions, not deployed-code changes or live
+retries. A transient D1 read authorization failure cleared after read-only account
+verification; the identical SELECT-only baseline retry passed with no new login
+or permission expansion. No remaining blocker was found for this save-first test.
+
+Evidence includes `save-first-synthetic-{before,ready,saved,framed,public}.json`
+and private-save/framing/ready-batch screenshots, ignored under `test-artifacts/save-first-*`,
+`test-artifacts/save-first-activation/` and
+`test-artifacts/release-verification-save-first-production/`. The previous
+blocked handoff is preserved in `save-first-blocked-handoff-preserved.md`.
+This post-release note is local and uncommitted; the merged source is unchanged.
+
+## Family save-first uploader — local implementation and validation, 22 October 2026
 
 John requested saving each photo privately immediately when added, before
 tagging. He also allowed abandoning the current six-photo draft and starting

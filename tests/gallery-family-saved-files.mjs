@@ -4,6 +4,7 @@ import {prepareFamilySavedFile,storeFamilySavedFile,readFamilySavedFile,deleteFa
 import {saveFamilyDraft,readFamilyDrafts,prepareFamilyPhoto,familyPermission,submitFamilyDraft} from '../gallery-admin/src/family-uploader-service.js';
 import {deletePrivateArchiveOriginal} from '../gallery-admin/src/private-archive-service.js';
 import {readBoundedBytes,sha256Hex} from '../gallery-admin/src/media-byte-verification.js';
+import {savePrivateGalleryFraming} from '../gallery-admin/src/private-gallery-framing-service.js';
 
 const deps={digestReadable:async body=>sha256Hex(await readBoundedBytes(body,26214400))};
 const outsider={type:'browser',subject:'unrelated-owner'};
@@ -107,4 +108,61 @@ async function setup() {
         checks+=6;
     }finally{f.db.close();}
 }
-console.log(`PASS ${checks} save-first checks: untagged private capture, exact replay, same-object adoption, current permission, immutable pixels, private read isolation and terminal original deletion. Synthetic only.`);
+{
+    // Match the reported recovery: first photo already checked, second saved
+    // privately but not adopted, then an explicit guardian-scope amendment.
+    const f=await setup();try {
+        await f.capture(0);const second=await f.capture(1);
+        const photos=f.photos.map((photo,index)=>({...photo,containsMinors:index===1}));
+        assert.equal((await saveFamilyDraft(f.env,f.owner,f.site,f.draft.id,
+            {expectedVersion:2,idempotencyKey:crypto.randomUUID(),photos},f.catalog)).ok,true);
+        const adult=await f.frame(0);
+        const tables=['family_gallery_drafts','family_gallery_draft_photos','family_gallery_saved_files',
+            'private_gallery_assets','private_gallery_asset_tags','private_archive_intakes','private_archive_original_receipts',
+            'private_gallery_frame_revisions','private_gallery_attempts','private_gallery_batch_jobs'];
+        const snapshot=()=>Object.fromEntries(tables.map(table=>[table,f.db.prepare(`SELECT * FROM ${table}`).all()]));
+        const before=snapshot(),objects=structuredClone([...f.original.objects]),calls=f.original.calls.length;
+        assert.equal((await prepareFamilyPhoto(f.env,f.owner,f.site,f.draft.id,{photoId:second,permissionVersion:1},f.catalog,deps)).code,
+            'family-guardian-permission-needed');
+        assert.deepEqual(snapshot(),before,'Missing permission reserves nothing and keeps every saved field');
+        assert.equal(f.original.calls.length,calls,'Missing guardian scope does not fetch or write pixels');
+        const grant={expectedVersion:1,idempotencyKey:crypto.randomUUID(),active:true,guardians:true};
+        const amended=await familyPermission(f.env,f.owner,f.site,grant);
+        assert.equal(amended.version,2);assert.equal(amended.guardians,true);
+        assert.deepEqual(await familyPermission(f.env,f.owner,f.site,grant),amended,'Lost-reply retry reuses exactly one grant');
+        assert.equal((await familyPermission(f.env,f.owner,f.site,{...grant,guardians:false})).code,'family-permission-changed');
+        assert.deepEqual(f.db.prepare('SELECT version,guardians FROM family_gallery_permissions ORDER BY version').all().map(row=>({...row})),
+            [{version:1,guardians:0},{version:2,guardians:1}],'The earlier grant remains unchanged');
+        assert.deepEqual(snapshot(),before,'Confirmation alone never rewrites photos, tags, framing, intake or review history');
+        assert.deepEqual(structuredClone([...f.original.objects]),objects);
+        assert.equal(f.original.calls.length,calls,'Confirmation does not access originals');
+        await assert.rejects(prepareFamilyPhoto(f.env,f.owner,f.site,f.draft.id,{photoId:second,permissionVersion:1},f.catalog,deps),
+            /Standing permission changed/,'Stale policy still fails closed');
+        assert.equal((await prepareFamilyPhoto(f.env,f.owner,f.site,f.draft.id,{photoId:adult.photoId,permissionVersion:2},f.catalog,deps)).ok,true);
+        const prepared=await prepareFamilyPhoto(f.env,f.owner,f.site,f.draft.id,{photoId:second,permissionVersion:2},f.catalog,deps);
+        assert.equal(prepared.ok,true,JSON.stringify(prepared));const child=prepared.draft.photos[1];
+        assert.equal(child.retained,true);
+        assert.equal(child.assetId,before.family_gallery_saved_files.find(row=>row.photo_id===second).asset_id);
+        const saved=await savePrivateGalleryFraming(f.env,f.owner,f.site,child.assetId,{
+            idempotencyKey:crypto.randomUUID(),expectedVersion:0,tagVersion:1,confirmed:true,sourceSha256:child.sha256,
+            orientation:'exif-transposed-v1',imageWidth:512,imageHeight:768,frames:{[f.ids[0]]:{x:51,y:22,zoom:1.5}}});
+        assert.equal(saved.ok,true);
+        assert.deepEqual(f.db.prepare('SELECT * FROM private_gallery_frame_revisions WHERE asset_id=?').all(adult.assetId),
+            before.private_gallery_frame_revisions.filter(row=>row.asset_id===adult.assetId));
+        assert.deepEqual(f.db.prepare('SELECT * FROM family_gallery_saved_files').all(),before.family_gallery_saved_files);
+        assert.deepEqual(structuredClone([...f.original.objects]),objects,'Adoption preserves exact original bytes and provider identities');
+        assert.equal(f.original.calls.filter(([call])=>call==='part').length,3,'One fixture original plus two saved photos, never re-uploaded');
+        assert.equal(f.db.prepare('SELECT count(*) n FROM private_gallery_attempts').get().n,0,'Framing and confirmation do not submit review');
+        // This is an explicit local synthetic call, not an automatic UI action.
+        const submitted=await submitFamilyDraft(f.env,f.owner,f.site,f.draft.id,
+            {expectedVersion:3,permissionVersion:2,completeTagsConfirmed:true},f.catalog);
+        assert.equal(submitted.ok,true,JSON.stringify(submitted));
+        assert.equal(f.db.prepare('SELECT count(*) n FROM private_gallery_current_attempt_permissions').get().n,2);
+        assert.equal(f.db.prepare('SELECT count(*) n FROM private_gallery_attempts WHERE standing_permission_version=2 AND framing_version=1').get().n,2);
+        assert.equal(f.db.prepare('SELECT standing_permission_version FROM private_archive_intakes WHERE asset_id=?').get(adult.assetId).standing_permission_version,1,
+            'Fresh review uses current permission while the original intake keeps its historical grant');
+        assert.equal(f.db.prepare('SELECT count(*) n FROM private_gallery_batch_reviews').get().n,0);
+        assert.deepEqual(f.db.prepare('PRAGMA foreign_key_check').all(),[]);checks+=28;
+    }finally{f.db.close();}
+}
+console.log(`PASS ${checks} save-first checks: untagged private capture, exact replay, same-object adoption, guardian amendment preserving checked siblings, current permission, immutable pixels, private read isolation and terminal original deletion. Synthetic only.`);

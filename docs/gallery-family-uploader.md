@@ -1,5 +1,31 @@
 # Simplified Family uploader
 
+## Guardian confirmation recovery — local-only, 22 October 2026
+
+The Family permission panel now states whether guardian permission is included.
+An active grant without that scope exposes a separate, unchecked confirmation
+and **Add guardian permission** button. Answering Yes to the under-18 question
+never grants permission. The affected card and Check thumbnails explain the
+missing confirmation; the protected server independently refuses adoption or
+submission with `family-guardian-permission-needed` before any reservation.
+
+Confirmation uses the existing append-only policy endpoint, with an exact
+expected version and stable retry input. It does not rewrite the earlier grant,
+reload or reset the batch, fetch/upload an original, change tags/framing, create
+an attempt or submit a review. A saved adult photo can keep its original intake
+and framing while the unadopted minor-containing photo continues under the new
+grant. Any later explicit batch submission binds fresh attempts to the current
+grant. Existing reviews are not renewed; the panel warns that changing policy
+requires their existing advanced recovery and fresh permission checks.
+
+After a lost reply, retry the same confirmation. **Check saved permission** is
+a read-only way to reconcile the current grant without reopening the batch or
+losing thumbnail work. A stale tab cannot overwrite a newer grant or withdrawal.
+Athlete/photo opt-outs and all downstream consent, exclusion, source, framing
+and publication checks remain unchanged. No migration or shared-service guard
+change is needed. Local synthetic evidence is not a live permission update or
+deployment; release and admin-only activation remain separately approved.
+
 ## Save-first private files — local-only, 22 October 2026
 
 Adding a new photo now immediately saves its bytes in the existing protected
