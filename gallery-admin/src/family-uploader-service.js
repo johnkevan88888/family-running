@@ -52,11 +52,11 @@ export async function familyPermission(env,identity,site,input) {
     if(!saved) {
         try { await write(env,`INSERT INTO family_gallery_permissions(owner_hash,version,active,guardians,idempotency_key,request_hash)
             VALUES(?1,?2,?3,?4,?5,?6)`,owner,input.expectedVersion+1,Number(input.active),Number(input.guardians),input.idempotencyKey,hash); }
-        catch { if(!await prior()) return failure(); }
+        catch { if(!await prior()) return failure(409,'family-permission-changed'); }
         saved=await prior();
     }
     const latest=await current();
-    return saved?.owner_hash===owner && saved.request_hash===hash && latest?.version===saved.version ? summary(latest):failure();
+    return saved?.owner_hash===owner && saved.request_hash===hash && latest?.version===saved.version ? summary(latest):failure(409,'family-permission-changed');
 }
 
 export async function familyPhotoPermission(env,identity,site,input) {
@@ -220,7 +220,10 @@ export async function prepareFamilyPhoto(env,identity,site,id,input,catalog,depe
     if(!data.personIds.length||typeof data.containsMinors!=='boolean'||!data.race||data.sourceRevision!==catalog.sourceRevision) return failure(409,'family-photo-details-needed');
     try {projectFamilyRunnerResults(data,(await loadPrivateGalleryRoster(env,site)).document,catalog);}
     catch {return failure(409,'family-runner-distance-needed');}
-    await requireFamilyPermission(env,owner,site,input.permissionVersion,data.containsMinors);
+    // Keep the exact current active-policy guard, but report missing guardian
+    // scope separately before reserving/adopting anything. Intake still rechecks it.
+    const permission=await requireFamilyPermission(env,owner,site,input.permissionVersion,false);
+    if(data.containsMinors && permission.guardians!==1) return failure(409,'family-guardian-permission-needed');
     if(!photo.reservation_json) {
         const {document}=await loadPrivateGalleryRoster(env,site);
         const reservation={idempotencyKey:photo.photo_id,rosterRevision:document.revision,personIds:data.personIds,originalFormat:data.originalFormat};
@@ -263,7 +266,10 @@ export async function submitFamilyDraft(env,identity,site,id,input,catalog,depen
     const owner=await hashIdentity(identity);let draft=await storedDraft(env,owner,id);
     if(draft.job_id) {await dispatchFamilyReview(env,draft.job_id,dependencies);return publicDraft(draft);}
     if(draft.version!==input.expectedVersion||!draft.photos.length||draft.photos.some(photo=>!photo.retained||photo.deleted||!photo.framing_version||photo.preference==='hidden')) return failure(409,'family-check-each-photo');
-    await requireFamilyPermission(env,owner,site,input.permissionVersion,draft.photos.some(row=>JSON.parse(row.metadata_json).containsMinors));
+    const permission=await requireFamilyPermission(env,owner,site,input.permissionVersion,false);
+    if(draft.photos.some(row=>JSON.parse(row.metadata_json).containsMinors) && permission.guardians!==1) {
+        return failure(409,'family-guardian-permission-needed');
+    }
     if(draft.state==='editing') {
         const statements=draft.photos.map(photo=>statement(env,'UPDATE family_gallery_draft_photos SET attempt_key=?1 WHERE photo_id=?2 AND attempt_key IS NULL',crypto.randomUUID(),photo.photo_id));
         statements.unshift(statement(env,`UPDATE family_gallery_drafts SET state='submitting',submission_key=?1

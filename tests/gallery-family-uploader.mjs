@@ -33,7 +33,8 @@ let checks=0;
     const f=await familyUploaderFixture({count:1});try{
         const updated=await saveFamilyDraft(f.env,f.owner,f.site,f.draft.id,{expectedVersion:1,idempotencyKey:crypto.randomUUID(),
             photos:[{...f.photos[0],containsMinors:true}]},f.catalog);assert.equal(updated.ok,true);
-        await assert.rejects(prepareFamilyPhoto(f.env,f.owner,f.site,f.draft.id,{photoId:f.photos[0].photoId,permissionVersion:1},f.catalog));
+        assert.equal((await prepareFamilyPhoto(f.env,f.owner,f.site,f.draft.id,{photoId:f.photos[0].photoId,permissionVersion:1},f.catalog)).code,
+            'family-guardian-permission-needed','Missing guardian scope has an actionable failure, never a bypass');
         assert.equal(count(f,'private_gallery_assets'),1,'No source reservation without the declared guardian permission');
         assert.equal((await familyPermission(f.env,f.owner,f.site,{expectedVersion:1,idempotencyKey:crypto.randomUUID(),active:true,guardians:true})).ok,true);
         const prepared=await prepareFamilyPhoto(f.env,f.owner,f.site,f.draft.id,{photoId:f.photos[0].photoId,permissionVersion:2},f.catalog);assert.equal(prepared.ok,true);

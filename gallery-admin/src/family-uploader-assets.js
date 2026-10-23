@@ -11,7 +11,12 @@ export function familyUploaderDocument() {
 <section class="admin-panel" id="family-permission-panel"><h2>Family permission</h2><p id="family-permission-status"></p>
 <div id="family-permission-setup"><p>Set this once: the people in your Family library permit private storage and website use until permission is withdrawn for an athlete or photo. Existing opt-outs still take priority. Sending a batch never publishes it.</p>
 <label class="check-line"><input id="family-guardian-permission" type="checkbox"><span>This standing permission also includes guardian permission for children pictured.</span></label>
-<button id="family-permission-save" class="button button-primary">Use standing Family permission</button></div></section>
+<button id="family-permission-save" class="button button-primary">Use standing Family permission</button></div>
+<div id="family-guardian-update" hidden tabindex="-1"><h3>Add guardian permission</h3><p>For photos including anyone under 18, confirm that their parent or guardian permits private storage and website use. Your saved photos, tags and thumbnail views will be kept. Existing athlete and photo opt-outs still apply.</p>
+<p>This records a new permission version. Any review already sent under the previous version will need fresh permission checks through advanced recovery; it is not renewed automatically.</p>
+<label class="check-line"><input id="family-guardian-confirm" type="checkbox"><span>I confirm guardian permission is included for the children pictured.</span></label>
+<button id="family-guardian-save" class="button button-primary" disabled>Add guardian permission</button></div>
+<button id="family-permission-refresh" class="button button-secondary">Check saved permission</button></section>
 <section class="admin-panel" id="family-choose"><h2>1 Choose photos</h2><p>Choose up to 20 JPEG or PNG photos, each up to 25 MiB. Adding a photo uploads it to your protected private library straight away. Wait for “Saved privately” before closing this page. Tagging and review come next.</p>
 <label class="form-field">Add photos<input id="family-files" type="file" accept="image/jpeg,image/png" multiple></label>
 <p id="family-count" role="status">No photos yet.</p><div id="family-cards" class="family-cards"></div></section>
@@ -22,6 +27,7 @@ export function familyUploaderDocument() {
 <h3>Runners at this event</h3><p id="family-runners-note">Choose an event to see its runners. Each runner keeps their own distance.</p>
 <div id="family-athletes" class="athlete-choices"></div><details id="family-other-people"><summary>Other people pictured</summary><div id="family-private-people" class="athlete-choices"></div><p>Tag supporters or anyone else pictured here, without assigning a race result. Private and excluded people remain available; opt-outs still block website use. Use the advanced library to add a new private-only person.</p></details>
 <label class="form-field">Does this photo include anyone under 18?<select id="family-minors"><option value="">Choose an answer</option><option value="no">No</option><option value="yes">Yes</option></select></label>
+<p id="family-guardian-needed" hidden>This photo includes someone under 18, but guardian permission has not been recorded. <a href="#family-guardian-update">Confirm guardian permission</a>, then choose Check thumbnails again. Your saved photo and tags are kept.</p>
 <p>Include every person pictured. The face detector suggests framing; it does not identify people.</p>
 <div class="family-toolbar"><button id="family-apply-details" class="button button-secondary">Use this event and people on other unchecked photos</button><button id="family-save-details" class="button button-secondary">Save details</button><button id="family-retain" class="button button-primary">Check thumbnails</button></div>
 <p id="family-detail-note" role="status"></p>
@@ -41,10 +47,15 @@ export function familyUploaderScript() {return `(${familyUploaderBrowser.toStrin
 function familyUploaderBrowser() {
     'use strict';
     const $=id=>document.getElementById(id),site='family',files=new Map(),previews=new Map(),athleteKeys=new Map();
-    let csrf,catalog,permission,people=[],draft=null,selected=null,busy=false,pendingSave=null,newKey=null,permissionKey=null,detailsDirty=false;
+    let csrf,catalog,permission,people=[],draft=null,selected=null,busy=false,pendingSave=null,newKey=null,pendingPermission=null,detailsDirty=false;
     const uuid=()=>crypto.randomUUID();
     const note=text=>{$('family-status').textContent=text;};
     const active=()=>draft?.photos.find(photo=>photo.photoId===selected);
+    const needsGuardian=photo=>permission?.active&&!permission.guardians&&photo?.containsMinors===true;
+    const guardianMessage='Guardian permission is needed for this photo. Confirm it in Family permission, then choose Check thumbnails again. Your saved photos, tags and thumbnail views are kept.';
+    function explainGuardian(){
+        renderPermission();$('family-guardian-update').scrollIntoView({block:'center'});$('family-guardian-update').focus();
+    }
     const deleteFileButton=document.createElement('button');deleteFileButton.id='family-file-delete';
     deleteFileButton.className='button button-secondary';deleteFileButton.textContent='Delete selected untagged original';
     $('family-photo-hide').before(deleteFileButton);
@@ -59,7 +70,10 @@ function familyUploaderBrowser() {
             headers:body?{'Content-Type':'application/json','X-CSRF-Token':csrf}:{},body:body?JSON.stringify(body):undefined});
         let result;try{result=await response.json();}catch{throw new Error('The saved state could not be checked. Your local choices have been kept.');}
         if(!response.ok) {
+            if(result.error==='family-guardian-permission-needed')explainGuardian();
             const message=response.status===403?'Sign in again, then open this saved batch. Local-only files will need to be selected again.':
+                result.error==='family-guardian-permission-needed'?guardianMessage:
+                result.error==='family-permission-changed'?'Family permission changed or this confirmation no longer matches. Choose “Check saved permission” before confirming again. Your batch is kept.':
                 result.error==='family-duplicate-photo'?'That photo is already in this batch.':
                 result.error==='family-runner-distance-needed'?'Choose a distance for each selected runner before checking thumbnails.':
                 response.status===409?'This photo, permission or saved batch changed. Check the saved batch before continuing; no duplicate was submitted.':
@@ -77,7 +91,10 @@ function familyUploaderBrowser() {
         if(active()?.reserved || draft?.state!=='editing') {
             for(const control of document.querySelectorAll('#family-athletes input,#family-athletes select,#family-private-people input,#family-event,#family-minors')) control.disabled=true;
         }
-        $('family-submit').disabled=busy||!permission?.active||!draft||!['editing','submitting'].includes(draft.state)||detailsDirty||!draft.photos.length||draft.photos.some(p=>!p.retained||!p.framingVersion||p.deleted||p.preference==='hidden'||p.peopleBlocked);
+        $('family-submit').disabled=busy||!permission?.active||!draft||!['editing','submitting'].includes(draft.state)||detailsDirty||!draft.photos.length||draft.photos.some(p=>!p.retained||!p.framingVersion||p.deleted||p.preference==='hidden'||p.peopleBlocked||needsGuardian(p));
+        $('family-guardian-save').disabled=busy||!permission?.active||permission.guardians||!$('family-guardian-confirm').checked;
+        $('family-guardian-confirm').disabled=busy||Boolean(pendingPermission);
+        $('family-guardian-permission').disabled=busy||Boolean(pendingPermission);
         $('family-photo-hide').disabled=busy||!active()?.assetId||active()?.preference==='hidden';
         $('family-photo-allow').disabled=busy||!permission?.active||active()?.preference!=='hidden';
         $('family-permission-stop').disabled=busy||!permission?.active;
@@ -189,7 +206,7 @@ function familyUploaderBrowser() {
         $('family-cards').replaceChildren();const photos=draft?.photos||[];
         $('family-count').textContent=photos.length?`${photos.length} of 20 photos in this batch`:'No photos yet.';
         for(const [index,photo] of photos.entries()) {
-            const card=document.createElement('article');card.className='family-photo-card';card.dataset.active=String(photo.photoId===selected);card.dataset.ready=String(Boolean(photo.framingVersion&&!photo.deleted&&!photo.peopleBlocked&&photo.preference!=='hidden'));
+            const card=document.createElement('article');card.className='family-photo-card';card.dataset.active=String(photo.photoId===selected);card.dataset.ready=String(Boolean(photo.framingVersion&&!photo.deleted&&!photo.peopleBlocked&&photo.preference!=='hidden'&&!needsGuardian(photo)));
             const canvas=document.createElement('canvas');canvas.width=240;canvas.height=160;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',`Photo ${index+1} preview`);
             const preview=previews.get(photo.photoId);if(preview){const ratio=Math.min(canvas.width/preview.width,canvas.height/preview.height);canvas.getContext('2d').drawImage(preview,(240-preview.width*ratio)/2,(160-preview.height*ratio)/2,preview.width*ratio,preview.height*ratio);}
             const title=document.createElement('strong');title.textContent=`Photo ${index+1}`;
@@ -198,7 +215,7 @@ function familyUploaderBrowser() {
                 return name+' — '+(result?(photo.sourceRevision&&photo.sourceRevision!==catalog.sourceRevision?'saved distance — recheck catalogue':catalog.sites.family.races[result.raceIndex]?.raceDistance||'choose distance'):'other person');
             }).join(', ')||'Choose the people';
             const race=document.createElement('small');race.textContent=photo.race?[photo.race.raceDate,photo.race.raceEvent].join(' · '):'Choose the event';
-            const state=document.createElement('small');state.textContent=photo.fileDeleted?'Private original deleted — history retained':photo.deleted?'Blocked — original removal requested':photo.preference==='hidden'||photo.peopleBlocked?'Private only — a photo or athlete opt-out applies':photo.framingVersion?'Thumbnail views saved':photo.retained?'Saved privately — check thumbnails':photo.savedPrivately?'Saved privately — add event and people':files.has(photo.photoId)?'Not saved privately — retry the upload':'File needed — private save not completed';
+            const state=document.createElement('small');state.textContent=photo.fileDeleted?'Private original deleted — history retained':photo.deleted?'Blocked — original removal requested':photo.preference==='hidden'||photo.peopleBlocked?'Private only — a photo or athlete opt-out applies':photo.savedPrivately&&needsGuardian(photo)?'Saved privately — guardian permission needed':photo.framingVersion?'Thumbnail views saved':photo.retained?'Saved privately — check thumbnails':photo.savedPrivately?'Saved privately — add event and people':files.has(photo.photoId)?'Not saved privately — retry the upload':'File needed — private save not completed';
             const edit=document.createElement('button');edit.className='button button-secondary';edit.textContent='Check photo '+(index+1);edit.addEventListener('click',()=>action(()=>openPhoto(photo.photoId)));
             card.append(canvas,title,names,race,state,edit);
             if(!photo.savedPrivately&&!photo.retained&&files.has(photo.photoId)&&draft.state==='editing') {
@@ -213,7 +230,8 @@ function familyUploaderBrowser() {
         const photo=active();$('family-details').hidden=!photo;$('family-reselect-label').hidden=!photo||files.has(photo.photoId)||photo.filePrepared&&photo.savedPrivately;
         if(photo){$('family-selected').textContent='Photo '+(photos.indexOf(photo)+1);events();renderPeople();$('family-minors').value=photo.containsMinors==null?'':photo.containsMinors?'yes':'no';
             $('family-detail-note').textContent=photo.sourceRevision&&photo.sourceRevision!==catalog.sourceRevision?'The results catalogue changed. Saved details are kept; reselect the event and runners for an unchecked photo. Checked photos need the advanced recovery route.':photo.reserved?'These checked source and people details are fixed. Advanced corrections preserve the original history.':photo.savedPrivately?'Photo saved privately. Your event and people choices are saved automatically.':'This file has not finished saving privately. Retry its upload before continuing.';}
-        const ready=photos.filter(p=>p.retained&&p.framingVersion&&!p.deleted&&p.preference!=='hidden'&&!p.peopleBlocked).length;
+        renderPermission();$('family-guardian-needed').hidden=!needsGuardian(photo);
+        const ready=photos.filter(p=>p.retained&&p.framingVersion&&!p.deleted&&p.preference!=='hidden'&&!p.peopleBlocked&&!needsGuardian(p)).length;
         $('family-ready').textContent=`${ready} of ${photos.length} photos ready. Nothing is published automatically.`;
         $('family-submit').textContent=draft?.state==='submitting'?'Resume this review request':`Send ${photos.length||''} photo${photos.length===1?'':'s'} for review`;setBusy();
     }
@@ -303,6 +321,7 @@ function familyUploaderBrowser() {
     $('family-retain').addEventListener('click',()=>action(async()=>{
         if(!active())throw new Error('Choose a photo first.');if(detailsDirty)await saveDetails();
         if(!permission?.active)throw new Error('Set the Family permission once before saving photos.');
+        if(needsGuardian(active())){explainGuardian();throw new Error(guardianMessage);}
         const photo=active(),file=files.get(photo.photoId);if(!file&&!photo.retained&&!photo.savedPrivately)throw new Error('Choose the matching local file first.');
         if(!photo.reserved&&!photo.savedPrivately)await saveFile(photo.photoId);
         note('Checking the saved photo, event and people…');
@@ -327,11 +346,35 @@ function familyUploaderBrowser() {
         files.delete(photo.photoId);previews.delete(photo.photoId);framing.clear();await reloadDraft();render();
         note('This untagged original is deleted. Its history is retained. Start a new batch to leave this cancelled draft.');
     }));
+    async function savePermission(guardians){
+        // Retry an uncertain acknowledgement with the exact same input. Never
+        // silently turn a changed checkbox or newer policy into another grant.
+        pendingPermission ||= {expectedVersion:permission.version,idempotencyKey:uuid(),active:true,guardians};
+        if(pendingPermission.guardians!==guardians)throw new Error('Check saved permission before changing this confirmation. Your batch is kept.');
+        permission=await api('/api/browser/family-permission',pendingPermission);
+        pendingPermission=null;$('family-guardian-confirm').checked=false;renderPermission();
+    }
     $('family-permission-save').addEventListener('click',()=>action(async()=>{
-        permissionKey ||= uuid();permission=await api('/api/browser/family-permission',{expectedVersion:permission.version,idempotencyKey:permissionKey,active:true,guardians:$('family-guardian-permission').checked});
-        permissionKey=null;renderPermission();note('Standing Family permission saved. Athlete and photo opt-outs still take priority.');
+        await savePermission($('family-guardian-permission').checked);
+        note('Standing Family permission saved. Athlete and photo opt-outs still take priority.');
     }));
-    function renderPermission(){ $('family-permission-status').textContent=permission.active?'Standing permission is active until withdrawn. No repeated consent form is needed.':'Set your Family permission once before retaining or reviewing photos.';$('family-permission-setup').hidden=permission.active;}
+    $('family-guardian-confirm').addEventListener('change',setBusy);
+    $('family-guardian-save').addEventListener('click',()=>action(async()=>{
+        if(!permission?.active||permission.guardians||!$('family-guardian-confirm').checked)throw new Error('Confirm guardian permission before saving it.');
+        await savePermission(true);
+        note('Guardian permission saved. Your photos, tags and thumbnail views are kept. Choose Check thumbnails for the unfinished photo; nothing has been sent for review.');
+    }));
+    $('family-permission-refresh').addEventListener('click',()=>action(async()=>{
+        permission=await api('/api/browser/family-permission');pendingPermission=null;$('family-guardian-confirm').checked=false;
+        renderPermission();note('Saved permission checked. Your batch and thumbnail work are kept.');
+    }));
+    function renderPermission(){
+        $('family-permission-status').textContent=permission?.active
+            ?'Standing permission is active until withdrawn. '+(permission.guardians?'Guardian permission is included.':'Guardian permission is not included yet.')
+            :'Set your Family permission once before retaining or reviewing photos.';
+        $('family-permission-setup').hidden=Boolean(permission?.active);
+        $('family-guardian-update').hidden=!permission?.active||permission.guardians;
+    }
     function leaveBatch(){
         if(framing.hasUnsavedChanges())throw new Error('Save the current thumbnail views before leaving this batch.');
         if(draft?.photos.some(p=>files.has(p.photoId)&&!p.savedPrivately&&!p.retained)&&!window.confirm('Some private uploads did not finish. You will need to choose those files again. Leave this batch?'))return false;

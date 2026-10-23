@@ -396,6 +396,16 @@ try {
         `UPDATE family_gallery_draft_photos SET metadata_json=json_set(metadata_json,'$.sha256','${'b'.repeat(64)}') WHERE photo_id='${savedPhoto}';`,'--json'],environment);
     assert.notEqual(sourceReplacement.status,0);assert.match(combinedOutput(sourceReplacement),/Stored pixels cannot be replaced/);
     assert.equal((await assetEnv.DB.prepare('SELECT writer_closed FROM family_gallery_saved_files WHERE photo_id=?1').bind(savedPhoto).first()).writer_closed,'abort-confirmed');
+    const beforeGuardian=await assetEnv.DB.prepare('SELECT * FROM family_gallery_saved_files WHERE photo_id=?1').bind(savedPhoto).first();
+    const guardianGrant={expectedVersion:1,idempotencyKey:crypto.randomUUID(),active:true,guardians:true};
+    const guardianPolicy=await familyPermission(assetEnv,owner,'family',guardianGrant);
+    assert.equal(guardianPolicy.version,2);assert.equal(guardianPolicy.guardians,true);
+    assert.deepEqual(await familyPermission(assetEnv,owner,'family',guardianGrant),guardianPolicy,'Local D1 exact-grant retry');
+    assert.equal((await familyPermission(assetEnv,owner,'family',{...guardianGrant,idempotencyKey:crypto.randomUUID()})).code,'family-permission-changed');
+    assert.deepEqual(await assetEnv.DB.prepare('SELECT * FROM family_gallery_saved_files WHERE photo_id=?1').bind(savedPhoto).first(),beforeGuardian,
+        'Guardian amendment leaves saved-file identity, permission history and writer closure unchanged');
+    await assert.rejects(assetEnv.DB.prepare('UPDATE family_gallery_permissions SET guardians=1 WHERE owner_hash=?1 AND version=1').bind(savedOwner).run(),
+        /Permission history immutable/);
     const hiddenPhoto=await familyPhotoPermission(assetEnv,owner,'family',{assetId:reservation.asset.assetId,expectedVersion:0,
         idempotencyKey:crypto.randomUUID(),preference:'hidden'});
     assert.equal(hiddenPhoto.ok,true);assert.equal(hiddenPhoto.removalVerified,false);

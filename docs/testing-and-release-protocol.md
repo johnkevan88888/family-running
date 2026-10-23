@@ -1,5 +1,26 @@
 # Testing And Release Protocol
 
+## Guardian confirmation correction — local-only, 22 October 2026
+
+Run the complete 104-group code suite, including the mixed adult/minor save-first
+regression, protected HTTP refusal, desktop/mobile confirmation and real local
+D1 policy probes. Start with both originals privately saved, photo 1 already
+framed under a grant without guardian scope and photo 2 not yet adopted. Prove
+that answering Yes is not consent; missing guardian permission reports the
+specific cause without reserving/writing anything; the explicit amendment and
+lost-reply retry preserve the whole saved batch, exact bytes/provider identities,
+tags, intake history and sibling framing. No attempt or job may be created by
+confirmation alone. A later explicit synthetic review must bind the new current
+policy while keeping the old intake unchanged. Stale versions, later withdrawal,
+opt-outs and immutable policy history must still fail closed. Inspect desktop
+and mobile screenshots and verify the 117-file public artifact, 72 CSVs and
+Family 2 / Everyone 0 are unchanged. No real media or live batch is a fixture.
+
+This correction uses existing storage and policy APIs; no migration is needed.
+Repository release, admin-only deployment and the actual owner's confirmation
+remain separate from local testing. No review submission or publication follows
+from confirming guardian permission.
+
 ## Family save-first private files — local-only, 22 October 2026
 
 Run the complete 104-group code suite, including new `gallery-family-saved-files`

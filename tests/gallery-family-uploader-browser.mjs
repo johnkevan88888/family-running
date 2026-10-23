@@ -9,6 +9,8 @@ import {syntheticBucket,digest} from './helpers/private-gallery-lifecycle-fixtur
 import {transactionalDB} from './helpers/family-uploader-fixture.mjs';
 import {readBoundedBytes,sha256Hex} from '../gallery-admin/src/media-byte-verification.js';
 import catalog from '../gallery-admin/generated/catalog-snapshot.js';
+import {familyPermission} from '../gallery-admin/src/family-uploader-service.js';
+import {createBrowserSession} from '../gallery-admin/src/session.js';
 
 const root=new URL('../gallery-admin/migrations/',import.meta.url);
 const migrations=await Promise.all((await readdir(root)).filter(n=>n.endsWith('.sql')).sort().map(n=>readFile(new URL(n,root),'utf8')));
@@ -29,7 +31,7 @@ try{for(const mobile of [false,true]){
             async run(){return {success:true,meta:{changes:Number(db.prepare(sql).run(...args).changes)}};}
         };}}};transactionalDB({db,env});
     const context=await browser.newContext(mobile?{viewport:{width:390,height:844},isMobile:true,hasTouch:true}:{viewport:{width:1440,height:1000}});
-    const page=await context.newPage(),errors=[],unexpected=[],requests=[];let loseSave=false;
+    const page=await context.newPage(),errors=[],unexpected=[],requests=[];let loseSave=false,losePermission=false;
     page.on('pageerror',error=>errors.push(error.message));
     await context.route('**/*',async route=>{
         const incoming=route.request(),url=new URL(incoming.url());if(url.origin!==origin){unexpected.push(url.href);return route.abort();}
@@ -38,6 +40,7 @@ try{for(const mobile of [false,true]){
         requests.push([incoming.method(),url.pathname]);
         const response=await handleAdminRequest(request,env,{verifyAccessIdentity:async()=>owner,
             digestReadable:async body=>sha256Hex(await readBoundedBytes(body,26214400))});
+        if(losePermission&&incoming.method()==='POST'&&url.pathname==='/api/browser/family-permission'&&response.ok){losePermission=false;return route.fulfill({status:503,contentType:'application/json',body:'{"ok":false}'});}
         if(loseSave&&incoming.method()==='POST'&&/family-drafts\/[0-9a-f-]+$/.test(url.pathname)&&response.ok){loseSave=false;return route.fulfill({status:503,contentType:'application/json',body:'{"ok":false}'});}
         return route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:Buffer.from(await response.arrayBuffer())});
     });
@@ -46,7 +49,9 @@ try{for(const mobile of [false,true]){
     try{
         await page.goto(origin+'/family-uploader?site=family');await status('Family library ready');await idle();
         assert.equal(await page.locator('h1').textContent(),'Add Family photos');
+        assert.equal(await page.locator('#family-guardian-permission').isChecked(),false,'Guardian scope is never presumed');
         await page.getByRole('button',{name:'Use standing Family permission',exact:true}).click();await status('Standing Family permission saved');await idle();
+        assert.match(await page.locator('#family-permission-status').textContent(),/Guardian permission is not included yet/);
         await page.locator('#family-files').setInputFiles(photos.map((buffer,index)=>({name:`synthetic-${index}.jpg`,mimeType:'image/jpeg',buffer})));
         await status('Choose the event and people next');await idle();assert.equal(await page.locator('.family-photo-card').count(),3);
         assert.equal(bucket.objects.size,3,'Adding photos saves the originals before any tags are selected');
@@ -74,7 +79,48 @@ try{for(const mobile of [false,true]){
         await page.getByRole('button',{name:'Use this event and people on other unchecked photos'}).click();await status('Event and people copied');await idle();
         for(let index=0;index<3;index++){
             await page.getByRole('button',{name:index?'Next photo':'Check photo 1',exact:true}).click();await idle();
-            await page.locator('#family-minors').selectOption('no');await idle();
+            await page.locator('#family-minors').selectOption(index===1?'yes':'no');await idle();
+            if(index===1){
+                const snapshot=()=>Object.fromEntries(['family_gallery_drafts','family_gallery_draft_photos','family_gallery_saved_files',
+                    'private_archive_intakes','private_archive_original_receipts','private_gallery_frame_revisions',
+                    'private_gallery_attempts','private_gallery_batch_jobs'].map(table=>[table,db.prepare(`SELECT * FROM ${table}`).all()]));
+                const before=snapshot(),objects=structuredClone([...bucket.objects]),calls=bucket.calls.length;
+                const prepares=requests.filter(([,path])=>path.endsWith('/prepare')).length;
+                const session=await createBrowserSession(owner,env,'family',Date.now());
+                const second=db.prepare('SELECT photo_id FROM family_gallery_draft_photos WHERE draft_id=? AND ordinal=1').get(id).photo_id;
+                const blocked=await handleAdminRequest(new Request(origin+'/api/browser/family-drafts/'+id+'/prepare?site=family',{
+                    method:'POST',headers:{Cookie:session.cookie.split(';')[0],'X-CSRF-Token':session.csrfToken,
+                        Origin:origin,'Sec-Fetch-Site':'same-origin','Content-Type':'application/json'},
+                    body:JSON.stringify({photoId:second,permissionVersion:1})}),env,{verifyAccessIdentity:async()=>owner});
+                assert.equal(blocked.status,409);assert.equal((await blocked.json()).error,'family-guardian-permission-needed',
+                    'Bypassing the client still gets the protected, specific server refusal');
+                assert.equal(blocked.headers.get('Cache-Control'),'no-store');
+                assert.equal(await page.locator('#family-guardian-needed').isVisible(),true);
+                assert.equal(await page.locator('#family-guardian-confirm').isChecked(),false,'Answering Yes is not guardian confirmation');
+                assert.equal(await page.locator('#family-guardian-save').isEnabled(),false);
+                assert.match(await page.locator('.family-photo-card').nth(1).textContent(),/guardian permission needed/);
+                await page.getByRole('button',{name:'Check thumbnails',exact:true}).click();await status('Guardian permission is needed');await idle();
+                assert.equal(requests.filter(([,path])=>path.endsWith('/prepare')).length,prepares,'Client stops before adoption, not after a generic error');
+                assert.deepEqual(snapshot(),before);assert.equal(bucket.calls.length,calls);
+                await page.screenshot({path:fileURLToPath(new URL(`family-guardian-needed-${mobile?'mobile':'desktop'}.png`,screenshots)),fullPage:true});
+                await page.locator('#family-guardian-confirm').check();losePermission=true;
+                await page.getByRole('button',{name:'Add guardian permission',exact:true}).click();await status('save could not be confirmed');await idle();
+                assert.equal(db.prepare('SELECT count(*) n FROM family_gallery_permissions').get().n,2);
+                assert.equal(await page.locator('#family-guardian-confirm').isChecked(),true,'Keep the exact uncertain confirmation for retry');
+                assert.equal(await page.locator('#family-guardian-confirm').isEnabled(),false);
+                await page.getByRole('button',{name:'Add guardian permission',exact:true}).click();await status('Guardian permission saved');await idle();
+                assert.equal(db.prepare('SELECT count(*) n FROM family_gallery_permissions').get().n,2,'Retry never creates a third grant');
+                assert.match(await page.locator('#family-permission-status').textContent(),/Guardian permission is included/);
+                assert.equal(await page.locator('#family-guardian-update').isVisible(),false);
+                assert.equal(await page.locator('#family-guardian-needed').isVisible(),false);
+                assert.equal(await page.locator('#family-selected').textContent(),'Photo 2','The unfinished photo stays selected');
+                assert.equal(await page.locator('#family-minors').inputValue(),'yes','Do not hide the issue by changing the age answer');
+                assert.deepEqual(snapshot(),before,'Confirmation keeps the whole batch, tags, intake and saved sibling framing');
+                assert.deepEqual(structuredClone([...bucket.objects]),objects);assert.equal(bucket.calls.length,calls);
+                assert.equal(requests.filter(([method])=>method==='PUT').length,uploadCount);
+                assert.equal(requests.some(([,path])=>path.endsWith('/submit')),false,'Confirmation never submits review');
+                assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+            }
             await page.getByRole('button',{name:'Check thumbnails',exact:true}).click();await status('Saved privately. Check');await idle();
             await page.waitForFunction(()=>document.getElementById('private-face-candidates').childElementCount>=1,null,{timeout:15000});
             if(index===0)await page.locator('#private-face-detection').filter({hasText:'One face suggested'}).waitFor();
@@ -90,7 +136,7 @@ try{for(const mobile of [false,true]){
             'Fully saved framing does not leave a misleading unsaved-work warning');
         assert.equal(bucket.objects.size,3);assert.equal(db.prepare('SELECT count(DISTINCT asset_id) n FROM family_gallery_draft_photos').get().n,3);
         assert.equal(bucket.calls.filter(([method])=>method==='part').length,3,'Tagging adopts the saved objects without copying or re-upload');
-        assert.equal(db.prepare('SELECT count(*) n FROM family_gallery_permissions').get().n,1,'No repeated per-photo permission forms');
+        assert.equal(db.prepare('SELECT count(*) n FROM family_gallery_permissions').get().n,2,'One initial grant and one explicit scope amendment, not repeated per-photo forms');
         assert.equal(db.prepare('SELECT count(*) n FROM private_gallery_attempts').get().n,0,'Saving thumbnails never queues review');
         await page.screenshot({path:fileURLToPath(new URL(`family-uploader-${mobile?'mobile':'desktop'}.png`,screenshots)),fullPage:true});
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'No horizontal overflow');
@@ -100,7 +146,9 @@ try{for(const mobile of [false,true]){
         assert.equal(await page.getByRole('button',{name:'Send 3 photos for review',exact:true}).isEnabled(),true,'Saved checked photos can submit without rereading originals');
         await page.getByRole('button',{name:'Send 3 photos for review',exact:true}).click();await status('Batch saved for one combined review');await idle();
         assert.equal(db.prepare('SELECT count(*) n FROM private_gallery_batch_jobs').get().n,1);
-        assert.equal(db.prepare('SELECT count(*) n FROM private_gallery_attempts WHERE standing_permission_version=1 AND framing_version=1').get().n,3);
+        assert.equal(db.prepare('SELECT count(*) n FROM private_gallery_attempts WHERE standing_permission_version=2 AND framing_version=1').get().n,3);
+        assert.equal(db.prepare('SELECT count(*) n FROM private_archive_intakes WHERE standing_permission_version=1').get().n,1,
+            'First intake keeps its original evidence while fresh review uses the amended permission');
         assert.match(await page.locator('#family-review-status').textContent(),/Automatic processing is not configured/);
         assert.equal(db.prepare('SELECT count(*) n FROM private_gallery_batch_reviews').get().n,0,'No fake live PR success');
         assert.equal(requests.some(([method,path])=>method==='GET'&&path.endsWith('/archive-original')),false);
@@ -139,10 +187,22 @@ try{for(const mobile of [false,true]){
         assert.equal(bucket.objects.size,4,'Ambiguous distance does not discard the already saved private original');
         assert.equal(db.prepare('SELECT count(*) n FROM private_archive_original_receipts').get().n,3,'Ambiguous distance still blocks tagged intake');
         await distance.selectOption({label:'H. Mar'});await status('Runner distance saved');await idle();
+        // Simulate another owner tab changing permission while this tab is open.
+        assert.equal((await familyPermission(env,owner,'family',{expectedVersion:2,idempotencyKey:crypto.randomUUID(),active:true,guardians:false})).ok,true);
+        await page.getByRole('button',{name:'Check saved permission',exact:true}).click();await status('Saved permission checked');await idle();
+        assert.equal(await page.locator('#family-guardian-confirm').isChecked(),false,'A fresh confirmation is required after checking current scope');
+        assert.equal((await familyPermission(env,owner,'family',{expectedVersion:3,idempotencyKey:crypto.randomUUID(),active:false,guardians:false})).ok,true);
+        await page.locator('#family-guardian-confirm').check();
+        await page.getByRole('button',{name:'Add guardian permission',exact:true}).click();await status('Family permission changed');await idle();
+        assert.equal(db.prepare('SELECT count(*) n FROM family_gallery_permissions').get().n,4,'A stale tab cannot overwrite withdrawal');
+        await page.getByRole('button',{name:'Check saved permission',exact:true}).click();await status('Saved permission checked');await idle();
+        assert.equal(await page.locator('#family-permission-setup').isVisible(),true);
+        assert.equal(await page.locator('#family-guardian-update').isVisible(),false);
+        assert.equal(db.prepare('SELECT count(*) n FROM private_gallery_current_attempt_permissions').get().n,0,'Old reviews are not renewed or rewritten by policy changes');
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
         assert.deepEqual(errors,[]);assert.deepEqual(unexpected,[]);assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
     }catch(error){await page.screenshot({path:fileURLToPath(new URL(`family-uploader-failure-${mobile?'mobile':'desktop'}.png`,screenshots)),fullPage:true});
         console.error('Local synthetic UI status:',await page.locator('#family-status').textContent(),errors);throw error;
     }finally{await context.close();db.close();}
 }}finally{await browser.close();}
-console.log('PASS Family uploader desktop/mobile: three synthetic face photos, actual detector suggestions, manual zoom, direct athlete selection, one permission, saved/resumed batch, uncertain-save retry and one protected review request; no external requests or publication.');
+console.log('PASS Family uploader desktop/mobile: synthetic face detection, manual zoom, mixed adult/minor saved batch, explicit guardian confirmation, lost-reply and stale-tab recovery preserving originals/tags/framing, one local review request; no external requests or publication.');
