@@ -8,7 +8,8 @@ const options=github=>({expectedBaseSha:baseSha,token,fetchImpl:github.fetch});
 const create=async (value,github,admitPullRequest=async()=>{})=>batch.createOrReconcileArchiveGalleryBatchReview(value,{...options(github),admitPullRequest});
 let checks=0;
 assert.deepEqual(Object.keys(batch),['createOrReconcileArchiveGalleryBatchReview','readExistingGalleryBatchReview',
-    'readMergedGalleryBatchMemberReview','readMergedGalleryBatchPublication','readMergedGalleryBatchReview','reconcileArchiveGalleryBatchReview']);
+    'readMergedGalleryBatchMemberReview','readMergedGalleryBatchPublication','readMergedGalleryBatchReview','reconcileArchiveGalleryBatchReview',
+    'refreshStoredGalleryBatchReview']);
 const source=await fs.readFile(new URL('../scripts/gallery-media/github-batch-review-client.mjs',import.meta.url),'utf8');
 assert.doesNotMatch(source,/['"](?:DELETE|PUT)['"]|process\.env|fetch\(/);checks++;
 

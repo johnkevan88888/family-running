@@ -99,7 +99,7 @@ export async function runProtectedArchiveBatchReview(context) {
         }
         await checkedItems(job,saved.candidate,promotion);
         const options={expectedBaseSha:saved.baseSha,...gh(github)};
-        const review=saved.review?await readExistingGalleryBatchReview(saved.candidate,options):
+        const review=saved.review?await readExistingGalleryBatchReview(saved.candidate,options,saved.review):
             await createOrReconcileArchiveGalleryBatchReview(saved.candidate,{...options,
                 admitPullRequest:()=>checked(jobs,jobId,'batch-write',{runReference})});
         await checked(jobs,jobId,'batch-open',{runReference,review});
@@ -107,7 +107,10 @@ export async function runProtectedArchiveBatchReview(context) {
         // Keep the global claim. Neither a one-photo publication job nor a
         // purge may reinterpret this shared, still-unmerged review.
         return {ok:true,state:'unmerged-review',review,claimHeld:true,publicationEnabled:false};
-    } catch {
+    } catch(error) {
+        // New main alone is not revoked consent or cleanup authority. Leave
+        // the exact review/claim pending for a separately approved refresh.
+        if(error?.code==='BATCH_REVIEW_REFRESH_REQUIRED') return pending();
         try {
             // The owner can merge between the first main snapshot and a later
             // review read. A validation failure is not proof of an unmerged
@@ -163,13 +166,17 @@ export async function runProtectedArchiveBatchPublication(context) {
             await checked(jobs,jobId,'complete',{runReference,result});
             return result;
         }
-        if(main.baseSha!==job.baseSha) return pending();
-        const review=await readExistingGalleryBatchReview(job.candidate,configuration);
+        // The reader proves the current main through the original anchored
+        // receipt and exact refresh history; D1 still keeps its original base.
+        const review=await readExistingGalleryBatchReview(job.candidate,configuration,job.review);
         await checkedItems(job,job.candidate,promotion);
         await checked(jobs,jobId,'batch-publication-check',{runReference});
         if((await readGalleryReviewMain(gh(github))).baseSha!==main.baseSha) return pending();
         return {ok:true,state:'ready-for-separate-owner-merge',review,claimHeld:true,publicationEnabled:false};
-    } catch {
+    } catch(error) {
+        // Preserve the previous stale-main pending behaviour. A checked
+        // refresh, not automatic cancellation, is required to become ready.
+        if(error?.code==='BATCH_REVIEW_REFRESH_REQUIRED') return pending();
         try {
             const current=(await checked(jobs,jobId,'read',{runReference})).job;
             // A lost completion reply must replay its durable terminal result,

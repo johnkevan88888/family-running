@@ -1,5 +1,48 @@
 # Testing And Release Protocol
 
+## Anchored batch review refresh — local-only, 23 October 2026
+
+Run the new `tests/gallery-batch-review-refresh.mjs`, the existing batch GitHub,
+protected workflow, publication/storage and coordinated-purge groups, the
+single-photo review/recovery groups, and the complete 105-group code suite.
+Generated images and fake transports must be the only media/service fixtures.
+The refresh tests cover both areas and 1/2/20 members; exact unchanged manifests,
+original receipts and protected database rows; repeated/lost-response recovery;
+bounded forward history; denied/uncertain updates; concurrent branch/main/PR
+changes; stale-main pending without cancellation; and pre/post-update consent
+or derivative failure. No source read or media/storage/ledger write is allowed
+in the refresh itself.
+
+Exercise subsequent owner publication, pre-publication withdrawal, independent
+post-publication member removal and current host-absence proof with the refreshed
+tip but original immutable receipts. Never infer host absence from deleted R2
+objects. The Git-based photo-path tests must recognize the exact refreshed tree
+and fresh test-merge checkout without changing the classifier; stale cached
+checkouts must still fall back to the full suite. Inspect both-mode desktop/mobile
+screenshots and prove the canonical 117-file public artifact, 72 CSVs, suppression,
+CNAME and Family 2 / Everyone 0 manifest bytes are unchanged.
+
+`gallery-batch-review-refresh.yml` is manual, exact-main and protected by the
+existing `gallery-processing` environment and publication/purge concurrency. Its
+only input is an existing batch job ID; the runner reads the recorded original
+claim rather than transferring it. It uses existing promotion credentials only
+for read/check operations, plus the restricted review App token and existing
+negative main-write probe. There is no processing, original, finalizer, verifier,
+purge or deployment operation. Consent expiry, publication-requested or terminal
+jobs, changed membership,
+unknown history and unavailable evidence fail closed. A late failure can close
+the exact review only; any cleanup still needs separately authorized recovery.
+
+Local success is neither refreshed GitHub CI nor publication readiness. Release
+this runner/workflow correction first, then separately approve the protected
+refresh and fresh candidate checks/preview, stopping unmerged. The actual refresh
+advances the candidate tip while preserving the original commit, PR description
+and manifest; that change is not included in local-only approval. Subsequent
+lifecycle continuation must execute the released anchored client while preserving
+the original held job/run. Re-running an old Actions checkout does not acquire
+new code and must not be described as current-code recovery. Do not rewrite D1
+receipts, renew consent, replay processing or transfer claims to work around it.
+
 ## Guardian confirmation correction — local-only, 22 October 2026
 
 Run the complete 104-group code suite, including the mixed adult/minor save-first
