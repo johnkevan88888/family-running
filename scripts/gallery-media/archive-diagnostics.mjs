@@ -1,6 +1,10 @@
 import {GalleryMediaProcessingError} from './errors.mjs';
 
 const stages=new Set(['admission','original-download','metadata-stripping','framing-check','photo-display','photo-thumbnail','promotion']);
+const refreshStages=new Set(['configuration','permission-boundary','service-configuration','job-configuration',
+    'job-read','job-evidence','candidate-evidence','photo-eligibility','review-configuration','main-ref',
+    'review-history','review-identity','review-base-history','eligibility-recheck','manifest-proof','main-history',
+    'refresh-commit','branch-readback','review-closure']);
 const operations=new Set(['start','original','photo-display','photo-thumbnail','promote','candidate','review','review-reserve','review-open',
     'review-close','review-write','review-terminal','removal-reserve','removal-open','manifest-absence','close','cleanup','verify',
     'read','claim','complete','purge-inspect','purge','batch-reserve','batch-write','batch-open','batch-terminal',
@@ -14,6 +18,13 @@ const reasons=new Set(['request-rejected','transport-unavailable','timeout','res
 // Never serialize an Error, response, URL, header, ID, hash, tag or source path.
 export function safeArchiveDiagnostic(event) {
     if(!event || !reasons.has(event.reason)) return null;
+    if(event.kind==='batch-review-refresh' && refreshStages.has(event.stage) && event.reason==='step-failed') {
+        const position=event.photoIndex!==undefined || event.photoCount!==undefined;
+        if(position && !(Number.isInteger(event.photoIndex) && Number.isInteger(event.photoCount) &&
+            event.photoIndex>=1 && event.photoIndex<=event.photoCount && event.photoCount<=20)) return null;
+        return {kind:'batch-review-refresh',stage:event.stage,reason:'step-failed',
+            ...(position?{photoIndex:event.photoIndex,photoCount:event.photoCount}:{})};
+    }
     if(event.kind==='transport' && ['processing','promotion','verifier','finalizer'].includes(event.service) && operations.has(event.operation)) {
         return {kind:'transport',service:event.service,operation:event.operation,reason:event.reason,
             ...(Number.isInteger(event.status) && event.status>=400 && event.status<=599?{status:event.status}:{})};
@@ -39,9 +50,19 @@ export function archivePhotoStep(observer,photoIndex=1,photoCount=1) {
         }
     };
 }
+export function batchReviewRefreshStep(observer) {
+    return async (stage,operation,photoIndex,photoCount)=>{
+        try {return await operation();}
+        catch(error) {
+            reportArchiveDiagnostic(observer,{kind:'batch-review-refresh',stage,reason:'step-failed',photoIndex,photoCount});
+            throw error;
+        }
+    };
+}
 export function formatArchiveDiagnostic(event) {
     const safe=safeArchiveDiagnostic(event);if(!safe) return '';
-    const location=safe.kind==='photo-handoff'?`Photo ${safe.photoIndex} of ${safe.photoCount}: ${safe.stage}`:
+    const location=safe.kind==='batch-review-refresh'?`batch review refresh / ${safe.stage}${safe.photoIndex?` / photo ${safe.photoIndex} of ${safe.photoCount}`:''}`:
+        safe.kind==='photo-handoff'?`Photo ${safe.photoIndex} of ${safe.photoCount}: ${safe.stage}`:
         `${safe.service}/${safe.operation}`;
     return `Gallery stopped at ${location} (${safe.reason}${safe.status?`; HTTP ${safe.status}`:''}).\n`;
 }

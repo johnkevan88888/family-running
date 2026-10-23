@@ -1,5 +1,206 @@
 # Active Work
 
+## Stale-base correction — approved release checks passed, 23 October 2026
+
+John approved synchronization/retest, a separate standard correction PR,
+required checks and both-mode preview review, then merge. Normal Pages is
+conditional on unchanged public output and Family 2 / Everyone 0. PR #155 must
+remain untouched and unmerged; no Worker deployment, live refresh or photo
+publication is included.
+
+Fresh fetch confirms current main remains
+`e36498fd1ba70662ae993ab940d790023f0c37de`, the exact completed 105-group
+local-suite baseline, so no rebase was needed. The further **19-group release
+retest passed**, with all nine working-file hashes unchanged throughout and
+all six implementation/test hashes matching that full suite. It includes the
+143 refresh cases, existing batch/client/handoff/publication/purge safety
+integrations, repository/vendor/CSV/Gallery validation, artifact safety and
+both-mode browser checks. Only this release handoff was added afterward.
+
+A fresh raw-Git current-main build and anonymous live-site reads prove all
+**117 public files** byte-identical, including 72 CSVs, CNAME, suppression and
+**Family 2 / Everyone 0**. Eight desktop/mobile Gallery/championship checks
+passed for both modes with all external media blocked. The GET-only #155
+checkpoint at 21:20:11 UTC confirms its original head
+`469bad70fd1288e92efe05829c566decc01f9468`, description and one-file manifest
+unchanged; it is open/unmerged with no auto-merge. This is repository/static
+evidence, not fresh private eligibility or a live refresh.
+
+Ignored evidence: `test-artifacts/stale-base-release-retest.json`,
+`stale-base-current-main-canonical-proof.json`,
+`release-verification-stale-base-before-release/report.json`, and
+`stale-base-release-before-snapshot.json`. The exact nine-file scope remains
+listed below. Next within the approved gate: commit/push that correction,
+required CI, successful standard preview review, exact-head merge and normal
+Pages artifact/live verification. Keep #155 and its held job/photos/evidence
+unchanged; any protected refresh is still separately approved.
+
+## Batch refresh stale-base correction — locally complete, 23 October 2026
+
+John approved only a local fix and tests for stale-base handling and clearer
+failure reporting. Work is isolated on `codex/gallery-batch-refresh-stale-base`
+at released main `e36498fd1ba70662ae993ab940d790023f0c37de`; the parent's
+unrelated changes and the existing handoffs below are preserved. No fetch,
+GitHub/Cloudflare resource call, PR change, live refresh or media access is part
+of this preparation. PR #155's last remote checkpoint remains the historical
+record below, not a newly verified live result.
+
+The original client first failed against a synthetic reproduction of the
+observed stale PR-base response. The correction accepts an older base field only
+for a review with an independently verified original receipt/history and only
+after proving `original base -> reported base -> pinned actual main` ancestry.
+Both PR endpoints are checked independently. Creation and unanchored replay keep
+exact-base equality. Main/ref races, exact ownership, immutable candidate bytes,
+one-file tree, current consent/exclusion/framing/derivative checks, bounded
+history and non-forced updates retain their existing protections. Subsequent
+anchored reads apply the same proof; no stored receipt or PR metadata is repaired.
+
+Failure reporting now identifies allowlisted refresh stages and, when known,
+the affected photo's position. Existing sanitized transport categories are
+forwarded, but raw errors, responses, IDs, URLs, tags, consent and credentials
+cannot enter these diagnostics. An observer failure cannot change the outcome;
+an uncertain branch-update reply is observed, not blindly retried. No processing,
+cleanup, publication or additional service capability was added.
+
+Validation: all **143 focused synthetic refresh cases pass**, including
+stale snapshots, unsafe ancestry/ownership rejection, lost replies, immutable
+protected records, subsequent publication/removal simulations, and fake-HTTP
+execution of the real runner's failure paths. The **complete 105-group code
+suite passed**, with all six implementation/test file hashes unchanged before
+and after execution. This includes the existing 169-case batch GitHub client,
+138-case photo-only review classifier, consent/withdrawal/removal integrations,
+repository/vendor/CSV/Gallery validation, artifact containment and both-mode
+browser smoke tests. Local D1 checks used isolated temporary Wrangler storage,
+not Cloudflare. Fresh championship and Gallery desktop/mobile screenshots for
+both modes were visually reviewed. Gallery screenshots block all off-origin
+media and prove layout/fields, not real-photo pixels or live delivery; independent
+synthetic framing pixel tests also passed.
+
+A contained raw-Git build plus exactly the nine scoped working-tree files
+matches all **117 public files** from released main byte-for-byte, including all
+72 CSVs, CNAME, suppression and **Family 2 / Everyone 0**. Evidence is ignored:
+`test-artifacts/stale-base-red-test.log`, `stale-base-final-focused.log`,
+`stale-base-full-suite.log`, `stale-base-full-suite.json` and
+`stale-base-final-canonical-proof.json`. The final artifact comparison includes
+this completed documentation; the earlier pending proof is also retained.
+
+Exact tracked scope: `scripts/gallery-media/archive-diagnostics.mjs`,
+`scripts/gallery-media/batch-review-refresh.mjs`,
+`scripts/gallery-media/github-batch-review-client.mjs`,
+`scripts/run-gallery-batch-review-refresh.mjs`,
+`tests/gallery-batch-review-refresh.mjs`,
+`tests/helpers/private-gallery-lifecycle-fixtures.mjs`, and these three docs:
+`docs/active-work.md`, `docs/decision-log.md`, `docs/testing-and-release-protocol.md`.
+No runtime website/data/manifest, Worker, migration, workflow or dependency changed.
+
+No local blocker remains for this correction. Next gate: approve synchronization/
+retest and a separate
+correction PR/checks/preview/merge, with unchanged public output and Family 2 /
+Everyone 0. One protected refresh of #155 remains a later, separate approval;
+local tests do not prove it. Preserve the existing job, photos, manifest, consent,
+tags, framing and history. Do not replay the original claim, reset the batch or
+ask John to re-upload the photos. No deployment, migration, purge or publication
+is required or authorized by this local correction.
+
+## PR #155 protected refresh — stopped unchanged, 23 October 2026
+
+John approved one protected refresh, then fresh checks/preview, stopping with
+#155 unmerged. Exactly one manual run was dispatched:
+[`40015778580`](https://github.com/johnkevan88888/family-running/actions/runs/40015778580),
+attempt 1, pinned to current main `e36498fd1ba70662ae993ab940d790023f0c37de`
+and original held job `job_dbf12644-dad4-4f89-9409-eca6ba7eafcd`. Existing
+`gallery-processing` owner review was approved for that run; no environment,
+credential, branch policy or GitHub setting changed. The run failed in the
+refresh step at 20:00:58 UTC. Its log contains only the generic fail-closed
+message, so the exact live failure stage is not available. No retry was made.
+
+GET-only reconciliation at 20:02:36 UTC confirms #155 is still open/unmerged,
+without auto-merge, on its unchanged original head
+`469bad70fd1288e92efe05829c566decc01f9468`. Title, description and the sole
+`gallery-data/family.json` candidate remain byte-identical; manifest SHA-256 is
+`64639b06c1ccfaa2c16683db37a273b31e79fca2ef0dc02f8ef74b11fe4cb8a1`.
+Main and live manifest bytes remain unchanged: Family 2 / Everyone 0. Candidate
+Family 4 / Everyone 0 is still review-only. No fresh synchronize event/checks or
+refreshed preview were established, and the older preview is not fresh evidence.
+
+A bounded GET-only diagnostic reproduced a definite client blocker using the
+actual GitHub responses: both PR endpoints report base SHA `532f64a...`, while
+the main ref is `e36498fd...`. `refreshStoredGalleryBatchReview` passes new main
+to `checkedPull` before updating the review; that strict metadata equality
+rejects the unchanged PR with `Changed, stale or unowned batch review.` The
+diagnostic made seven GETs through the released client, no writes and no
+protected/media calls. It used a public-history reconstruction, not an actual
+protected receipt or eligibility approval. This proves the reproducible GitHub
+metadata blocker, but the generic run log cannot exclude an earlier protected
+failure. The synthetic fixture's `advanceMain` automatically updates every
+PR's base field, so the current tests do not represent this observed response.
+
+Ignored evidence: `pr155-protected-refresh-before.json`,
+`pr155-protected-refresh-failed.json`, and
+`pr155-refresh-read-only-diagnosis.json` under `test-artifacts/`. No production
+source was edited; only this local handoff and ignored diagnostics were added.
+No Worker deployment, migration, original read/re-upload, media processing,
+consent/tag/framing write, cleanup, purge, merge or publication was performed.
+The original claim was not transferred or replayed.
+
+Next gate: approve a local-only correction/test for this exact stale-base
+response, preserving independent main-ref/ancestry, ownership, immutable manifest
+and all per-photo safety checks, with privacy-safe failure-stage reporting.
+Release and another protected refresh remain separately gated. Do not reset the
+batch, renew consent or ask the user to upload/tag/frame these photos again.
+
+## Batch refresh correction — released and production verified, 23 October 2026
+
+The approved correction was released through PR
+[#157](https://github.com/johnkevan88888/family-running/pull/157), preserving the
+13-file scope listed below. Exact reviewed head is
+`283c095cbd721d6dd1e7c273c99807e3d50f0536`. Required run `40008143517` passed all
+105 full-suite groups, in addition to the 17-group stable-source local release
+retest. Successful Netlify deployment `6adbaf1e0d6ba0fbc3dd3aaf` passed eight
+both-mode Gallery/championship desktop/mobile browser cases, and responsive
+screenshots were visually reviewed. The exact appended Netlify toolbar was
+accounted for only in ignored preview evidence; no shipped source or assertion
+was weakened. Production proof below uses raw bytes without transformations.
+
+Final pre-merge checks verified the unchanged base, exact head and 13-file diff,
+all required checks, successful standard preview, resolved review threads and
+the existing owner-only PR restriction. The owner-only PR merge completed at
+19:19:46 UTC; no GitHub settings changed or failed checks were bypassed. Main is
+`e36498fd1ba70662ae993ab940d790023f0c37de`, with exactly the reviewed head's tree.
+
+Normal push-triggered Pages run `40010545611` succeeded for that exact merge.
+Downloaded `github-pages` artifact `12526057047` and all 117 live public file
+responses match pre-release main byte-for-byte, including all 72 CSVs, CNAME,
+suppression and Family 2 / Everyone 0. Eight post-release captured-live browser
+checks passed. External media and analytics were blocked; this confirms the
+unchanged static release, not fresh photo-pixel, consent or host-removal proof.
+
+Final GET-only PR #155 reconciliation at 19:21:45 UTC confirms it is still open,
+unmerged, targeting main, with no auto-merge. Head remains
+`469bad70fd1288e92efe05829c566decc01f9468`; exact title/description and its sole
+candidate manifest are unchanged. Manifest SHA-256 remains
+`64639b06c1ccfaa2c16683db37a273b31e79fca2ef0dc02f8ef74b11fe4cb8a1`.
+The newly released refresh workflow has zero runs. Existing environment review,
+main-only branch policy and required secret names were read only; values were
+not read and credentials/settings were not changed. No Worker deployment,
+migration, live refresh, original access, processing, purge or photo publication
+occurred. The parent's unrelated dirty work remains untouched.
+
+Ignored consolidated proof is
+`test-artifacts/batch-refresh-final-release-proof.json`, completed successfully
+at 19:21:56 UTC. It binds the local retest, required CI, original/candidate/merged
+artifacts, actual Pages archive, live verification and before/after #155 hashes.
+Supporting preview review is in `test-artifacts/batch-refresh-preview-review.md`.
+This completion handoff is local only and is not an extra post-merge release.
+
+No blocker remains for the approved correction release. The next separate gate
+is one protected refresh of #155 with current per-photo safety checks, then fresh
+candidate CI and preview, stopping unmerged. That would advance only its review
+tip while retaining the original anchor and exact photo manifest; it has not
+been performed here. Historical Actions reruns still pin old code, so later
+lifecycle continuation must deliberately use released code with the original
+held job/run, without transferring the claim or replaying completed work.
+
 ## Batch refresh correction — release approved and retested, 23 October 2026
 
 John approved synchronizing/retesting and releasing this correction through its

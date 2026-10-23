@@ -134,12 +134,14 @@ export function syntheticGitHub() {
         }
         assert.fail(`Forbidden/unimplemented synthetic repository request ${method} ${path}`);
     };
-    return {state,fetchImpl,token:'synthetic-private-gallery-token',advanceMain(extraContents={}) {
+    return {state,fetchImpl,token:'synthetic-private-gallery-token',advanceMain(extraContents={}, {updatePullBase=true}={}) {
         const prior=state.main;
         if(!state.commits.has(prior)) state.commits.set(prior,{sha:prior,tree:{sha:'b'.repeat(40)},parents:[],contents:mainContents()});
         Object.assign(state.extraContents,extraContents);state.main=sha(`forward-main:${prior}`);
         state.commits.set(state.main,{sha:state.main,tree:{sha:'b'.repeat(40)},parents:[{sha:prior}],contents:mainContents()});
-        state.pulls.forEach(pull=>{pull.base.sha=state.main;});return state.main;
+        // GitHub may retain the last PR metadata snapshot after main advances.
+        // Explicitly exercise that case without changing the actual Git graph.
+        if(updatePullBase) state.pulls.forEach(pull=>{pull.base.sha=state.main;});return state.main;
     },ownerMerge(review) {
         const pull=state.pulls.find(p=>p.number===review.pullRequest.number),commit=state.commits.get(review.headSha);
         pull.state='closed';pull.merged_at='2026-10-10T12:00:00.000Z';pull.merge_commit_sha=review.headSha;

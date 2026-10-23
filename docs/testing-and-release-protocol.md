@@ -1,5 +1,34 @@
 # Testing And Release Protocol
 
+## Stale-base batch refresh and failure reporting — local-only, 23 October 2026
+
+First reproduce the observed response shape offline: main has moved forward
+while both PR endpoints retain an intermediate base snapshot. The unchanged
+client must fail before the correction. Use synthetic manifests and transports,
+never the live PR, protected job or real photos as fixtures.
+
+Exercise original/intermediate/current reported bases in both modes with 1, 2
+and 20 photos, independently lagging list/detail endpoints, exact manifest and
+receipt preservation, non-forced update, lost replies and read-only repeat.
+Reject malformed/missing/uppercase SHA values, pre-anchor/unrelated/side-branch/
+future bases, unavailable or invalid ancestry proof and changed PR identity at
+either endpoint. Keep existing concurrent main/branch changes, consent and
+derivative failures, closure, publication/removal and immutable database tests.
+Actual protected service fixtures must still prove no original access or
+storage/ledger writes during refresh and independent host-absence checks later.
+
+Test the real runner with fake HTTP for configuration, permission-boundary,
+service-configuration and job-read failures. Diagnostics must identify the
+allowlisted stage and affected photo position, where known; raw errors, secrets,
+response bodies, IDs and paths must never escape. Throwing observers cannot
+change outcomes; an uncertain update is read back, not blindly retried.
+
+Run the focused refresh and existing batch/client/handoff/lifecycle groups plus
+the complete code suite, including local D1 and both-mode responsive browser
+checks. Prove the 117-file public artifact is unchanged, including all 72 CSVs,
+CNAME, suppression and Family 2 / Everyone 0. Release and a new protected refresh
+remain separate gates; local success is not current consent or live CI proof.
+
 ## Anchored batch review refresh — local-only, 23 October 2026
 
 Run the new `tests/gallery-batch-review-refresh.mjs`, the existing batch GitHub,
