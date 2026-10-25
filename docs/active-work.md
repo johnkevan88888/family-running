@@ -1,5 +1,19 @@
 # Active Work
 
+## Updater/Gallery correction release — approved, 25 October 2026
+
+John explicitly approved pushing, opening the PR, merging and cleaning up the
+completed correction. Proceed through the standard Netlify preview, required
+GitHub checks and exact-head review before merging. Verify the Pages run for
+the merge and unchanged public output before removing this feature branch.
+Preserve the stopped `data/refresh-20261025-162601` export/state, its staging
+and promotion evidence, and the separate domain-transfer-notes stash. Cleanup
+is limited to this correction's worktree/branch, with ignored validation
+evidence copied to the primary `test-artifacts/data-updater-release-20261025`.
+The private-service activation and recovery/publication of the separate stopped
+data refresh remain distinct work; this release does not open Excel or publish
+that pending bundle. The implementation evidence below remains applicable.
+
 ## Isolated updater and Official Gallery race choices — local implementation, 25 October 2026
 
 John requested that unrelated Git edits no longer block the routine updater.
