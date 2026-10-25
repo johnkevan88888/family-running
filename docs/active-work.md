@@ -1,11 +1,13 @@
 # Active Work
 
-## Isolated data updater — local implementation, 25 October 2026
+## Isolated updater and Official Gallery race choices — local implementation, 25 October 2026
 
 John requested that unrelated Git edits no longer block the routine updater.
-Work is isolated on `codex/data-updater-isolation` from main `54a0ac1` in the
-managed `data-updater-isolation` worktree. The current data refresh in the
-primary checkout is not being changed, resumed or exported by this work.
+Work is isolated on `codex/data-updater-isolation` in the managed
+`data-updater-isolation` worktree, rebased from `54a0ac1` onto main `67297b3`
+after John's completed data PR #160. The only overlap was the generated
+catalogue, regenerated from main's complete bundle. The current second data
+refresh in the primary checkout is not being changed, resumed or exported.
 
 New launches use a dedicated clean worktree; pending files and the caller's
 index/branch remain in place. Existing saved updates resume in their original
@@ -15,11 +17,51 @@ approval, review and live-verification checks remain intact. Final isolated
 cleanup leaves normal main and unrelated edits alone. No workbook, live data,
 remote branch, PR, merge, setting or deployment has been changed.
 
-Validation is in progress: synthetic real-Git isolation/recovery cases and
-the existing updater/refresh/policy tests, followed by the full suite,
-both-mode responsive screenshots and a byte-for-byte public-artifact comparison.
-Record final results here before handoff. Release requires the standard preview
-path and John's explicit push/PR/merge approval.
+The second reported stop was separate: the Family uploader browser test picked
+the first John result at Niagara Falls, now an intermediate Unofficial split,
+then omitted the required distance choice. The original failure was reproduced
+using synthetic photos and a copied public-derived catalogue. John clarified
+the product rule: only Official results, keeping each runner's longest Official
+distance for the exact event/date. Both private catalogues now apply that rule,
+retain the full pictured-person roster and use a new revision namespace to
+reject stale saved indices. No public results or published photo associations
+are rewritten. The private Family help text explains the rule.
+
+The final combined change at code commit `85e750f` on main `67297b3` passed the
+complete **107-group suite**, exit 0, on 25 October at 17:11 UTC. This includes
+repository safety (456 tracked files), vendor/CSV/News/Gallery validation,
+actual local D1 integration, artifact safety/build, both-mode browser smoke and
+responsive captures. All **24** isolation, **48** automatic refresh and **46**
+merge-policy cases pass. The earlier isolation-only full run also passed on
+`54a0ac1`. Focused catalogue tests pass, covering official splits, independent people/dates/events, mile/km
+ordering, unofficial-only people, duplicates and unknown-distance refusal.
+The corrected desktop/mobile uploader journey also passes against an ignored
+source fixture containing the exact stopped 72-file bundle
+`20261025T162608003Z-6077E17F`; all files remain byte-identical to the primary
+checkout. Its Niagara choice is exactly John's `H. Mar`. Captures were inspected.
+The saved real phase remains `promoted` on `data/refresh-20261025-162601`.
+
+The rebuilt public artifact has exactly the same 117 paths and bytes as main
+`67297b3`, including all 72 CSVs, CNAME and Gallery manifests. Evidence is under
+`test-artifacts/updater-official-artifact-comparison.json`,
+`updater-official-longest-full-suite.log`, and
+`data-refresh-browser-repro-20261025/official-longest-proof.json` plus its
+before/after browser logs. Fresh Family/Everyone desktop/mobile championship
+captures were inspected, as were the corrected private-uploader captures.
+External media is blocked in the public smoke fixtures; this is local layout
+evidence, not live media-delivery proof.
+Release requires the standard preview path and John's explicit push/PR/merge
+approval; activation of the private services is separate. The existing stopped
+data branch still has old code: reconcile it with the released correction and
+revalidate its preserved complete bundle before resuming. Do not re-export,
+discard its state, or add code changes to a data-only publication.
+
+The earlier domain-transfer notes remain recoverable in stash
+`66294a84aec4405123495a615fb88bfa4785eb49`
+(`data-updater-recovery-20261025-domain-transfer-notes`) and the primary
+`test-artifacts/data-update-recovery-20261025` backups. Reconcile those notes
+after the legacy update is completed; do not drop the stash or overwrite this
+handoff. No push, PR, merge, service activation or workbook access occurred here.
 
 ## Current-code batch publication continuation — approved work in progress, 23 October 2026
 
