@@ -1,5 +1,42 @@
 # Decision Log
 
+## Gallery race choices use each runner's longest Official result — 25 October 2026
+
+John requested that the uploader exclude Unofficial times and shorter splits,
+including officially timed splits. The generated catalogue filters on exported
+`TimeClass` first, then keeps the longest distance per athlete, exact event and
+date. It applies in Family and Everyone; a different athlete's standalone 5 km
+remains selectable even when someone else completed the half marathon. The
+public result-bearing roster remains complete for other people pictured.
+
+This is editorial selection using exported facts; it changes no workbook data,
+championship calculation, public result detail or published photo association.
+Supported distance labels are compared by physical length, never alphabetical
+order; unknown Official labels fail generation. The source-revision namespace
+changes with the policy so saved indices and consent cannot be reinterpreted
+against a reordered catalogue. Existing history, originals and publication gates
+remain intact. The private services use the rebuilt catalogue; release and
+activation require the existing separate approvals.
+
+## Run routine data updates in a dedicated Git worktree — 25 October 2026
+
+John requested that irrelevant Git changes stop blocking the data updater.
+Fresh updates now use a dedicated, reusable worktree from fetched main. The
+normal checkout's branch, files and index are not switched, stashed, reset or
+included. This separates unfinished work from the exact source and complete
+CSV bundle the updater validates. Cleanliness and data-only restrictions remain
+strict inside the updater workspace.
+
+The workbook's fixed staging parent remains under the primary checkout. A
+shared physical-path and reciprocal Git-registration gate verifies the isolated
+workspace before Node validation or the PowerShell exporter uses that location.
+Existing saved updates keep their original execution path. PROMOTE, PUBLISH,
+fresh review, MERGE, exact-head checks and production verification retain their
+existing meaning. Isolated cleanup detaches only its own folder and does not
+advance local main. The managed folder and its generated test evidence remain
+available for reuse; recorded export/promotion/state artifacts retain their
+existing verification-dependent cleanup rules.
+
 ## Current-code batch publication keeps the original held run — 23 October 2026
 
 An old Actions rerun executes its original checkout. After an anchored review

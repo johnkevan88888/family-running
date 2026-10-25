@@ -9,7 +9,8 @@ import {
     listPublicCsvFiles,
     parseCsv,
     repoRoot,
-    resolveStagedRoot
+    resolveStagedRoot,
+    updateWorkspaceContext
 } from './export-bundle-tools.mjs';
 import { galleryAdminCatalogOutputRelativePath } from './build-gallery-admin-catalog.mjs';
 import {
@@ -26,6 +27,7 @@ import {
 } from './data-update-refresh.mjs';
 
 const STATE_VERSION = 1;
+export const ISOLATED_DATA_UPDATE_ENGINE_VERSION = 1;
 const REPOSITORY = 'johnkevan88888/family-running';
 const BASE_BRANCH = 'main';
 const REQUIRED_CHECK = 'Test static site';
@@ -322,6 +324,9 @@ export function createWorkbookExportArguments({
     }
     if (workbookPath) {
         argumentsList.push('-WorkbookPath', path.resolve(workbookPath));
+    }
+    if (updateWorkspaceContext) {
+        argumentsList.push('-NodeExecutable', process.execPath);
     }
 
     return argumentsList;
@@ -693,6 +698,14 @@ async function main() {
     }
 }
 
+export function requireIsolatedPreparationBase(startingCommit, fetchedCommit, isolated = Boolean(updateWorkspaceContext)) {
+    if (isolated && startingCommit !== fetchedCommit) {
+        throw new Error('Production changed while the updater workspace was being prepared. ' +
+            'Start normally again, without --resume, so its code and dependencies refresh together. ' +
+            'No workbook was opened and no data branch was created.');
+    }
+}
+
 function prepareUpdate(options, tools) {
     requireCleanWorkingTree(tools.git);
     const startingPoint = {
@@ -706,6 +719,7 @@ function prepareUpdate(options, tools) {
     });
 
     const baseCommit = captureGit(tools.git, ['rev-parse', 'origin/main']).trim();
+    requireIsolatedPreparationBase(startingPoint.commit, baseCommit);
 
     const contractDefinition = JSON.parse(captureGit(
         tools.git,
@@ -1546,6 +1560,18 @@ async function verifyMergedUpdateInProduction(state, tools) {
     return state;
 }
 
+export function completedUpdateCheckoutArguments(state, { isolated, currentBranch }) {
+    if (isolated) {
+        const commit = state.phase === 'production-verified' ? state.mergeCommitSha : state.baseCommitSha;
+        if (!/^[0-9a-f]{40}$/.test(commit || '')) throw new Error('The isolated cleanup commit is invalid.');
+        return [['switch', '--detach', commit]];
+    }
+    return [
+        ...(currentBranch === BASE_BRANCH ? [] : [['switch', BASE_BRANCH]]),
+        ['merge', '--ff-only', `origin/${BASE_BRANCH}`]
+    ];
+}
+
 function cleanupCompletedUpdate(state, git, { merged }) {
     if (merged && state.phase !== 'production-verified') {
         throw new Error(
@@ -1555,25 +1581,28 @@ function cleanupCompletedUpdate(state, git, { merged }) {
 
     const currentBranch = captureGit(git, ['branch', '--show-current']).trim();
 
-    if (![state.branch, BASE_BRANCH].includes(currentBranch)) {
+    const isolated = Boolean(updateWorkspaceContext);
+    const allowedBranches = isolated ? [state.branch, ''] : [state.branch, BASE_BRANCH];
+    if (!allowedBranches.includes(currentBranch)) {
         throw new Error(
             `Cleanup expected ${state.branch} or ${BASE_BRANCH}, but the current branch is ${currentBranch || 'detached HEAD'}.`
         );
     }
+    const checkoutCommands = completedUpdateCheckoutArguments(state, { isolated, currentBranch });
+    if (isolated && !currentBranch &&
+        captureGit(git, ['rev-parse', 'HEAD']).trim() !== checkoutCommands[0][2]) {
+        throw new Error('The detached updater workspace moved during cleanup; it was retained.');
+    }
 
     requireCleanWorkingTree(git);
-    console.log('Refreshing local main and removing the completed data branch...');
+    console.log(isolated ? 'Finishing the isolated data update...' : 'Refreshing local main and removing the completed data branch...');
     runCommand(git, ['fetch', 'origin', BASE_BRANCH, '--prune'], {
         label: 'Post-update GitHub refresh'
     });
 
-    if (currentBranch !== BASE_BRANCH) {
-        runCommand(git, ['switch', BASE_BRANCH], { label: 'Return to main' });
+    for (const args of checkoutCommands) {
+        runCommand(git, args, { label: 'Finish data workspace checkout' });
     }
-
-    runCommand(git, ['merge', '--ff-only', `origin/${BASE_BRANCH}`], {
-        label: 'Fast-forward local main'
-    });
 
     const localDataBranch = captureGit(
         git,
@@ -1581,11 +1610,11 @@ function cleanupCompletedUpdate(state, git, { merged }) {
     ).trim();
 
     if (localDataBranch) {
-        if (merged) {
+        if (merged || isolated) {
             refuseCheckedOutBranch(git, state.branch);
             runCommand(git, preparationBranchDeletionArguments({
                 branch: state.branch,
-                baseCommit: state.commitSha
+                baseCommit: merged ? state.commitSha : state.baseCommitSha
             }), {
                 label: 'Delete exact merged local data branch'
             });
@@ -1609,9 +1638,13 @@ function cleanupCompletedUpdate(state, git, { merged }) {
         console.log('Family:           https://www.aceofrace.com/?site=family');
         console.log('Everyone:         https://www.aceofrace.com/?site=everyone');
         console.log('Both live modes rendered from the exact expected public-data bundle.');
-        console.log('Local main is current and update artifacts were removed.');
+        console.log(isolated
+            ? 'Update artifacts were removed. Your normal folder and local main were left in place.'
+            : 'Local main is current and update artifacts were removed.');
     } else {
-        console.log('No-change update cleaned up. Local main is current and no update branch remains.');
+        console.log(isolated
+            ? 'No-change update cleaned up. Your normal folder and local main were left in place.'
+            : 'No-change update cleaned up. Local main is current and no update branch remains.');
     }
 }
 
@@ -2043,6 +2076,11 @@ Usage:
   pnpm run data:update -- --resume
   pnpm run data:update -- --prepare-only
   pnpm run data:update -- --workbook "C:\\path\\source.xlsm"
+
+The launcher runs new updates in a dedicated clean Git workspace. Pending edits
+in your normal folder stay in place and cannot enter the data update. Existing
+saved updates resume in their original folder. The updater's own workspace
+still requires a complete, validated, data-only change.
 
 The guided command creates a data branch, exports and validates the workbook,
 requires PROMOTE confirmation before promotion, runs all tests, and requires

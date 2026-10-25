@@ -48,7 +48,7 @@ const contractDefinition = JSON.parse(await fs.readFile(
 assert.doesNotMatch(launcher, /call pnpm run data:update/i);
 assert.match(launcher, /where node\.exe/i);
 assert.match(launcher, /codex-primary-runtime\\dependencies\\node\\bin\\node\.exe/i);
-assert.match(launcher, /"%node_exe%" "%~dp0scripts\\simple-data-update\.mjs" %\*/i);
+assert.match(launcher, /"%node_exe%" "%~dp0scripts\\data-update\.mjs" %\*/i);
 assert.match(launcher, /if not defined node_exe \([\s\S]*set "update_exit_code=1"/i);
 assert.match(launcher, /rerun this launcher with --resume/i);
 assert.match(updater, /'pr',\s*'checks'[\s\S]*'--required'[\s\S]*'--watch'[\s\S]*'--fail-fast'/i);

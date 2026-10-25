@@ -1,5 +1,26 @@
 # Active Work
 
+## Isolated data updater — local implementation, 25 October 2026
+
+John requested that unrelated Git edits no longer block the routine updater.
+Work is isolated on `codex/data-updater-isolation` from main `54a0ac1` in the
+managed `data-updater-isolation` worktree. The current data refresh in the
+primary checkout is not being changed, resumed or exported by this work.
+
+New launches use a dedicated clean worktree; pending files and the caller's
+index/branch remain in place. Existing saved updates resume in their original
+folder. The fixed workbook staging location is retained through a verified
+physical-path/Git-registration context shared by Node and PowerShell. Data-only,
+approval, review and live-verification checks remain intact. Final isolated
+cleanup leaves normal main and unrelated edits alone. No workbook, live data,
+remote branch, PR, merge, setting or deployment has been changed.
+
+Validation is in progress: synthetic real-Git isolation/recovery cases and
+the existing updater/refresh/policy tests, followed by the full suite,
+both-mode responsive screenshots and a byte-for-byte public-artifact comparison.
+Record final results here before handoff. Release requires the standard preview
+path and John's explicit push/PR/merge approval.
+
 ## Current-code batch publication continuation — approved work in progress, 23 October 2026
 
 John approved building/testing and releasing the runner-only correction through

@@ -2,7 +2,8 @@ param(
     [string]$WorkbookPath,
     [string]$StagingBase,
     [switch]$PreflightOnly,
-    [string]$ExpectedContractSignature
+    [string]$ExpectedContractSignature,
+    [string]$NodeExecutable
 )
 
 $ErrorActionPreference = 'Stop'
@@ -47,9 +48,26 @@ function Resolve-CanonicalAbsoluteDirectoryPath {
 }
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$workspaceRoot = Split-Path -Parent $repoRoot
+$exportHomeRoot = $repoRoot
+if ($null -ne $env:FAMILY_RUNNING_DATA_UPDATE_HOME) {
+    if (-not $NodeExecutable) {
+        throw 'The isolated export requires its verified Node runtime.'
+    }
+    # The same Node gate used by staged validation verifies the primary checkout,
+    # exact managed path, physical directories and reciprocal Git registration.
+    # No workbook is opened before this verification succeeds.
+    $verifiedHome = & $NodeExecutable (Join-Path $PSScriptRoot 'data-update-context.mjs')
+    if ($LASTEXITCODE -ne 0 -or @($verifiedHome).Count -ne 1) {
+        throw 'The isolated workbook export context could not be verified.'
+    }
+    $exportHomeRoot = Resolve-CanonicalAbsoluteDirectoryPath ([string]$verifiedHome) 'export home'
+    if ($exportHomeRoot -cne $env:FAMILY_RUNNING_DATA_UPDATE_HOME) {
+        throw 'The verified export home changed identity.'
+    }
+}
+$workspaceRoot = Split-Path -Parent $exportHomeRoot
 $approvedStagingBase = Resolve-CanonicalAbsoluteDirectoryPath `
-    (Join-Path $repoRoot 'test-artifacts\workbook-export-staging') `
+    (Join-Path $exportHomeRoot 'test-artifacts\workbook-export-staging') `
     'approved staging root'
 $contractDefinitionPath = Join-Path $PSScriptRoot 'workbook-export-contract.json'
 
@@ -93,7 +111,7 @@ if (-not $StagingBase.Equals(
     throw "The staging root must equal the approved repository staging root: $approvedStagingBase"
 }
 
-$repoPrefix = $repoRoot.TrimEnd('\') + '\'
+$repoPrefix = $exportHomeRoot.TrimEnd('\') + '\'
 $stagingPrefix = $StagingBase.TrimEnd('\') + '\'
 
 if (-not (Test-Path -LiteralPath $WorkbookPath -PathType Leaf)) {
