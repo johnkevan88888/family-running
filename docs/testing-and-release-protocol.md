@@ -1,5 +1,50 @@
 # Testing And Release Protocol
 
+## Official longest-distance Gallery choices — 25 October 2026
+
+Run catalogue generation/check and `tests/gallery-admin-catalog.mjs`. Cover
+Official 5 km/10 km splits within a half marathon, a longer Unofficial result,
+independent athletes at the same event, independent dates and events, numeric
+mile/km ordering, duplicate performances, unofficial-only people, unsupported
+Official distances and a changed revision for the same source under the old
+policy. Both modes must agree on selection without shrinking the pictured roster.
+Run the actual desktop/mobile Family journey against the regenerated catalogue,
+proving the longest Official distance saves without a split dropdown, different
+runners keep their distinct distances, and originals/consent remain protected.
+Retain server-side stale-index and wrong-result regression cases.
+
+Reproduce the reported pending-export browser failure in an ignored isolated
+source fixture with the entire 72-file public bundle, then test the correction
+against that same bundle. Do not open the workbook or resume the real update.
+Run the complete suite and inspect responsive captures. The public artifact
+must remain byte-identical to the current base; only the private catalogue's
+selection changes. No local test constitutes release or private-service activation.
+
+## Isolated routine data updater — 25 October 2026
+
+Run `node tests/data-update-workspace.mjs`, the existing updater, automatic
+refresh and merge-policy suites, then the complete runner. The new suite uses
+disposable real Git repositories and a local bare origin, fictional CSV/text
+files, and injected dependency/engine runners. It must never open Excel or
+contact GitHub. Prove that pending documents, source, public data, staged plus
+unstaged edits, and untracked files in the caller remain byte-identical, while
+the updater receives only committed production files.
+
+Cover primary/linked-worktree launch, newer main with overlapping caller notes,
+saved and legacy resume, dual-state refusal, missing state, dirty/staged/
+untracked worker content, unexpected branches, ownership/physical-path/Git
+registration checks, the Node context command used before PowerShell opens
+Excel, dependency and engine failures, concurrent-invocation locking, older
+engine refusal, caller-relative workbook arguments, and isolated final checkout
+without switching or advancing primary main. New isolation files and the
+PowerShell runner are protected during automatic data-branch refresh.
+
+Full repository, vendor, both-mode CSV/News/Gallery, artifact safety, browser
+smoke and desktop/mobile screenshot checks remain required. Compare the public
+artifact against the unchanged base. Local fixture
+success is not a real-workbook export or live release. Use the standard preview
+release path with explicit push/PR/merge approval.
+
 ## Current-code batch publication continuation — 23 October 2026
 
 Run `tests/gallery-batch-publication-continuation.mjs` against generated photos,

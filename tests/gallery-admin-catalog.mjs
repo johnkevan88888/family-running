@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -59,6 +60,22 @@ const publicAthleteRows = csvObjects(
     await fs.readFile(path.join(repoRoot, 'data', 'athlete_results.csv'), 'utf8')
 );
 const publicNameById = new Map(publicAthleteRows.map(row => [row.AthleteID, row.Participant]));
+// Independent ordered oracle for the current workbook's distance vocabulary.
+const distanceOrder = ['1 Mile', '5 km', '10 km', '15 km', '10 Mile', '20 km', 'H. Mar', '30 km', 'Marathon'];
+const officialRows = publicAthleteRows.filter(row => row.TimeClass === 'Official');
+assert.ok(officialRows.every(row => distanceOrder.includes(row.Distance)));
+const eligibleRows = officialRows.filter(row => !officialRows.some(other =>
+    other.AthleteID === row.AthleteID && other.Date === row.Date && other.Event === row.Event &&
+    distanceOrder.indexOf(other.Distance) > distanceOrder.indexOf(row.Distance)));
+
+// A data-identical old catalogue must not share the new saved-draft revision.
+const legacyHash = createHash('sha256').update('family-running-gallery-admin-catalog-source-v1\0');
+for (const relativePath of ['data/export_manifest.csv', 'data/athlete_results.csv',
+    'data/family/age_grade_standards.csv', 'data/everyone/age_grade_standards.csv'].sort()) {
+    const bytes = Buffer.from((await fs.readFile(path.join(repoRoot, relativePath), 'utf8')).replace(/\r\n?/g, '\n'));
+    legacyHash.update(`${relativePath}\0${bytes.length}\0`).update(bytes).update('\0');
+}
+assert.notEqual(builtSnapshot.sourceRevision, `sha256:${legacyHash.digest('hex')}`);
 
 for (const mode of ['family', 'everyone']) {
     const site = builtSnapshot.sites[mode];
@@ -93,7 +110,7 @@ for (const mode of ['family', 'everyone']) {
     );
     assert.deepEqual(new Set(site.catalog.athleteIds), expectedResultBearingIds);
 
-    const expectedResultEntryKeys = new Set(publicAthleteRows
+    const expectedResultEntryKeys = new Set(eligibleRows
         .filter(row => standardsIds.has(row.AthleteID))
         .map(row => JSON.stringify({
             athleteId: row.AthleteID,
@@ -103,7 +120,7 @@ for (const mode of ['family', 'everyone']) {
         })));
     assert.deepEqual(new Set(site.resultEntries.map(JSON.stringify)), expectedResultEntryKeys);
 
-    const expectedRaceKeys = new Set(publicAthleteRows
+    const expectedRaceKeys = new Set(eligibleRows
         .filter(row => standardsIds.has(row.AthleteID))
         .map(row => JSON.stringify({
             raceDate: exportedDateToIso(row.Date),
@@ -146,6 +163,62 @@ assert.deepEqual(await buildGalleryAdminCatalog(), builtSnapshot);
 
 const fixtureRoots = [];
 try {
+    const selectionRoot = await createFixture({ athleteRows: [
+        resultRow('runner-one', 'Runner One', '01/01/2026', '5 km'),
+        resultRow('runner-one', 'Runner One', '01/01/2026', '10 km'),
+        resultRow('runner-one', 'Runner One', '01/01/2026', 'H. Mar'),
+        resultRow('runner-one', 'Runner One', '01/01/2026', 'Marathon', 'Unofficial'),
+        resultRow('runner-two', 'Runner Two', '01/01/2026', '5 km'),
+        resultRow('runner-one', 'Runner One', '02/01/2026', '10 Mile'),
+        resultRow('runner-one', 'Runner One', '02/01/2026', '20 km'),
+        resultRow('runner-one', 'Runner One', '03/01/2026', '10 km'),
+        resultRow('runner-one', 'Runner One', '03/01/2026', '10 Mile'),
+        resultRow('runner-one', 'Runner One', '04/01/2026', 'H. Mar'),
+        resultRow('runner-one', 'Runner One', '04/01/2026', '30 km'),
+        resultRow('runner-one', 'Runner One', '04/01/2026', 'Marathon'),
+        resultRow('runner-one', 'Runner One', '04/01/2026', '5 km', 'Official', 'Separate Race'),
+        resultRow('runner-one', 'Runner One', '05/01/2026', '1 Mile'),
+        resultRow('runner-one', 'Runner One', '05/01/2026', '1000 m'),
+        resultRow('runner-two', 'Runner Two', '02/01/2026', '5 km', 'Unofficial'),
+        // A distinct Official performance at the same distance is one choice.
+        [...resultRow('runner-one', 'Runner One', '01/01/2026', 'H. Mar').slice(0, 4),
+            '00:24:00', '51.0%', 'Fixture Race', 'Official']
+    ] });
+    fixtureRoots.push(selectionRoot);
+    const selection = await buildGalleryAdminCatalog(selectionRoot);
+    const expectedOne = [
+        ['2026-01-05', 'Fixture Race', '1 Mile'],
+        ['2026-01-04', 'Fixture Race', 'Marathon'],
+        ['2026-01-04', 'Separate Race', '5 km'],
+        ['2026-01-03', 'Fixture Race', '10 Mile'],
+        ['2026-01-02', 'Fixture Race', '20 km'],
+        ['2026-01-01', 'Fixture Race', 'H. Mar']
+    ].map(([raceDate, raceEvent, raceDistance]) => ({ athleteId: 'runner-one', raceDate, raceEvent, raceDistance }));
+    assert.deepEqual(selection.sites.family.resultEntries, expectedOne);
+    assert.deepEqual(selection.sites.everyone.resultEntries.filter(row => row.athleteId === 'runner-one'), expectedOne);
+    assert.deepEqual(selection.sites.everyone.resultEntries.filter(row => row.athleteId === 'runner-two'), [{
+        athleteId: 'runner-two', raceDate: '2026-01-01', raceEvent: 'Fixture Race', raceDistance: '5 km'
+    }], 'Another runner who only ran 5 km stays eligible at the same event');
+
+    const unofficialRoot = await createFixture({ athleteRows: [
+        resultRow('runner-one', 'Runner One', '01/01/2026', 'Unmeasured training', 'Unofficial'),
+        resultRow('runner-two', 'Runner Two', '01/01/2026', '5 km', 'Unofficial')
+    ] });
+    fixtureRoots.push(unofficialRoot);
+    const unofficial = await buildGalleryAdminCatalog(unofficialRoot);
+    for (const mode of ['family', 'everyone']) {
+        assert.deepEqual(unofficial.sites[mode].resultEntries, []);
+        assert.deepEqual(unofficial.sites[mode].catalog.races, []);
+        assert.equal(unofficial.sites[mode].rosterEntries.length, mode === 'family' ? 1 : 2,
+            'Unofficial-only athletes remain available as other people pictured');
+    }
+
+    const unknownDistanceRoot = await createFixture({ athleteRows: [
+        resultRow('runner-one', 'Runner One', '01/01/2026', 'Unknown distance')
+    ] });
+    fixtureRoots.push(unknownDistanceRoot);
+    await assert.rejects(buildGalleryAdminCatalog(unknownDistanceRoot), /unsupported distance/);
+
     const duplicateSuppressionRoot = await createFixture({
         hiddenAthleteIds: ['runner-one', 'runner-one']
     });
@@ -344,16 +417,16 @@ async function createFixture(options = {}) {
     return root;
 }
 
-function resultRow(athleteId, participant, date) {
+function resultRow(athleteId, participant, date, distance = '5 km', timeClass = 'Official', event = 'Fixture Race') {
     return [
         athleteId,
         participant,
         date,
-        '5 km',
+        distance,
         '00:25:00',
         '50.0%',
-        'Fixture Race',
-        'Official'
+        event,
+        timeClass
     ];
 }
 

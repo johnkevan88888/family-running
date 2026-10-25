@@ -188,6 +188,48 @@ neither may be copied selectively.
 
 ## Streamlined routine data update
 
+New updates use a dedicated Git worktree at
+`test-artifacts/data-update-workspace/` in the primary checkout. This is a
+separate working folder containing the fetched production version. Pending
+notes, staged or unstaged source changes, untracked files, and local CSV edits
+in the normal folder stay exactly where they are and never enter the update.
+The launcher does not stash, reset, commit or switch that folder. Local source
+edits are not tested or published as part of a routine data refresh.
+
+The normal launcher and `pnpm run data:update` both select this workspace.
+Its own branch, index and saved state retain the existing strict data-only
+checks. Resume uses the same workspace and staged bundle. An older saved
+update is resumed in its original folder; it is never moved or re-exported.
+Complete that earlier update before starting an isolated one. Two saved
+updates are refused as ambiguous. Changes to the updater's own files still
+require inspection; they cannot be assumed irrelevant.
+
+The private workbook and its hardcoded staging parent do not move. The Node
+and PowerShell runners verify the primary checkout, exact managed workspace,
+ownership record and reciprocal Git registration before permitting the shared
+export location. Promotion and tests operate only in the isolated workspace.
+Dependencies are installed there from its frozen lockfile, with package
+lifecycle scripts disabled and normal package-manager policy checks enabled.
+The desktop launcher can use Codex's bundled pnpm even when pnpm is absent
+from Windows Explorer's PATH.
+
+If main advances during initial workspace/dependency preparation, the command
+stops before opening Excel and asks for a normal fresh run. This ensures its
+loaded code, installed dependencies and export contract belong to the same
+production version. Published updates retain their existing guarded refresh
+and fresh-review path described below.
+
+The launcher holds an exclusive local lock while it runs. A second invocation
+must wait for the first. If a process was forcibly terminated and its lock
+remains, check that no updater/export process is alive before recovering the
+lock; do not delete a lock to bypass a running update. A failed install,
+export or verification retains the workspace and diagnostics.
+
+After successful live verification (or a no-change export), only the data
+branch and its recorded update artifacts are cleaned up. The workspace is
+left detached and reused for the next update. The normal folder and its local
+`main` remain unchanged, so unrelated work cannot block final cleanup either.
+
 For a simple existing-schema data refresh, such as adding race times, save and
 close Excel and then either double-click `update-website-data.cmd` or run:
 
@@ -197,7 +239,7 @@ pnpm run data:update
 
 The guided updater:
 
-1. confirms that GitHub CLI is logged in and the repository is clean;
+1. confirms that GitHub CLI is logged in and the updater workspace is clean;
 2. fetches current `origin/main`, pins that commit, reads its workbook-contract
    definition, and checks the selected workbook read-only;
 3. only after preflight succeeds, creates a timestamped `data/refresh-*` branch
@@ -228,9 +270,10 @@ The guided updater:
     revalidation, compares all 72 CSV files byte-for-byte with the reviewed
     data commit, and opens both the Family and Everyone production URLs in a
     real browser to prove that the correct mode and standings render; and
-15. only after that live proof, fast-forwards local `main`, deletes the verified
-    merged branch locally and remotely, and removes only the staged export,
-    promotion backup, and state paths recorded for that update.
+15. only after that live proof, detaches the isolated workspace, deletes the
+    verified merged branch locally and remotely, and removes only the staged
+    export, promotion backup, and state paths recorded for that update. Legacy
+    updates retain their original local-main cleanup behavior.
 
 The Gallery catalogue is derived data, not a second source of championship
 truth. It is excluded from the public GitHub Pages artifact and cannot affect
@@ -312,7 +355,7 @@ For a non-interactive preparation that stops before promotion:
 pnpm run data:update -- --prepare-only
 ```
 
-The updater refuses dirty worktrees, overlapping open data-update Pull
+The updater refuses changes inside its own worktree, overlapping open data-update Pull
 Requests, incomplete bundles, changed CSV schemas, non-data changes, failed
 validation, changed post-test data, failed local or GitHub tests, mismatched PR
 identity, a failed exact-commit Pages deployment, a production bundle that is

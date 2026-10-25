@@ -87,7 +87,9 @@ export async function buildGalleryAdminCatalog(root = repoRoot) {
         manifestContract.exportBundleId
     );
     const sourceRevision = revisionForEntries(
-        'family-running-gallery-admin-catalog-source-v1',
+        // Selection semantics are part of the revision: old saved race indices
+        // must not be reinterpreted against the filtered catalogue.
+        'family-running-gallery-admin-catalog-source-v2-longest-official',
         sourceRelativePaths.map(relativePath => ({
             relativePath,
             text: sourceTexts.get(relativePath)
@@ -360,7 +362,8 @@ function buildAthleteResults(csv, exportBundleId) {
             participant: row.Participant,
             raceDate: exportedDateToIso(row.Date, `${label} Date`),
             raceEvent: row.Event,
-            raceDistance: row.Distance
+            raceDistance: row.Distance,
+            timeClass: row.TimeClass
         };
     });
 
@@ -431,7 +434,7 @@ function buildSiteSnapshot({ mode, rosterIds, athleteResults, exportBundleId, so
 
     const raceByKey = new Map();
     const resultEntryByKey = new Map();
-    for (const result of siteResults) {
+    for (const result of longestOfficialResults(siteResults)) {
         const race = {
             raceDate: result.raceDate,
             raceEvent: result.raceEvent,
@@ -440,9 +443,7 @@ function buildSiteSnapshot({ mode, rosterIds, athleteResults, exportBundleId, so
         const raceKey = JSON.stringify(Object.values(race));
         raceByKey.set(raceKey, race);
 
-        // A person can legitimately carry distinct Official and Unofficial
-        // source results for the same race. The selector needs only one fact:
-        // that this public athlete ID ran that exact race.
+        // Repeated Official source performances still represent one race choice.
         const resultEntry = { athleteId: result.athleteId, ...race };
         const resultEntryKey = JSON.stringify(Object.values(resultEntry));
         resultEntryByKey.set(resultEntryKey, resultEntry);
@@ -465,6 +466,35 @@ function buildSiteSnapshot({ mode, rosterIds, athleteResults, exportBundleId, so
         rosterEntries,
         resultEntries
     };
+}
+
+function longestOfficialResults(results) {
+    const byRunnerEvent = new Map();
+    for (const result of results) {
+        if (result.timeClass !== 'Official') continue;
+        const distance = galleryDistanceMetres(result.raceDistance);
+        const key = JSON.stringify([result.athleteId, result.raceDate, result.raceEvent]);
+        const previous = byRunnerEvent.get(key);
+        if (!previous || distance > previous.distance) {
+            byRunnerEvent.set(key, { distance, results: [result] });
+        } else if (distance === previous.distance) {
+            previous.results.push(result);
+        }
+    }
+    return [...byRunnerEvent.values()].flatMap(group => group.results);
+}
+
+function galleryDistanceMetres(label) {
+    // Length comparison only, for photo selection. All times, grades, rankings
+    // and the Official classification remain the workbook's exported values.
+    if (label === 'H. Mar' || label === 'Half Marathon') return 21097.5;
+    if (label === 'Marathon') return 42195;
+    const match = /^(\d+(?:\.\d+)?) (m|km|Mile|Miles)$/.exec(label);
+    const metres = match && Number(match[1]) * ({ m: 1, km: 1000, Mile: 1609.344, Miles: 1609.344 }[match[2]]);
+    if (!Number.isFinite(metres) || metres <= 0) {
+        throw new Error(`Official Gallery result has an unsupported distance "${label}"; its longest race cannot be selected safely.`);
+    }
+    return metres;
 }
 
 function parseSuppressionDocument(text) {

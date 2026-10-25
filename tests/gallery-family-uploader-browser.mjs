@@ -11,6 +11,17 @@ import {readBoundedBytes,sha256Hex} from '../gallery-admin/src/media-byte-verifi
 import catalog from '../gallery-admin/generated/catalog-snapshot.js';
 import {familyPermission} from '../gallery-admin/src/family-uploader-service.js';
 import {createBrowserSession} from '../gallery-admin/src/session.js';
+import {parseCsv} from '../scripts/export-bundle-tools.mjs';
+import {exportedDateToIso} from '../scripts/build-gallery-admin-catalog.mjs';
+
+// Independently confirm the selected catalogue race is workbook-labelled Official.
+const [resultHeaders,...resultRows]=parseCsv((await readFile(new URL('../data/athlete_results.csv',import.meta.url),'utf8')).replace(/^\uFEFF/,''));
+const officialJohnRaces=new Set(resultRows.map(row=>Object.fromEntries(resultHeaders.map((name,index)=>[name,row[index]])))
+    .filter(row=>row.AthleteID==='john-kevan'&&row.TimeClass==='Official')
+    .map(row=>JSON.stringify([exportedDateToIso(row.Date),row.Event,row.Distance])));
+const johnRace=catalog.sites.family.resultEntries.find(row=>row.athleteId==='john-kevan'&&
+    officialJohnRaces.has(JSON.stringify([row.raceDate,row.raceEvent,row.raceDistance])));
+assert.ok(johnRace,'The browser journey requires an exported Official result for John');
 
 const root=new URL('../gallery-admin/migrations/',import.meta.url);
 const migrations=await Promise.all((await readdir(root)).filter(n=>n.endsWith('.sql')).sort().map(n=>readFile(new URL(n,root),'utf8')));
@@ -67,7 +78,6 @@ try{for(const mobile of [false,true]){
         assert.equal(await page.locator('#family-reselect-label').isVisible(),false,'The saved photo opens without a local-file chooser');
         assert.equal(requests.filter(([method])=>method==='PUT').length,uploadCount,'Reopening never uploads again');
         assert.equal(bucket.calls.filter(([method])=>method==='part').length,3);
-        const johnRace=catalog.sites.family.resultEntries.find(row=>row.athleteId==='john-kevan');
         const chooseEvent=async race=>{await page.locator('#family-event-search').fill(race.raceEvent);
             const option=await page.locator('#family-event option').allTextContents();
             const label=option.find(text=>text.startsWith(race.raceDate+' · '+race.raceEvent+' · '));
@@ -75,6 +85,13 @@ try{for(const mobile of [false,true]){
         await chooseEvent(johnRace);
         await page.locator('#family-athlete-search').fill('John Kevan');
         await page.locator('#family-athletes').getByRole('checkbox').check();await status('People saved');await idle();
+        const johnDistance=page.getByRole('combobox',{name:'Distance for John Kevan',exact:true});
+        assert.equal(await johnDistance.count(),0,'Only the longest Official distance is offered for this runner');
+        const firstMetadata=JSON.parse(db.prepare('SELECT metadata_json FROM family_gallery_draft_photos WHERE draft_id=? AND ordinal=0').get(id).metadata_json);
+        assert.equal(firstMetadata.runnerResults.length,1);
+        assert.deepEqual(catalog.sites.family.catalog.races[firstMetadata.runnerResults[0].raceIndex],{
+            raceDate:johnRace.raceDate,raceEvent:johnRace.raceEvent,raceDistance:johnRace.raceDistance
+        },'The saved runner selection is the exact exported Official race, including its distance');
         assert.equal(db.prepare('SELECT count(*) n FROM private_gallery_people').get().n,1,'Direct public athlete selection creates one protected association');
         await page.getByRole('button',{name:'Use this event and people on other unchecked photos'}).click();await status('Event and people copied');await idle();
         for(let index=0;index<3;index++){
@@ -175,18 +192,20 @@ try{for(const mobile of [false,true]){
         assert.equal(mixed.personIds.length,3);assert.equal(mixed.runnerResults.length,2);
         assert.deepEqual(mixed.runnerResults.map(r=>catalog.sites.family.catalog.races[r.raceIndex].raceDistance),['10 km','H. Mar']);
         await page.screenshot({path:fileURLToPath(new URL(`family-event-runners-${mobile?'mobile':'desktop'}.png`,screenshots)),fullPage:true});
-        // Two distances for one athlete require an explicit choice, not first-row guessing.
+        // Official shorter splits are excluded: the runner gets the half marathon.
         const double=catalog.sites.family.resultEntries.find(r=>r.athleteId==='blake-coleman'&&r.raceEvent==='Great Birmingham Run');
         await chooseEvent(double);
         const moved=JSON.parse(db.prepare('SELECT metadata_json FROM family_gallery_draft_photos WHERE photo_id=?').get(savedCard.photo_id).metadata_json);
         assert.deepEqual(moved.personIds,mixed.personIds,'Changing event preserves every tag');assert.deepEqual(moved.runnerResults,[]);
-        await page.locator('#family-athletes').getByRole('checkbox',{name:'Blake Coleman',exact:true}).check();await status('People saved');await idle();
-        const distance=page.getByRole('combobox',{name:'Distance for Blake Coleman',exact:true});assert.equal(await distance.inputValue(),'');
+        await page.locator('#family-athletes').getByRole('checkbox',{name:/Blake Coleman/}).check();await status('People saved');await idle();
+        const distance=page.getByRole('combobox',{name:'Distance for Blake Coleman',exact:true});
+        assert.equal(await distance.count(),0,'Shorter split times are not selectable');
+        const longest=JSON.parse(db.prepare('SELECT metadata_json FROM family_gallery_draft_photos WHERE photo_id=?').get(savedCard.photo_id).metadata_json);
+        assert.equal(longest.runnerResults.length,1);
+        assert.equal(catalog.sites.family.catalog.races[longest.runnerResults[0].raceIndex].raceDistance,'H. Mar');
         await page.locator('#family-minors').selectOption('no');await idle();
-        await page.getByRole('button',{name:'Check thumbnails',exact:true}).click();await status('Choose a distance for each selected runner');await idle();
-        assert.equal(bucket.objects.size,4,'Ambiguous distance does not discard the already saved private original');
-        assert.equal(db.prepare('SELECT count(*) n FROM private_archive_original_receipts').get().n,3,'Ambiguous distance still blocks tagged intake');
-        await distance.selectOption({label:'H. Mar'});await status('Runner distance saved');await idle();
+        assert.equal(bucket.objects.size,4,'Changing runner selection preserves the saved private original');
+        assert.equal(db.prepare('SELECT count(*) n FROM private_archive_original_receipts').get().n,3,'Selecting the race does not grant tagged intake');
         // Simulate another owner tab changing permission while this tab is open.
         assert.equal((await familyPermission(env,owner,'family',{expectedVersion:2,idempotencyKey:crypto.randomUUID(),active:true,guardians:false})).ok,true);
         await page.getByRole('button',{name:'Check saved permission',exact:true}).click();await status('Saved permission checked');await idle();

@@ -101,6 +101,7 @@ const checks = [
     ['Photo-only review scope and fallback tests', ['tests/gallery-photo-review-path.mjs']],
     ['Photo-only actual-candidate browser tests', ['tests/gallery-photo-review-browser.mjs']],
     ['Simple data-update workflow tests', ['tests/simple-data-update.mjs']],
+    ['Isolated data-update workspace tests', ['tests/data-update-workspace.mjs']],
     ['Automatic data-branch refresh and fresh review tests', ['tests/data-update-refresh.mjs']],
     ['Routine data owner-merge policy tests', ['tests/data-update-merge-policy.mjs']],
     ['Pages deployment verification tests', ['tests/pages-deployment-verification.mjs']],

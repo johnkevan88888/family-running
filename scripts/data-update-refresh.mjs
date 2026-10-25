@@ -7,6 +7,8 @@ const protectedPaths = new Set([
     '.npmrc', '.pnpmfile.cjs', 'pnpmfile.cjs', 'pnpm-workspace.yaml',
     'scripts/workbook-export-contract.json', 'scripts/build-gallery-admin-catalog.mjs',
     'scripts/simple-data-update.mjs', 'scripts/data-update-refresh.mjs',
+    'scripts/data-update.mjs', 'scripts/data-update-context.mjs',
+    'scripts/run-workbook-staged-export.ps1',
     'scripts/data-update-merge-policy.mjs', 'scripts/validate-pr-release-path.mjs',
     'scripts/export-bundle-tools.mjs', 'scripts/pages-deployment-verification.mjs',
     'scripts/verify-production-data.mjs', 'scripts/browser-runtime.mjs',

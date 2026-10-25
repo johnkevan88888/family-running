@@ -2,10 +2,13 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readUpdateWorkspaceContext } from './data-update-context.mjs';
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+export const updateWorkspaceContext = readUpdateWorkspaceContext(repoRoot);
+export const exportHomeRoot = updateWorkspaceContext?.homeRoot || repoRoot;
 export const stagingParent = path.join(
-    repoRoot,
+    exportHomeRoot,
     'test-artifacts',
     'workbook-export-staging'
 );

@@ -174,6 +174,7 @@ try {
     for (const file of ['data/family/siteinfo.csv','data/new.csv','DATA/alias.csv',
         'gallery-admin/generated/catalog-snapshot.js','gallery-data/hidden-athlete-ids.json',
         'scripts/workbook-export-contract.json','scripts/simple-data-update.mjs',
+        'scripts/data-update.mjs','scripts/data-update-context.mjs','scripts/run-workbook-staged-export.ps1',
         'scripts/published-site-entries.mjs','package.json','.gitattributes']) {
         test(`main change to ${file} is retained for separate review`, () => {
             const f = fixture({ advance: { [file]: 'unsafe change\n' } });

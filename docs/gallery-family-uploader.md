@@ -61,11 +61,28 @@ No current real batch or original is removed by this local implementation.
 
 ## Event and runner selection
 
+The catalogue used by both uploader modes offers only results labelled
+`Official` in the workbook export. For each athlete, exact event name and date,
+it retains only the longest Official distance. An Official 5 km split alongside
+that runner's Official half marathon therefore offers only the half marathon.
+Another runner who ran only 5 km at the same event keeps their 5 km association.
+Unofficial/training rows cannot create events or runner choices; they still
+establish public identities for Other people pictured. This is Gallery selection,
+not a change to championship calculations or exported results.
+
+Numeric metre, kilometre and mile labels, plus `H. Mar`, `Half Marathon` and
+`Marathon`, are compared by length without changing their exported text.
+An unsupported Official distance stops catalogue generation rather than guessing.
+The catalogue source revision includes this selection policy. Old saved indices
+cannot silently acquire a different event after the catalogue is rebuilt;
+existing stale-catalogue recovery and consent checks still apply. Published
+manifests, original media and saved history are not rewritten by this rule.
+
 The multi-distance extension groups events by exact exported event name and date,
 across all distances. Runners at this event lists only the selected Family
 catalogue's participants. Each selected runner retains their own distance; if
-the athlete has several distances at that event, the owner chooses one explicitly
-before thumbnails can be checked or review prepared. No event, result, time,
+several exact exported labels represent the same longest distance, the owner
+chooses one explicitly before thumbnails can be checked or review prepared. No event, result, time,
 age or AG is guessed.
 
 Other people pictured is a separate tag selection, including public athletes

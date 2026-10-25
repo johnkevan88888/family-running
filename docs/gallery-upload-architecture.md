@@ -345,6 +345,12 @@ the owner chooses to revise and resubmit them.
   text. Athlete associations use public IDs only.
 - Runners in the selected race are offered first, followed by the rest of that
   mode's public result-bearing roster.
+- Both uploader catalogues retain only workbook-labelled Official results and
+  each runner's longest Official distance for the exact event/date. Shorter
+  Official splits and Unofficial entries do not create race choices. The full
+  result-bearing roster remains available for other pictured people. The
+  catalogue revision includes this policy so saved indices fail closed after
+  the selection changes. See `gallery-family-uploader.md`.
 - Manifest order remains the editorial display order. A repeated ID in Family
   and Everyone must still have byte-for-byte identical item content and must
   validate in both modes.

@@ -69,7 +69,7 @@
     "test:browser": "node tests/browser-smoke.mjs",
     "screenshots:update": "node tests/browser-smoke.mjs --update-screenshots",
     "reconcile:personal-bests": "node scripts/reconcile-personal-bests.mjs",
-    "data:update": "node scripts/simple-data-update.mjs",
+    "data:update": "node scripts/data-update.mjs",
     "workbook:check:contract": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-workbook-staged-export.ps1 -PreflightOnly",
     "workbook:export:staged": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-workbook-staged-export.ps1",
     "workbook:validate:staged": "node scripts/export-bundle-validation.mjs",

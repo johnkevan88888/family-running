@@ -18,7 +18,7 @@ if not defined node_exe (
     goto update_finished
 )
 
-"%node_exe%" "%~dp0scripts\simple-data-update.mjs" %*
+"%node_exe%" "%~dp0scripts\data-update.mjs" %*
 set "update_exit_code=%ERRORLEVEL%"
 
 :update_finished

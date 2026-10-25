@@ -192,7 +192,7 @@ function familyUploaderBrowser() {
     function renderPeople() {
         $('family-athletes').replaceChildren();$('family-private-people').replaceChildren();
         const search=$('family-athlete-search').value.toLowerCase();
-        $('family-runners-note').textContent=active()?.raceIndex==null?'Choose an event to see its runners.':'Only athletes with an exported result at this event and date appear below. Choose a distance if more than one is listed.';
+        $('family-runners-note').textContent=active()?.raceIndex==null?'Choose an event to see its runners.':'Each runner is shown at their longest Official distance for this event and date. Shorter splits and Unofficial times are excluded.';
         for(const athlete of catalog.sites.family.roster) if(athlete.participant.toLowerCase().includes(search)) {
             const person=people.find(p=>p.publicAthleteId===athlete.athleteId),choices=runnerChoices(athlete.athleteId);
             if(choices.length)personOption(person,athlete.participant,$('family-athletes'),athlete.athleteId,choices);

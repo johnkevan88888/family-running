@@ -2,7 +2,7 @@
 const snapshot = {
     "schemaVersion": "1.0",
     "exportBundleId": "20261025T152402728Z-4600617F",
-    "sourceRevision": "sha256:0ee85c8ff91e4659ad913b303ea31bde306454b3142e4ed40419eab2922f039f",
+    "sourceRevision": "sha256:43140abce88a9c3c076579bd99869de025652aa5e43e650e4657c7881ad25f36",
     "suppressionRevision": "sha256:d9f63d28d14853b9452c95c4f15b912e4a0385134e699b9be1bf229eab687cda",
     "suppressionDocument": {
         "schemaVersion": "1.0",
@@ -12,7 +12,7 @@ const snapshot = {
         "family": {
             "catalog": {
                 "exportBundleId": "20261025T152402728Z-4600617F",
-                "sourceRevision": "sha256:0ee85c8ff91e4659ad913b303ea31bde306454b3142e4ed40419eab2922f039f",
+                "sourceRevision": "sha256:43140abce88a9c3c076579bd99869de025652aa5e43e650e4657c7881ad25f36",
                 "races": [
                     {
                         "raceDate": "2026-10-25",
@@ -41,11 +41,6 @@ const snapshot = {
                     },
                     {
                         "raceDate": "2026-09-19",
-                        "raceEvent": "Stockport",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2026-09-19",
                         "raceEvent": "Worcester Parkrun",
                         "raceDistance": "5 km"
                     },
@@ -63,21 +58,6 @@ const snapshot = {
                         "raceDate": "2026-09-13",
                         "raceEvent": "Sutcliffe & Co Worcester City",
                         "raceDistance": "H. Mar"
-                    },
-                    {
-                        "raceDate": "2026-09-06",
-                        "raceEvent": "Training",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2026-09-01",
-                        "raceEvent": "Training",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "2026-08-29",
-                        "raceEvent": "Training",
-                        "raceDistance": "5 km"
                     },
                     {
                         "raceDate": "2026-08-29",
@@ -100,19 +80,9 @@ const snapshot = {
                         "raceDistance": "5 km"
                     },
                     {
-                        "raceDate": "2026-08-02",
-                        "raceEvent": "Toronto Training",
-                        "raceDistance": "10 km"
-                    },
-                    {
                         "raceDate": "2026-06-21",
                         "raceEvent": "Run Redditch",
                         "raceDistance": "H. Mar"
-                    },
-                    {
-                        "raceDate": "2026-06-07",
-                        "raceEvent": "Worcester",
-                        "raceDistance": "10 Mile"
                     },
                     {
                         "raceDate": "2026-06-06",
@@ -123,21 +93,6 @@ const snapshot = {
                         "raceDate": "2026-05-31",
                         "raceEvent": "Great Manchester Run",
                         "raceDistance": "H. Mar"
-                    },
-                    {
-                        "raceDate": "2026-05-30",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "2026-05-17",
-                        "raceEvent": "Sutton Coldfield Half",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "2026-05-17",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "5 km"
                     },
                     {
                         "raceDate": "2026-05-17",
@@ -152,21 +107,6 @@ const snapshot = {
                     {
                         "raceDate": "2026-05-03",
                         "raceEvent": "Great Birmingham Run",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2026-05-03",
-                        "raceEvent": "Great Birmingham Run",
-                        "raceDistance": "H. Mar"
-                    },
-                    {
-                        "raceDate": "2026-05-03",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "2026-05-03",
-                        "raceEvent": "UNKNOWN",
                         "raceDistance": "H. Mar"
                     },
                     {
@@ -177,46 +117,6 @@ const snapshot = {
                     {
                         "raceDate": "2026-03-28",
                         "raceEvent": "Northern Counties Womens Relay",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2026-03-28",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "1 Mile"
-                    },
-                    {
-                        "raceDate": "2026-02-28",
-                        "raceEvent": "Lancaster Training",
-                        "raceDistance": "H. Mar"
-                    },
-                    {
-                        "raceDate": "2026-02-15",
-                        "raceEvent": "Lancaster Training",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "2026-02-15",
-                        "raceEvent": "Lancaster Training",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2026-01-15",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "2026-01-01",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "15 km"
-                    },
-                    {
-                        "raceDate": "2026-01-01",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "30 km"
-                    },
-                    {
-                        "raceDate": "2026-01-01",
-                        "raceEvent": "UNKNOWN",
                         "raceDistance": "5 km"
                     },
                     {
@@ -255,28 +155,8 @@ const snapshot = {
                         "raceDistance": "5 km"
                     },
                     {
-                        "raceDate": "2025-07-01",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "2025-07-01",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "H. Mar"
-                    },
-                    {
-                        "raceDate": "2025-01-01",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "5 km"
-                    },
-                    {
                         "raceDate": "2024-08-03",
                         "raceEvent": "Worcester Parkrun",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2024-03-11",
-                        "raceEvent": "Training",
                         "raceDistance": "5 km"
                     },
                     {
@@ -292,11 +172,6 @@ const snapshot = {
                     {
                         "raceDate": "2021-05-12",
                         "raceEvent": "Carlisle City Urban Trail",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "2021-02-27",
-                        "raceEvent": "Training Dubai",
                         "raceDistance": "10 km"
                     },
                     {
@@ -490,11 +365,6 @@ const snapshot = {
                         "raceDistance": "10 km"
                     },
                     {
-                        "raceDate": "2013-07-01",
-                        "raceEvent": "Training York",
-                        "raceDistance": "10 km"
-                    },
-                    {
                         "raceDate": "2013-06-08",
                         "raceEvent": "Worcester Parkrun",
                         "raceDistance": "5 km"
@@ -512,11 +382,6 @@ const snapshot = {
                     {
                         "raceDate": "2013-01-26",
                         "raceEvent": "Worcester Parkrun",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2013-01-01",
-                        "raceEvent": "UNKNOWN",
                         "raceDistance": "5 km"
                     },
                     {
@@ -538,36 +403,6 @@ const snapshot = {
                         "raceDate": "2009-05-10",
                         "raceEvent": "Tewkesbury Half Marathon",
                         "raceDistance": "H. Mar"
-                    },
-                    {
-                        "raceDate": "1997-06-01",
-                        "raceEvent": "Sedbergh, Cumbria",
-                        "raceDistance": "1 Mile"
-                    },
-                    {
-                        "raceDate": "1993-01-01",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "1992-06-01",
-                        "raceEvent": "Oundle, Peterborough",
-                        "raceDistance": "1 Mile"
-                    },
-                    {
-                        "raceDate": "1990-05-06",
-                        "raceEvent": "Paris Marathon",
-                        "raceDistance": "Marathon"
-                    },
-                    {
-                        "raceDate": "1990-01-01",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "H. Mar"
-                    },
-                    {
-                        "raceDate": "1989-10-22",
-                        "raceEvent": "Leeds Marathon",
-                        "raceDistance": "Marathon"
                     }
                 ],
                 "athleteIds": [
@@ -685,12 +520,6 @@ const snapshot = {
                     "raceDistance": "5 km"
                 },
                 {
-                    "athleteId": "debbie-martin",
-                    "raceDate": "2026-09-19",
-                    "raceEvent": "Stockport",
-                    "raceDistance": "5 km"
-                },
-                {
                     "athleteId": "david-graham-kevan",
                     "raceDate": "2026-09-19",
                     "raceEvent": "Worcester Parkrun",
@@ -727,24 +556,6 @@ const snapshot = {
                     "raceDistance": "H. Mar"
                 },
                 {
-                    "athleteId": "debbie-martin",
-                    "raceDate": "2026-09-06",
-                    "raceEvent": "Training",
-                    "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "john-kevan",
-                    "raceDate": "2026-09-01",
-                    "raceEvent": "Training",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "debbie-martin",
-                    "raceDate": "2026-08-29",
-                    "raceEvent": "Training",
-                    "raceDistance": "5 km"
-                },
-                {
                     "athleteId": "david-graham-kevan",
                     "raceDate": "2026-08-29",
                     "raceEvent": "Worcester Parkrun",
@@ -799,18 +610,6 @@ const snapshot = {
                     "raceDistance": "5 km"
                 },
                 {
-                    "athleteId": "caitlin-siostrom",
-                    "raceDate": "2026-08-02",
-                    "raceEvent": "Toronto Training",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "john-kevan",
-                    "raceDate": "2026-08-02",
-                    "raceEvent": "Toronto Training",
-                    "raceDistance": "10 km"
-                },
-                {
                     "athleteId": "david-graham-kevan",
                     "raceDate": "2026-06-21",
                     "raceEvent": "Run Redditch",
@@ -821,12 +620,6 @@ const snapshot = {
                     "raceDate": "2026-06-21",
                     "raceEvent": "Run Redditch",
                     "raceDistance": "H. Mar"
-                },
-                {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "2026-06-07",
-                    "raceEvent": "Worcester",
-                    "raceDistance": "10 Mile"
                 },
                 {
                     "athleteId": "caitlin-siostrom",
@@ -847,24 +640,6 @@ const snapshot = {
                     "raceDistance": "H. Mar"
                 },
                 {
-                    "athleteId": "blake-coleman",
-                    "raceDate": "2026-05-30",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "poppy-coleman",
-                    "raceDate": "2026-05-17",
-                    "raceEvent": "Sutton Coldfield Half",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "poppy-coleman",
-                    "raceDate": "2026-05-17",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "5 km"
-                },
-                {
                     "athleteId": "david-graham-kevan",
                     "raceDate": "2026-05-17",
                     "raceEvent": "Worcester 10k",
@@ -880,24 +655,6 @@ const snapshot = {
                     "athleteId": "blake-coleman",
                     "raceDate": "2026-05-03",
                     "raceEvent": "Great Birmingham Run",
-                    "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "blake-coleman",
-                    "raceDate": "2026-05-03",
-                    "raceEvent": "Great Birmingham Run",
-                    "raceDistance": "H. Mar"
-                },
-                {
-                    "athleteId": "carolyn-kevan",
-                    "raceDate": "2026-05-03",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "blake-coleman",
-                    "raceDate": "2026-05-03",
-                    "raceEvent": "UNKNOWN",
                     "raceDistance": "H. Mar"
                 },
                 {
@@ -916,54 +673,6 @@ const snapshot = {
                     "athleteId": "carolyn-kevan",
                     "raceDate": "2026-03-28",
                     "raceEvent": "Northern Counties Womens Relay",
-                    "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "carolyn-kevan",
-                    "raceDate": "2026-03-28",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "1 Mile"
-                },
-                {
-                    "athleteId": "laura-foster",
-                    "raceDate": "2026-02-28",
-                    "raceEvent": "Lancaster Training",
-                    "raceDistance": "H. Mar"
-                },
-                {
-                    "athleteId": "laura-foster",
-                    "raceDate": "2026-02-15",
-                    "raceEvent": "Lancaster Training",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "laura-foster",
-                    "raceDate": "2026-02-15",
-                    "raceEvent": "Lancaster Training",
-                    "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "carolyn-kevan",
-                    "raceDate": "2026-01-15",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "laura-foster",
-                    "raceDate": "2026-01-01",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "15 km"
-                },
-                {
-                    "athleteId": "laura-foster",
-                    "raceDate": "2026-01-01",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "30 km"
-                },
-                {
-                    "athleteId": "carolyn-kevan",
-                    "raceDate": "2026-01-01",
-                    "raceEvent": "UNKNOWN",
                     "raceDistance": "5 km"
                 },
                 {
@@ -1021,33 +730,9 @@ const snapshot = {
                     "raceDistance": "5 km"
                 },
                 {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "2025-07-01",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "2025-07-01",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "H. Mar"
-                },
-                {
-                    "athleteId": "blake-coleman",
-                    "raceDate": "2025-01-01",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "5 km"
-                },
-                {
                     "athleteId": "poppy-coleman",
                     "raceDate": "2024-08-03",
                     "raceEvent": "Worcester Parkrun",
-                    "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "debbie-martin",
-                    "raceDate": "2024-03-11",
-                    "raceEvent": "Training",
                     "raceDistance": "5 km"
                 },
                 {
@@ -1066,12 +751,6 @@ const snapshot = {
                     "athleteId": "carolyn-kevan",
                     "raceDate": "2021-05-12",
                     "raceEvent": "Carlisle City Urban Trail",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "john-kevan",
-                    "raceDate": "2021-02-27",
-                    "raceEvent": "Training Dubai",
                     "raceDistance": "10 km"
                 },
                 {
@@ -1333,12 +1012,6 @@ const snapshot = {
                     "raceDistance": "10 km"
                 },
                 {
-                    "athleteId": "john-kevan",
-                    "raceDate": "2013-07-01",
-                    "raceEvent": "Training York",
-                    "raceDistance": "10 km"
-                },
-                {
                     "athleteId": "jack-graham-kevan",
                     "raceDate": "2013-06-08",
                     "raceEvent": "Worcester Parkrun",
@@ -1360,12 +1033,6 @@ const snapshot = {
                     "athleteId": "jack-graham-kevan",
                     "raceDate": "2013-01-26",
                     "raceEvent": "Worcester Parkrun",
-                    "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "2013-01-01",
-                    "raceEvent": "UNKNOWN",
                     "raceDistance": "5 km"
                 },
                 {
@@ -1391,49 +1058,13 @@ const snapshot = {
                     "raceDate": "2009-05-10",
                     "raceEvent": "Tewkesbury Half Marathon",
                     "raceDistance": "H. Mar"
-                },
-                {
-                    "athleteId": "john-kevan",
-                    "raceDate": "1997-06-01",
-                    "raceEvent": "Sedbergh, Cumbria",
-                    "raceDistance": "1 Mile"
-                },
-                {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "1993-01-01",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "john-kevan",
-                    "raceDate": "1992-06-01",
-                    "raceEvent": "Oundle, Peterborough",
-                    "raceDistance": "1 Mile"
-                },
-                {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "1990-05-06",
-                    "raceEvent": "Paris Marathon",
-                    "raceDistance": "Marathon"
-                },
-                {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "1990-01-01",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "H. Mar"
-                },
-                {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "1989-10-22",
-                    "raceEvent": "Leeds Marathon",
-                    "raceDistance": "Marathon"
                 }
             ]
         },
         "everyone": {
             "catalog": {
                 "exportBundleId": "20261025T152402728Z-4600617F",
-                "sourceRevision": "sha256:0ee85c8ff91e4659ad913b303ea31bde306454b3142e4ed40419eab2922f039f",
+                "sourceRevision": "sha256:43140abce88a9c3c076579bd99869de025652aa5e43e650e4657c7881ad25f36",
                 "races": [
                     {
                         "raceDate": "2026-10-25",
@@ -1492,11 +1123,6 @@ const snapshot = {
                     },
                     {
                         "raceDate": "2026-09-19",
-                        "raceEvent": "Stockport",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2026-09-19",
                         "raceEvent": "Worcester Parkrun",
                         "raceDistance": "5 km"
                     },
@@ -1516,23 +1142,8 @@ const snapshot = {
                         "raceDistance": "H. Mar"
                     },
                     {
-                        "raceDate": "2026-09-06",
-                        "raceEvent": "Training",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2026-09-01",
-                        "raceEvent": "Training",
-                        "raceDistance": "10 km"
-                    },
-                    {
                         "raceDate": "2026-08-29",
                         "raceEvent": "Duncana Parkrun",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2026-08-29",
-                        "raceEvent": "Training",
                         "raceDistance": "5 km"
                     },
                     {
@@ -1586,11 +1197,6 @@ const snapshot = {
                         "raceDistance": "5 km"
                     },
                     {
-                        "raceDate": "2026-08-02",
-                        "raceEvent": "Toronto Training",
-                        "raceDistance": "10 km"
-                    },
-                    {
                         "raceDate": "2026-08-01",
                         "raceEvent": "Derry City Parkrun",
                         "raceDistance": "5 km"
@@ -1626,11 +1232,6 @@ const snapshot = {
                         "raceDistance": "5 km"
                     },
                     {
-                        "raceDate": "2026-06-07",
-                        "raceEvent": "Worcester",
-                        "raceDistance": "10 Mile"
-                    },
-                    {
                         "raceDate": "2026-06-06",
                         "raceEvent": "Coothill Parkrun",
                         "raceDistance": "5 km"
@@ -1651,23 +1252,8 @@ const snapshot = {
                         "raceDistance": "5 km"
                     },
                     {
-                        "raceDate": "2026-05-30",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "10 km"
-                    },
-                    {
                         "raceDate": "2026-05-23",
                         "raceEvent": "Claudy Country Park - Parkrun",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2026-05-17",
-                        "raceEvent": "Sutton Coldfield Half",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "2026-05-17",
-                        "raceEvent": "UNKNOWN",
                         "raceDistance": "5 km"
                     },
                     {
@@ -1688,21 +1274,6 @@ const snapshot = {
                     {
                         "raceDate": "2026-05-03",
                         "raceEvent": "Great Birmingham Run",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2026-05-03",
-                        "raceEvent": "Great Birmingham Run",
-                        "raceDistance": "H. Mar"
-                    },
-                    {
-                        "raceDate": "2026-05-03",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "2026-05-03",
-                        "raceEvent": "UNKNOWN",
                         "raceDistance": "H. Mar"
                     },
                     {
@@ -1726,11 +1297,6 @@ const snapshot = {
                         "raceDistance": "5 km"
                     },
                     {
-                        "raceDate": "2026-03-28",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "1 Mile"
-                    },
-                    {
                         "raceDate": "2026-03-07",
                         "raceEvent": "Derry City Parkrun",
                         "raceDistance": "5 km"
@@ -1739,11 +1305,6 @@ const snapshot = {
                         "raceDate": "2026-02-28",
                         "raceEvent": "Derry City Parkrun",
                         "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2026-02-28",
-                        "raceEvent": "Lancaster Training",
-                        "raceDistance": "H. Mar"
                     },
                     {
                         "raceDate": "2026-02-28",
@@ -1763,16 +1324,6 @@ const snapshot = {
                     {
                         "raceDate": "2026-02-18",
                         "raceEvent": "Sketchers Performance Night Run, Meydan",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2026-02-15",
-                        "raceEvent": "Lancaster Training",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "2026-02-15",
-                        "raceEvent": "Lancaster Training",
                         "raceDistance": "5 km"
                     },
                     {
@@ -1796,38 +1347,13 @@ const snapshot = {
                         "raceDistance": "5 km"
                     },
                     {
-                        "raceDate": "2026-01-15",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "10 km"
-                    },
-                    {
                         "raceDate": "2026-01-11",
                         "raceEvent": "Dubai Creek Striders Half Marathon",
                         "raceDistance": "10 km"
                     },
                     {
-                        "raceDate": "2026-01-11",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "5 km"
-                    },
-                    {
                         "raceDate": "2026-01-10",
                         "raceEvent": "Falls Parkrun",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2026-01-01",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "15 km"
-                    },
-                    {
-                        "raceDate": "2026-01-01",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "30 km"
-                    },
-                    {
-                        "raceDate": "2026-01-01",
-                        "raceEvent": "UNKNOWN",
                         "raceDistance": "5 km"
                     },
                     {
@@ -1867,11 +1393,6 @@ const snapshot = {
                     },
                     {
                         "raceDate": "2025-09-13",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "2025-09-13",
                         "raceEvent": "Worcester Half",
                         "raceDistance": "1 Mile"
                     },
@@ -1896,11 +1417,6 @@ const snapshot = {
                         "raceDistance": "5 km"
                     },
                     {
-                        "raceDate": "2025-07-20",
-                        "raceEvent": "Dubai Hills Mall",
-                        "raceDistance": "5 km"
-                    },
-                    {
                         "raceDate": "2025-07-19",
                         "raceEvent": "Darlington South Park Parkrun",
                         "raceDistance": "5 km"
@@ -1909,16 +1425,6 @@ const snapshot = {
                         "raceDate": "2025-07-12",
                         "raceEvent": "Derry City Parkrun",
                         "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2025-07-01",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "2025-07-01",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "H. Mar"
                     },
                     {
                         "raceDate": "2025-05-31",
@@ -1934,31 +1440,6 @@ const snapshot = {
                         "raceDate": "2025-01-25",
                         "raceEvent": "York Parkrun",
                         "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2025-01-01",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2024-10-20",
-                        "raceEvent": "Yorkshire Marathon",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "2024-10-20",
-                        "raceEvent": "Yorkshire Marathon",
-                        "raceDistance": "20 km"
-                    },
-                    {
-                        "raceDate": "2024-10-20",
-                        "raceEvent": "Yorkshire Marathon",
-                        "raceDistance": "30 km"
-                    },
-                    {
-                        "raceDate": "2024-10-20",
-                        "raceEvent": "Yorkshire Marathon",
-                        "raceDistance": "H. Mar"
                     },
                     {
                         "raceDate": "2024-10-20",
@@ -1978,11 +1459,6 @@ const snapshot = {
                     {
                         "raceDate": "2024-03-23",
                         "raceEvent": "Nostell Parkrun",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2024-03-11",
-                        "raceEvent": "Training",
                         "raceDistance": "5 km"
                     },
                     {
@@ -2058,11 +1534,6 @@ const snapshot = {
                     {
                         "raceDate": "2021-05-12",
                         "raceEvent": "Carlisle City Urban Trail",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "2021-02-27",
-                        "raceEvent": "Training Dubai",
                         "raceDistance": "10 km"
                     },
                     {
@@ -2266,11 +1737,6 @@ const snapshot = {
                         "raceDistance": "10 km"
                     },
                     {
-                        "raceDate": "2013-07-01",
-                        "raceEvent": "Training York",
-                        "raceDistance": "10 km"
-                    },
-                    {
                         "raceDate": "2013-06-22",
                         "raceEvent": "Concord Parkrun",
                         "raceDistance": "5 km"
@@ -2298,11 +1764,6 @@ const snapshot = {
                     {
                         "raceDate": "2013-01-26",
                         "raceEvent": "Worcester Parkrun",
-                        "raceDistance": "5 km"
-                    },
-                    {
-                        "raceDate": "2013-01-01",
-                        "raceEvent": "UNKNOWN",
                         "raceDistance": "5 km"
                     },
                     {
@@ -2339,36 +1800,6 @@ const snapshot = {
                         "raceDate": "2009-05-10",
                         "raceEvent": "Tewkesbury Half Marathon",
                         "raceDistance": "H. Mar"
-                    },
-                    {
-                        "raceDate": "1997-06-01",
-                        "raceEvent": "Sedbergh, Cumbria",
-                        "raceDistance": "1 Mile"
-                    },
-                    {
-                        "raceDate": "1993-01-01",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "10 km"
-                    },
-                    {
-                        "raceDate": "1992-06-01",
-                        "raceEvent": "Oundle, Peterborough",
-                        "raceDistance": "1 Mile"
-                    },
-                    {
-                        "raceDate": "1990-05-06",
-                        "raceEvent": "Paris Marathon",
-                        "raceDistance": "Marathon"
-                    },
-                    {
-                        "raceDate": "1990-01-01",
-                        "raceEvent": "UNKNOWN",
-                        "raceDistance": "H. Mar"
-                    },
-                    {
-                        "raceDate": "1989-10-22",
-                        "raceEvent": "Leeds Marathon",
-                        "raceDistance": "Marathon"
                     }
                 ],
                 "athleteIds": [
@@ -2625,12 +2056,6 @@ const snapshot = {
                     "raceDistance": "5 km"
                 },
                 {
-                    "athleteId": "debbie-martin",
-                    "raceDate": "2026-09-19",
-                    "raceEvent": "Stockport",
-                    "raceDistance": "5 km"
-                },
-                {
                     "athleteId": "david-graham-kevan",
                     "raceDate": "2026-09-19",
                     "raceEvent": "Worcester Parkrun",
@@ -2667,18 +2092,6 @@ const snapshot = {
                     "raceDistance": "H. Mar"
                 },
                 {
-                    "athleteId": "debbie-martin",
-                    "raceDate": "2026-09-06",
-                    "raceEvent": "Training",
-                    "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "john-kevan",
-                    "raceDate": "2026-09-01",
-                    "raceEvent": "Training",
-                    "raceDistance": "10 km"
-                },
-                {
                     "athleteId": "grace-chambers",
                     "raceDate": "2026-08-29",
                     "raceEvent": "Duncana Parkrun",
@@ -2688,12 +2101,6 @@ const snapshot = {
                     "athleteId": "jim-chambers",
                     "raceDate": "2026-08-29",
                     "raceEvent": "Duncana Parkrun",
-                    "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "debbie-martin",
-                    "raceDate": "2026-08-29",
-                    "raceEvent": "Training",
                     "raceDistance": "5 km"
                 },
                 {
@@ -2817,18 +2224,6 @@ const snapshot = {
                     "raceDistance": "5 km"
                 },
                 {
-                    "athleteId": "caitlin-siostrom",
-                    "raceDate": "2026-08-02",
-                    "raceEvent": "Toronto Training",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "john-kevan",
-                    "raceDate": "2026-08-02",
-                    "raceEvent": "Toronto Training",
-                    "raceDistance": "10 km"
-                },
-                {
                     "athleteId": "david-chambers",
                     "raceDate": "2026-08-01",
                     "raceEvent": "Derry City Parkrun",
@@ -2901,12 +2296,6 @@ const snapshot = {
                     "raceDistance": "5 km"
                 },
                 {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "2026-06-07",
-                    "raceEvent": "Worcester",
-                    "raceDistance": "10 Mile"
-                },
-                {
                     "athleteId": "grace-chambers",
                     "raceDate": "2026-06-06",
                     "raceEvent": "Coothill Parkrun",
@@ -2943,27 +2332,9 @@ const snapshot = {
                     "raceDistance": "5 km"
                 },
                 {
-                    "athleteId": "blake-coleman",
-                    "raceDate": "2026-05-30",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "10 km"
-                },
-                {
                     "athleteId": "grace-chambers",
                     "raceDate": "2026-05-23",
                     "raceEvent": "Claudy Country Park - Parkrun",
-                    "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "poppy-coleman",
-                    "raceDate": "2026-05-17",
-                    "raceEvent": "Sutton Coldfield Half",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "poppy-coleman",
-                    "raceDate": "2026-05-17",
-                    "raceEvent": "UNKNOWN",
                     "raceDistance": "5 km"
                 },
                 {
@@ -2994,24 +2365,6 @@ const snapshot = {
                     "athleteId": "blake-coleman",
                     "raceDate": "2026-05-03",
                     "raceEvent": "Great Birmingham Run",
-                    "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "blake-coleman",
-                    "raceDate": "2026-05-03",
-                    "raceEvent": "Great Birmingham Run",
-                    "raceDistance": "H. Mar"
-                },
-                {
-                    "athleteId": "carolyn-kevan",
-                    "raceDate": "2026-05-03",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "blake-coleman",
-                    "raceDate": "2026-05-03",
-                    "raceEvent": "UNKNOWN",
                     "raceDistance": "H. Mar"
                 },
                 {
@@ -3045,12 +2398,6 @@ const snapshot = {
                     "raceDistance": "5 km"
                 },
                 {
-                    "athleteId": "carolyn-kevan",
-                    "raceDate": "2026-03-28",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "1 Mile"
-                },
-                {
                     "athleteId": "jim-chambers",
                     "raceDate": "2026-03-07",
                     "raceEvent": "Derry City Parkrun",
@@ -3061,12 +2408,6 @@ const snapshot = {
                     "raceDate": "2026-02-28",
                     "raceEvent": "Derry City Parkrun",
                     "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "laura-foster",
-                    "raceDate": "2026-02-28",
-                    "raceEvent": "Lancaster Training",
-                    "raceDistance": "H. Mar"
                 },
                 {
                     "athleteId": "gareth-devine",
@@ -3090,18 +2431,6 @@ const snapshot = {
                     "athleteId": "jashlay-balanon",
                     "raceDate": "2026-02-18",
                     "raceEvent": "Sketchers Performance Night Run, Meydan",
-                    "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "laura-foster",
-                    "raceDate": "2026-02-15",
-                    "raceEvent": "Lancaster Training",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "laura-foster",
-                    "raceDate": "2026-02-15",
-                    "raceEvent": "Lancaster Training",
                     "raceDistance": "5 km"
                 },
                 {
@@ -3129,45 +2458,15 @@ const snapshot = {
                     "raceDistance": "5 km"
                 },
                 {
-                    "athleteId": "carolyn-kevan",
-                    "raceDate": "2026-01-15",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "10 km"
-                },
-                {
                     "athleteId": "sebastien-le-rouzic",
                     "raceDate": "2026-01-11",
                     "raceEvent": "Dubai Creek Striders Half Marathon",
                     "raceDistance": "10 km"
                 },
                 {
-                    "athleteId": "mariia-bulycheva",
-                    "raceDate": "2026-01-11",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "5 km"
-                },
-                {
                     "athleteId": "grace-chambers",
                     "raceDate": "2026-01-10",
                     "raceEvent": "Falls Parkrun",
-                    "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "laura-foster",
-                    "raceDate": "2026-01-01",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "15 km"
-                },
-                {
-                    "athleteId": "laura-foster",
-                    "raceDate": "2026-01-01",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "30 km"
-                },
-                {
-                    "athleteId": "carolyn-kevan",
-                    "raceDate": "2026-01-01",
-                    "raceEvent": "UNKNOWN",
                     "raceDistance": "5 km"
                 },
                 {
@@ -3211,12 +2510,6 @@ const snapshot = {
                     "raceDate": "2025-09-13",
                     "raceEvent": "Sutcliffe & Co Worcester City Runs",
                     "raceDistance": "H. Mar"
-                },
-                {
-                    "athleteId": "mariia-bulycheva",
-                    "raceDate": "2025-09-13",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "10 km"
                 },
                 {
                     "athleteId": "jess-graham-kevan",
@@ -3267,12 +2560,6 @@ const snapshot = {
                     "raceDistance": "5 km"
                 },
                 {
-                    "athleteId": "jashlay-balanon",
-                    "raceDate": "2025-07-20",
-                    "raceEvent": "Dubai Hills Mall",
-                    "raceDistance": "5 km"
-                },
-                {
                     "athleteId": "gareth-devine",
                     "raceDate": "2025-07-19",
                     "raceEvent": "Darlington South Park Parkrun",
@@ -3283,18 +2570,6 @@ const snapshot = {
                     "raceDate": "2025-07-12",
                     "raceEvent": "Derry City Parkrun",
                     "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "2025-07-01",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "2025-07-01",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "H. Mar"
                 },
                 {
                     "athleteId": "gareth-devine",
@@ -3313,36 +2588,6 @@ const snapshot = {
                     "raceDate": "2025-01-25",
                     "raceEvent": "York Parkrun",
                     "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "blake-coleman",
-                    "raceDate": "2025-01-01",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "kevin-reaney",
-                    "raceDate": "2024-10-20",
-                    "raceEvent": "Yorkshire Marathon",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "kevin-reaney",
-                    "raceDate": "2024-10-20",
-                    "raceEvent": "Yorkshire Marathon",
-                    "raceDistance": "20 km"
-                },
-                {
-                    "athleteId": "kevin-reaney",
-                    "raceDate": "2024-10-20",
-                    "raceEvent": "Yorkshire Marathon",
-                    "raceDistance": "30 km"
-                },
-                {
-                    "athleteId": "kevin-reaney",
-                    "raceDate": "2024-10-20",
-                    "raceEvent": "Yorkshire Marathon",
-                    "raceDistance": "H. Mar"
                 },
                 {
                     "athleteId": "kevin-reaney",
@@ -3366,12 +2611,6 @@ const snapshot = {
                     "athleteId": "kevin-reaney",
                     "raceDate": "2024-03-23",
                     "raceEvent": "Nostell Parkrun",
-                    "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "debbie-martin",
-                    "raceDate": "2024-03-11",
-                    "raceEvent": "Training",
                     "raceDistance": "5 km"
                 },
                 {
@@ -3462,12 +2701,6 @@ const snapshot = {
                     "athleteId": "carolyn-kevan",
                     "raceDate": "2021-05-12",
                     "raceEvent": "Carlisle City Urban Trail",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "john-kevan",
-                    "raceDate": "2021-02-27",
-                    "raceEvent": "Training Dubai",
                     "raceDistance": "10 km"
                 },
                 {
@@ -3747,12 +2980,6 @@ const snapshot = {
                     "raceDistance": "10 km"
                 },
                 {
-                    "athleteId": "john-kevan",
-                    "raceDate": "2013-07-01",
-                    "raceEvent": "Training York",
-                    "raceDistance": "10 km"
-                },
-                {
                     "athleteId": "kevin-reaney",
                     "raceDate": "2013-06-22",
                     "raceEvent": "Concord Parkrun",
@@ -3786,12 +3013,6 @@ const snapshot = {
                     "athleteId": "jack-graham-kevan",
                     "raceDate": "2013-01-26",
                     "raceEvent": "Worcester Parkrun",
-                    "raceDistance": "5 km"
-                },
-                {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "2013-01-01",
-                    "raceEvent": "UNKNOWN",
                     "raceDistance": "5 km"
                 },
                 {
@@ -3835,42 +3056,6 @@ const snapshot = {
                     "raceDate": "2009-05-10",
                     "raceEvent": "Tewkesbury Half Marathon",
                     "raceDistance": "H. Mar"
-                },
-                {
-                    "athleteId": "john-kevan",
-                    "raceDate": "1997-06-01",
-                    "raceEvent": "Sedbergh, Cumbria",
-                    "raceDistance": "1 Mile"
-                },
-                {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "1993-01-01",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "10 km"
-                },
-                {
-                    "athleteId": "john-kevan",
-                    "raceDate": "1992-06-01",
-                    "raceEvent": "Oundle, Peterborough",
-                    "raceDistance": "1 Mile"
-                },
-                {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "1990-05-06",
-                    "raceEvent": "Paris Marathon",
-                    "raceDistance": "Marathon"
-                },
-                {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "1990-01-01",
-                    "raceEvent": "UNKNOWN",
-                    "raceDistance": "H. Mar"
-                },
-                {
-                    "athleteId": "david-graham-kevan",
-                    "raceDate": "1989-10-22",
-                    "raceEvent": "Leeds Marathon",
-                    "raceDistance": "Marathon"
                 }
             ]
         }
