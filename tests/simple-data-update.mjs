@@ -74,6 +74,15 @@ function functionSource(source, signature) {
 }
 
 const expectedWorkbookSignature = workbookContractSignature(contractDefinition);
+assert.match(contractDefinition.contractId, /:official-news-distances=7$/);
+const priorDistanceContract = {
+    ...contractDefinition,
+    contractId: contractDefinition.contractId.replace(':official-news-distances=7', '')
+};
+assert.throws(() => requireWorkbookExportCapability(
+    `WORKBOOK_EXPORT_CAPABILITY=${workbookContractSignature(priorDistanceContract)}`,
+    expectedWorkbookSignature
+));
 const csvFiles = (await listCsvFiles(path.join(repoRoot, 'data')))
     .sort((first, second) => first < second ? -1 : first > second ? 1 : 0);
 const descriptorParts = [`${contractDefinition.schemaDescriptorPrefix}\n`];

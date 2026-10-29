@@ -2,6 +2,10 @@
 
 ## Status
 
+- **Five-mile extension:** John approved the Overall-only scope on 28 October
+  2026. Repository support and regression coverage are prepared locally; private
+  workbook execution, complete staged-export validation and release are pending.
+  This preparation does not mean five-mile News is already published.
 - **Product semantics:** Approved on 23 August 2026 for the
   `codex/news-official-results` branch.
 - **Implementation status:** The workbook-owned replay, 64-column News export,
@@ -47,21 +51,28 @@ The News page contains one entry for each presently valid official result that:
    or
 4. does both 2 and 3.
 
-The six currently recorded canonical distances are:
+The seven currently supported canonical distances are:
 
 1. `Marathon`
 2. `Half Marathon`
 3. `10 Mile`
 4. `10 km`
-5. `5 km`
-6. `1 Mile`
+5. `5 Mile`
+6. `5 km`
+7. `1 Mile`
 
 Distance aliases in the workbook, including `H. Mar`, must be normalized before
-milestones are selected. Marathon through 5 km have dedicated championship
-distance tables. `1 Mile` is still eligible for News because the workbook's
-Official Overall championship includes it, but its distance-table rank fields
-are blank because no 1 Mile championship table exists. Any other unsupported
-distance is excluded until the workbook and this contract add it deliberately.
+milestones are selected. `Marathon`, `Half Marathon`, `10 Mile`, `10 km` and
+`5 km` have dedicated championship distance tables. `1 Mile` and `5 Mile` are
+eligible for News because the
+workbook's Official Overall championship includes them. Their complete Current
+and All-Time Distance rank/count/medal/displacement groups remain blank because
+neither distance has a dedicated championship table. John confirmed this scope
+for five-mile results on 28 October 2026: no additional standings, records or
+calculator options. Normalize the source spelling `5 MIle` to `5 Mile` in the
+workbook and its combined lookup-query outputs, preserving numeric age factors
+and open standards. Any other unsupported distance is excluded until the
+workbook and this contract add it deliberately.
 
 Only `TimeClass=Official` is eligible. Unofficial results must not establish a
 baseline, improve a baseline, affect a replayed rank, or appear in either News
@@ -139,7 +150,7 @@ Official championship table is available:
 
 The distance rank uses the row's canonical `Distance` when that dedicated table
 exists. Overall uses the same cross-distance selection and ordering as the
-existing Official Overall championship. A `1 Mile` milestone therefore has
+existing Official Overall championship. A `1 Mile` or `5 Mile` milestone has
 blank Current and All-Time distance triplets, but populated Current and
 All-Time Overall triplets.
 
@@ -227,7 +238,7 @@ workbook, validator, browser, test, and documentation change.
 - `AthleteName` is the required workbook display name and must agree with the
   source result. JavaScript must not derive it from `AthleteID`.
 - `ResultDate` is the source result date in `DD/MM/YYYY` format.
-- `Distance` is one of the six canonical labels in this contract.
+- `Distance` is one of the seven canonical labels in this contract.
 - `Event` is source event text. It may be blank only when the source genuinely
   has no event; no placeholder is invented. Repository source matching treats
   that blank as equivalent to the existing `athlete_results.csv` `UNKNOWN`
@@ -427,9 +438,10 @@ export to repair a missing quartet.
 
 The four contexts are independent. One result can have different before and
 after medals and different displaced holders in several tables, and Family and
-Everyone may legitimately differ for the same source result. `1 Mile` has no
+Everyone may legitimately differ for the same source result. `1 Mile` and
+`5 Mile` have no
 distance table, so all eleven rank, count, medal, and displaced-holder fields
-for each of its Distance contexts are blank while either Overall context may be
+for each of their Distance contexts are blank while either Overall context may be
 populated. A wholly unavailable table also leaves all eleven aligned fields
 blank.
 
@@ -453,8 +465,8 @@ For each site mode, Excel/VBA must:
    before replay begins;
 2. exclude every non-official result before baseline, milestone, window, and
    ranking logic;
-3. normalize the six recorded distances, use blank distance rank/count groups
-   for 1 Mile, and ignore unsupported distances;
+3. normalize the seven supported distances, use blank distance rank/count groups
+   for 1 Mile and 5 Mile, and ignore unsupported distances;
 4. replay results in the authoritative date/source order defined above;
 5. maintain independent all-time age-grade and raw-time bests for every
    athlete/canonical-distance key;
@@ -488,7 +500,7 @@ minimum:
 - accept a header-only file;
 - validate contiguous file-order `SortOrder`, positive unique `SourceRow`,
   descending dates, and reverse authoritative source order within one date;
-- validate required identities, mode eligibility, one of the six canonical
+- validate required identities, mode eligibility, one of the seven canonical
   distances, literal
   `Official`, date, time, percentage, positive-number, and closed-enum formats;
 - match every row's source identity, date, event, class, distance, rounded
@@ -519,13 +531,13 @@ minimum:
   independent multi-context and cross-mode values; and
 - require each displaced-holder quartet to be complete or blank, selected-mode
   public, non-self-referential, aligned with the focal `MedalAfter`, and one of
-  the three allowed handoff chains; and require all eleven 1 Mile distance
-  context fields to be blank; and
+  the three allowed handoff chains; and require all eleven Distance context
+  fields to be blank for both `1 Mile` and `5 Mile`; and
 - reject any row containing `Unofficial`, a vacancy placeholder, a distance
-  outside the six-value contract, a zero/negative improvement, or an invented
+  outside the seven-value contract, a zero/negative improvement, or an invented
   previous value for a first result; and require both distance rank/count
-  groups to be wholly blank for `1 Mile` while its Overall after-ranks and
-  counts remain populated.
+  groups to be wholly blank for `1 Mile` and `5 Mile` while their Overall
+  after-ranks and counts remain populated.
 
 Repository validation may check internal arithmetic and agreement with public
 source rows, but it must not generate the News feed or treat a browser-side

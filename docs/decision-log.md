@@ -1,5 +1,21 @@
 # Decision Log
 
+## Five-mile results use the Overall-only model - 28 October 2026
+
+John explicitly chose results and Overall only for `5 Mile`, following the
+existing one-mile model. Do not add dedicated five-mile championship tables,
+crowns, absolute records or calculator options. The export remains 72 files
+with the existing headers, age-grade formula signature and schema fingerprint.
+The workbook capability ID adds `official-news-distances=7`, rejecting an older
+exporter that could otherwise omit five-mile News with the same CSV schema.
+
+Excel/VBA owns source normalization, News milestones, Overall replay and crown
+selection. Correct `5 MIle` through the combined lookup queries and result
+label without changing any numeric standards or factors. News permits the
+canonical `5 Mile` label and requires all eleven fields in each unavailable
+Distance context to be blank. Its Overall contexts retain the full contract.
+The browser only displays exported facts and includes the distance in filters.
+
 ## Gallery race choices use each runner's longest Official result — 25 October 2026
 
 John requested that the uploader exclude Unofficial times and shorter splits,

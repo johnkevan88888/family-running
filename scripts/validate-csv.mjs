@@ -28,7 +28,7 @@ const manifestSchemaVersion = '1.0';
 // against one definition rather than three.
 const absoluteRecordSexes = ['Men', 'Women'];
 const absoluteRecordDistances = ['Marathon', 'Half Marathon', '10 Mile', '10 km', '5 km'];
-const officialNewsDistances = ['Marathon', 'Half Marathon', '10 Mile', '10 km', '5 km', '1 Mile'];
+const officialNewsDistances = ['Marathon', 'Half Marathon', '10 Mile', '10 km', '5 Mile', '5 km', '1 Mile'];
 const officialNewsMilestoneTypes = [
     'First Official Result',
     'Age Grade PB',
@@ -1347,7 +1347,7 @@ function validateOfficialResultNews(siteDir, siteMode) {
         for (const rankContext of officialNewsRankContexts) {
             const isDistanceContext = rankContext[0].includes('Distance');
             validateOfficialNewsRankContext(row, file, rankContext, {
-                tableAvailable: !(String(row.Distance || '').trim() === '1 Mile' && isDistanceContext),
+                tableAvailable: !(['1 Mile', '5 Mile'].includes(String(row.Distance || '').trim()) && isDistanceContext),
                 siteAthleteIds,
                 siteMode
             });
@@ -1710,7 +1710,7 @@ function validateOfficialNewsRankContext(
                 addError(
                     file,
                     row.__rowNumber,
-                    `${field} must be blank because 1 Mile has no dedicated Official distance leaderboard.`
+                    `${field} must be blank because ${row.Distance} has no dedicated Official distance leaderboard.`
                 );
             }
         }
@@ -2700,6 +2700,7 @@ function canonicalDistanceLabel(value) {
         marathon: 'Marathon',
         halfmarathon: 'Half Marathon',
         '10mile': '10 Mile',
+        '5mile': '5 Mile',
         '10km': '10 km',
         '5km': '5 km'
     }[key] || String(value || '').trim();
