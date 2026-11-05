@@ -1,5 +1,111 @@
 # Active Work
 
+## Five-mile Gallery catalogue test correction - 5 November 2026
+
+John's desktop release run reached `tests/gallery-admin-catalog.mjs` after the
+generated catalogue check passed, then stopped before any push or Pull Request.
+Its independent distance-order oracle omitted canonical `5 Mile`, so the newly
+promoted Official result failed the vocabulary assertion. The catalogue
+generator already compares mile/km distances correctly; this was a test
+omission, not a source-workbook or public-data failure.
+
+The corrected oracle orders `5 km`, `5 Mile`, `10 km`. New synthetic fixtures
+cover selection of five miles over five kilometres, ten kilometres over five
+miles, a longer Unofficial result being ignored and a different runner keeping
+their own five-kilometre result at the same event. Both modes are checked. The
+previous failure was reproduced and the corrected catalogue test passes.
+
+Repository safety, vendor, both-mode CSV/News/Gallery, age-grade/Gallery
+contracts, all 10 artifact-safety groups and the 117-file artifact build also
+pass. The agent full-suite/browser attempts still encounter the session's
+localhost navigation denial, so they are not full acceptance evidence. Preserve
+the completed-prefix desktop log and rerun the full suite on the corrected
+exact head; a completed prefix cannot stand in for a passing complete suite.
+
+Only this test and handoff documentation change on top of the existing approved
+feature commit. Public runtime, all 72 CSVs, the private catalogue, workbook and
+staged bundle remain unchanged. The stopped release plan/state and helpers were
+backed up under the ignored `five-mile-release-recovery-20261105` directory.
+The refreshed plan pins the corrected feature commit, its tree and exact
+85-file allowlist; no old suite or preview approval is reused. Required full
+suite, exact-head CI, responsive captures, both-mode preview review, owner merge
+policy and Pages/live verification remain mandatory before publication.
+
+Continue using the same recovered `run-five-mile-release.cmd`. The full desktop
+suite must pass before it can push. The original approval remains restricted
+to this five-mile release and its reviewed complete bundle. No workbook access,
+new export, data promotion or remote publication is part of this correction.
+
+## Overall-only five-mile release - approved, promoted and awaiting PR checks, 29 October 2026
+
+John explicitly approved the private workbook backup/inspection/correction,
+then approved complete-bundle promotion, pushing/opening PRs and merging/
+publishing after required checks. Five miles follows 1 Mile: results, Overall
+and Official Results News only. No dedicated five-mile standings, crown groups,
+records or calculator options are approved. Excel/VBA owns all calculations.
+The 72 public CSV paths, headers and age-grade formula contract are unchanged;
+the workbook capability adds `official-news-distances=7`.
+
+The stable canonical private workbook was installed at 16:57 UTC on 29 October.
+It and the reviewed candidate have verified SHA-256
+`1B4041DC53C74C64E244C61159EE0C07DF0A1F542E0AF525BD25E51A3658B7BE`.
+Its dated private backup is
+`CODEX WORKING COPY BEFORE FIVE MILE 20261029-165728-372-a438bbb1.xlsm`,
+verified against saved predecessor SHA-256
+`9B1489B7B82F51BC03C9703182D1CCCD36C4A5EF52B40659AC7EA5CF7F3B13D0`.
+Original backups, preserved unsaved snapshots and exact source/VBA/query audits
+remain outside Git under the private task directory
+`C:\Users\johnk\AppData\Local\Temp\family-running-five-mile-20261028`.
+The saved corrected source passed all 4268 lookup-row and 232 result/input
+controls. Source times are exact; age grades agree within 1e-12. Both combined
+lookup Data Model sources and worksheet views survived the real native refresh.
+The temporary migration helper was removed before saving. The source installer
+passed 8 atomic-install and 11 predecessor-comparison checks. No private workbook
+or VBA has entered Git, Library or the public artifact.
+
+The complete authoritative bundle is `20261029T131547979Z-11126180`, retained at
+`test-artifacts/workbook-export-staging/five-mile-native-20261029-131547-875-d6148746`.
+Workbook terminal-state validation, complete repository validation and review of
+its reconciliation passed. The two added Official results are Darryl Watton:
+11 October 2009 Marathon, 02:59:34, 68.1%; and 30 March 2011 5 Mile,
+00:30:38, 71.7%. The existing 230 public results are unchanged and none removed.
+Only the distance label was corrected; the source event spelling was preserved.
+
+Family standings/history remain unchanged and its News stays at 51 rows.
+Everyone News grows from 91 to 93 rows. Its five-mile entry has all 22 Distance
+context fields blank and exported Overall contexts populated. The marathon
+makes Darryl the Everyone men's absolute record holder and All-Time Official
+champion, adds 56 comparison targets, updates 29 Marathon/All Time crown-standard
+rows and revises the historical crown/News snapshots. SourceRow references
+shift after insertion. Dedicated distance matrices remain unchanged.
+
+The complete bundle is promoted in the isolated `codex/five-mile-support`
+workspace only. Previous data is retained there under
+`test-artifacts/workbook-export-promotion/20261029170309574/previous-data`.
+The derived private Gallery catalogue was regenerated: Everyone gains exactly
+the two new Official race choices and Family remains unchanged. Normal main,
+the earlier stopped updater state and unrelated local edits are preserved.
+
+The 107-group owner-run suite passed before promotion on 29 October at 13:58 UTC,
+including both-mode browser smoke and responsive captures of the five-mile
+filter/Overall-only cases. Those captures use baseline data and synthetic News
+fixtures. On promoted data, repository/vendor/CSV/Gallery/age-grade validation,
+168 export regressions, catalogue verification, staged-workflow regressions,
+10 artifact-safety cases and the 117-file publication build passed locally.
+The promoted full local run stops at the first browser test because this agent
+session denies localhost browser access. The updater regression also reaches a
+blocked MSYS Git subprocess. These are recorded environment limitations; require
+the complete CI suite and fresh responsive screenshots on the exact PR head.
+Evidence is under `test-artifacts/five-mile-preparation-20261028`, including the
+source-install verification, staged data reviews and promoted-check logs.
+
+Next: open one ordinary standard-path PR containing the five-mile support and
+complete reviewed data. Runtime and validator/capability changes require a
+successful Netlify preview. Review the exact diff and both-mode responsive
+captures, require full CI and preview success, then merge under John's explicit
+approval and verify the exact Pages deployment and live bundle. Do not re-export,
+weaken a gate, or touch private services or the older updater recovery state.
+
 ## Updater/Gallery correction release — approved, 25 October 2026
 
 John explicitly approved pushing, opening the PR, merging and cleaning up the

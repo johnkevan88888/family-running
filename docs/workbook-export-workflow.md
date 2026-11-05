@@ -1,5 +1,22 @@
 # Workbook Website Export Workflow
 
+The 28 October five-mile preparation extends News to canonical `5 Mile` as an
+Overall-only distance. Its capability ID adds `official-news-distances=7` so an
+older exporter that silently omits five-mile milestones fails preflight even
+though all 72 paths, headers and their schema fingerprint are unchanged. The
+same marker must be installed in the private exporter before any staged run.
+This marker supplements full staged validation and reconciliation; it does not
+replace them. No dedicated standings, records or calculator options are added.
+
+The private combined lookups `tbAgeFactorsCombined` and `tbOCRecordsCombined`
+are worksheet views of the existing Data Model. Source-change validation must
+refresh the matching [ModelTable source](https://learn.microsoft.com/en-us/office/vba/api/excel.modeltable.refresh),
+wait for its pending query, then refresh the associated
+[TableObject worksheet view](https://learn.microsoft.com/en-us/office/vba/api/excel.tableobject.refresh)
+and verify all original lookup and result controls. `ListObject.QueryTable`
+is not the sole connectivity gate for these views. Preserve the original
+model/source connection identities and fail closed if they differ.
+
 Excel/VBA is the private source of truth. The workbook creates a complete
 website-data bundle in a fresh ignored staging folder. Repository tooling then
 validates and compares that bundle. Promotion to tracked `data/` is a separate,

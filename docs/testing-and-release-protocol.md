@@ -1,5 +1,23 @@
 # Testing And Release Protocol
 
+## Overall-only five-mile results - 28 October 2026
+
+Use complete 72-file bundles in both modes. Check the canonical `5 Mile` source
+label, exact source time/age grade, News milestone chains and full Overall
+rank/count/medal/displacement contexts. All eleven fields in each Current and
+All-Time Distance context must remain blank. Keep the existing dedicated
+leaderboard, records, crown-group and calculator distance matrices unchanged.
+
+Run the export-bundle regression cases for a valid five-mile entry and each
+forbidden Distance field in Family and Everyone, including a millisecond News
+time matching its rounded public result. Run both-mode desktop/mobile browser
+smoke tests for five-mile filtering, Overall-only movement and filter reset.
+Refresh each combined lookup's existing Data Model source and worksheet view,
+then verify that the private queries survive that real refresh while every age
+factor, open standard, source time and existing result age grade is preserved.
+Reconcile the full staged export, run the complete suite and inspect responsive
+screenshots. A prepared migration or baseline test is not workbook/export proof.
+
 ## Official longest-distance Gallery choices — 25 October 2026
 
 Run catalogue generation/check and `tests/gallery-admin-catalog.mjs`. Cover

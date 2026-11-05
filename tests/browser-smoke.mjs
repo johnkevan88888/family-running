@@ -1551,6 +1551,17 @@ async function assertNewsControlsAndProgressiveLoading(page, mode, fixture) {
     await waitForNewsCardCount(page, newsBatchSize);
     await assertNewsFiltersReset(page, fixture, `${label} reset after distance filter`);
 
+    await distanceFilter.selectOption('5 Mile');
+    await waitForNewsCardCount(page, 1);
+    await assertNewsRenderedRowOrder(page, fixture.rows.filter(row => row.Distance === '5 Mile'), mode, `${label} five-mile results`);
+    const fiveMileRanks = (await cards.locator('.news-rank-row dt').allTextContents()).map(normalizeText);
+    if (fiveMileRanks.join('|') !== 'Overall|Overall') {
+        failures.push(`${label}: 5 Mile rendered unavailable Distance ranks (${fiveMileRanks.join(', ') || 'none'}).`);
+    }
+    await reset.click();
+    await waitForNewsCardCount(page, newsBatchSize);
+    await assertNewsFiltersReset(page, fixture, `${label} reset after five-mile filter`);
+
     const targetAthlete = fixture.rows[0];
     await athleteFilter.selectOption(targetAthlete.AthleteID);
     await waitForNewsCardCount(page, 1);
@@ -2119,7 +2130,7 @@ function newsFixture(mode) {
         ['31/10/2024', '5 km'],
         ['30/09/2024', '10 km'],
         ['31/08/2024', 'Half Marathon'],
-        ['31/07/2024', 'Marathon']
+        ['31/07/2024', '5 Mile']
     ];
 
     for (const [index, [resultDate, distance]] of historySpecs.entries()) {
@@ -2144,7 +2155,7 @@ function newsFixture(mode) {
             ExportBundleID: bundleId
         };
 
-        if (distance !== '1 Mile') {
+        if (!['1 Mile', '5 Mile'].includes(distance)) {
             row.CurrentDistanceRankAfter = String(sortOrder);
             row.CurrentDistanceRankedAthleteCountAfter = String(sortOrder + 4);
             row.AllTimeDistanceRankAfter = String(sortOrder + 3);

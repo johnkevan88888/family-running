@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "contractId": "family-running:web-export:v1:public-csv=72:official-news-columns=64",
+  "contractId": "family-running:web-export:v1:public-csv=72:official-news-columns=64:official-news-distances=7",
   "publicCsvCount": 72,
   "manifestEntryCount": 71,
   "officialResultNewsColumnCount": 64,

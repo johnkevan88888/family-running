@@ -192,6 +192,24 @@ const officialNewsOneMileMedalCases = [
     }
 }));
 
+const officialNewsFiveMileCases = ['family', 'everyone'].flatMap(mode => [
+    {
+        name: `${mode} five-mile News permits only Overall rank contexts`,
+        expectPass: true,
+        mutate: root => installFiveMileNewsFixture(root, mode)
+    },
+    ...['CurrentDistance', 'AllTimeDistance'].flatMap(prefix => ["RankBefore","RankAfter","RankedAthleteCountAfter","PlacesGained","MedalEntry","MedalBefore","MedalAfter","DisplacedAthleteID","DisplacedAthleteName","DisplacedMedalBefore","DisplacedMedalAfter"].map(suffix => ({
+        name: `${mode} five-mile News rejects ${prefix}${suffix}`,
+        expected: `${prefix}${suffix} must be blank because 5 Mile has no dedicated Official distance leaderboard.`,
+        mutate: async root => {
+            await installFiveMileNewsFixture(root, mode);
+            const rows = await readOfficialNews(root, mode);
+            rows.at(-1)[officialNewsColumn.get(`${prefix}${suffix}`)] = '1';
+            await writeOfficialNews(root, mode, rows);
+        }
+    })))
+]);
+
 const cases = [
     {
         name: 'valid official result News exports',
@@ -631,6 +649,7 @@ const cases = [
         }
     },
     ...officialNewsOneMileMedalCases,
+    ...officialNewsFiveMileCases,
     {
         name: 'official result News duplicate SourceRow',
         expected: 'Duplicate SourceRow 54.',
@@ -1222,6 +1241,36 @@ for (const testCase of cases) {
 }
 
 console.log('Export bundle validation regression tests passed.');
+
+async function installFiveMileNewsFixture(root) {
+    const resultsFile = path.join(root, 'data', 'athlete_results.csv');
+    const results = parseCsvDocument(await fs.readFile(resultsFile, 'utf8'));
+    const fields = {
+        AthleteID: 'ben-graham-kevan', Participant: 'Ben Graham-Kevan',
+        Date: '01/01/2010', Distance: '5 Mile', Time: '00:45:00',
+        AgeGrade: '40.0%', Event: 'Synthetic five-mile fixture', TimeClass: 'Official', AgeAtRace: '6',
+        ExportBundleID: results[1][results[0].indexOf('ExportBundleID')]
+    };
+    results.push(results[0].map(field => fields[field] || ''));
+    await fs.writeFile(resultsFile, `${results.map(row => row.map(csvCell).join(',')).join('\r\n')}\r\n`);
+    await setManifestRowCount(root, 'data/athlete_results.csv', results.length - 1);
+    for (const mode of ['family', 'everyone']) {
+    const news = await readOfficialNews(root, mode);
+    news.push(officialNewsRow({
+        SortOrder: String(news.length), SourceRow: '1', AthleteID: fields.AthleteID,
+        AthleteName: fields.Participant, ResultDate: fields.Date, Distance: fields.Distance,
+        Time: '00:45:00.125', AgeGrade: fields.AgeGrade, AgeGradeExact: '40.0%',
+        Event: fields.Event, TimeClass: fields.TimeClass, MilestoneType: 'First Official Result',
+        CurrentOverallRankAfter: '1', CurrentOverallRankedAthleteCountAfter: '1',
+        CurrentOverallMedalEntry: 'Gold', CurrentOverallMedalAfter: 'Gold',
+        AllTimeOverallRankAfter: '1', AllTimeOverallRankedAthleteCountAfter: '1',
+        AllTimeOverallMedalEntry: 'Gold', AllTimeOverallMedalAfter: 'Gold',
+        ExportBundleID: fields.ExportBundleID
+    }));
+    await writeOfficialNews(root, mode, news);
+    await setManifestRowCount(root, `data/${mode}/official_result_news.csv`, news.length - 1);
+    }
+}
 
 async function installValidOfficialNewsExports(root) {
     const manifestFile = path.join(root, 'data', 'export_manifest.csv');

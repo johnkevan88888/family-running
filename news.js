@@ -11,6 +11,7 @@
         'Half Marathon',
         '10 Mile',
         '10 km',
+        '5 Mile',
         '5 km',
         '1 Mile'
     ];
