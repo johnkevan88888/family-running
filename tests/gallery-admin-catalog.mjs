@@ -61,7 +61,7 @@ const publicAthleteRows = csvObjects(
 );
 const publicNameById = new Map(publicAthleteRows.map(row => [row.AthleteID, row.Participant]));
 // Independent ordered oracle for the current workbook's distance vocabulary.
-const distanceOrder = ['1 Mile', '5 km', '10 km', '15 km', '10 Mile', '20 km', 'H. Mar', '30 km', 'Marathon'];
+const distanceOrder = ['1 Mile', '5 km', '5 Mile', '10 km', '15 km', '10 Mile', '20 km', 'H. Mar', '30 km', 'Marathon'];
 const officialRows = publicAthleteRows.filter(row => row.TimeClass === 'Official');
 assert.ok(officialRows.every(row => distanceOrder.includes(row.Distance)));
 const eligibleRows = officialRows.filter(row => !officialRows.some(other =>
@@ -179,6 +179,12 @@ try {
         resultRow('runner-one', 'Runner One', '04/01/2026', '5 km', 'Official', 'Separate Race'),
         resultRow('runner-one', 'Runner One', '05/01/2026', '1 Mile'),
         resultRow('runner-one', 'Runner One', '05/01/2026', '1000 m'),
+        resultRow('runner-one', 'Runner One', '06/01/2026', '5 km'),
+        resultRow('runner-one', 'Runner One', '06/01/2026', '5 Mile'),
+        resultRow('runner-one', 'Runner One', '06/01/2026', '10 km', 'Unofficial'),
+        resultRow('runner-two', 'Runner Two', '06/01/2026', '5 km'),
+        resultRow('runner-one', 'Runner One', '07/01/2026', '5 Mile'),
+        resultRow('runner-one', 'Runner One', '07/01/2026', '10 km'),
         resultRow('runner-two', 'Runner Two', '02/01/2026', '5 km', 'Unofficial'),
         // A distinct Official performance at the same distance is one choice.
         [...resultRow('runner-one', 'Runner One', '01/01/2026', 'H. Mar').slice(0, 4),
@@ -187,6 +193,8 @@ try {
     fixtureRoots.push(selectionRoot);
     const selection = await buildGalleryAdminCatalog(selectionRoot);
     const expectedOne = [
+        ['2026-01-07', 'Fixture Race', '10 km'],
+        ['2026-01-06', 'Fixture Race', '5 Mile'],
         ['2026-01-05', 'Fixture Race', '1 Mile'],
         ['2026-01-04', 'Fixture Race', 'Marathon'],
         ['2026-01-04', 'Separate Race', '5 km'],
@@ -196,9 +204,10 @@ try {
     ].map(([raceDate, raceEvent, raceDistance]) => ({ athleteId: 'runner-one', raceDate, raceEvent, raceDistance }));
     assert.deepEqual(selection.sites.family.resultEntries, expectedOne);
     assert.deepEqual(selection.sites.everyone.resultEntries.filter(row => row.athleteId === 'runner-one'), expectedOne);
-    assert.deepEqual(selection.sites.everyone.resultEntries.filter(row => row.athleteId === 'runner-two'), [{
-        athleteId: 'runner-two', raceDate: '2026-01-01', raceEvent: 'Fixture Race', raceDistance: '5 km'
-    }], 'Another runner who only ran 5 km stays eligible at the same event');
+    assert.deepEqual(selection.sites.everyone.resultEntries.filter(row => row.athleteId === 'runner-two'), [
+        { athleteId: 'runner-two', raceDate: '2026-01-06', raceEvent: 'Fixture Race', raceDistance: '5 km' },
+        { athleteId: 'runner-two', raceDate: '2026-01-01', raceEvent: 'Fixture Race', raceDistance: '5 km' }
+    ], 'Another runner who only ran 5 km stays eligible at the same event, including a five-mile race');
 
     const unofficialRoot = await createFixture({ athleteRows: [
         resultRow('runner-one', 'Runner One', '01/01/2026', 'Unmeasured training', 'Unofficial'),

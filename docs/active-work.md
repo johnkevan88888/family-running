@@ -1,5 +1,41 @@
 # Active Work
 
+## Five-mile Gallery catalogue test correction - 5 November 2026
+
+John's desktop release run reached `tests/gallery-admin-catalog.mjs` after the
+generated catalogue check passed, then stopped before any push or Pull Request.
+Its independent distance-order oracle omitted canonical `5 Mile`, so the newly
+promoted Official result failed the vocabulary assertion. The catalogue
+generator already compares mile/km distances correctly; this was a test
+omission, not a source-workbook or public-data failure.
+
+The corrected oracle orders `5 km`, `5 Mile`, `10 km`. New synthetic fixtures
+cover selection of five miles over five kilometres, ten kilometres over five
+miles, a longer Unofficial result being ignored and a different runner keeping
+their own five-kilometre result at the same event. Both modes are checked. The
+previous failure was reproduced and the corrected catalogue test passes.
+
+Repository safety, vendor, both-mode CSV/News/Gallery, age-grade/Gallery
+contracts, all 10 artifact-safety groups and the 117-file artifact build also
+pass. The agent full-suite/browser attempts still encounter the session's
+localhost navigation denial, so they are not full acceptance evidence. Preserve
+the completed-prefix desktop log and rerun the full suite on the corrected
+exact head; a completed prefix cannot stand in for a passing complete suite.
+
+Only this test and handoff documentation change on top of the existing approved
+feature commit. Public runtime, all 72 CSVs, the private catalogue, workbook and
+staged bundle remain unchanged. The stopped release plan/state and helpers were
+backed up under the ignored `five-mile-release-recovery-20261105` directory.
+The refreshed plan pins the corrected feature commit, its tree and exact
+85-file allowlist; no old suite or preview approval is reused. Required full
+suite, exact-head CI, responsive captures, both-mode preview review, owner merge
+policy and Pages/live verification remain mandatory before publication.
+
+Continue using the same recovered `run-five-mile-release.cmd`. The full desktop
+suite must pass before it can push. The original approval remains restricted
+to this five-mile release and its reviewed complete bundle. No workbook access,
+new export, data promotion or remote publication is part of this correction.
+
 ## Overall-only five-mile release - approved, promoted and awaiting PR checks, 29 October 2026
 
 John explicitly approved the private workbook backup/inspection/correction,
