@@ -1,5 +1,21 @@
 # Active Work
 
+## Pipeline Stage 1 — committed, awaiting approval to push, 6 November 2026
+
+Branch `codex/pipeline-stage-1` in a fresh clone of `origin/main` at `7f2f631`;
+local `main` was behind with uncommitted merged work and was left untouched.
+Node 24.x is declared and enforced, and `leaderboard.js` whitelists `CardType`.
+
+All 108 checks pass in 33m 44s on Node 24.18.0, with both-mode desktop and
+mobile captures. The suite passes on installed Chrome and fails under `CI=1`,
+where `tests/gallery-podium-framing-browser.mjs` cannot decode its SVG fixture;
+that is a browser-binary fault, not this change.
+
+Next: approval to push and open a standard-preview Pull Request. Stage 2B
+follows as its own PR and must produce a clean pinned-Chromium run locally and
+in CI before Stage 3. Carried risk F-03: exported data stays in the public
+repository, unaddressed, and needs its own decision.
+
 ## Five-mile Gallery catalogue test correction - 5 November 2026
 
 John's desktop release run reached `tests/gallery-admin-catalog.mjs` after the

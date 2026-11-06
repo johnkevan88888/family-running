@@ -128,6 +128,7 @@ try {
     await runCrownHistoryEdgeCaseTests(browser);
     await runAbsoluteRecordsEdgeCaseTests(browser);
     await runHostileExportedValueTests(browser);
+    await runHostileCardTypeTests(browser);
     await runCsvParsingContractTests(browser);
     await runRecentResultsWindowTests(browser);
     await runBrandMetadataTests(browser);
@@ -3586,6 +3587,119 @@ async function runHostileExportedValueTests(browserInstance) {
         }
     } catch (error) {
         failures.push(`hostile exported value: ${error.message}`);
+    } finally {
+        await context.close();
+    }
+}
+
+// `CardType` is the one exported Hall of Fame value that reaches a `class`
+// attribute instead of element text. The escaping assertions above would not
+// notice a regression here, because escaping is not the defence: a card type is
+// matched against the known set and anything else becomes `record`. Escaping
+// alone would keep the markup valid while still letting an export invent a
+// class the stylesheet never meant to apply.
+async function runHostileCardTypeTests(browserInstance) {
+    const bundleId = '20990101T010203005Z-B2C3D4E5';
+    const cardTypeProbe = 'window.__cardtypeprobe = true';
+    // Already lowercase, so `toLowerCase()` cannot be what defuses it.
+    const hostileCardType = `record" onmouseover="${cardTypeProbe}`;
+    const columns = [
+        'Award',
+        'Participant',
+        'Distance',
+        'Time',
+        'AgeGrade',
+        'Date',
+        'Event',
+        'Athlete ID',
+        'AgeClass',
+        'CardType',
+        'ExportBundleID'
+    ];
+    const rows = [
+        ['Current Champion', 'Hostile Card', '10 km', '00:40:00', '70.0%', '2026-01-01', 'Test Race', '', 'Club', hostileCardType],
+        ['Fastest 10 km', 'Valid Speed Card', '10 km', '00:41:00', '69.0%', '2026-01-02', 'Test Race', '', 'Club', 'speed'],
+        ['Fastest 5 km', 'Unknown Type Card', '5 km', '00:19:00', '68.0%', '2026-01-03', 'Test Race', '', 'Club', 'not-a-card-type'],
+        ['All Time Best', 'Mixed Case Card', '10 km', '00:42:00', '67.0%', '2026-01-04', 'Test Race', '', 'Club', 'SPEED'],
+        ['Current Champion', 'Championship Vacant', '10 km', '', '', '', '', '', '', 'speed']
+    ];
+    const hallOfFame = [
+        columns.join(','),
+        ...rows.map(row => [...row.map(quoteCsvField), bundleId].join(','))
+    ].join('\r\n');
+    // A known type is honoured, an unknown one falls back, and the fallback is
+    // `record` -- the same default `inferHallOfFameCardType` already returns, so
+    // this also pins that nothing the workbook exports today moves.
+    const expectedClasses = new Map([
+        ['Hostile Card', 'hof-card record'],
+        ['Valid Speed Card', 'hof-card speed'],
+        ['Unknown Type Card', 'hof-card record'],
+        ['Mixed Case Card', 'hof-card speed'],
+        ['Championship Vacant', 'hof-card speed vacant']
+    ]);
+
+    const context = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+
+    await page.route('**/data/family/halloffame.csv', route =>
+        route.fulfill({ status: 200, contentType: 'text/csv', body: `${hallOfFame}\r\n` })
+    );
+
+    try {
+        await page.goto(`${preview.baseUrl}/hall-of-fame.html?site=family`, { waitUntil: 'domcontentloaded' });
+        await waitForRenderedHallOfFame(page, 'family');
+
+        const rendered = await page.evaluate(() => Array.from(
+            document.querySelectorAll('#hall-of-fame article.hof-card')
+        ).map(card => ({
+            name: card.querySelector('.hof-name')?.textContent?.trim() || '',
+            className: card.className.trim()
+        })));
+
+        if (rendered.length !== 5) {
+            failures.push(`hostile card type: expected 5 Hall of Fame cards, rendered ${rendered.length}.`);
+        }
+
+        for (const [name, expected] of expectedClasses) {
+            const card = rendered.find(entry => entry.name === name);
+
+            if (!card) {
+                failures.push(`hostile card type: no card rendered for "${name}".`);
+                continue;
+            }
+            if (card.className !== expected) {
+                failures.push(
+                    `hostile card type: "${name}" had class "${card.className}", expected "${expected}".`
+                );
+            }
+        }
+
+        // The breakout attempt must not have produced an attribute at all.
+        const inlineHandlers = await page.evaluate(() => Array.from(
+            document.querySelectorAll('#hall-of-fame, #hall-of-fame *')
+        ).flatMap(element => element
+            .getAttributeNames()
+            .filter(name => name.startsWith('on'))));
+
+        if (inlineHandlers.length !== 0) {
+            failures.push(
+                `hostile card type: an exported value created inline handler attributes (${inlineHandlers.join(', ')}).`
+            );
+        }
+
+        // The clinching assertion, as above: absence of an attribute would not
+        // catch a payload that ran and tidied up after itself.
+        await page.evaluate(() => {
+            for (const card of document.querySelectorAll('#hall-of-fame article.hof-card')) {
+                card.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+            }
+        });
+
+        if (await page.evaluate(() => window.__cardtypeprobe) !== undefined) {
+            failures.push('hostile card type: an exported CardType executed script in the page.');
+        }
+    } catch (error) {
+        failures.push(`hostile card type: ${error.message}`);
     } finally {
         await context.close();
     }

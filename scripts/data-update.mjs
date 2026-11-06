@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { findGit, parseUpdateArguments } from './simple-data-update.mjs';
+import { assessNodeVersion } from './node-engine.mjs';
 import {
     readUpdateWorkspaceContext, requirePhysicalDirectory, updateHomeVariable, workspacePaths
 } from './data-update-context.mjs';
@@ -178,8 +179,19 @@ function requireSha(sha) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
     try {
-        if (process.platform !== 'win32' && !parseUpdateArguments(process.argv.slice(2)).help) {
-            throw new Error('The guided workbook update currently requires Windows and Microsoft Excel.');
+        if (!parseUpdateArguments(process.argv.slice(2)).help) {
+            // `update-website-data.cmd` runs this file with `node` directly
+            // rather than through pnpm, so pnpm never enforces `engines` for a
+            // double-click update. Check here before Excel is opened or a
+            // branch is created.
+            const nodeVersionProblem = assessNodeVersion();
+
+            if (nodeVersionProblem) {
+                throw new Error(nodeVersionProblem);
+            }
+            if (process.platform !== 'win32') {
+                throw new Error('The guided workbook update currently requires Windows and Microsoft Excel.');
+            }
         }
         runIsolatedUpdate({ run: createCommandRunner(findGit()) });
     } catch (error) {

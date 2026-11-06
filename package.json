@@ -4,6 +4,9 @@
   "private": true,
   "description": "Static GitHub Pages site for the Family Running Championships.",
   "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
     "preview": "node scripts/serve-site.mjs",
     "preview:build": "node scripts/build-preview-artifact.mjs",
