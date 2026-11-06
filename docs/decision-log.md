@@ -1,5 +1,16 @@
 # Decision Log
 
+## Node 24 and whitelisted Hall of Fame card types — 6 November 2026
+
+Node 24.x is required. `scripts/node-engine.mjs` is the single declaration; the
+test runner and updater enforce it, and `tests/node-engine.mjs` checks that
+`package.json`, `.nvmrc`, both workflows and `netlify.toml` agree with it. The
+suite uses `await using`, which Node 22 cannot parse and which failed ten
+minutes in. The updater checks separately because `update-website-data.cmd`
+bypasses pnpm. An exported value reaching an attribute is matched against a
+known set, not escaped: `CardType` reached a `class` attribute, where escaping
+would still admit an invented class. Element text is still escaped.
+
 ## Five-mile results use the Overall-only model - 28 October 2026
 
 John explicitly chose results and Overall only for `5 Mile`, following the

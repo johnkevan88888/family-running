@@ -1,11 +1,24 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { assessNodeVersion } from './node-engine.mjs';
+
+// Refuse before spawning a hundred child processes. Without this gate the suite
+// reached `tests/gallery-photo-review-bridge.mjs` -- check 59 -- about ten
+// minutes in before Node 22 failed to parse its `await using` statement, which
+// reads as a failure in that file rather than a wrong Node.
+const nodeVersionProblem = assessNodeVersion();
+
+if (nodeVersionProblem) {
+    console.error(nodeVersionProblem);
+    process.exit(1);
+}
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const checks = [
     ['Repository safety validation', ['scripts/validate-repository-safety.mjs']],
+    ['Node engine declaration consistency', ['tests/node-engine.mjs']],
     ['Vendored library validation', ['scripts/sync-vendor.mjs', '--check']],
     ['CSV validation', ['scripts/validate-csv.mjs']],
     ['Gallery validation', ['scripts/validate-gallery.mjs']],

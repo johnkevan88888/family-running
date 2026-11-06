@@ -1150,6 +1150,14 @@ Local preview URLs:
 
 Repository safety validation checks tracked files and fails if a private workbook, Excel add-in, exported VBA source file (`.bas`, `.cls`, `.frm`, `.frx`), Excel temporary file, obvious credential file, or private workbook backup-like file is tracked.
 
+Node 24.x is required, and anything else is refused before any check runs.
+`scripts/node-engine.mjs` is the single declaration; the test runner and
+updater enforce it, and `tests/node-engine.mjs` checks that `package.json`,
+`.nvmrc`, both workflows and `netlify.toml` agree with it. The exported Hall of
+Fame `CardType` reaches a `class` attribute, so it is matched against the known
+card types rather than escaped, guarded by the `hostile card type` browser
+group.
+
 Vendored library validation compares every file in `vendor/` against the build resolved by the pnpm lockfile, so the committed browser libraries can never drift from a reviewed, pinned dependency version. The public site loads Chart.js and its date adapter from `vendor/`, never from a third-party CDN, which also means the browser smoke tests exercise the athlete progression chart instead of its unavailable-library fallback.
 
 CSV validation checks `data/family/`, `data/everyone/`, and shared `data/athlete_results.csv`. Excel/VBA generates one `ExportBundleID` per full export and appends it to every public data CSV. VBA writes `data/export_manifest.csv` last, making it the export-completion and consistency contract. Its exact schema is `ExportBundleID,ExportedAtUTC,SchemaVersion,Scope,RelativePath,DataRowCount`, with schema version `1.0`, scopes limited to `family`, `everyone`, and `shared`, repository-relative paths, and row counts excluding headers. Validation rejects missing manifests, invalid schemas or paths, missing or mixed IDs, bundle mismatches, missing or unlisted files, duplicate manifest paths, inconsistent manifest metadata, and wrong row counts, so partial, stale, or mixed exports cannot pass release checks.

@@ -88,6 +88,31 @@ function inferHallOfFameCardType(award) {
     return 'record';
 }
 
+// `CardType` is an exported value that reaches the card's `class` attribute, so
+// it is matched against the known card types rather than escaped. Escaping
+// alone would keep the markup valid but still let an exported value invent a
+// class the stylesheet never meant to apply; matching keeps the attribute
+// closed to exactly the eight types `site.css` styles and `hallOfFameBadge`
+// implements. An unrecognised or absent value becomes `record`, the same
+// default `inferHallOfFameCardType` already returns, so nothing the workbook
+// exports today renders differently.
+const hallOfFameCardTypes = new Set([
+    'champion',
+    'finish',
+    'history',
+    'improvement',
+    'legend',
+    'pb',
+    'record',
+    'speed'
+]);
+
+function hallOfFameCardType(exportedValue) {
+    const cardType = String(exportedValue || '').toLowerCase().trim();
+
+    return hallOfFameCardTypes.has(cardType) ? cardType : 'record';
+}
+
 function inferHallOfFameGroup(cardType, award) {
     const value = `${cardType} ${award}`.toLowerCase();
 
@@ -128,7 +153,7 @@ function defaultSecondaryMetric(row) {
 }
 
 function renderHallOfFameCard(row) {
-    const cardType = row.cardtype.toLowerCase().trim() || 'record';
+    const cardType = hallOfFameCardType(row.cardtype);
     const participantName = row.participant || 'Championship Vacant';
     const isVacant = participantName.toLowerCase().includes('vacant');
     const participant = row.athleteid && !isVacant
