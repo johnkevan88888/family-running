@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { findGit, parseUpdateArguments } from './simple-data-update.mjs';
 import { assessNodeVersion } from './node-engine.mjs';
+import { assessPinnedChromium } from './browser-runtime.mjs';
 import {
     readUpdateWorkspaceContext, requirePhysicalDirectory, updateHomeVariable, workspacePaths
 } from './data-update-context.mjs';
@@ -12,6 +13,23 @@ import {
 const sourceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const stateRelativePath = 'test-artifacts/simple-data-update/latest.json';
 const lockRelativePath = 'test-artifacts/data-update-launcher.lock';
+
+/**
+ * The whole-run environment preflight, checked before the workbook contract
+ * preflight, the refresh branch, or Excel.
+ *
+ * The browser check belongs here rather than at the point of use:
+ * `scripts/verify-production-data.mjs` drives a real browser, and it runs
+ * *after* the Pull Request has merged and GitHub Pages has deployed. A missing
+ * pinned Chromium discovered there would stop the run with production already
+ * changed and nothing verified, so it is caught before anything happens.
+ */
+export function assessUpdateEnvironment({
+    nodeProblem = assessNodeVersion(),
+    browserProblem = assessPinnedChromium()
+} = {}) {
+    return nodeProblem || browserProblem || null;
+}
 
 export function createCommandRunner(git) {
     return (root, args, { executable = git, inherit = false, env = process.env } = {}) => {
@@ -182,12 +200,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
         if (!parseUpdateArguments(process.argv.slice(2)).help) {
             // `update-website-data.cmd` runs this file with `node` directly
             // rather than through pnpm, so pnpm never enforces `engines` for a
-            // double-click update. Check here before Excel is opened or a
-            // branch is created.
-            const nodeVersionProblem = assessNodeVersion();
+            // double-click update. Check the Node major and the pinned browser
+            // here, before Excel is opened or a branch is created.
+            const environmentProblem = assessUpdateEnvironment();
 
-            if (nodeVersionProblem) {
-                throw new Error(nodeVersionProblem);
+            if (environmentProblem) {
+                throw new Error(environmentProblem);
             }
             if (process.platform !== 'win32') {
                 throw new Error('The guided workbook update currently requires Windows and Microsoft Excel.');

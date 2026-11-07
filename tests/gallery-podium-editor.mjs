@@ -4,7 +4,7 @@ import { request as httpRequest } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { findChromiumExecutable, loadPlaywright } from '../scripts/browser-runtime.mjs';
+import { launchChromium } from '../scripts/browser-runtime.mjs';
 import sharp from 'sharp';
 import { startGalleryPodiumEditor } from '../scripts/gallery-podium-editor.mjs';
 
@@ -169,7 +169,7 @@ try {
 
     // A new anonymous browser context loads invented pixels only. It cannot use
     // the owner's browser session, read originals, or contact external services.
-    browser = await loadPlaywright().chromium.launch({ headless: true, executablePath: findChromiumExecutable() });
+    browser = await launchChromium();
     const image = await sharp(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="800"><rect width="400" height="800" fill="#416a4e"/><circle cx="200" cy="120" r="55" fill="#ffd2ac"/><circle cx="180" cy="112" r="5"/><circle cx="220" cy="112" r="5"/><path d="M180 140 Q200 157 220 140" fill="none" stroke="#593c26" stroke-width="5"/><rect x="135" y="180" width="130" height="320" fill="#153d70"/></svg>')).webp().toBuffer();
     for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
         await jsonWrite(configPath, config);

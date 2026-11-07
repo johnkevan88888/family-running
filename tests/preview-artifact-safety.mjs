@@ -18,8 +18,61 @@ import {
 import { publishedSiteEntries } from '../scripts/published-site-entries.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const buildScript = path.join(repoRoot, 'scripts', 'build-preview-artifact.mjs');
 const trackedDataRoot = path.join(repoRoot, 'data');
+
+// -- The throwaway tree the stray-file probes are written into -------------
+//
+// The wiring proof below needs a stray file inside `data/`, `vendor/`,
+// `assets/brand/` and `gallery-data/`, and needs to rewrite
+// `gallery-podium-framing.json`. It used to do that in the live working tree
+// and restore afterwards, which made this the one check that could not safely
+// run beside any other: a concurrent reader saw a probe file inside tracked
+// `data/`, and an interrupted run left one behind looking like an export
+// defect. It now copies the real build inputs and mutates only the copy, so
+// the live tree is never written to at all.
+//
+// Only `scripts/` and the published entries are copied. `node_modules`, `.git`
+// and the real `test-artifacts/` are deliberately absent, so nothing inside
+// the copy can reach back out to them.
+const throwawayPrefix = 'artifact-safety-tree-';
+const throwawayParent = path.join(repoRoot, 'test-artifacts');
+const throwawayRoot = path.join(throwawayParent, `${throwawayPrefix}${process.pid}`);
+const throwawayArtifactRoot = path.join(throwawayRoot, 'test-artifacts');
+const buildScript = path.join(throwawayRoot, 'scripts', 'build-preview-artifact.mjs');
+
+// A crashed or killed run cannot clean up after itself, and each copy is a
+// whole set of build inputs, so sweep every leftover before making a new one
+// rather than letting them pile up in an ignored directory nobody looks at.
+for (const entry of await readDirectoryEntries(throwawayParent)) {
+    if (entry.startsWith(throwawayPrefix)) {
+        await fs.rm(path.join(throwawayParent, entry), { recursive: true, force: true });
+    }
+}
+
+await fs.mkdir(throwawayArtifactRoot, { recursive: true });
+
+for (const entry of ['scripts', ...publishedSiteEntries]) {
+    const source = path.join(repoRoot, entry);
+
+    if (await pathExists(source)) {
+        await fs.cp(source, path.join(throwawayRoot, entry), { recursive: true });
+    }
+}
+
+// A proof about a copy is only a proof about the repository if the copy is
+// faithful, so assert that rather than assuming it.
+for (const entry of publishedSiteEntries) {
+    assert.equal(
+        await pathExists(path.join(throwawayRoot, entry)),
+        await pathExists(path.join(repoRoot, entry)),
+        `The throwaway tree is not a faithful copy of the published entry "${entry}".`
+    );
+}
+assert.equal(
+    await pathExists(path.join(throwawayRoot, 'test-artifacts', 'preview-site')),
+    false,
+    'The throwaway tree must not contain the real artifact output.'
+);
 
 // -- The output directory the build is allowed to delete -------------------
 //
@@ -386,17 +439,20 @@ console.log('PASS - published gallery-data/ must contain only the three contract
 
 // Wiring proof for all contracts: a real build of the real tree, with one
 // stray file added to each directory and removed again afterwards.
-const buildOutputDir = path.join(managedArtifactRoot, `preview-site-safety-${process.pid}`);
-const strayDataFile = path.join(trackedDataRoot, '__artifact-contract-probe__.csv');
-const strayVendorFile = path.join(repoRoot, 'vendor', '__artifact-contract-probe__.js');
-const strayAssetFile = path.join(repoRoot, 'assets', 'brand', '__artifact-contract-probe__.js');
-const strayGalleryFile = path.join(repoRoot, 'gallery-data', '__artifact-contract-probe__.jpg');
+// Every path below is inside the throwaway copy. The build resolves its own
+// repository root from its own location, so in the copy `managedArtifactRoot`
+// is the copy's `test-artifacts/` and the output gate accepts this directory.
+const buildOutputDir = path.join(throwawayArtifactRoot, `preview-site-safety-${process.pid}`);
+const strayDataFile = path.join(throwawayRoot, 'data', '__artifact-contract-probe__.csv');
+const strayVendorFile = path.join(throwawayRoot, 'vendor', '__artifact-contract-probe__.js');
+const strayAssetFile = path.join(throwawayRoot, 'assets', 'brand', '__artifact-contract-probe__.js');
+const strayGalleryFile = path.join(throwawayRoot, 'gallery-data', '__artifact-contract-probe__.jpg');
 const processorOutputProbeRoot = path.join(
-    managedArtifactRoot,
+    throwawayArtifactRoot,
     `gallery-media-processing-safety-${process.pid}`
 );
 const processorOutputProbe = path.join(processorOutputProbeRoot, 'run-test', 'display.webp');
-const framingFile = path.join(repoRoot, 'gallery-podium-framing.json');
+const framingFile = path.join(throwawayRoot, 'gallery-podium-framing.json');
 const savedFraming = await fs.readFile(framingFile);
 
 try {
@@ -490,18 +546,40 @@ try {
     await fs.rm(strayGalleryFile, { force: true });
     await fs.rm(processorOutputProbeRoot, { recursive: true, force: true });
     await fs.rm(buildOutputDir, { recursive: true, force: true });
+    // The copy is disposable, and an assertion failure above must not leave a
+    // whole set of build inputs behind.
+    await fs.rm(throwawayRoot, { recursive: true, force: true });
 }
 
-// The probes are deliberately created inside tracked directories, so leaving one
-// behind would look like an export defect to the next person. Prove they are
-// gone rather than trusting the cleanup above.
-for (const probe of [strayDataFile, strayVendorFile, strayAssetFile, strayGalleryFile]) {
+// The live tree is the thing that must never be written to, so assert that
+// directly rather than only proving the copy was tidied. These four paths are
+// the ones the probes used to occupy, where a leftover would read as an export
+// defect to the next person.
+for (const probe of [
+    path.join(trackedDataRoot, '__artifact-contract-probe__.csv'),
+    path.join(repoRoot, 'vendor', '__artifact-contract-probe__.js'),
+    path.join(repoRoot, 'assets', 'brand', '__artifact-contract-probe__.js'),
+    path.join(repoRoot, 'gallery-data', '__artifact-contract-probe__.jpg')
+]) {
     assert.equal(
         await pathExists(probe),
         false,
-        `Test probe was left behind at ${probe}.`
+        `The live working tree was written to at ${probe}; probes belong in the throwaway copy.`
     );
 }
+
+// Removed in the `finally` above; prove it rather than trusting it, and prove
+// no earlier run's copy survived the start-up sweep either.
+assert.equal(
+    await pathExists(throwawayRoot),
+    false,
+    `The throwaway tree was left behind at ${throwawayRoot}.`
+);
+assert.deepEqual(
+    (await readDirectoryEntries(throwawayParent)).filter(entry => entry.startsWith(throwawayPrefix)),
+    [],
+    'A throwaway artifact-safety tree was left in test-artifacts/.'
+);
 
 console.log('PASS - the artifact build enforces all publication contracts and publishes News and Gallery');
 console.log('Preview artifact safety tests passed.');
@@ -509,7 +587,7 @@ console.log('Preview artifact safety tests passed.');
 function runBuild(env) {
     return new Promise((resolve, reject) => {
         const child = spawn(process.execPath, [buildScript], {
-            cwd: repoRoot,
+            cwd: throwawayRoot,
             env: { ...process.env, ...env },
             stdio: ['ignore', 'pipe', 'pipe']
         });
@@ -524,6 +602,14 @@ function runBuild(env) {
         child.on('error', reject);
         child.on('exit', code => resolve({ code, output }));
     });
+}
+
+async function readDirectoryEntries(target) {
+    try {
+        return await fs.readdir(target);
+    } catch {
+        return [];
+    }
 }
 
 async function pathExists(target) {

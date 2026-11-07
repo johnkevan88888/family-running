@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 
-import { findChromiumExecutable, loadPlaywright } from './browser-runtime.mjs';
+import { launchChromium } from './browser-runtime.mjs';
 import { parseCsv } from './export-bundle-tools.mjs';
 import { isPublishedPath } from './published-site-entries.mjs';
 
@@ -805,13 +805,7 @@ async function verifyRenderedMode(browser, expected, mode, {
 }
 
 async function defaultBrowserLauncher() {
-    const { chromium } = loadPlaywright();
-
-    return chromium.launch({
-        headless: true,
-        executablePath: findChromiumExecutable(),
-        args: ['--disable-dev-shm-usage']
-    });
+    return launchChromium();
 }
 
 function requireFileBundleId(rows, expectedBundleId, relativePath) {

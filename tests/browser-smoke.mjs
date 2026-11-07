@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createStaticServer } from '../scripts/serve-site.mjs';
-import { findChromiumExecutable, loadPlaywright } from '../scripts/browser-runtime.mjs';
+import { launchChromium, waitForLoadedImage } from '../scripts/browser-runtime.mjs';
 import podiumFraming from '../gallery-podium-framing.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -100,7 +100,6 @@ const viewports = [
 const updateScreenshots = process.argv.includes('--update-screenshots');
 const newsBatchSize = 12;
 
-const { chromium } = loadPlaywright();
 await fs.mkdir(artifactsDir, { recursive: true });
 
 const preview = await createStaticServer({ root: siteRoot, port: Number(process.env.PORT || 0), silent: true });
@@ -108,11 +107,7 @@ const failures = [];
 let browser;
 
 try {
-    browser = await chromium.launch({
-        headless: true,
-        executablePath: findChromiumExecutable(),
-        args: ['--disable-dev-shm-usage']
-    });
+    browser = await launchChromium();
 
     for (const mode of modes) {
         for (const viewport of viewports) {

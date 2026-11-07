@@ -1,5 +1,20 @@
 # Decision Log
 
+## Browser checks use the pinned Chromium; artifact probes use a copy — 6 November 2026
+
+Playwright's pinned Chromium is the default for every browser check and is
+mandatory under `CI`. Until this change CI ran the runner's Google Chrome
+156.0.8078.79: GitHub's `ubuntu-latest` image pre-sets `CHROME_BIN`, which was
+consulted before the `CI` branch, so the workflow downloaded a pinned Chromium
+it never launched. `CHROME_BIN` is now ignored entirely — it is set by
+third-party images, not deliberately here. The only ways off the pinned build
+are `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` and, locally,
+`FAMILY_RUNNING_USE_INSTALLED_BROWSER=1`; under `CI` anything else fails
+closed. `img.decode()` was also the wrong assertion — it is a rasterisation
+request that Chromium 149 refuses for a vector source at `deviceScaleFactor: 2`
+— so the checks wait on `complete`/`naturalWidth`. Artifact-safety probes
+mutate a throwaway copy of the build inputs rather than the live tree.
+
 ## Node 24 and whitelisted Hall of Fame card types — 6 November 2026
 
 Node 24.x is required. `scripts/node-engine.mjs` is the single declaration; the

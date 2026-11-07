@@ -4,7 +4,7 @@ import {readFile,readdir,mkdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import sharp from 'sharp';
 import {handleAdminRequest} from '../gallery-admin/src/admin-worker.js';
-import {loadPlaywright,findChromiumExecutable} from '../scripts/browser-runtime.mjs';
+import {launchChromium} from '../scripts/browser-runtime.mjs';
 import {syntheticBucket,digest} from './helpers/private-gallery-lifecycle-fixtures.mjs';
 import {transactionalDB} from './helpers/family-uploader-fixture.mjs';
 import {readBoundedBytes,sha256Hex} from '../gallery-admin/src/media-byte-verification.js';
@@ -32,7 +32,7 @@ const photos=await Promise.all([0,1,2].map(index=>sharp(fixture).extract({left:i
     .resize({height:768}).withExif({IFD0:{Make:'synthetic-family-'+index}}).jpeg().toBuffer()));
 const screenshots=new URL('../test-artifacts/screenshots/',import.meta.url);await mkdir(screenshots,{recursive:true});
 const origin='https://synthetic-family-uploader.example',owner={type:'browser',subject:'synthetic-family-owner'};
-const browser=await loadPlaywright().chromium.launch({headless:true,executablePath:findChromiumExecutable()});
+const browser=await launchChromium();
 try{for(const mobile of [false,true]){
     const db=new DatabaseSync(':memory:');for(const sql of migrations)db.exec(sql);
     const bucket=syntheticBucket(),env={ADMIN_ORIGIN:origin,OWNER_IDENTITIES:'subject:'+owner.subject,

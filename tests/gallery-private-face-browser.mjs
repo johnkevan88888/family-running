@@ -4,7 +4,7 @@ import { readFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import { loadPlaywright, findChromiumExecutable } from '../scripts/browser-runtime.mjs';
+import { launchChromium } from '../scripts/browser-runtime.mjs';
 import { privateGalleryDocument } from '../gallery-admin/src/private-gallery-assets.js';
 import { adminStylesheet } from '../gallery-admin/src/admin-assets.js';
 import { privateFaceEditorScript, privateFaceWorkerScript, privateFaceEditorStylesheet } from '../gallery-admin/src/private-gallery-face-assets.js';
@@ -54,7 +54,7 @@ const server=createServer(async(req,res)=>{
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const origin=`http://127.0.0.1:${server.address().port}`;
 const screenshots=new URL('../test-artifacts/screenshots/',import.meta.url);await mkdir(screenshots,{recursive:true});
-const browser=await loadPlaywright().chromium.launch({headless:true,executablePath:findChromiumExecutable()});
+const browser=await launchChromium();
 async function ready(page,buffer=photo,mimeType='image/jpeg') {
     expectedSha=sha(buffer);saved=null;saveRequests=[];lastSaveKey=null;
     await page.goto(origin+'/private-gallery?site=family');

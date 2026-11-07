@@ -5,9 +5,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import {
-    acquireUpdateLock, createCommandRunner, ensureUpdateWorkspace, findUpdateHome, runIsolatedUpdate,
-    workspaceDependencyCommand
+    acquireUpdateLock, assessUpdateEnvironment, createCommandRunner, ensureUpdateWorkspace,
+    findUpdateHome, runIsolatedUpdate, workspaceDependencyCommand
 } from '../scripts/data-update.mjs';
+import { pinnedChromiumMissingMessage } from '../scripts/browser-runtime.mjs';
 import {
     readUpdateWorkspaceContext, requirePhysicalDirectory, updateHomeVariable, workspacePaths
 } from '../scripts/data-update-context.mjs';
@@ -297,6 +298,28 @@ try {
         assert.throws(() => completedUpdateCheckoutArguments({ phase: 'production-verified' }, { isolated: true }), /commit is invalid/);
     });
     console.log(`Isolated data-update workspace tests passed: ${passed} cases.`);
+    // -- The whole-run environment preflight -------------------------------
+    //
+    // Live verification drives a real browser and runs after the merge and the
+    // Pages deploy, so a missing pinned Chromium discovered there would leave
+    // production changed and nothing verified. Both problems must stop the run
+    // before the workbook contract preflight, the refresh branch, or Excel.
+    assert.equal(assessUpdateEnvironment({ nodeProblem: null, browserProblem: null }), null,
+        'a usable environment must not be refused');
+    assert.equal(assessUpdateEnvironment({ nodeProblem: 'wrong node', browserProblem: null }), 'wrong node',
+        'a wrong Node major must stop the run');
+    assert.equal(
+        assessUpdateEnvironment({ nodeProblem: null, browserProblem: pinnedChromiumMissingMessage }),
+        pinnedChromiumMissingMessage,
+        'a missing pinned Chromium must stop the run before Excel opens'
+    );
+    assert.equal(
+        assessUpdateEnvironment({ nodeProblem: 'wrong node', browserProblem: pinnedChromiumMissingMessage }),
+        'wrong node',
+        'the Node problem is reported first so one message is actionable'
+    );
+    // The real environment this suite runs in must pass its own preflight.
+    assert.equal(assessUpdateEnvironment(), null, 'this environment must satisfy the updater preflight');
 } finally {
     if (priorContext === undefined) delete process.env[updateHomeVariable];
     else process.env[updateHomeVariable] = priorContext;

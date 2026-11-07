@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
 import { createStaticServer } from '../scripts/serve-site.mjs';
-import { findChromiumExecutable, loadPlaywright } from '../scripts/browser-runtime.mjs';
+import { launchChromium } from '../scripts/browser-runtime.mjs';
 import { assertPhotoReviewDetails } from './helpers/gallery-photo-review-details.mjs';
 const require = createRequire(import.meta.url);
 const { buildIndex: buildResultIndex } = require('../gallery-results.js');
@@ -64,10 +64,9 @@ assert.equal(buildIndex(source, differentRoster, differentManifest, 'family').fo
 const csv = rows => rows.map(row => row.map(value => `"${value.replaceAll('"','""')}"`).join(',')).join('\r\n');
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="360" height="480"><rect width="360" height="480" fill="#246080"/><circle cx="180" cy="80" r="50" fill="white"/></svg>';
 const server = await createStaticServer({ root, port: 0, silent: true });
-const { chromium } = loadPlaywright();
 let browser;
 try {
-    browser = await chromium.launch({ headless: true, executablePath: findChromiumExecutable(), args: ['--disable-dev-shm-usage'] });
+    browser = await launchChromium();
     await fs.mkdir(path.join(root,'test-artifacts','screenshots'), {recursive:true});
     for (const site of ['family','everyone']) {
         for (const mobile of [false,true]) {

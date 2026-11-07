@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { createStaticServer } from '../scripts/serve-site.mjs';
-import { findChromiumExecutable, loadPlaywright } from '../scripts/browser-runtime.mjs';
+import { launchChromium, waitForLoadedImage } from '../scripts/browser-runtime.mjs';
 
 // These are generated diagrams, not photographs or face detection. Colour is
 // deliberately checked in the rendered screenshot, not merely in CSS values.
@@ -39,14 +39,12 @@ frames[cropKey(laterItem, 'carolyn-kevan')] = { x: 50, y: 50, zoom: 4 };
 frames[cropKey(photo('synthetic-not-in-manifest', ['invented-athlete'], false), 'invented-athlete')] =
     { x: 50, y: 50, zoom: 4 };
 const framing = { schemaVersion: '1.0', frames };
-const { chromium } = loadPlaywright();
 const server = await createStaticServer({ root, port: 0, silent: true });
 let browser;
 
 try {
     await fs.mkdir(screenshots, { recursive: true });
-    browser = await chromium.launch({ headless: true, executablePath: findChromiumExecutable(),
-        args: ['--disable-dev-shm-usage'] });
+    browser = await launchChromium();
 
     for (const area of areas) {
         for (const mobile of [false, true]) {
@@ -188,8 +186,7 @@ async function assertAllVisiblePhotos(page, width, height, label) {
         const item = athleteId === 'john-kevan' ? portraitItem : groupItem;
         assert.equal(await container.getAttribute('data-gallery-media-id'), item.id, `${label}/${athleteId}: first eligible photo`);
         const image = container.locator('img');
-        await image.scrollIntoViewIfNeeded();
-        await image.evaluate(img => img.decode());
+        await waitForLoadedImage(image, `${label}/${athleteId}`);
         await nextLayout(page);
         assert.equal(await image.getAttribute('src'), item.sourceUrl, `${label}/${athleteId}: configured crop uses the approved detailed derivative`);
         const actual = await imageGeometry(container);
@@ -324,8 +321,7 @@ async function assertContainFallback(page, label) {
         const id = await frame.getAttribute('data-gallery-media-id');
         const item = manifest.items.find(candidate => candidate.id === id);
         const image = frame.locator('img');
-        await image.scrollIntoViewIfNeeded();
-        await image.evaluate(img => img.decode());
+        await waitForLoadedImage(image, label);
         assert.equal(await image.getAttribute('src'), item.thumbnailUrl, `${label}: fall back to existing thumbnail`);
         const geometry = await imageGeometry(frame);
         assert.equal(geometry.fit, 'contain', `${label}: no arbitrary centre crop`);
@@ -385,21 +381,20 @@ async function assertUnrelatedSurfacesUnchanged(area, mobile) {
     await withFixture({ area, mobile }, async ({ page }) => {
         await openChampionship(page, area);
         const highlight = page.locator('.race-moment-card img').first();
-        await highlight.scrollIntoViewIfNeeded();
-        await highlight.evaluate(img => img.decode());
+        await waitForLoadedImage(highlight, `${area}/${mobile} race moment`);
         assert.equal(await highlight.getAttribute('src'), groupItem.thumbnailUrl, 'Race moments retain thumbnail, not podium crop source');
         assert.equal(await highlight.getAttribute('style'), null, 'podium positioning must not leak to featured moments');
         assert.equal(await highlight.evaluate(img => getComputedStyle(img).objectFit), 'cover', 'existing highlight presentation remains unchanged');
         await page.goto(`${server.baseUrl}/gallery.html?site=${area}`, { waitUntil: 'networkidle' });
         await page.locator('.gallery-card').first().waitFor({ state: 'visible' });
         const gridImage = page.locator(`#moment-${groupItem.id} .gallery-card-image`);
-        await gridImage.evaluate(img => img.decode());
+        await waitForLoadedImage(gridImage, `${area}/${mobile} gallery card`);
         assert.equal(await gridImage.getAttribute('src'), groupItem.thumbnailUrl);
         assert.equal(await gridImage.evaluate(img => getComputedStyle(img).objectFit), 'contain', 'Gallery still shows whole photographs');
         assert.equal(await gridImage.getAttribute('style'), null, 'no podium-only crop in Gallery');
         await page.locator(`#moment-${groupItem.id} .gallery-card-open`).click();
         const viewer = page.locator('#gallery-viewer-media img');
-        await viewer.evaluate(img => img.decode());
+        await waitForLoadedImage(viewer, `${area}/${mobile} gallery viewer`);
         assert.equal(await viewer.getAttribute('src'), groupItem.sourceUrl);
         assert.equal(await viewer.getAttribute('style'), null, 'full viewer is not podium-framed');
         const viewerGeometry = await viewer.evaluate(img => ({
