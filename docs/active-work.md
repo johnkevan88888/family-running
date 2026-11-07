@@ -1,5 +1,22 @@
 # Active Work
 
+## Pipeline Stage 2B — local implementation, 6 November 2026
+
+Branch `codex/pipeline-stage-2b` from `aec25ff`. Browser checks run Playwright's
+pinned Chromium everywhere and report the binary and version; `launchChromium`
+is the only launch point, guarded by `tests/browser-runtime.mjs`.
+Artifact-safety probes mutate a throwaway copy of the build inputs, and the
+test asserts the live tree was never written to.
+
+The `EncodingError` was not the SVG fixture, which already carried explicit
+dimensions. `img.decode()` is a rasterisation request Chromium 149 refuses for
+a vector source at `deviceScaleFactor: 2`; the checks need only a loaded image,
+so they wait on `complete`/`naturalWidth`.
+
+All 109 checks pass in 33m 18s on Node 24.18.0, with Chromium 149.0.7827.55
+throughout. Next: approval to push and open its own Pull Request; Stage 3 also
+needs this clean pinned-Chromium run reproduced in CI.
+
 ## Pipeline Stage 1 — committed, awaiting approval to push, 6 November 2026
 
 Branch `codex/pipeline-stage-1` in a fresh clone of `origin/main` at `7f2f631`;

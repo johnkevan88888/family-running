@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import sharp from 'sharp';
 import { handleAdminRequest } from '../gallery-admin/src/admin-worker.js';
-import { loadPlaywright, findChromiumExecutable } from '../scripts/browser-runtime.mjs';
+import { launchChromium } from '../scripts/browser-runtime.mjs';
 import { syntheticBucket, digest } from './helpers/private-gallery-lifecycle-fixtures.mjs';
 import { readBoundedBytes, sha256Hex } from '../gallery-admin/src/media-byte-verification.js';
 
@@ -17,7 +17,7 @@ const photo = await sharp({ create: { width: 160, height: 240, channels: 3, back
     .withMetadata({ orientation: 6 }).jpeg().toBuffer();
 const screenshots = new URL('../test-artifacts/screenshots/', import.meta.url);
 await mkdir(screenshots, { recursive: true });
-const browser = await loadPlaywright().chromium.launch({ headless: true, executablePath: findChromiumExecutable() });
+const browser = await launchChromium();
 
 try {
     for (const site of ['family', 'everyone']) for (const mobile of [false, true]) {

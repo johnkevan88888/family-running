@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFile,readdir,mkdir} from 'node:fs/promises';
 import {DatabaseSync} from 'node:sqlite';
 import {handleAdminRequest} from '../gallery-admin/src/admin-worker.js';
-import {loadPlaywright,findChromiumExecutable} from '../scripts/browser-runtime.mjs';
+import {launchChromium} from '../scripts/browser-runtime.mjs';
 import sharp from 'sharp';
 import {syntheticBucket} from './helpers/private-gallery-lifecycle-fixtures.mjs';
 import {readBoundedBytes,sha256Hex} from '../gallery-admin/src/media-byte-verification.js';
@@ -15,8 +15,7 @@ const owner={type:'browser',subject:'synthetic-owner'};
 const photo=await sharp({create:{width:14,height:21,channels:3,background:'#287abd'}}).jpeg().toBuffer();
 const screenshotDirectory=new URL('../test-artifacts/screenshots/',import.meta.url);
 await mkdir(screenshotDirectory,{recursive:true});
-const {chromium}=loadPlaywright();
-const browser=await chromium.launch({headless:true,executablePath:findChromiumExecutable()});
+const browser=await launchChromium();
 try {
     for(const site of ['family','everyone']) for(const viewport of [{width:1440,height:900},{width:390,height:844}]) {
         const db=new DatabaseSync(':memory:');for(const sql of migrations)db.exec(sql);

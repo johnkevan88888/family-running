@@ -4,7 +4,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import { createStaticServer } from '../scripts/serve-site.mjs';
-import { findChromiumExecutable, loadPlaywright } from '../scripts/browser-runtime.mjs';
+import { launchChromium } from '../scripts/browser-runtime.mjs';
 import { parseCsv } from '../scripts/export-bundle-tools.mjs';
 import galleryContract from '../gallery-contract.js';
 import galleryResults from '../gallery-results.js';
@@ -32,12 +32,10 @@ const viewports = [
 ];
 const started = Date.now();
 const server = await createStaticServer({ root: siteRoot, port: 0, silent: true });
-const { chromium } = loadPlaywright();
 let browser;
 try {
     await fs.mkdir(screenshots, { recursive: true });
-    browser = await chromium.launch({ headless: true, executablePath: findChromiumExecutable(),
-        args: ['--disable-dev-shm-usage'] });
+    browser = await launchChromium();
     for (const mode of modes) {
         const documentValue = JSON.parse(await read(`gallery-data/${mode}.json`));
         assert.deepEqual(galleryContract.validateGalleryDocument(documentValue), []);

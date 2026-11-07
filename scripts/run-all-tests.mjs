@@ -19,6 +19,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const checks = [
     ['Repository safety validation', ['scripts/validate-repository-safety.mjs']],
     ['Node engine declaration consistency', ['tests/node-engine.mjs']],
+    ['Browser runtime contract tests', ['tests/browser-runtime.mjs']],
     ['Vendored library validation', ['scripts/sync-vendor.mjs', '--check']],
     ['CSV validation', ['scripts/validate-csv.mjs']],
     ['Gallery validation', ['scripts/validate-gallery.mjs']],

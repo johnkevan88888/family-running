@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createStaticServer } from '../scripts/serve-site.mjs';
-import { findChromiumExecutable, loadPlaywright } from '../scripts/browser-runtime.mjs';
+import { launchChromium, waitForLoadedImage } from '../scripts/browser-runtime.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const artifacts = path.join(root, 'test-artifacts', 'screenshots');
@@ -30,13 +30,11 @@ const manifest = { schemaVersion: '1.0', items: shapes.map(([name]) => ({
     featured: false, athleteIds: []
 })) };
 
-const { chromium } = loadPlaywright();
 const server = await createStaticServer({ root, port: 0, silent: true });
 let browser;
 try {
     await fs.mkdir(artifacts, { recursive: true });
-    browser = await chromium.launch({ headless: true, executablePath: findChromiumExecutable(),
-        args: ['--disable-dev-shm-usage'] });
+    browser = await launchChromium();
     for (const site of ['family', 'everyone']) {
         for (const mobile of [false, true]) {
             const device = mobile ? 'mobile' : 'desktop';
@@ -61,8 +59,7 @@ try {
                 assert.equal(await page.locator('.gallery-card').count(), shapes.length);
                 for (const [name, width, height] of shapes) {
                     const photo = page.locator(`#moment-whole-photo-${name} .gallery-card-image`);
-                    await photo.scrollIntoViewIfNeeded();
-                    await photo.evaluate(img => img.decode());
+                    await waitForLoadedImage(photo, `whole photo ${name}`);
                     for (const hovered of [false, true]) {
                         if (hovered) await photo.hover();
                         const geometry = await photo.evaluate(img => {

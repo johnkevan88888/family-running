@@ -34,7 +34,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createStaticServer } from './serve-site.mjs';
-import { findChromiumExecutable, loadPlaywright } from './browser-runtime.mjs';
+import { launchChromium } from './browser-runtime.mjs';
 import { parseCsv, sameOrDescendantPath } from './export-bundle-tools.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -256,18 +256,13 @@ async function readAthletes() {
 }
 
 async function readRenderedPersonalBests(athleteList, modeList) {
-    const { chromium } = loadPlaywright();
     const preview = await createStaticServer({ root: repoRoot, port: 0, silent: true });
     const byMode = new Map();
     const pageProblems = [];
     let browser;
 
     try {
-        browser = await chromium.launch({
-            headless: true,
-            executablePath: findChromiumExecutable(),
-            args: ['--disable-dev-shm-usage']
-        });
+        browser = await launchChromium();
 
         for (const mode of modeList) {
             const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });

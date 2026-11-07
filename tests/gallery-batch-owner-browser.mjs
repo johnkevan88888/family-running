@@ -8,7 +8,7 @@ import {preparePrivateArchiveIntake,storePrivateArchiveOriginal} from '../galler
 import {readPrivateGalleryRoster} from '../gallery-admin/src/private-gallery-roster-service.js';
 import {readPrivateGalleryAssetEligibility} from '../gallery-admin/src/private-gallery-visibility-service.js';
 import {readBoundedBytes,sha256Hex} from '../gallery-admin/src/media-byte-verification.js';
-import {loadPlaywright,findChromiumExecutable} from '../scripts/browser-runtime.mjs';
+import {launchChromium} from '../scripts/browser-runtime.mjs';
 import catalogSnapshot from '../gallery-admin/generated/catalog-snapshot.js';
 
 const origin='https://synthetic-batch-library.example';
@@ -40,7 +40,7 @@ async function anotherPhoto(f) {
     assert.equal(attempt.ok,true);return {assetId,attemptId:attempt.attemptId};
 }
 const screenshotDirectory=new URL('../test-artifacts/screenshots/',import.meta.url);await mkdir(screenshotDirectory,{recursive:true});
-const {chromium}=loadPlaywright(),browser=await chromium.launch({headless:true,executablePath:findChromiumExecutable()});
+const browser=await launchChromium();
 try {
     for(const site of ['family','everyone']) for(const viewport of [{width:1440,height:900},{width:390,height:844}]) {
         const f=await browserFixture(site),second=await anotherPhoto(f);

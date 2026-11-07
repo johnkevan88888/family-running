@@ -10,8 +10,7 @@ import {
     adminStylesheet
 } from '../gallery-admin/src/admin-assets.js';
 import {
-    findChromiumExecutable,
-    loadPlaywright
+    launchChromium
 } from '../scripts/browser-runtime.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -93,12 +92,7 @@ const generatedItemIds = new Set();
 await fs.mkdir(screenshotsDirectory, { recursive: true });
 const server = createAdminServer(observedApiRequests);
 const origin = await listen(server);
-const { chromium } = loadPlaywright();
-const browser = await chromium.launch({
-    headless: true,
-    executablePath: findChromiumExecutable(),
-    args: ['--disable-dev-shm-usage']
-});
+const browser = await launchChromium();
 
 try {
     for (const area of areas) {
