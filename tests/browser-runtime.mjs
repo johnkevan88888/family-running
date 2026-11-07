@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+    assessCiBrowser,
     assessPinnedChromium,
     describeChromiumChoice,
     findChromiumExecutable,
@@ -69,7 +70,33 @@ assert.equal(
     findChromiumExecutable({ env: { PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: '/tmp/chromium' } }),
     '/tmp/chromium'
 );
-assert.equal(findChromiumExecutable({ env: { CHROME_BIN: '/tmp/chrome' } }), '/tmp/chrome');
+// -- An ambient CHROME_BIN is ignored -------------------------------------
+//
+// This is the regression test for the defect that made CI meaningless.
+// GitHub's ubuntu-latest image pre-sets CHROME_BIN=/usr/bin/google-chrome, and
+// this module used to consult it before anything else, so every Pull Request
+// check ran against the runner's Chrome 156 while the workflow downloaded a
+// pinned Chromium it never launched. CHROME_BIN is set by third-party images,
+// not by anyone here, so it must never select a browser.
+assert.equal(
+    findChromiumExecutable({ env: { CHROME_BIN: '/usr/bin/google-chrome' } }),
+    undefined,
+    'an ambient CHROME_BIN must not select a browser'
+);
+assert.equal(
+    findChromiumExecutable({ env: { CI: 'true', CHROME_BIN: '/usr/bin/google-chrome' } }),
+    undefined,
+    'the exact GitHub-runner environment must still resolve to the pinned Chromium'
+);
+assert.equal(
+    findChromiumExecutable({
+        env: { CI: 'true', CHROME_BIN: '/usr/bin/google-chrome', [installedBrowserOptInVariable]: '1' },
+        platform: 'linux',
+        exists: () => true
+    }),
+    '/usr/bin/google-chrome',
+    'the opt-in may still find an installed browser; assessCiBrowser is what refuses it under CI'
+);
 
 for (const platform of ['win32', 'darwin', 'linux']) {
     const candidates = installedChromiumCandidates(platform);
@@ -87,7 +114,7 @@ for (const platform of ['win32', 'darwin', 'linux']) {
 
 assert.match(describeChromiumChoice(undefined, { env: {} }), /pinned Chromium/);
 assert.match(
-    describeChromiumChoice('/tmp/chrome', { env: { CHROME_BIN: '/tmp/chrome' } }),
+    describeChromiumChoice('/tmp/chrome', { env: { PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: '/tmp/chrome' } }),
     /explicitly configured browser at \/tmp\/chrome/
 );
 assert.match(
@@ -161,13 +188,40 @@ assert.notEqual(
 // The opt-in plus an explicit path is the explicit path's business.
 assert.equal(
     assessPinnedChromium({
-        env: { [installedBrowserOptInVariable]: '1', CHROME_BIN: '/tmp/chrome' },
+        env: { [installedBrowserOptInVariable]: '1', PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: '/tmp/chrome' },
         platform: 'win32',
         exists: () => false,
         resolvePinnedExecutable: () => '/pinned/chrome'
     }),
     null,
     'an explicit executable overrides the opt-in check'
+);
+
+// -- CI may only ever run the pinned Chromium -----------------------------
+
+assert.equal(assessCiBrowser(undefined, { env: { CI: 'true' } }), null,
+    'the pinned Chromium is what CI must use');
+assert.equal(assessCiBrowser('/usr/bin/google-chrome', { env: {} }), null,
+    'outside CI any browser is allowed');
+
+const ciRefusal = assessCiBrowser('/usr/bin/google-chrome', {
+    env: { CI: 'true', CHROME_BIN: '/usr/bin/google-chrome' }
+});
+
+assert.equal(typeof ciRefusal, 'string', 'CI must refuse a browser it was not told to use');
+assert.match(ciRefusal, /pinned Chromium/);
+assert.match(ciRefusal, /\/usr\/bin\/google-chrome/, 'the refusal must name the browser it found');
+assert.equal(
+    typeof assessCiBrowser('/usr/bin/google-chrome', {
+        env: { CI: 'true', [installedBrowserOptInVariable]: '1' }
+    }),
+    'string',
+    'the local opt-in is not an escape hatch under CI'
+);
+assert.equal(
+    assessCiBrowser('/tmp/chrome', { env: { CI: 'true', PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: '/tmp/chrome' } }),
+    null,
+    'a deliberately named executable is allowed under CI'
 );
 assert.equal(
     assessPinnedChromium({ env: { PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: '/tmp/chromium' }, ...missingExecutable }),
@@ -176,8 +230,8 @@ assert.equal(
 );
 assert.equal(
     assessPinnedChromium({ env: { CHROME_BIN: '/tmp/chrome' }, ...missingExecutable }),
-    null,
-    'an explicit CHROME_BIN must skip the check'
+    pinnedChromiumMissingMessage,
+    'an ambient CHROME_BIN must not excuse a missing pinned Chromium'
 );
 // Only the exact opt-in value skips it, matching findChromiumExecutable.
 for (const value of ['0', '', 'true', 'TRUE']) {

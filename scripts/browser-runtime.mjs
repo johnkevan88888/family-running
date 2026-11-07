@@ -8,14 +8,25 @@
 // `scripts/vendored-library-files.mjs` is the existing precedent for a single
 // shared list that more than one entry point reads.
 //
-// Playwright's pinned Chromium is the default everywhere, local runs included.
-// It used to be the default only when `CI` was set, which meant a local run and
-// a CI run exercised different browsers and could disagree: Chromium 149
-// rejects `HTMLImageElement.decode()` for a vector source scaled up by a device
-// pixel ratio, so a test that passed on an installed Chrome 156 failed in CI
-// for a reason that had nothing to do with the change under test. A local
-// browser is now an explicit opt-in, so "it passes locally" and "it passes in
-// CI" mean the same thing by default.
+// Playwright's pinned Chromium is the default everywhere, local runs included,
+// and CI is required to use it.
+//
+// It was previously meant to be the default whenever `CI` was set, but that
+// branch was dead on GitHub's runners. The `ubuntu-latest` image pre-sets
+// `CHROME_BIN=/usr/bin/google-chrome`, and `CHROME_BIN` was consulted first, so
+// every Pull Request check actually ran against the runner's Google Chrome --
+// 156.0.8078.79 when this was found -- while the workflow dutifully downloaded
+// a pinned Chromium it then never launched. Local runs meanwhile used whichever
+// Chrome or Edge happened to be installed. Neither side was running the browser
+// the code claimed, and the comment that used to sit here asserted otherwise.
+//
+// `CHROME_BIN` is therefore no longer consulted at all: it is an ambient
+// variable set by third-party images, not a deliberate request from anyone
+// here. The only ways off the pinned build are
+// `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, which names a browser explicitly, and
+// `FAMILY_RUNNING_USE_INSTALLED_BROWSER=1` for local reproduction. Under `CI`
+// anything but the pinned build is a hard failure, so a release can never again
+// be proved against a browser nobody chose.
 
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
@@ -73,10 +84,11 @@ export function installedChromiumCandidates(platform = process.platform) {
  * is required before an installed browser is used.
  */
 export function findChromiumExecutable({ env = process.env, platform = process.platform, exists = fileExists } = {}) {
-    const explicitPath = env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || env.CHROME_BIN;
-
-    if (explicitPath) {
-        return explicitPath;
+    // Only this repository's own variable counts as deliberate. `CHROME_BIN` is
+    // set by CI images and is explicitly NOT consulted; honouring it is what
+    // silently pointed every Pull Request check at the runner's Chrome.
+    if (env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
+        return env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
     }
 
     if (env[installedBrowserOptInVariable] !== '1') {
@@ -91,7 +103,7 @@ export function describeChromiumChoice(executablePath, { env = process.env } = {
         return "Playwright's pinned Chromium";
     }
 
-    if (env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || env.CHROME_BIN) {
+    if (env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
         return `explicitly configured browser at ${executablePath}`;
     }
 
@@ -135,8 +147,9 @@ export function assessPinnedChromium({
     resolvePinnedExecutable = defaultPinnedExecutable
 } = {}) {
     // An explicit executable is the run's own choice, so the pinned build is
-    // irrelevant and its absence is not a problem.
-    if (env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || env.CHROME_BIN) {
+    // irrelevant and its absence is not a problem. `CHROME_BIN` is deliberately
+    // not accepted here either.
+    if (env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
         return null;
     }
 
@@ -158,6 +171,26 @@ export function assessPinnedChromium({
     return executablePath && exists(executablePath) ? null : pinnedChromiumMissingMessage;
 }
 
+/**
+ * Returns a problem string when a CI run would launch anything other than
+ * Playwright's pinned Chromium without having been told to, or null otherwise.
+ * `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` is the deliberate escape hatch; the
+ * local opt-in is not one, because a release must not depend on whatever
+ * browser a runner image happens to ship.
+ */
+export function assessCiBrowser(executablePath, { env = process.env } = {}) {
+    if (!env.CI || !executablePath) {
+        return null;
+    }
+    if (env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
+        return null;
+    }
+
+    return `CI must use Playwright's pinned Chromium, but this run resolved ${executablePath}. ` +
+        `Unset ${installedBrowserOptInVariable}, or set PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ` +
+        'if another browser is genuinely intended.';
+}
+
 export async function launchChromium(options = {}, { log = console.log } = {}) {
     const { chromium } = loadPlaywright();
     const { args = [], ...rest } = options;
@@ -167,9 +200,18 @@ export async function launchChromium(options = {}, { log = console.log } = {}) {
     // for an installed one would report a browser nobody chose.
     if (!executablePath
         && process.env[installedBrowserOptInVariable] === '1'
-        && !process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
-        && !process.env.CHROME_BIN) {
+        && !process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
         throw new Error(installedBrowserMissingMessage);
+    }
+
+    // CI must prove a release against the pinned build. Failing closed here is
+    // the regression gate for the defect this replaced: a pre-set `CHROME_BIN`
+    // pointed every check at the runner's Chrome while the logs and the code
+    // comment both claimed otherwise.
+    const ciProblem = assessCiBrowser(executablePath);
+
+    if (ciProblem) {
+        throw new Error(ciProblem);
     }
 
     const launchArgs = [...new Set(['--disable-dev-shm-usage', ...args])];

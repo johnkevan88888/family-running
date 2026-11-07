@@ -2,15 +2,18 @@
 
 ## Browser checks use the pinned Chromium; artifact probes use a copy — 6 November 2026
 
-Playwright's pinned Chromium is the default for every browser check, local runs
-included; an installed browser needs `FAMILY_RUNNING_USE_INSTALLED_BROWSER=1`.
-The default used to depend on `CI`, and Chromium 149 rejects
-`HTMLImageElement.decode()` for a vector source scaled by a device pixel ratio,
-so a check passed on installed Chrome 156 and failed in CI for an
-unrelated-looking reason. `decode()` was never the right assertion: the checks
-need a loaded image, so they wait on `complete`/`naturalWidth`. Artifact-safety
-probes mutate a throwaway copy of the build inputs rather than the live tree,
-so that check no longer has to run alone.
+Playwright's pinned Chromium is the default for every browser check and is
+mandatory under `CI`. Until this change CI ran the runner's Google Chrome
+156.0.8078.79: GitHub's `ubuntu-latest` image pre-sets `CHROME_BIN`, which was
+consulted before the `CI` branch, so the workflow downloaded a pinned Chromium
+it never launched. `CHROME_BIN` is now ignored entirely — it is set by
+third-party images, not deliberately here. The only ways off the pinned build
+are `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` and, locally,
+`FAMILY_RUNNING_USE_INSTALLED_BROWSER=1`; under `CI` anything else fails
+closed. `img.decode()` was also the wrong assertion — it is a rasterisation
+request that Chromium 149 refuses for a vector source at `deviceScaleFactor: 2`
+— so the checks wait on `complete`/`naturalWidth`. Artifact-safety probes
+mutate a throwaway copy of the build inputs rather than the live tree.
 
 ## Node 24 and whitelisted Hall of Fame card types — 6 November 2026
 
