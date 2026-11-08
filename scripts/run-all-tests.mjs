@@ -1,7 +1,13 @@
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { assessNodeVersion } from './node-engine.mjs';
+import {
+    createSuspensionWatch,
+    formatSuspensionVerdict,
+    suspensionExitCode
+} from './suspension-watch.mjs';
 
 // Refuse before spawning a hundred child processes. Without this gate the suite
 // reached `tests/gallery-photo-review-bridge.mjs` -- check 59 -- about ten
@@ -16,10 +22,43 @@ if (nodeVersionProblem) {
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-const checks = [
+// A deliberately narrow test seam. `--self-test <file>` replaces the check list
+// and the suspension watch's clock with values read from a JSON file, so
+// `tests/suspension-watch.mjs` can drive THIS file and prove its failure path:
+// a check that fails while the machine is frozen must exit 75 with an `INVALID:`
+// line, not 1. It is a command-line argument rather than an environment
+// variable so that nothing ambient can divert a real run -- `node
+// scripts/run-all-tests.mjs` with no arguments cannot reach this at all.
+//
+// Two things keep a self-test run from ever being mistaken for a real one: it is
+// refused outright when `CI` is set, and it cannot exit 0. A completed self-test
+// exits 70 and says so on its last line, so neither a person reading a log nor
+// a script reading an exit code can take it for a verdict on this repository.
+const selfTestExitCode = 70;
+const selfTestIndex = process.argv.indexOf('--self-test');
+const selfTest = selfTestIndex === -1
+    ? null
+    : JSON.parse(readFileSync(process.argv[selfTestIndex + 1], 'utf8'));
+
+if (selfTest && process.env.CI) {
+    console.error(
+        "--self-test runs an injected check list; it is a local seam for proving this " +
+        "runner's own failure path. In CI the only meaningful run is the real suite, so " +
+        'this is refused. Run "node scripts/run-all-tests.mjs" with no arguments.'
+    );
+    process.exit(1);
+}
+
+if (selfTest) {
+    console.log('SELF-TEST: running an injected check list against injected clocks. This is not a test run of this repository.');
+}
+
+const repositoryChecks = [
     ['Repository safety validation', ['scripts/validate-repository-safety.mjs']],
     ['Node engine declaration consistency', ['tests/node-engine.mjs']],
     ['Browser runtime contract tests', ['tests/browser-runtime.mjs']],
+    ['Suspension watch contract tests', ['tests/suspension-watch.mjs']],
+    ['Suspension boundary contract tests', ['tests/suspension-boundary.mjs']],
     ['Vendored library validation', ['scripts/sync-vendor.mjs', '--check']],
     ['CSV validation', ['scripts/validate-csv.mjs']],
     ['Gallery validation', ['scripts/validate-gallery.mjs']],
@@ -128,12 +167,79 @@ const checks = [
     ['Browser smoke tests', ['tests/browser-smoke.mjs']]
 ];
 
-for (const [label, args] of checks) {
-    console.log(`\n== ${label} ==`);
-    await runNode(args);
+const checks = selfTest ? selfTest.checks : repositoryChecks;
+
+// Every check is spawned asynchronously, so this process's event loop is idle
+// throughout and the interval keeps firing on schedule. A gap in its firings is
+// therefore proof the machine froze, not evidence that a check was slow.
+const suspensionWatch = createSuspensionWatch(selfTest ? selfTestWatchOptions(selfTest) : {});
+let completed = 0;
+
+try {
+    for (const [label, args] of checks) {
+        suspensionWatch.setLabel(label);
+        console.log(`\n== ${label} ==`);
+
+        try {
+            await runNode(args);
+        } catch (failure) {
+            // Assess BEFORE reporting the failure. A check that failed
+            // while the machine was frozen has proved nothing, and this is
+            // exactly how the two suspended runs presented: expired waits
+            // reading as content faults, investigated for hours as code
+            // flakes. Until this existed the rejection went straight out of
+            // the loop and exited 1, so the one path that most needed the
+            // verdict was the only path that never printed it.
+            reportSuspensionAndExit();
+            throw failure;
+        }
+
+        completed += 1;
+        reportSuspensionAndExit();
+    }
+} finally {
+    suspensionWatch.stop();
+}
+
+reportSuspensionAndExit();
+
+if (selfTest) {
+    // Deliberately not "All checks passed." Nothing about this repository was
+    // checked, so the line a log reader looks for must not appear at all.
+    console.log('SELF-TEST COMPLETE: the injected check list passed. This is not a result for this repository.');
+    process.exit(selfTestExitCode);
 }
 
 console.log('\nAll checks passed.');
+
+// A suspended run is neither a pass nor a failure, so it must not be reported
+// as either. Checked after every check so the run stops promptly rather than
+// spending another half hour producing results nobody can trust.
+function reportSuspensionAndExit() {
+    const assessment = suspensionWatch.assess();
+
+    if (!assessment) {
+        return;
+    }
+
+    suspensionWatch.stop();
+    console.error('');
+    console.error(formatSuspensionVerdict(assessment, { completed, total: checks.length }));
+    process.exit(suspensionExitCode);
+}
+
+// Only reachable under `--self-test`. The interval is stubbed out, so samples
+// come solely from the labelled boundaries and the injected clock sequence IS
+// the sample set under test.
+function selfTestWatchOptions({ clockSteps = [] }) {
+    let index = 0;
+
+    return {
+        clocks: () => clockSteps[Math.min(index++, clockSteps.length - 1)] || { wall: 0, mono: 0 },
+        setIntervalImpl: () => ({ unref() {} }),
+        clearIntervalImpl: () => {}
+    };
+}
 
 function runNode(args) {
     return new Promise((resolve, reject) => {

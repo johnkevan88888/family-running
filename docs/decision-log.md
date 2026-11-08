@@ -1,5 +1,26 @@
 # Decision Log
 
+## A suspended run is INVALID, not a failure — 7 November 2026
+
+Two full-suite runs failed and were investigated as code flakes before the
+System log showed the machine had entered Modern Standby mid-run. Both
+surfaced through waits that had expired, so they presented as content faults.
+Every expiring wait now reports the duration, the condition and the last
+observed value. `scripts/run-all-tests.mjs` samples both clocks on an interval
+and exits 75 with an `INVALID:` line when either is more than 30 s late,
+assessed after a check fails as well as after one passes, because the failing
+path is the one that produced both misdiagnoses; neither clock is trusted
+alone, since whether the monotonic clock accrues across standby is platform
+behaviour. The updater runs everything through `spawnSync`, so no timer can
+fire: it queries the System log per phase boundary instead. It stops at the
+workbook export and staged validation only. Every later boundary warns and
+continues, because each is already followed by its own re-check -- the suite's
+own exit 75, the pre-merge re-read of pull-request identity with
+`--match-head-commit`, live production verification -- so a machine asleep
+while CI runs must not cost a fresh export, and a suspension must never
+abandon a completed merge unverified. An unreadable log always warns: a
+diagnostic that is unavailable must not refuse a refresh.
+
 ## Browser checks use the pinned Chromium; artifact probes use a copy — 6 November 2026
 
 Playwright's pinned Chromium is the default for every browser check and is

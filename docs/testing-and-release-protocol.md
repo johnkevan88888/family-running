@@ -1158,6 +1158,19 @@ Fame `CardType` reaches a `class` attribute, so it is matched against the known
 card types rather than escaped, guarded by the `hostile card type` browser
 group.
 
+A wait that expires reports itself as a timeout naming the duration, the
+condition and the last observed value, never as a content fault. A suspended
+machine is neither a pass nor a failure: `scripts/run-all-tests.mjs` exits 75
+with an `INVALID:` line naming the check it straddled, whether that check
+passed or failed, and the guided updater treats that exit code as "the suite
+did not complete" rather than as failing tests. The updater also checks the
+System log at each phase boundary. A suspension stops the run at the workbook
+export and staged validation; later boundaries warn and continue, because each
+is followed by its own re-check, and the most any of them asks for is a re-run
+with `--resume`. An unreadable log always warns. A `--self-test` seam drives the
+runner's own failure path with an injected check list; it is refused when `CI`
+is set, and it can never exit 0.
+
 Browser checks run Playwright's pinned Chromium everywhere, local runs
 included, and each run reports the binary and version. An installed Chrome or
 Edge is an explicit opt-in through `FAMILY_RUNNING_USE_INSTALLED_BROWSER=1` and
