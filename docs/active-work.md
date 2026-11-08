@@ -1,5 +1,26 @@
 # Active Work
 
+## Stage 3 preconditions, PR A — local implementation, 7–8 November 2026
+
+Branch `codex/stage-3-prep-harness` from `bd16270`. The six browser-smoke
+timeout sites now report `timed out after N ms waiting for <condition>; last
+observed <value>`. `waitForNetworkToSettle` warns rather than fails, because it
+has 31 call sites and `networkidle` legitimately does not settle on a busy
+machine. The `decode()` call was removed rather than given a message: it had no
+timeout and its rejection carried no information.
+
+`scripts/suspension-watch.mjs` samples both clocks and exits 75 with an
+`INVALID:` line when either is over 30 s late, assessed after a failing check
+as well as a passing one. `scripts/suspension-boundary.mjs` queries the System
+log per updater phase boundary; only the workbook export and staged validation
+stops, and the later boundaries warn. Both are pure-function tested, and the
+runner's failure path is driven end to end through its `--self-test` seam.
+
+All 111 checks pass in 31m 38s on an awake machine, pinned Chromium throughout,
+no `INVALID` line. A forced 250 ms timeout was used to verify the message
+format. Next: PR B (`pending(reason)`) follows after A merges, and the
+parallel runner waits for separate approval.
+
 ## Pipeline Stage 2B — local implementation, 6 November 2026
 
 Branch `codex/pipeline-stage-2b` from `aec25ff`. Browser checks run Playwright's

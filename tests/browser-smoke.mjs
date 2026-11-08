@@ -104,6 +104,10 @@ await fs.mkdir(artifactsDir, { recursive: true });
 
 const preview = await createStaticServer({ root: siteRoot, port: Number(process.env.PORT || 0), silent: true });
 const failures = [];
+// A wait that expires is not automatically a fault, but it must never be
+// invisible: an unsettled page makes every later assertion unreliable, and a
+// silent expiry is how a suspended machine presented itself as a layout bug.
+const warnings = [];
 let browser;
 
 try {
@@ -139,6 +143,21 @@ try {
     }
 
     await preview.close();
+}
+
+// Printed whether the run passes or fails, and deduplicated with counts
+// because one unsettled condition can be reached from many call sites. A run
+// that passes with warnings is still a run worth looking at.
+if (warnings.length) {
+    const grouped = new Map();
+
+    for (const warning of warnings) {
+        grouped.set(warning, (grouped.get(warning) || 0) + 1);
+    }
+    console.warn(`Browser smoke tests completed with ${warnings.length} expired wait(s):`);
+    for (const [warning, occurrences] of grouped) {
+        console.warn(`- x${occurrences} ${warning}`);
+    }
 }
 
 if (failures.length) {
@@ -4018,9 +4037,10 @@ async function runGalleryEdgeCaseTests(browserInstance) {
                     imageElement.addEventListener('error', resolve, { once: true });
                 });
             }
-            if (typeof imageElement.decode === 'function' && imageElement.naturalWidth > 0) {
-                await imageElement.decode().catch(() => {});
-            }
+            // `decode()` is a rasterisation request that Chromium rejects for
+            // a vector source scaled by a device pixel ratio even when the
+            // image has loaded, so its rejection carried no information and was
+            // discarded. `naturalWidth` after the load event is the real signal.
             return imageElement.naturalWidth > 0;
         });
         if (!secondImageLoaded) {
@@ -4484,15 +4504,19 @@ async function runDocumentTitleTests(browserInstance) {
 
             for (const pagePath of pages) {
                 await page.goto(`${preview.baseUrl}/${pagePath}?site=${mode}`, { waitUntil: 'domcontentloaded' });
-                await page.waitForFunction(
+                const named = await page.waitForFunction(
                     expected => document.title.includes(expected),
                     siteName,
                     { timeout: 10000 }
-                ).catch(() => {});
+                ).then(() => null).catch(error => error);
 
                 const title = await page.title();
 
-                if (!title.includes(siteName)) {
+                if (named && describesTimeout(named)) {
+                    failures.push(
+                        `document title (${mode}): timed out after 10000 ms waiting for ${pagePath} to name the exported site "${siteName}"; last observed "${title}".`
+                    );
+                } else if (!title.includes(siteName)) {
                     failures.push(
                         `document title (${mode}): ${pagePath} is "${title}", which does not name the exported site "${siteName}".`
                     );
@@ -4509,12 +4533,17 @@ async function runDocumentTitleTests(browserInstance) {
         // and must not gain one. Its title is the athlete, which is what a
         // bookmark or history entry should say.
         await page.goto(`${preview.baseUrl}/athlete.html?id=carolyn-kevan&site=everyone`, { waitUntil: 'domcontentloaded' });
-        await page.waitForFunction(() => document.title.includes('Athlete Profile'), null, { timeout: 10000 })
-            .catch(() => {});
+        const profileNamed = await page
+            .waitForFunction(() => document.title.includes('Athlete Profile'), null, { timeout: 10000 })
+            .then(() => null).catch(error => error);
 
         const athleteTitle = await page.title();
 
-        if (!athleteTitle.includes('Athlete Profile')) {
+        if (profileNamed && describesTimeout(profileNamed)) {
+            failures.push(
+                `document title: timed out after 10000 ms waiting for the athlete page to name the profile; last observed "${athleteTitle}".`
+            );
+        } else if (!athleteTitle.includes('Athlete Profile')) {
             failures.push(`document title: athlete page is "${athleteTitle}", expected it to name the profile.`);
         }
         for (const mode of modes) {
@@ -4747,7 +4776,57 @@ async function runCalculatorComparisonEdgeCaseTests(browserInstance) {
 }
 
 async function waitForNetworkToSettle(page) {
-    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+    const expiry = await page.waitForLoadState('networkidle', { timeout: 10000 })
+        .then(() => null)
+        .catch(error => firstMessageLine(error));
+
+    // Deliberately a warning, not a failure. `networkidle` legitimately fails
+    // to settle on a busy machine, and making 31 call sites fatal would invent
+    // exactly the brittleness this work removes. It is recorded so an expiry
+    // can be seen rather than inferred from a later confusing assertion.
+    if (expiry) {
+        warnings.push(`timed out after 10000 ms waiting for the network to settle; last observed ${expiry}`);
+    }
+}
+
+function firstMessageLine(error) {
+    return String(error?.message || error).split(String.fromCharCode(10))[0].trim();
+}
+
+function describesTimeout(error) {
+    return error?.name === 'TimeoutError' || /Timeout.*exceeded/i.test(String(error?.message || ''));
+}
+
+// Reports an expired wait as a timeout naming the duration, the condition and
+// the last value actually seen, instead of collapsing expiry into a boolean or
+// null and letting the caller describe a content fault that never happened.
+async function observedValue(page, observe) {
+    if (!observe) {
+        return '(not captured)';
+    }
+
+    try {
+        return JSON.stringify(await page.evaluate(observe));
+    } catch (error) {
+        return `(unreadable: ${firstMessageLine(error)})`;
+    }
+}
+
+async function waitForCondition(page, { description, timeoutMs, predicate, argument = null, observe = null }) {
+    try {
+        const handle = await page.waitForFunction(predicate, argument, { timeout: timeoutMs });
+
+        return { ok: true, value: await handle.jsonValue().catch(() => undefined) };
+    } catch (error) {
+        const observed = await observedValue(page, observe);
+
+        return {
+            ok: false,
+            message: describesTimeout(error)
+                ? `timed out after ${timeoutMs} ms waiting for ${description}; last observed ${observed}`
+                : `failed while waiting for ${description}: ${firstMessageLine(error)}; last observed ${observed}`
+        };
+    }
 }
 
 async function assertCollapsibleSections(page, mode, viewport) {
@@ -5175,13 +5254,20 @@ async function assertProgressionChart(page, mode, viewport) {
         };
     }, null, { timeout: 10000 })
         .then(handle => handle.jsonValue())
-        .catch(() => null);
+        .catch(error => ({ expired: true, timedOut: describesTimeout(error), detail: firstMessageLine(error) }));
 
-    if (!outcome) {
+    if (!outcome || outcome.expired) {
         const text = normalizeText(await progression.textContent());
-        failures.push(
-            `${context}: progression chart neither rendered nor reported a state (section text: "${text}").`
-        );
+
+        if (outcome && outcome.timedOut) {
+            failures.push(
+                `${context}: timed out after 10000 ms waiting for the progression chart to render or report a state; last observed section text "${text}".`
+            );
+        } else {
+            failures.push(
+                `${context}: progression chart neither rendered nor reported a state (section text: "${text}").`
+            );
+        }
         return;
     }
 
@@ -5218,18 +5304,37 @@ async function assertProgressionChart(page, mode, viewport) {
     await assertProgressionSizing(page, mode, viewport);
     // Canvas animation is not a CSS animation, so screenshot() does not wait
     // for it. Check that the visible points have reached their exported values.
-    const pointsSettled = await page.waitForFunction(() => {
-        const chart = Chart.getChart(document.getElementById('age-grade-chart'));
-        return chart.data.datasets.every((dataset, datasetIndex) =>
-            chart.getDatasetMeta(datasetIndex).data.every((point, pointIndex) => {
-                const exported = dataset.data[pointIndex];
-                return Math.abs(point.x - chart.scales.x.getPixelForValue(exported.x)) <= 0.5
-                    && Math.abs(point.y - chart.scales.y.getPixelForValue(exported.y)) <= 0.5;
-            })
-        );
-    }, null, { timeout: 5000 }).then(() => true).catch(() => false);
-    if (!pointsSettled) {
-        failures.push(`${context}: visible progression points did not settle at their exported values.`);
+    const pointsSettled = await waitForCondition(page, {
+        description: 'the visible progression points to settle at their exported values',
+        timeoutMs: 5000,
+        predicate: () => {
+            const chart = Chart.getChart(document.getElementById('age-grade-chart'));
+            return chart.data.datasets.every((dataset, datasetIndex) =>
+                chart.getDatasetMeta(datasetIndex).data.every((point, pointIndex) => {
+                    const exported = dataset.data[pointIndex];
+                    return Math.abs(point.x - chart.scales.x.getPixelForValue(exported.x)) <= 0.5
+                        && Math.abs(point.y - chart.scales.y.getPixelForValue(exported.y)) <= 0.5;
+                })
+            );
+        },
+        observe: () => {
+            const chart = Chart.getChart(document.getElementById('age-grade-chart'));
+            let worst = 0;
+            chart.data.datasets.forEach((dataset, datasetIndex) => {
+                chart.getDatasetMeta(datasetIndex).data.forEach((point, pointIndex) => {
+                    const exported = dataset.data[pointIndex];
+                    worst = Math.max(
+                        worst,
+                        Math.abs(point.x - chart.scales.x.getPixelForValue(exported.x)),
+                        Math.abs(point.y - chart.scales.y.getPixelForValue(exported.y))
+                    );
+                });
+            });
+            return { worstPointOffsetPx: Number(worst.toFixed(2)), tolerancePx: 0.5 };
+        }
+    });
+    if (!pointsSettled.ok) {
+        failures.push(`${context}: ${pointsSettled.message}`);
     }
     await progression.screenshot({
         path: path.join(artifactsDir, `${mode}-progression-${viewport.name}.png`),
@@ -5257,24 +5362,45 @@ async function assertProgressionSizing(page, mode, viewport) {
     try {
         for (const width of widths) {
             await page.setViewportSize({ width, height: originalViewport.height });
-            const fits = await page.waitForFunction(() => {
-                const canvas = document.getElementById('age-grade-chart');
-                const section = document.getElementById('progression');
-                const chart = Chart.getChart(canvas);
-                const rect = canvas.getBoundingClientRect();
-                const style = getComputedStyle(section);
-                const availableWidth = section.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-                const ratio = window.devicePixelRatio;
-                return Math.abs(rect.width - availableWidth) <= 2
-                    && rect.height >= 279 && rect.height <= 521
-                    && Math.abs(chart.width - rect.width) <= 2
-                    && Math.abs(chart.height - rect.height) <= 2
-                    && Math.abs(canvas.width - rect.width * ratio) <= 3
-                    && Math.abs(canvas.height - rect.height * ratio) <= 3;
-            }, null, { timeout: 5000 }).then(() => true).catch(() => false);
+            const fits = await waitForCondition(page, {
+                description: `the progression chart to fit its available width and readable height at ${width}px`,
+                timeoutMs: 5000,
+                predicate: () => {
+                    const canvas = document.getElementById('age-grade-chart');
+                    const section = document.getElementById('progression');
+                    const chart = Chart.getChart(canvas);
+                    const rect = canvas.getBoundingClientRect();
+                    const style = getComputedStyle(section);
+                    const availableWidth = section.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+                    const ratio = window.devicePixelRatio;
+                    return Math.abs(rect.width - availableWidth) <= 2
+                        && rect.height >= 279 && rect.height <= 521
+                        && Math.abs(chart.width - rect.width) <= 2
+                        && Math.abs(chart.height - rect.height) <= 2
+                        && Math.abs(canvas.width - rect.width * ratio) <= 3
+                        && Math.abs(canvas.height - rect.height * ratio) <= 3;
+                },
+                observe: () => {
+                    const canvas = document.getElementById('age-grade-chart');
+                    const section = document.getElementById('progression');
+                    const chart = Chart.getChart(canvas);
+                    const rect = canvas.getBoundingClientRect();
+                    const style = getComputedStyle(section);
+                    return {
+                        availableWidth: Number((section.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)).toFixed(2)),
+                        rectWidth: Number(rect.width.toFixed(2)),
+                        rectHeight: Number(rect.height.toFixed(2)),
+                        chartWidth: chart ? chart.width : null,
+                        chartHeight: chart ? chart.height : null,
+                        canvasWidth: canvas.width,
+                        canvasHeight: canvas.height,
+                        devicePixelRatio: window.devicePixelRatio
+                    };
+                }
+            });
 
-            if (!fits) {
-                failures.push(`${mode}/${viewport.name}: progression chart did not fit its available width or readable height at ${width}px.`);
+            if (!fits.ok) {
+                failures.push(`${mode}/${viewport.name}: ${fits.message}`);
             }
             // Allow subsequent resize notifications to settle; fitting for one
             // frame must not hide a canvas that keeps shrinking or growing.

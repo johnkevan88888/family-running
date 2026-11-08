@@ -18,6 +18,8 @@ import {
     waitForPagesRunRegistration
 } from './pages-deployment-verification.mjs';
 import { verifyProductionData } from './verify-production-data.mjs';
+import { boundaryPolicy, createBoundaryWatch, formatBoundaryVerdict } from './suspension-boundary.mjs';
+import { suspensionExitCode } from './suspension-watch.mjs';
 import { verifyRoutineDataMergePolicy } from './data-update-merge-policy.mjs';
 import {
     finishRefreshReview,
@@ -28,6 +30,61 @@ import {
 
 const STATE_VERSION = 1;
 export const ISOLATED_DATA_UPDATE_ENGINE_VERSION = 1;
+
+// The updater runs every command through `spawnSync`, so the interval watch in
+// `scripts/suspension-watch.mjs` cannot fire during an export, the suite or a
+// check wait. It asks the operating system at each phase boundary instead.
+const suspensionBoundaries = createBoundaryWatch();
+
+/**
+ * Reports a suspension since the previous boundary, and stops the run only
+ * where `boundaryPolicies` says a suspension actually invalidates something.
+ * Everything from promotion onwards warns and continues, because each of those
+ * steps is followed by its own re-check -- the suite's own exit 75, the
+ * pre-merge re-read of PR identity, live production verification. An unreadable
+ * log warns at every boundary: a routine refresh must never be blocked because
+ * a diagnostic was unavailable.
+ */
+function requireNoSuspension(boundary) {
+    const assessment = suspensionBoundaries.assess(boundary);
+
+    if (assessment.state === 'clear') {
+        return;
+    }
+
+    const policy = boundaryPolicy(boundary);
+    const line = formatBoundaryVerdict(assessment, { policy });
+
+    if (assessment.state === 'suspended' && policy === 'stop') {
+        throw new Error(line);
+    }
+
+    console.warn(line);
+}
+
+/**
+ * Runs the full suite, treating its suspension exit code as "did not complete"
+ * rather than as a test failure. `scripts/run-all-tests.mjs` exits 75 when it
+ * detects the machine froze mid-run; that result is neither a pass nor a
+ * failure, so it must not be reported as failing tests and must not be taken
+ * as a pass either.
+ */
+function runFullTestSuite() {
+    const result = runNodeScript('scripts/run-all-tests.mjs', [], {
+        acceptedStatuses: [0, suspensionExitCode]
+    });
+
+    if (result.status === suspensionExitCode) {
+        throw new Error(
+            'The test suite did not complete: the machine was suspended mid-run, so its ' +
+            'result is neither a pass nor a failure. Nothing is wrong with the update. ' +
+            'Keep the machine awake and re-run with --resume to run the suite again.'
+        );
+    }
+
+    return result;
+}
+
 const REPOSITORY = 'johnkevan88888/family-running';
 const BASE_BRANCH = 'main';
 const REQUIRED_CHECK = 'Test static site';
@@ -602,6 +659,7 @@ async function main() {
     }
 
     if (state.phase === 'prepared') {
+        requireNoSuspension('the workbook export and staged validation');
         console.log('');
         console.log(formatComparisonSummary(state.comparison));
         console.log(`Full reconciliation report: ${state.reportPath}`);
@@ -632,6 +690,10 @@ async function main() {
 
     if (state.phase === 'tested') {
         showWorkingTreeSummary(tools.git);
+    }
+
+    if (state.phase === 'tested') {
+        requireNoSuspension('promotion and the full test suite');
     }
 
     if (
@@ -685,6 +747,7 @@ async function main() {
     }
 
     if (state.phase === 'checked') {
+        requireNoSuspension('the wait for GitHub checks');
         state = await confirmReviewedMerge(state, tools, options);
 
         if (state.phase !== 'merged') {
@@ -694,6 +757,7 @@ async function main() {
     }
 
     if (['merged', 'production-verified'].includes(state.phase)) {
+        requireNoSuspension('the merge');
         await finishMergedUpdate(state, tools);
     }
 }
@@ -961,7 +1025,7 @@ function regenerateDerivedDataArtifactsAndRunTests(state, git) {
 
 function runFullTests(state, git) {
     console.log('Running the complete repository test and screenshot suite...');
-    runNodeScript('scripts/run-all-tests.mjs');
+    runFullTestSuite();
     state.phase = 'tested';
     state.testedAt = new Date().toISOString();
     state.testedDataFingerprint = captureDataFingerprint(git);
@@ -1170,7 +1234,7 @@ async function prepareFreshDataReview(state, tools) {
         readMain: () => readApi('git/ref/heads/main'),
         readPullRequest: saved => readApi(`pulls/${saved.pullRequestUrl.split('/').at(-1)}`),
         persistState: saveState,
-        runTests: () => runNodeScript('scripts/run-all-tests.mjs'),
+        runTests: () => runFullTestSuite(),
         validateReleasePath: ({ baseCommitSha, headCommitSha, state: saved }) => {
             runNodeScript('scripts/validate-pr-release-path.mjs', [], { env: {
                 ...process.env,
