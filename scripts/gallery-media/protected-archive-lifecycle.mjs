@@ -1,6 +1,6 @@
 import {processGalleryPhoto} from './processor.mjs';
 import {assertPhotoFramingSource} from './photo-framing-source.mjs';
-import {archivePhotoStep} from './archive-diagnostics.mjs';
+import {archivePhotoStep,pendingReporter} from './archive-diagnostics.mjs';
 import {readGalleryReviewMain,createOrReconcileArchiveGalleryReview,createOrReconcileArchiveGalleryRemoval,readExistingGalleryReview,
     reconcileArchiveGalleryReview} from './github-review-client.mjs';
 import {readMergedGalleryBatchMemberReview} from './github-batch-review-client.mjs';
@@ -11,7 +11,6 @@ const opaque=/^attempt_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0
 const gh=github=>({token:github.token,fetchImpl:github.fetchImpl});
 const uses=(item,id,urls)=>item.id===id || ['sourceUrl','thumbnailUrl','posterUrl'].some(field=>urls.includes(item[field]));
 const absent=(main,id,urls)=>['family','everyone'].every(site=>!main.manifestsBySite[site].items.some(item=>uses(item,id,urls)));
-const pending=()=>({ok:false,state:'pending',publicationEnabled:false});
 function input(attemptId,...services) {
     if(!opaque.test(attemptId||'') || services.some(service=>typeof service!=='function')) throw new Error('Unavailable');
 }
@@ -23,12 +22,13 @@ async function checked(service,attemptId,operation,value) {
 
 export async function runProtectedArchiveReview({attemptId,processing,promotion,github,reportFailure}) {
     input(attemptId,processing,promotion);
+    const pending=pendingReporter(reportFailure);
     let saved;
     try {
         saved=await checked(promotion,attemptId,'review');
         const main=await readGalleryReviewMain(gh(github));
-        if(saved.historical.some(old=>!old.removed || !absent(main,old.itemId,old.urls))) return pending();
-        if(saved.reviewTerminal) return pending();
+        if(saved.historical.some(old=>!old.removed || !absent(main,old.itemId,old.urls))) return pending('review-history');
+        if(saved.reviewTerminal) return pending('review-terminal');
         // A repeated review job is not authority to remove an owner-published
         // photo. Existing publication is a separate reconciliation gate.
         if(saved.candidate && !absent(main,saved.candidate.itemId,[])) return {ok:false,state:'already-published',publicationEnabled:false};
@@ -59,15 +59,16 @@ export async function runProtectedArchiveReview({attemptId,processing,promotion,
         await Promise.allSettled([processing,promotion].map(async service=>{
             await checked(service,attemptId,'close');await checked(service,attemptId,'cleanup');
         }));
-        return pending();
+        return pending('unexpected-failure');
     }
 }
 
 // Finalization transports are passed separately, never copied into the review
 // environment. Completed storage, review and still-current host receipts replay
 // as reads. A manifest removal proposal is not silently merged by this runner.
-export async function resumeProtectedArchiveRemoval({attemptId,processing,promotion,verifier,github}) {
+export async function resumeProtectedArchiveRemoval({attemptId,processing,promotion,verifier,github,reportFailure}) {
     input(attemptId,processing,promotion,verifier);
+    const pending=pendingReporter(reportFailure);
     try {
         const initial=await checked(promotion,attemptId,'review');
         if(initial.batchOrigin?.evidence?.state==='merged-by-owner') {
@@ -81,14 +82,14 @@ export async function resumeProtectedArchiveRemoval({attemptId,processing,promot
             const evidence=await readMergedGalleryBatchMemberReview(origin.candidate,origin.review,origin.itemId,
                 {expectedBaseSha:origin.baseSha,...gh(github)});
             if(Object.keys(origin.evidence).some(key=>key!=='mainSha' &&
-                JSON.stringify(origin.evidence[key])!==JSON.stringify(evidence[key]))) return pending();
+                JSON.stringify(origin.evidence[key])!==JSON.stringify(evidence[key]))) return pending('review-identity');
         }
         const cleanup=await Promise.allSettled([processing,promotion].map(async service=>{
             await checked(service,attemptId,'close');return checked(service,attemptId,'cleanup');
         }));
-        if(cleanup.some(result=>result.status!=='fulfilled')) return pending();
+        if(cleanup.some(result=>result.status!=='fulfilled')) return pending('cleanup');
         const host=await checked(verifier,attemptId,'verify');
-        if(host.hostDeletionConfirmed!==true) return pending();
+        if(host.hostDeletionConfirmed!==true) return pending('host-proof');
         const saved=await checked(promotion,attemptId,'review');
         if(saved.candidate && !saved.reviewTerminal) {
             const evidence=await reconcileArchiveGalleryReview(saved.candidate,{expectedBaseSha:saved.baseSha,...gh(github),kind:'addition'});
@@ -110,7 +111,7 @@ export async function resumeProtectedArchiveRemoval({attemptId,processing,promot
             await checked(promotion,attemptId,'review-terminal',{kind:'removal',baseSha:old.baseSha,evidence});
         }
         await checked(promotion,attemptId,'manifest-absence',main);
-        if((await readGalleryReviewMain(gh(github))).baseSha!==main.baseSha) return pending();
+        if((await readGalleryReviewMain(gh(github))).baseSha!==main.baseSha) return pending('main-ref');
         return {ok:true,state:'removed',hostDeletionConfirmed:true,mainSha:main.baseSha,publicationEnabled:false};
-    } catch {return pending();}
+    } catch {return pending('unexpected-failure');}
 }

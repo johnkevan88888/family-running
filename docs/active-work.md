@@ -1,5 +1,20 @@
 # Active Work
 
+## Stage 3 preconditions, PR B — local implementation, 8 November 2026
+
+Branch `codex/stage-3-prep-gallery` from `d99bf48`. All 55 `pending()` returns
+in `protected-archive-batch.mjs`, `protected-archive-job.mjs` and
+`protected-archive-lifecycle.mjs` now give one of twenty reasons from the
+exported `pendingReasons` list, through the existing diagnostic observer. An
+unlisted reason is reported as `unclassified`; the Actions log is public and
+the runner holds Cloudflare credentials. The returned object is unchanged, and
+nothing touches a migration, SQL, a Worker contract or `gallery-admin/`.
+
+`protected-archive-purge.mjs` keeps its three unnamed returns: it is an
+internal library with no observer parameter and no log sink, so naming them
+would mean threading an observer through the owner route. Its three stages are
+already in the enum, so it can follow without new names.
+
 ## Stage 3 preconditions, PR A — local implementation, 7–8 November 2026
 
 Branch `codex/stage-3-prep-harness` from `bd16270`. The six browser-smoke
