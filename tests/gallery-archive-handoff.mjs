@@ -3,7 +3,7 @@ import {mock} from 'node:test';
 import {setImmediate as flush} from 'node:timers/promises';
 import {readFile} from 'node:fs/promises';
 import {createArchiveServiceClient,createArchiveJobClient,createArchiveFinalizerClient} from '../scripts/gallery-media/archive-service-client.mjs';
-import {archivePhotoStep,safeArchiveDiagnostic,formatArchiveDiagnostic,reportArchiveDiagnostic} from '../scripts/gallery-media/archive-diagnostics.mjs';
+import {archivePhotoStep,safeArchiveDiagnostic,formatArchiveDiagnostic,reportArchiveDiagnostic,pendingReporter,pendingReasons,unclassifiedPendingReason} from '../scripts/gallery-media/archive-diagnostics.mjs';
 import {processingError} from '../scripts/gallery-media/errors.mjs';
 import {runProtectedArchiveJob} from '../scripts/gallery-media/protected-archive-job.mjs';
 import {familyUploaderFixture} from './helpers/family-uploader-fixture.mjs';
@@ -115,8 +115,12 @@ for(const fault of [null,'admission','original-download','metadata-stripping','f
             assert.equal(github.state.manifests.family.items.length,0);
         } else {
             assert.deepEqual(result,{ok:false,state:'pending',publicationEnabled:false});assert.equal(github.state.pulls.length,0);
+            // The failed photo step, then where the run stopped without a
+            // result. The pending event is additive: the result above is the
+            // same object it has always been.
             assert.deepEqual(diagnostics,[{kind:'photo-handoff',photoIndex:2,photoCount:2,stage:fault,
-                reason:fault==='metadata-stripping'?'source-rejected':'step-failed'}]);
+                reason:fault==='metadata-stripping'?'source-rejected':'step-failed'},
+                {kind:'run-pending',reason:'external-write'}]);
             assert.equal(f.db.prepare('SELECT count(*) n FROM private_gallery_pipeline_closures').get().n,2);
             assert.equal(f.staging.objects.size,0);assert.equal(f.approved.objects.size,1,'Only fixed witness remains');
             assert.equal(f.db.prepare('SELECT count(*) n FROM private_gallery_active_job').get().n,1,'Failure reporting cannot release the claim');
@@ -136,9 +140,127 @@ for(const fault of [null,'admission','original-download','metadata-stripping','f
         assert.deepEqual(f.db.prepare('PRAGMA foreign_key_check').all(),[]);
     } finally {f.db.close();}
 }
+// -- A pending return says why, from one fixed list, and returns the same object
+//
+// A stalled protected run used to report one word, "pending", with no way to
+// tell a stale main from a missing host proof from a refused configuration.
+//
+// These lines are published. The protected runner holds Cloudflare Access
+// credentials and runs in a public repository, so its stderr ends up in the
+// Actions log for anyone to read. The reason is therefore a fixed string from
+// one exported list, never an error message, URL, origin, storage key, SHA,
+// job/attempt/asset ID or athlete ID -- and an unlisted reason is replaced
+// with a generic value rather than passed through.
+
+const legacyPending={ok:false,state:'pending',publicationEnabled:false};
+
+assert.ok(Object.isFrozen(pendingReasons),'the reason list must not be mutable at runtime');
+assert.ok(pendingReasons.includes(unclassifiedPendingReason),'the generic value must be on the list');
+assert.equal(new Set(pendingReasons).size,pendingReasons.length,'no duplicate reasons');
+
+// Every reason is a short lowercase token. This single rule is what makes a
+// leak impossible rather than unlikely: a digit, colon, slash, dot, underscore,
+// equals sign, space or capital letter is refused, so no SHA, UUID, numeric
+// athlete ID, URL, origin, storage key or sentence can be a reason at all.
+const lowercase='abcdefghijklmnopqrstuvwxyz';
+
+for(const reason of pendingReasons) {
+    assert.ok(reason.length>0 && reason.length<=32,`${reason} must be a short token`);
+    assert.ok(lowercase.includes(reason[0]),`${reason} must start with a lowercase letter`);
+    for(const character of reason) {
+        assert.ok(lowercase.includes(character) || character==='-',
+            `a reason may contain only lowercase letters and hyphens, so "${reason}" is not allowed`);
+    }
+}
+
+// An unlisted reason is replaced, not printed and not dropped: the operator
+// must still learn the run went pending.
+for(const unlisted of [
+    'https://family-running-gallery-processing-dev.family-running.workers.dev/attempt',
+    'family-running-gallery-processing-dev.family-running.workers.dev',
+    'private/originals/attempt_11111111/original.jpg',
+    'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    attemptId,assetId,jobId,'athlete-1407',secret,
+    'TypeError: Cannot read properties of undefined (reading baseSha)',
+    '','main-ref ',' main-ref','Main-Ref','main_ref',undefined,null,42,{toString:()=>'main-ref'}
+]) {
+    const safe=safeArchiveDiagnostic({kind:'run-pending',reason:unlisted});
+
+    assert.deepEqual(safe,{kind:'run-pending',reason:unclassifiedPendingReason},
+        'an unlisted reason must be replaced by the generic value');
+    // Exactly the generic line, so nothing of the input can have survived into
+    // it. `includes` would pass trivially for the empty string.
+    assert.equal(formatArchiveDiagnostic({kind:'run-pending',reason:unlisted}),
+        `Gallery run is pending (${unclassifiedPendingReason}).${String.fromCharCode(10)}`,
+        'an unlisted reason must never be printed');
+}
+
+assert.deepEqual(safeArchiveDiagnostic({kind:'run-pending',reason:'host-proof'}),{kind:'run-pending',reason:'host-proof'});
+assert.deepEqual(
+    safeArchiveDiagnostic({kind:'run-pending',reason:'cleanup',assetId,attemptId,stage:'leak',photoIndex:1}),
+    {kind:'run-pending',reason:'cleanup'},
+    'nothing beyond kind and reason may survive'
+);
+assert.equal(safeArchiveDiagnostic({kind:'run-pending',reason:'main-ref'}).stage,undefined);
+assert.equal(
+    formatArchiveDiagnostic({kind:'run-pending',reason:'purge-proof'}),
+    `Gallery run is pending (purge-proof).${String.fromCharCode(10)}`
+);
+
+// The result is unchanged, whatever the reason and whatever the observer does.
+const pendingEvents=[];
+const reportedPending=pendingReporter(event=>{pendingEvents.push(event);})('main-ref');
+
+assert.deepEqual(reportedPending,legacyPending,'the pending result must not change');
+assert.deepEqual(Object.keys(reportedPending),Object.keys(legacyPending),'no key may be added to a pending result');
+assert.equal('reason' in reportedPending,false,'the reason must never reach the result');
+assert.deepEqual(pendingEvents,[{kind:'run-pending',reason:'main-ref'}]);
+assert.deepEqual(pendingReporter(undefined)('cleanup'),legacyPending);
+assert.deepEqual(pendingReporter(()=>{throw new Error('observer broke');})('cleanup'),legacyPending);
+assert.deepEqual(pendingReporter(event=>{pendingEvents.push(event);})(secret),legacyPending,
+    'a diagnostic can never decide whether a run is pending');
+
+// Every call site in the three modules passes a listed reason, so an unlisted
+// one cannot be introduced and quietly become "unclassified".
+let sites=0;
+
+for(const module of ['protected-archive-batch','protected-archive-job','protected-archive-lifecycle']) {
+    const source=await readFile(new URL(`../scripts/gallery-media/${module}.mjs`,import.meta.url),'utf8');
+
+    assert.equal(source.includes('pending()'),false,`${module} must give a reason at every pending return`);
+    assert.ok(source.includes('pendingReporter('),`${module} must use the reporting pending`);
+    assert.equal(source.includes("state:'pending'"),false,`${module} must not rebuild the pending shape locally`);
+
+    for(const fragment of source.split("pending('").slice(1)) {
+        const reason=fragment.slice(0,fragment.indexOf("'"));
+        sites++;
+        assert.ok(pendingReasons.includes(reason),`${module} passes "${reason}", which is not an exported reason`);
+        assert.notEqual(reason,unclassifiedPendingReason,`${module} must classify its own pending returns`);
+    }
+}
+
+assert.equal(sites,55,`every pending return must be accounted for; found ${sites}`);
+
+// End to end through the real entry point: an unusable phase is pending, the
+// result is unchanged, and the operator is told why.
+const phaseEvents=[];
+const phaseResult=await runProtectedArchiveJob({
+    jobId,runReference,phase:'not-a-phase',
+    jobs:()=>assert.fail('an unusable phase must not reach a service'),
+    processing:()=>assert.fail('an unusable phase must not reach a service'),
+    promotion:()=>assert.fail('an unusable phase must not reach a service'),
+    github:{token:secret,fetchImpl:()=>assert.fail('no network')},
+    reportFailure:event=>{phaseEvents.push(event);}
+});
+
+assert.deepEqual(phaseResult,legacyPending,'the pending contract is unchanged');
+assert.deepEqual(phaseEvents,[{kind:'run-pending',reason:'job-configuration'}]);
+assert.equal(phaseEvents.map(formatArchiveDiagnostic).join(''),
+    `Gallery run is pending (job-configuration).${String.fromCharCode(10)}`);
+
 const cli=await readFile(new URL('../scripts/run-gallery-archive-job.mjs',import.meta.url),'utf8');
 assert.match(cli,/reportedFailures\+\+<32/);assert.match(cli,/fetchImpl:fetch,reportFailure/);
 assert.match(cli,/const dependencies=\{jobId,runReference,jobs,reportFailure\}/);
 assert.match(cli,/do not replay a closed photo attempt/);
 assert.doesNotMatch(cli,/console\.(?:error|log)\(error|error\.message|error\.stack|JSON\.stringify\(result\)/);
-console.log('Offline handoff diagnostics: exact stopped photo/stage, bounded safe transport reasons, unchanged denial/deadlines, no retries, two private-only photos, retained originals/tags/consent/framing and independent cleanup/host recovery passed.');
+console.log('Offline handoff diagnostics: exact stopped photo/stage, listed pending reasons with an unchanged pending result, bounded safe transport reasons, unchanged denial/deadlines, no retries, two private-only photos, retained originals/tags/consent/framing and independent cleanup/host recovery passed.');

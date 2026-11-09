@@ -1,5 +1,28 @@
 # Decision Log
 
+## A pending protected archive run names its stage, in log output only — 8 November 2026
+
+A protected archive run that reaches no result returns
+`{ok:false,state:'pending',publicationEnabled:false}`. Fifty-five returns
+shared that one object and said nothing more, so a stalled job could not be
+told apart from a stale main, a missing host proof or a refused configuration
+without reading the source. Each return now names a stage through the existing
+`reportArchiveDiagnostic` observer, which the runners write to stderr.
+
+The reason is a fixed string from one exported list, `pendingReasons`, for a
+specific reason: the protected runner holds Cloudflare Access credentials and
+runs in a public repository, so everything it writes to stderr is published in
+the Actions log. A reason is never an error message, URL, origin, storage key,
+SHA, job/attempt/asset ID or athlete ID. Validation substitutes rather than
+trusts: an unlisted reason is reported as `unclassified`, so a mistake costs
+one word of diagnosis instead of leaking. Each reason is also constrained to
+lowercase letters and hyphens, which makes every one of those shapes
+impossible rather than merely absent.
+
+The reason reaches log output only. The result object is unchanged
+byte-for-byte, because callers, D1, the Worker contracts and stored job state
+all assert on that shape. The three duplicate definitions of it are now one.
+
 ## A suspended run is INVALID, not a failure — 7 November 2026
 
 Two full-suite runs failed and were investigated as code flakes before the

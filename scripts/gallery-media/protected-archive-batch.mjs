@@ -1,6 +1,6 @@
 import {processGalleryPhoto} from './processor.mjs';
 import {assertPhotoFramingSource} from './photo-framing-source.mjs';
-import {archivePhotoStep} from './archive-diagnostics.mjs';
+import {archivePhotoStep,pendingReporter} from './archive-diagnostics.mjs';
 import {readGalleryReviewMain} from './github-review-client.mjs';
 import {createOrReconcileArchiveGalleryBatchReview,readExistingGalleryBatchReview,
     reconcileArchiveGalleryBatchReview,readMergedGalleryBatchPublication,
@@ -14,7 +14,6 @@ const attempt=/^attempt_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[
 const asset=/^asset_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const jobPattern=/^job_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const runPattern=/^https:\/\/github\.com\/johnkevan88888\/family-running\/actions\/runs\/[1-9][0-9]*$/;
-const pending=()=>({ok:false,state:'pending',publicationEnabled:false});
 const gh=github=>({token:github.token,fetchImpl:github.fetchImpl});
 const uses=(row,id,urls=[])=>row.id===id || ['sourceUrl','thumbnailUrl','posterUrl'].some(key=>urls.includes(row[key]));
 const absent=(main,id,urls)=>['family','everyone'].every(site=>!main.manifestsBySite[site].items.some(row=>uses(row,id,urls)));
@@ -61,19 +60,20 @@ async function checkedItems(job,candidate,promotion) {
 
 export async function runProtectedArchiveBatchReview(context) {
     const {jobId,runReference,job,jobs,processing,promotion,github}=context;
-    try {validate(context);} catch {return pending();}
+    const pending=pendingReporter(context.reportFailure);
+    try {validate(context);} catch {return pending('input-validation');}
     let main;
     try {main=await readGalleryReviewMain(gh(github));}
     catch {
         // An unavailable main cannot tell us whether an owner merged this PR
         // out of band. Only already-closed generations may retry cleanup.
-        await cleanAll(job,processing,promotion,true);return pending();
+        await cleanAll(job,processing,promotion,true);return pending('main-ref');
     }
     try {
         // Review alone never supplies the owner's separate publication grant.
         if(job.candidate && job.candidate.itemIds.some(id=>!absent(main,id,[])))
             return {ok:false,state:'already-published',publicationEnabled:false};
-        if(job.reviewTerminal) {await cleanAll(job,processing,promotion,true);return pending();}
+        if(job.reviewTerminal) {await cleanAll(job,processing,promotion,true);return pending('review-terminal');}
         let saved=job;
         if(!saved.candidate) {
             for(const id of job.attempts) {
@@ -110,7 +110,7 @@ export async function runProtectedArchiveBatchReview(context) {
     } catch(error) {
         // New main alone is not revoked consent or cleanup authority. Leave
         // the exact review/claim pending for a separately approved refresh.
-        if(error?.code==='BATCH_REVIEW_REFRESH_REQUIRED') return pending();
+        if(error?.code==='BATCH_REVIEW_REFRESH_REQUIRED') return pending('review-refresh-required');
         try {
             // The owner can merge between the first main snapshot and a later
             // review read. A validation failure is not proof of an unmerged
@@ -118,15 +118,15 @@ export async function runProtectedArchiveBatchReview(context) {
             const saved=(await checked(jobs,jobId,'read',{runReference})).job;
             const current=await readGalleryReviewMain(gh(github));
             if(!saved || saved.candidate?.itemIds.some(id=>!absent(current,id,[]))) {
-                await cleanAll(saved||job,processing,promotion,true);return pending();
+                await cleanAll(saved||job,processing,promotion,true);return pending('review-identity');
             }
             if(saved.candidate) {
                 const evidence=await reconcileArchiveGalleryBatchReview(saved.candidate,{expectedBaseSha:saved.baseSha,...gh(github)});
-                if(evidence.state==='merged-by-owner') {await cleanAll(saved,processing,promotion,true);return pending();}
+                if(evidence.state==='merged-by-owner') {await cleanAll(saved,processing,promotion,true);return pending('owner-merge-observed');}
                 await settleUnmerged(context,saved,evidence);
             } else await cleanAll(saved,processing,promotion);
         } catch {await cleanAll(job,processing,promotion,true);}
-        return pending(); // Unknown external writes retain the exact same run.
+        return pending('external-write'); // Unknown external writes retain the exact same run.
     }
 }
 
@@ -135,24 +135,25 @@ export async function runProtectedArchiveBatchReview(context) {
 // independently checked original, generation, tag/consent and public item.
 export async function runProtectedArchiveBatchPublication(context) {
     const {jobId,runReference,job,jobs,processing,promotion,github}=context;
+    const pending=pendingReporter(context.reportFailure);
     try {
         validate(context);
-        if(job.publicationRequested!==true || !job.candidate || !job.review) return pending();
-    } catch {return pending();}
+        if(job.publicationRequested!==true || !job.candidate || !job.review) return pending('publication-request');
+    } catch {return pending('input-validation');}
     let main;
     try {main=await readGalleryReviewMain(gh(github));}
-    catch {await cleanAll(job,processing,promotion,true);return pending();}
+    catch {await cleanAll(job,processing,promotion,true);return pending('main-ref');}
     const configuration={expectedBaseSha:job.baseSha,...gh(github)};
     let completionStarted=false,observationUncertain=false;
     try {
-        if(job.reviewTerminal) {await cleanAll(job,processing,promotion,true);return pending();}
+        if(job.reviewTerminal) {await cleanAll(job,processing,promotion,true);return pending('review-terminal');}
         // Recheck the protected source/consent/catalogue/exclusions and exact
         // approved byte receipts before either readiness or merge observation.
         await checkedItems(job,job.candidate,promotion);
         await checked(jobs,jobId,'batch-publication-check',{runReference});
         if(job.candidate.itemIds.some(id=>!absent(main,id,[]))) {
             const evidence=await readMergedGalleryBatchPublication(job.candidate,job.review,configuration);
-            if(evidence.mainSha!==main.baseSha) return pending();
+            if(evidence.mainSha!==main.baseSha) return pending('review-identity');
             if(!job.publicationEvidence) {
                 observationUncertain=true;
                 await checked(jobs,jobId,'batch-publication-observe',{runReference,evidence});
@@ -160,7 +161,7 @@ export async function runProtectedArchiveBatchPublication(context) {
             }
             await checkedItems(job,job.candidate,promotion);
             await checked(jobs,jobId,'batch-publication-check',{runReference});
-            if((await readGalleryReviewMain(gh(github))).baseSha!==main.baseSha) return pending();
+            if((await readGalleryReviewMain(gh(github))).baseSha!==main.baseSha) return pending('main-ref');
             const result={ok:true,state:'publication-observed',evidence,publicationEnabled:false};
             completionStarted=true;
             await checked(jobs,jobId,'complete',{runReference,result});
@@ -171,22 +172,22 @@ export async function runProtectedArchiveBatchPublication(context) {
         const review=await readExistingGalleryBatchReview(job.candidate,configuration,job.review);
         await checkedItems(job,job.candidate,promotion);
         await checked(jobs,jobId,'batch-publication-check',{runReference});
-        if((await readGalleryReviewMain(gh(github))).baseSha!==main.baseSha) return pending();
+        if((await readGalleryReviewMain(gh(github))).baseSha!==main.baseSha) return pending('main-ref');
         return {ok:true,state:'ready-for-separate-owner-merge',review,claimHeld:true,publicationEnabled:false};
     } catch(error) {
         // Preserve the previous stale-main pending behaviour. A checked
         // refresh, not automatic cancellation, is required to become ready.
-        if(error?.code==='BATCH_REVIEW_REFRESH_REQUIRED') return pending();
+        if(error?.code==='BATCH_REVIEW_REFRESH_REQUIRED') return pending('review-refresh-required');
         try {
             const current=(await checked(jobs,jobId,'read',{runReference})).job;
             // A lost completion reply must replay its durable terminal result,
             // never convert successfully observed publication into cleanup.
             if(current?.state==='publication-observed') return {ok:true,...current.result,replayed:true,publicationEnabled:false};
-        } catch {if(completionStarted || observationUncertain) return pending();}
+        } catch {if(completionStarted || observationUncertain) return pending('publication-completion');}
         // Neither a lost/in-flight completion nor an uncertain origin write
         // proves revocation. In particular, never delete after completion may
         // already have released the global claim successfully.
-        if(completionStarted || observationUncertain) return pending();
+        if(completionStarted || observationUncertain) return pending('publication-completion');
         // Revocation can race the owner's separate merge. First positively
         // establish shared review history; never infer unmerged from an error
         // or delete unclosed potentially-published sources on a main outage.
@@ -198,53 +199,54 @@ export async function runProtectedArchiveBatchPublication(context) {
                 const evidence=await reconcileArchiveGalleryBatchReview(job.candidate,configuration);
                 if(evidence.state==='merged-by-owner') {
                     if(!job.publicationEvidence) await checked(jobs,jobId,'batch-publication-observe',{runReference,evidence});
-                } else {await settleUnmerged(context,job,evidence);return pending();}
-            } catch {return pending();}
+                } else {await settleUnmerged(context,job,evidence);return pending('batch-settlement');}
+            } catch {return pending('review-identity');}
         }
         await cleanAll(job,processing,promotion);
-        return pending(); // Independent host proof and main removal still due.
+        return pending('main-removal'); // Independent host proof and main removal still due.
     }
 }
 
 export async function resumeProtectedArchiveBatchRemoval(context) {
     const {jobId,runReference,job,jobs,processing,promotion,github}=context;
-    try {validate(context);} catch {return pending();}
+    const pending=pendingReporter(context.reportFailure);
+    try {validate(context);} catch {return pending('input-validation');}
     let main;
     try {main=await readGalleryReviewMain(gh(github));}
-    catch {await cleanAll(job,processing,promotion,true);return pending();}
+    catch {await cleanAll(job,processing,promotion,true);return pending('main-ref');}
     try {
         // A review-only grant cannot silently retire separately owner-merged
         // photos. An explicitly granted publication retains this SAME claim
         // through post-merge revocation and each separate removal proposal.
         const present=job.candidate?.itemIds.some(id=>!absent(main,id,[]))===true;
-        if(present && job.publicationRequested!==true) return pending();
+        if(present && job.publicationRequested!==true) return pending('publication-request');
         // Reconcile first: an owner merge can race our initial absent-main
         // snapshot. Empty listings with admitted POSTs remain wholly pending.
         let cleaned=false;
         if(job.candidate && !job.reviewTerminal && !job.publicationEvidence) {
             const evidence=await reconcileArchiveGalleryBatchReview(job.candidate,{expectedBaseSha:job.baseSha,...gh(github)});
             if(evidence.state==='merged-by-owner') {
-                if(job.publicationRequested!==true) return pending();
+                if(job.publicationRequested!==true) return pending('publication-request');
                 await checked(jobs,jobId,'batch-publication-observe',{runReference,evidence});
             } else {
-                if(!await settleUnmerged(context,job,evidence)) return pending();
+                if(!await settleUnmerged(context,job,evidence)) return pending('batch-settlement');
                 cleaned=true;
             }
         }
-        if(!cleaned && !await cleanAll(job,processing,promotion)) return pending();
+        if(!cleaned && !await cleanAll(job,processing,promotion)) return pending('cleanup');
         // Independent still-current host receipts are read through the normal
         // removal path. Its SQL cannot accept a member until shared PR terminal.
         const snapshotVerifier=async id=>({ok:true,value:{hostDeletionConfirmed:
             (await checked(promotion,id,'review')).hostDeletionConfirmed===true}});
         const completionMain=await readGalleryReviewMain(gh(github));
         for(const id of job.attempts) {
-            const result=await resumeProtectedArchiveRemoval({attemptId:id,processing,promotion,verifier:snapshotVerifier,github});
+            const result=await resumeProtectedArchiveRemoval({attemptId:id,processing,promotion,verifier:snapshotVerifier,github,reportFailure:context.reportFailure});
             if(result?.ok===true && result.state==='unmerged-removal-review') return {...result,claimHeld:true};
-            if(result?.ok!==true || result.state!=='removed' || result.mainSha!==completionMain.baseSha) return pending();
+            if(result?.ok!==true || result.state!=='removed' || result.mainSha!==completionMain.baseSha) return pending('main-removal');
         }
-        if((await readGalleryReviewMain(gh(github))).baseSha!==completionMain.baseSha) return pending();
+        if((await readGalleryReviewMain(gh(github))).baseSha!==completionMain.baseSha) return pending('main-ref');
         const result={ok:true,state:'removed',mainSha:completionMain.baseSha,publicationEnabled:false};
         await checked(jobs,jobId,'complete',{runReference,result});
         return result;
-    } catch {return pending();}
+    } catch {return pending('unexpected-failure');}
 }
