@@ -246,14 +246,20 @@ try {
         'utf8'
     );
 
-    // The seam is refused when `CI` is set, so every arm states its own `CI`
-    // rather than inheriting whatever the surrounding run has. That keeps this
-    // test the same test locally and on GitHub Actions.
+    // Every arm states its own environment rather than inheriting whatever the
+    // surrounding run has, so this is the same test locally, on GitHub Actions
+    // and inside a wide run. `CI` is stated because the seam is refused when it
+    // is set. `FAMILY_RUNNING_TEST_JOBS` is removed because these arms are
+    // about the SEQUENTIAL path: on the parallel path a suspension is detected
+    // when the first check completes, which can exit 75 before the failing
+    // check's buffered block is printed. Inheriting a wide setting made this
+    // test fail in a run that set it, which is how the leak was found.
     const runSelfTest = (clockSteps, { ci = false, checks } = {}) => {
         const plan = path.join(workspace, 'plan.json');
         const environment = { ...process.env };
 
         delete environment.CI;
+        delete environment.FAMILY_RUNNING_TEST_JOBS;
 
         if (ci) {
             environment.CI = 'true';
