@@ -1158,6 +1158,14 @@ Fame `CardType` reaches a `class` attribute, so it is matched against the known
 card types rather than escaped, guarded by the `hostile card type` browser
 group.
 
+`pnpm test` runs the checks one at a time. `--jobs=N`, or
+`FAMILY_RUNNING_TEST_JOBS=N` for callers that pass no arguments, runs them in
+three phases with the exceptions in `scripts/check-lanes.mjs` respected;
+`--jobs=1` restores the sequential loop exactly and is the revert for anything
+the parallel path gets wrong. A suspension verdict from a parallel run names
+every check that was in flight, because which one straddled the freeze is not
+knowable.
+
 A wait that expires reports itself as a timeout naming the duration, the
 condition and the last observed value, never as a content fault. A wait on
 something the browser delivers from a callback or a timer -- a Chart.js resize,

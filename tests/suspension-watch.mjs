@@ -20,7 +20,7 @@ const intervalMs = defaultSampleIntervalMs;
 // independently -- which is the whole point, since whether the monotonic clock
 // accrues across a suspension is platform behaviour this must not depend on.
 function samples(steps, { atStep = -1, wallExtra = 0, monoExtra = 0, label = null } = {}) {
-    const built = [{ wall: 1_000_000, mono: 500, label: null }];
+    const built = [{ wall: 1_000_000, mono: 500, labels: [] }];
 
     for (let step = 1; step <= steps; step += 1) {
         const previous = built[step - 1];
@@ -29,10 +29,10 @@ function samples(steps, { atStep = -1, wallExtra = 0, monoExtra = 0, label = nul
         built.push({
             wall: previous.wall + intervalMs + (applies ? wallExtra : 0),
             mono: previous.mono + intervalMs + (applies ? monoExtra : 0),
-            label: step === atStep ? label : null
+            labels: step === atStep ? [label] : []
         });
         if (applies) {
-            built[step - 1].label = label;
+            built[step - 1].labels = [label];
         }
     }
 
@@ -62,7 +62,7 @@ const wallOnly = assessSuspension(
 assert.ok(wallOnly, 'a 60-minute wall-clock gap must be flagged');
 assert.equal(wallOnly.clocks.join(','), 'wall');
 assert.equal(Math.round(wallOnly.lateMs / 1000), 3600);
-assert.equal(wallOnly.duringLabel, 'Gallery protected batch review refresh');
+assert.deepEqual(wallOnly.duringLabels, ['Gallery protected batch review refresh']);
 
 // -- Both clocks late: the case that would have been missed ----------------
 //
@@ -77,7 +77,7 @@ const bothLate = assessSuspension(
 assert.ok(bothLate, 'a suspension must be flagged even when the monotonic clock continued through it');
 assert.equal(bothLate.clocks.join(','), 'wall,monotonic');
 assert.equal(Math.round(bothLate.lateMs / 1000), 3600);
-assert.equal(bothLate.duringLabel, 'Browser smoke tests');
+assert.deepEqual(bothLate.duringLabels, ['Browser smoke tests']);
 
 // -- Monotonic late only -----------------------------------------------------
 
@@ -101,14 +101,14 @@ assert.equal(
 // -- The worst gap wins, and carries its own label -------------------------
 
 const twoGaps = [
-    { wall: 0, mono: 0, label: 'first check' },
-    { wall: intervalMs + 60_000, mono: intervalMs, label: 'second check' },
-    { wall: 2 * intervalMs + 60_000 + 600_000, mono: 2 * intervalMs, label: null }
+    { wall: 0, mono: 0, labels: ['first check'] },
+    { wall: intervalMs + 60_000, mono: intervalMs, labels: ['second check'] },
+    { wall: 2 * intervalMs + 60_000 + 600_000, mono: 2 * intervalMs, labels: [] }
 ];
 const worst = assessSuspension(twoGaps);
 
 assert.equal(Math.round(worst.lateMs / 1000), 600, 'the largest gap is reported');
-assert.equal(worst.duringLabel, 'second check', 'the gap is attributed to what was running when it opened');
+assert.deepEqual(worst.duringLabels, ['second check'], 'the gap is attributed to what was running when it opened');
 
 // -- The verdict line -------------------------------------------------------
 
@@ -152,19 +152,56 @@ const watch = createSuspensionWatch({
 
 const advance = (wall, mono = wall) => { clock = { wall: clock.wall + wall, mono: clock.mono + mono }; fire(); };
 
-watch.setLabel('Repository safety validation');
+watch.startLabel('Repository safety validation');
 advance(intervalMs);
 advance(intervalMs);
 assert.equal(watch.assess(), null, 'a healthy watch reports nothing');
 
-watch.setLabel('CSV validation');
+watch.endLabel('Repository safety validation');
+watch.startLabel('CSV validation');
 advance(intervalMs + 3_600_000, intervalMs + 3_600_000);
 
 const watched = watch.assess();
 
 assert.ok(watched, 'the watch must detect a frozen interval');
-assert.equal(watched.duringLabel, 'CSV validation', 'the label at the time of the gap is reported');
+assert.deepEqual(watched.duringLabels, ['CSV validation'], 'what was running when the gap opened is reported');
 assert.equal(watched.clocks.join(','), 'wall,monotonic');
+
+// A parallel run has several checks in flight when a gap opens. Which of them
+// straddled the freeze is not knowable from here, so all of them are named
+// rather than one of them guessed.
+watch.endLabel('CSV validation');
+watch.startLabel('Gallery validation');
+watch.startLabel('Browser smoke tests');
+advance(intervalMs);
+watch.startLabel('Export bundle validation regression tests');
+// Larger than the earlier gap, so this is the worst one and the one assess()
+// reports; equal gaps keep the first.
+advance(intervalMs + 7_200_000, intervalMs + 7_200_000);
+
+const concurrent = watch.assess();
+
+assert.deepEqual(
+    concurrent.duringLabels,
+    ['Browser smoke tests', 'Export bundle validation regression tests', 'Gallery validation'],
+    'every check in flight is named, in a stable order'
+);
+
+const concurrentVerdict = formatSuspensionVerdict(concurrent, { completed: 40, total: 112 });
+
+assert.match(concurrentVerdict, /^INVALID: /);
+assert.match(concurrentVerdict, /during 3 checks in flight/);
+assert.ok(concurrentVerdict.includes('"Gallery validation"'));
+assert.ok(concurrentVerdict.includes('"Browser smoke tests"'));
+assert.match(concurrentVerdict, /40 of 112 checks complete/);
+
+// A check that has finished is not in flight, and ending one must not itself
+// open an attributable boundary: a gap right after it belongs to that check,
+// not to whatever else happened to still be running.
+const beforeEnd = watch.samples.length;
+
+watch.endLabel('Gallery validation');
+assert.equal(watch.samples.length, beforeEnd, 'finishing a check must not push a sample');
 
 watch.stop();
 assert.equal(cleared, true, 'stopping the watch clears its timer');
@@ -331,4 +368,4 @@ try {
     fs.rmSync(workspace, { recursive: true, force: true });
 }
 
-console.log('Suspension watch contract passed: either-clock lateness, label attribution, NTP immunity, exit 75 on the failure path, self-test seam refused in CI and never exiting 0.');
+console.log('Suspension watch contract passed: either-clock lateness, in-flight attribution, NTP immunity, exit 75 on the failure path, self-test seam refused in CI and never exiting 0.');

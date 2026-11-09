@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { assessNodeVersion } from './node-engine.mjs';
+import { capacityFor, phaseOf, resourcesFor } from './check-lanes.mjs';
 import {
     createSuspensionWatch,
     formatSuspensionVerdict,
@@ -59,6 +60,8 @@ const repositoryChecks = [
     ['Browser runtime contract tests', ['tests/browser-runtime.mjs']],
     ['Suspension watch contract tests', ['tests/suspension-watch.mjs']],
     ['Suspension boundary contract tests', ['tests/suspension-boundary.mjs']],
+    ['Check lane contract tests', ['tests/check-lanes.mjs']],
+    ['Parallel runner contract tests', ['tests/parallel-runner.mjs']],
     ['Vendored library validation', ['scripts/sync-vendor.mjs', '--check']],
     ['CSV validation', ['scripts/validate-csv.mjs']],
     ['Gallery validation', ['scripts/validate-gallery.mjs']],
@@ -169,39 +172,42 @@ const repositoryChecks = [
 
 const checks = selfTest ? selfTest.checks : repositoryChecks;
 
+// `--jobs=N`, or `FAMILY_RUNNING_TEST_JOBS=N` for the callers that invoke this
+// script without arguments (the guided updater and CI). The default is 1.
+//
+// `--jobs=1` is the revert. It is not "the parallel runner with one worker": it
+// is the loop this file has always had, running the registered checks in
+// registration order with their output passed straight through. Nothing about
+// scheduling, buffering or lanes is reachable from it, so if the parallel path
+// ever misbehaves, one flag restores the behaviour that has been running for
+// months without touching a line of code.
+const jobs = resolveJobs();
+
 // Every check is spawned asynchronously, so this process's event loop is idle
 // throughout and the interval keeps firing on schedule. A gap in its firings is
 // therefore proof the machine froze, not evidence that a check was slow.
 const suspensionWatch = createSuspensionWatch(selfTest ? selfTestWatchOptions(selfTest) : {});
 let completed = 0;
+// Failures from the parallel path, kept so they can be re-printed together at
+// the end. Nothing is ever retried: a check runs exactly once.
+const failures = [];
 
 try {
-    for (const [label, args] of checks) {
-        suspensionWatch.setLabel(label);
-        console.log(`\n== ${label} ==`);
-
-        try {
-            await runNode(args);
-        } catch (failure) {
-            // Assess BEFORE reporting the failure. A check that failed
-            // while the machine was frozen has proved nothing, and this is
-            // exactly how the two suspended runs presented: expired waits
-            // reading as content faults, investigated for hours as code
-            // flakes. Until this existed the rejection went straight out of
-            // the loop and exited 1, so the one path that most needed the
-            // verdict was the only path that never printed it.
-            reportSuspensionAndExit();
-            throw failure;
-        }
-
-        completed += 1;
-        reportSuspensionAndExit();
+    if (jobs === 1) {
+        await runInRegistrationOrder();
+    } else {
+        await runInPhases();
     }
 } finally {
     suspensionWatch.stop();
 }
 
 reportSuspensionAndExit();
+
+if (failures.length > 0) {
+    reportFailures();
+    process.exit(1);
+}
 
 if (selfTest) {
     // Deliberately not "All checks passed." Nothing about this repository was
@@ -226,6 +232,220 @@ function reportSuspensionAndExit() {
     console.error('');
     console.error(formatSuspensionVerdict(assessment, { completed, total: checks.length }));
     process.exit(suspensionExitCode);
+}
+
+// The behaviour this file has always had, reachable only at `--jobs=1`: one
+// check at a time, in registration order, output straight through, and a
+// failure thrown rather than collected.
+async function runInRegistrationOrder() {
+    for (const [label, args] of checks) {
+        suspensionWatch.startLabel(label);
+        console.log(`\n== ${label} ==`);
+
+        try {
+            await runNode(args);
+        } catch (failure) {
+            // Assess BEFORE reporting the failure. A check that failed
+            // while the machine was frozen has proved nothing, and this is
+            // exactly how the two suspended runs presented: expired waits
+            // reading as content faults, investigated for hours as code
+            // flakes. Until this existed the rejection went straight out of
+            // the loop and exited 1, so the one path that most needed the
+            // verdict was the only path that never printed it.
+            reportSuspensionAndExit();
+            throw failure;
+        }
+
+        suspensionWatch.endLabel(label);
+        completed += 1;
+        reportSuspensionAndExit();
+    }
+}
+
+// Three phases, in order: the gates, then the artifact build, then everything
+// else concurrently. `scripts/check-lanes.mjs` holds the membership and the
+// reasons; this is only the scheduler.
+async function runInPhases() {
+    const registry = checks.map((check, index) => ({
+        index,
+        label: check[0],
+        args: check[1],
+        phase: phaseOf(check[1][0]),
+        // A self-test plan may declare resources as a third element, so the
+        // scheduler's exclusion can be driven by a test without real lanes.
+        resources: check[2] ?? resourcesFor(check[1][0])
+    }));
+    const inPhase = name => registry.filter(check => check.phase === name);
+
+    console.log(`Running ${registry.length} checks with --jobs=${jobs}: ` +
+        `${inPhase('gate').length} gates, then ${inPhase('artifact').length} artifact checks, ` +
+        `then ${inPhase('pool').length} concurrently. Output is buffered per check.`);
+
+    // The gates come first precisely so a broken repository fails in seconds
+    // rather than after a fan-out, so they stop at the first failure.
+    for (const phase of ['gate', 'artifact']) {
+        for (const check of inPhase(phase)) {
+            if (!await runBuffered(check)) {
+                return;
+            }
+        }
+    }
+
+    await runConcurrently(inPhase('pool'));
+}
+
+// Starts checks in registration order as slots free up, respecting both the
+// run's own `--jobs` and each resource's capacity. On a failure it stops
+// starting new checks and lets the running ones finish: killing them mid-write
+// would leave partial output and half-built fixtures behind, and the point is
+// to report the failure, not to save the last few seconds.
+async function runConcurrently(pool) {
+    const queue = [...pool];
+    const running = new Set();
+    const held = new Map();
+    let stopped = false;
+
+    const available = resource => (held.get(resource) ?? 0) < capacityFor(resource, jobs);
+    const ready = check => check.resources.every(available);
+
+    while (running.size > 0 || (queue.length > 0 && !stopped)) {
+        while (!stopped && running.size < jobs) {
+            const next = queue.findIndex(ready);
+
+            if (next === -1) {
+                break;
+            }
+
+            const [check] = queue.splice(next, 1);
+
+            for (const resource of check.resources) {
+                held.set(resource, (held.get(resource) ?? 0) + 1);
+            }
+
+            const settled = (async () => {
+                const ok = await runBuffered(check);
+
+                for (const resource of check.resources) {
+                    held.set(resource, (held.get(resource) ?? 0) - 1);
+                }
+
+                running.delete(settled);
+
+                if (!ok) {
+                    stopped = true;
+                }
+            })();
+
+            running.add(settled);
+        }
+
+        if (running.size === 0) {
+            break;
+        }
+
+        await Promise.race(running);
+    }
+
+    await Promise.allSettled(running);
+}
+
+// Runs one check with its output collected, then prints the whole thing as a
+// single block. Interleaved stdio from several checks at once is unreadable,
+// and a block per check keeps the `== label ==` header that log readers and
+// greps already rely on.
+async function runBuffered(check) {
+    suspensionWatch.startLabel(check.label);
+
+    const startedAt = Date.now();
+    const chunks = [];
+    const code = await collectNode(check.args, chunks);
+
+    suspensionWatch.endLabel(check.label);
+
+    const body = chunks.join('');
+    const seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
+    const footer = code === 0
+        ? `${check.label} — ${seconds} s`
+        : `${check.args.join(' ')} failed with exit code ${code} after ${seconds} s`;
+    const block = `\n== ${check.label} ==\n${body}${body === '' || body.endsWith('\n') ? '' : '\n'}${footer}\n`;
+
+    process.stdout.write(block);
+
+    // Assess BEFORE reporting a failure, on this path too: a check that failed
+    // while the machine was frozen has proved nothing.
+    if (code !== 0) {
+        reportSuspensionAndExit();
+        failures.push({ index: check.index, label: check.label, block });
+        return false;
+    }
+
+    completed += 1;
+    reportSuspensionAndExit();
+    return true;
+}
+
+// Failures are printed again, together, in registration order. With checks
+// completing out of order a failure otherwise scrolls away behind however many
+// passing blocks finished after it.
+function reportFailures() {
+    const ordered = [...failures].sort((first, second) => first.index - second.index);
+
+    console.error('');
+    console.error(`${ordered.length} check${ordered.length === 1 ? '' : 's'} failed, in registration order:`);
+
+    for (const failure of ordered) {
+        process.stderr.write(failure.block);
+    }
+}
+
+function resolveJobs() {
+    const flag = process.argv.find(argument => argument.startsWith('--jobs='));
+
+    // A flag that was typed is honoured or refused, never reinterpreted, so
+    // `--jobs=` is a mistake rather than a silent 1. An empty environment
+    // variable is the conventional way of saying "unset", so it is.
+    if (flag) {
+        return parseJobs(flag.slice('--jobs='.length), '--jobs');
+    }
+
+    const fromEnvironment = process.env.FAMILY_RUNNING_TEST_JOBS;
+
+    if (fromEnvironment === undefined || fromEnvironment === '') {
+        return 1;
+    }
+
+    return parseJobs(fromEnvironment, 'FAMILY_RUNNING_TEST_JOBS');
+}
+
+function parseJobs(raw, source) {
+    const value = Number(raw);
+
+    if (raw.trim() === '' || !Number.isInteger(value) || value < 1) {
+        console.error(
+            `--jobs must be a whole number of 1 or more, and ${source} was given "${raw}". ` +
+            '--jobs=1 runs every check one at a time in registration order.'
+        );
+        process.exit(1);
+    }
+
+    return value;
+}
+
+function collectNode(args, chunks) {
+    return new Promise((resolve, reject) => {
+        const child = spawn(process.execPath, args, {
+            cwd: repoRoot,
+            env: process.env,
+            stdio: ['ignore', 'pipe', 'pipe']
+        });
+
+        child.stdout.on('data', chunk => chunks.push(chunk.toString()));
+        child.stderr.on('data', chunk => chunks.push(chunk.toString()));
+        child.on('error', reject);
+        // `close`, not `exit`: the streams must be drained before the block is
+        // printed, or a check's last lines are lost.
+        child.on('close', code => resolve(code ?? 1));
+    });
 }
 
 // Only reachable under `--self-test`. The interval is stubbed out, so samples

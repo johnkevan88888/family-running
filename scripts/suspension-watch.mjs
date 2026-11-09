@@ -13,6 +13,10 @@
 // A suspended run is not evidence either way. It is neither a pass nor a
 // failure, so it exits 75 (EX_TEMPFAIL) with an `INVALID:` line rather than 1.
 //
+// The report names every check in flight when the gap opened. Under a parallel
+// runner several are, and which of them straddled the freeze is not knowable
+// from here, so all of them are named rather than one of them guessed.
+//
 // The signal is the event loop. A 5-second interval that next fires 3,600
 // wall-seconds later proves the process was frozen, because the loop cannot run
 // while the machine is suspended. Lateness is checked on BOTH clocks and either
@@ -41,8 +45,10 @@ export function readClocks(now = Date.now, monotonic = process.hrtime.bigint) {
  * on either clock beyond what the interval accounts for, or null when nothing
  * exceeded the threshold.
  *
- * `label` carries whatever was running when the gap opened, so the report can
- * name the check that straddled the suspension instead of the one that failed.
+ * `labels` carries everything that was running when the gap opened, so the
+ * report names the checks that straddled the suspension rather than the one
+ * that happened to fail afterwards. With a parallel runner that is a set, not
+ * a single check.
  */
 export function assessSuspension(samples, { intervalMs = defaultSampleIntervalMs, thresholdMs = defaultThresholdMs } = {}) {
     let worst = null;
@@ -68,7 +74,7 @@ export function assessSuspension(samples, { intervalMs = defaultSampleIntervalMs
                     ...(wallLateMs > thresholdMs ? ['wall'] : []),
                     ...(monoLateMs > thresholdMs ? ['monotonic'] : [])
                 ],
-                duringLabel: previous.label ?? null,
+                duringLabels: previous.labels ?? [],
                 fromWall: previous.wall,
                 toWall: current.wall
             };
@@ -81,7 +87,15 @@ export function assessSuspension(samples, { intervalMs = defaultSampleIntervalMs
 /** The single `INVALID:` line a suspended run ends with. */
 export function formatSuspensionVerdict(assessment, { completed = null, total = null } = {}) {
     const seconds = Math.round(assessment.lateMs / 1000);
-    const during = assessment.duringLabel ? ` during "${assessment.duringLabel}"` : '';
+    const labels = assessment.duringLabels ?? [];
+    // Name every check that was in flight. One of them straddled the gap and
+    // nothing here can say which, so reporting one of several would be a
+    // guess presented as a fact.
+    const during = labels.length === 0
+        ? ''
+        : labels.length === 1
+            ? ` during "${labels[0]}"`
+            : ` during ${labels.length} checks in flight (${labels.map(label => `"${label}"`).join(', ')})`;
     const clocks = assessment.clocks.length === 2
         ? 'both clocks'
         : `the ${assessment.clocks[0]} clock`;
@@ -106,30 +120,40 @@ export function createSuspensionWatch({
     setIntervalImpl = setInterval,
     clearIntervalImpl = clearInterval
 } = {}) {
-    const samples = [{ ...clocks(), label: null }];
-    let label = null;
+    const samples = [{ ...clocks(), labels: [] }];
+    const inFlight = new Set();
+    const snapshot = () => [...inFlight].sort();
     const timer = setIntervalImpl(() => {
-        samples.push({ ...clocks(), label });
+        samples.push({ ...clocks(), labels: snapshot() });
     }, intervalMs);
 
     timer.unref?.();
 
     return {
         /**
-         * Names what is running, so a detected gap can be attributed.
+         * Records that a check has started, and samples the clocks.
          *
-         * The boundary sample carries the NEW label, because `assessSuspension`
-         * attributes a gap to the earlier sample of the pair: the interval
-         * between this boundary and the next sample is spent inside the check
-         * being named, not the one that just finished.
+         * The boundary sample carries the set INCLUDING the new check, because
+         * `assessSuspension` attributes a gap to the earlier sample of the
+         * pair: the interval between this boundary and the next sample is
+         * spent inside the checks named here, not the one that just finished.
          */
-        setLabel(next) {
-            label = next;
-            samples.push({ ...clocks(), label });
+        startLabel(label) {
+            inFlight.add(label);
+            samples.push({ ...clocks(), labels: snapshot() });
+        },
+        /**
+         * Records that a check has finished. Deliberately silent: a sample
+         * here would carry the set MINUS that check, and a gap opening right
+         * after it would then be attributed to whatever else happened to be
+         * running rather than to the check that had just been running.
+         */
+        endLabel(label) {
+            inFlight.delete(label);
         },
         stop() {
             clearIntervalImpl(timer);
-            samples.push({ ...clocks(), label });
+            samples.push({ ...clocks(), labels: snapshot() });
         },
         get samples() {
             return samples;
