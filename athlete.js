@@ -115,6 +115,35 @@ spanGaps: true
             responsive: true,
             maintainAspectRatio: false,
             parsing: false,
+            // Re-apply the container's size once an animation finishes.
+            //
+            // Chart.js 4.5.0 defers a resize that arrives while an animation is
+            // running: `resize()` records `_resizeBeforeDraw` instead of
+            // resizing, and only `draw()` applies it. The animator calls
+            // `draw()` only on a frame where some item ticked, so there is a
+            // one-frame window -- after an item's final tick, before the
+            // inactive item is pruned -- in which `running()` is still true,
+            // the resize defers, and the pruning frame then draws nothing. The
+            // recorded size is never applied and the canvas keeps the previous
+            // viewport's geometry until something else redraws.
+            //
+            // `onComplete` fires in that same pruning frame, immediately after
+            // the animator clears `running`, so resizing here takes the
+            // immediate path and uses the container's measured size. It cannot
+            // loop: `_resize` returns early unless the canvas dimensions
+            // actually change, so this is a no-op whenever the size is already
+            // right.
+            //
+            // It only flushes a deferral when an animation COMPLETES, which
+            // would leave an interrupted animation's deferral stranded. That
+            // is not reachable here: this page never calls `chart.stop()` or
+            // `chart.update()`, so no animation is ever cut short, and any
+            // later animation's completion would flush a stranded deferral
+            // anyway. `animation: false` would remove the deferral branch
+            // entirely, at the cost of the chart's load animation.
+            animation: {
+                onComplete: ({ chart }) => chart.resize()
+            },
             plugins: {
                 tooltip: {
                     callbacks: {
