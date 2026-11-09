@@ -1,5 +1,15 @@
 # Active Work
 
+## Chart resize settle window — 9 November 2026
+
+Branch `codex/chart-resize-settle` from `a00a145`. A full-suite run failed the
+progression chart's resize check twice while the container had already
+reflowed correctly and only Chart.js's `ResizeObserver` callback was late; the
+same check passed alone in 3m 39s. The two chart waits now share one
+`chartSettleTimeoutMs` of 30 s, and the stability check waits for the fitted
+size to hold for 250 ms continuously instead of sampling once. Both poll, so a
+healthy run is unchanged in duration.
+
 ## Stage 3 preconditions, PR B — local implementation, 8 November 2026
 
 Branch `codex/stage-3-prep-gallery` from `d99bf48`. All 55 `pending()` returns

@@ -11,6 +11,20 @@ const siteRoot = process.env.SITE_ROOT
     : repoRoot;
 const artifactsDir = path.join(repoRoot, 'test-artifacts', 'screenshots');
 const modes = ['family', 'everyone'];
+
+// Chart.js resizes from a `ResizeObserver` callback and animates points on a
+// timer, so both are delivered by the scheduler rather than on a deadline we
+// control. A 5000 ms budget was exceeded twice in one full-suite run on a
+// loaded machine: the canvas was still at the PREVIOUS viewport's size, with
+// its container already correctly reflowed, so nothing was wrong except that
+// the callback had not arrived yet. These waits poll, so a healthy machine
+// still returns in about a frame and this larger budget costs it nothing; it
+// only changes how long a busy machine is given before the run is called a
+// failure.
+const chartSettleTimeoutMs = 30000;
+// How long the fitted size must hold. The old check sampled once, 250 ms after
+// the fit, which cannot tell "settled" from "between two resize notifications".
+const chartStableHoldMs = 250;
 const newsExportHeaders = [
     'SortOrder',
     'SourceRow',
@@ -5306,7 +5320,7 @@ async function assertProgressionChart(page, mode, viewport) {
     // for it. Check that the visible points have reached their exported values.
     const pointsSettled = await waitForCondition(page, {
         description: 'the visible progression points to settle at their exported values',
-        timeoutMs: 5000,
+        timeoutMs: chartSettleTimeoutMs,
         predicate: () => {
             const chart = Chart.getChart(document.getElementById('age-grade-chart'));
             return chart.data.datasets.every((dataset, datasetIndex) =>
@@ -5364,7 +5378,7 @@ async function assertProgressionSizing(page, mode, viewport) {
             await page.setViewportSize({ width, height: originalViewport.height });
             const fits = await waitForCondition(page, {
                 description: `the progression chart to fit its available width and readable height at ${width}px`,
-                timeoutMs: 5000,
+                timeoutMs: chartSettleTimeoutMs,
                 predicate: () => {
                     const canvas = document.getElementById('age-grade-chart');
                     const section = document.getElementById('progression');
@@ -5402,18 +5416,48 @@ async function assertProgressionSizing(page, mode, viewport) {
             if (!fits.ok) {
                 failures.push(`${mode}/${viewport.name}: ${fits.message}`);
             }
-            // Allow subsequent resize notifications to settle; fitting for one
-            // frame must not hide a canvas that keeps shrinking or growing.
-            await page.waitForTimeout(250);
-            const stable = await page.evaluate(() => {
-                const chart = Chart.getChart(document.getElementById('age-grade-chart'));
-                const section = document.getElementById('progression');
-                const style = getComputedStyle(section);
-                const availableWidth = section.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-                return Math.abs(chart.width - availableWidth) <= 2 && chart.height >= 279 && chart.height <= 521;
+            // Fitting for one frame must not hide a canvas that keeps shrinking
+            // or growing, so require the fitted size to HOLD continuously. A
+            // single sample taken 250 ms later could not distinguish a settled
+            // chart from the gap between two resize notifications.
+            await page.evaluate(() => { window.__progressionStableSince = null; });
+
+            const stable = await waitForCondition(page, {
+                description: `the progression chart size to remain stable for ${chartStableHoldMs} ms at ${width}px`,
+                timeoutMs: chartSettleTimeoutMs,
+                argument: chartStableHoldMs,
+                predicate: holdMs => {
+                    const chart = Chart.getChart(document.getElementById('age-grade-chart'));
+                    const section = document.getElementById('progression');
+                    const style = getComputedStyle(section);
+                    const availableWidth = section.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+
+                    if (!(Math.abs(chart.width - availableWidth) <= 2 && chart.height >= 279 && chart.height <= 521)) {
+                        window.__progressionStableSince = null;
+                        return false;
+                    }
+                    if (window.__progressionStableSince === null) {
+                        window.__progressionStableSince = performance.now();
+                    }
+                    return performance.now() - window.__progressionStableSince >= holdMs;
+                },
+                observe: () => {
+                    const chart = Chart.getChart(document.getElementById('age-grade-chart'));
+                    const section = document.getElementById('progression');
+                    const style = getComputedStyle(section);
+                    return {
+                        availableWidth: Number((section.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)).toFixed(2)),
+                        chartWidth: chart ? chart.width : null,
+                        chartHeight: chart ? chart.height : null,
+                        stableForMs: window.__progressionStableSince === null
+                            ? 0
+                            : Math.round(performance.now() - window.__progressionStableSince)
+                    };
+                }
             });
-            if (!stable) {
-                failures.push(`${mode}/${viewport.name}: progression chart size did not remain stable at ${width}px.`);
+
+            if (!stable.ok) {
+                failures.push(`${mode}/${viewport.name}: ${stable.message}`);
             }
             if (width >= 1920) {
                 const canvasWidth = await page.locator('#age-grade-chart').evaluate(canvas => canvas.getBoundingClientRect().width);
