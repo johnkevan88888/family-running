@@ -1159,7 +1159,11 @@ card types rather than escaped, guarded by the `hostile card type` browser
 group.
 
 A wait that expires reports itself as a timeout naming the duration, the
-condition and the last observed value, never as a content fault. A suspended
+condition and the last observed value, never as a content fault. A wait on
+something the browser delivers from a callback or a timer -- a Chart.js resize,
+a point animation -- is given a budget sized for a loaded machine rather than a
+healthy one, because such a wait polls and costs a healthy machine nothing. A
+size that must hold is waited for continuously, not sampled once. A suspended
 machine is neither a pass nor a failure: `scripts/run-all-tests.mjs` exits 75
 with an `INVALID:` line naming the check it straddled, whether that check
 passed or failed, and the guided updater treats that exit code as "the suite
