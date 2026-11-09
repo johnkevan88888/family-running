@@ -1,5 +1,31 @@
 # Decision Log
 
+## The suite can run checks in parallel, and `--jobs=1` is the revert — 9 November 2026
+
+Per-check timings taken from a CI log show one check, `Gallery D1
+expression-depth parity tests`, is 289 s of the 809 s suite in CI and 427 s
+locally. No amount of concurrency beats that, so the ceiling is about 2.8x and
+there is nothing to gain beyond three or four workers. Reworking that check,
+not more workers, is the next lever.
+
+`scripts/run-all-tests.mjs` runs three phases: the gates, then the artifact
+build, then everything else concurrently. `scripts/check-lanes.mjs` holds the
+exceptions and the reasons, and `tests/check-lanes.mjs` derives both resource
+groups from the test sources so a declaration cannot drift from reality. The
+browser group is capped below the run width because the progression chart's
+resize wait is load-sensitive; the data-update group is a mutex because those
+checks use fixed paths under `test-artifacts/` instead of directories of their
+own, and the real fix is for them to stop doing that.
+
+`--jobs=1` is not the parallel runner with one worker. It is the loop this file
+has always had, in registration order with output passed straight through, so
+one flag restores months of known behaviour without touching code. Output is
+buffered per check only on the parallel path, because interleaved stdio from
+several checks is unreadable, and failures are re-printed together at the end
+in registration order so none scrolls away behind later passing blocks.
+Nothing is ever retried: a check runs exactly once, and a failure stops new
+checks from starting while the running ones finish.
+
 ## A pending protected archive run names its stage, in log output only — 8 November 2026
 
 A protected archive run that reaches no result returns

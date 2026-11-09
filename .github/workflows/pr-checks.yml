@@ -10,6 +10,11 @@ on:
       - synchronize
       - edited
   workflow_dispatch:
+    inputs:
+      jobs:
+        description: How many checks to run at once. Empty runs them one at a time, as every pull request does.
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -20,7 +25,11 @@ concurrency:
 
 jobs:
   test:
-    name: Test static site
+    # Only a pull_request run may carry the required check's name. A manual
+    # dispatch is named differently on purpose, so it can neither satisfy nor
+    # block the "Test static site" branch protection, and merge evidence stays
+    # the pull_request run on the exact head.
+    name: ${{ github.event_name == 'pull_request' && 'Test static site' || 'Manual suite run' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -63,6 +72,14 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run repository checks
+        # Confined to this step, so it cannot reach any other step or any test
+        # that spawns the runner itself. Declared before `if:` because the
+        # classification guard and `run: pnpm test` must stay adjacent, which
+        # tests/gallery-photo-review-path.mjs enforces. Empty on every
+        # pull_request run, which the runner reads as unset and so runs one
+        # check at a time; only a manual dispatch can widen it.
+        env:
+          FAMILY_RUNNING_TEST_JOBS: ${{ inputs.jobs }}
         if: steps.regression.outputs.suite != 'photo-only'
         run: pnpm test
 

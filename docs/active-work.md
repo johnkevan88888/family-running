@@ -1,5 +1,14 @@
 # Active Work
 
+## Stage 3, the parallel runner — local implementation, 9 November 2026
+
+Branch `codex/stage-3-parallel-runner` from `ecec3d7`. 113 checks now, with
+`tests/check-lanes.mjs` and `tests/parallel-runner.mjs` added. Default
+concurrency stays 1, so every existing caller is unaffected until the defaults
+are flipped in a follow-up. `.github/workflows/pr-checks.yml` gained an
+optional `jobs` dispatch input, empty on every pull request, so a one-off CI
+run at `--jobs=3` can be measured without changing what pull requests do.
+
 ## Chart resize settle window — 9 November 2026
 
 Branch `codex/chart-resize-settle` from `a00a145`. A full-suite run failed the

@@ -363,7 +363,19 @@ try {
 const workflow = await fs.readFile(new URL('../.github/workflows/pr-checks.yml', import.meta.url), 'utf8');
 assert.match(workflow, /^  pull_request:/m);
 assert.doesNotMatch(workflow, /^  pull_request_target:/m);
-assert.match(workflow, /name: Test static site/);
+// Only a pull_request run may be named after the required check. A manual
+// dispatch carries a different name, so it can neither satisfy nor block the
+// branch protection, and merge evidence stays the pull_request run.
+assert.match(
+    workflow,
+    /name: \$\{\{ github\.event_name == 'pull_request' && 'Test static site' \|\| '([^']+)' \}\}/,
+    'the required check name must be reachable only from a pull_request event'
+);
+
+const dispatchName = /\|\| '([^']+)' \}\}/.exec(workflow)[1];
+
+assert.notEqual(dispatchName, 'Test static site', 'a dispatch run must not be named after the required check');
+assert.ok(dispatchName.length > 0);
 assert.match(workflow, /contents: read/);
 assert.doesNotMatch(workflow, /^\s+(?:paths|paths-ignore):/m, 'Required job cannot disappear through workflow path filters');
 assert.match(workflow, /run: pnpm test/, 'Full suite must remain available for every noneligible change');
