@@ -21,6 +21,7 @@ export const gateScripts = Object.freeze([
     'tests/suspension-watch.mjs',
     'tests/suspension-boundary.mjs',
     'tests/check-lanes.mjs',
+    'tests/change-tier.mjs',
     'tests/parallel-runner.mjs',
     'scripts/sync-vendor.mjs',
     'scripts/validate-csv.mjs',

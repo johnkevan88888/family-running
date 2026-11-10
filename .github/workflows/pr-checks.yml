@@ -95,3 +95,64 @@ jobs:
           path: test-artifacts/screenshots/
           if-no-files-found: warn
           retention-days: 14
+
+  # Advisory only, and deliberately never named "Test static site".
+  #
+  # It reports which tier this Pull Request's diff falls into and whether that
+  # narrowed set of checks passes. It gates nothing: `continue-on-error` keeps a
+  # red result from blocking, branch protection does not require it, and the
+  # required check above still runs the whole suite on every Pull Request.
+  #
+  # The point is evidence. While this runs in shadow, the two jobs' outcomes can
+  # be compared on real Pull Requests, and a tier that ever passes where the
+  # required job fails is the signal that the tier table is wrong. That has to
+  # be observed over many Pull Requests before anyone argues for promoting it.
+  tier:
+    name: Change tier (advisory)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    continue-on-error: true
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.7.0
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Classify the change
+        id: classify
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/classify-change-tier.mjs
+
+      - name: Install Playwright browser
+        if: steps.classify.outputs.tier != 'full'
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Always runs, so every Pull Request emits exactly one
+      # CHANGE_TIER_SUMMARY line for `scripts/collect-tier-agreement.mjs` to
+      # read -- including the runs that narrow nothing, which are most of them
+      # and still count towards the exit criterion.
+      - name: Run the narrowed tier
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/run-change-tier.mjs
+

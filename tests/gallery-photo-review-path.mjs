@@ -383,7 +383,30 @@ assert.match(workflow, /if: steps\.regression\.outputs\.suite != 'photo-only'\r?
     'Only positive photo-only classification may skip the full suite');
 assert.match(workflow, /if: steps\.regression\.outputs\.suite == 'photo-only'\r?\n\s+run: node scripts\/run-gallery-photo-checks\.mjs/,
     'Every positive photo-only classification must execute the focused checks');
-assert.doesNotMatch(workflow, /continue-on-error:/, 'Classification or validation errors cannot be ignored');
+// The required job may never ignore an error. It used to be enough to say
+// `continue-on-error` appears nowhere in this workflow, but the advisory
+// change-tier job is non-blocking BY DESIGN, so the guarantee is now stated
+// where it belongs: the required job's own steps cannot swallow a failure, and
+// the advisory job is the only place in the file allowed to.
+const advisoryJobAt = workflow.indexOf(String.fromCharCode(10) + '  tier:');
+
+assert.ok(advisoryJobAt > 0, 'the advisory change-tier job must be present and declared after the required job');
+
+const requiredJob = workflow.slice(0, advisoryJobAt);
+const advisoryJob = workflow.slice(advisoryJobAt);
+
+assert.doesNotMatch(requiredJob, /continue-on-error:/, 'Classification or validation errors cannot be ignored');
+assert.equal(
+    (workflow.match(/continue-on-error:/g) || []).length,
+    1,
+    'only the advisory change-tier job may be non-blocking'
+);
+assert.match(advisoryJob, /continue-on-error: true/, 'the advisory job must not be able to block a merge');
+assert.doesNotMatch(advisoryJob, /name: Test static site/, 'the advisory job must not carry the required check name');
+assert.match(advisoryJob, /name: Change tier \(advisory\)/, 'the advisory job must say it is advisory in its name');
+// It reads the diff and runs checks. It must never gain the ability to write.
+assert.doesNotMatch(advisoryJob, /secrets\.|contents: write|pull-requests: write/,
+    'the advisory job does not gain secrets or write permissions');
 assert.doesNotMatch(workflow, /secrets\.|contents: write|pull-requests: write/, 'Ordinary PR checks do not gain secrets or write permissions');
 
 console.log(`Gallery photo-only review classification tests passed (${cases} cases plus workflow safety assertions).`);

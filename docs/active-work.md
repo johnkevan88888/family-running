@@ -1,5 +1,337 @@
 # Active Work
 
+## Open: browser calculation the Excel-only rule forbids — 10 November 2026
+
+`athlete.js` chooses personal bests and `leaderboard.js`/`athlete.js` compute
+12-month windows and activity rankings in the browser; no automated check
+enforces the Excel-only calculation rule.
+
+Located while designing the change-tier mutation proof, confirmed in the
+current code: `athlete.js:326` and `athlete.js:339` sort results to select a
+best, `athlete.js:823` and `leaderboard.js:328` derive a twelve-month window
+from the export timestamp, and `leaderboard.js:364` ranks athletes by activity
+over that window. Every grep for an enforcing check found only incidental
+matches -- page filenames, and the one sanctioned division in
+`age-grade-contract.js`.
+
+So the rule in `AGENTS.md` rests on review alone. It is recorded here rather
+than seeded as a proof fault, because a fault nothing detects measures the
+suite's coverage and not the tier's correctness. John tracks it as F-15 in his
+external audit; that series is not in this repository, and only `F-03` appears
+anywhere in these notes, so the number is recorded here for reference rather
+than as a local identifier.
+
+## Open: exported values reaching markup are not proved escaped — 10 November 2026
+
+`AGENTS.md` requires every exported CSV value that reaches a page as markup to
+be escaped, headings and table headers included. Nothing enforces it.
+
+Found by the change-tier mutation proof. Removing one `escapeHTML` call from
+`leaderboard.js` and running **all 115 checks** produced no failure. The fault
+routed to the full suite, so this is not a gap in a narrowed tier: it is a gap
+in the suite.
+
+`tests/browser-smoke.mjs` does assert escaping in places, but not for the value
+the proof unescaped, so the guarantee holds by review rather than by check. The
+second such gap recorded today, alongside the browser-calculation one above.
+
+Fixing it means asserting the escape at the point exported values become markup,
+not adding another page-level spot check. Not attempted here.
+
+## Change-tier classifier in shadow mode — 10 November 2026
+
+Regression scope is now classified from the diff, and a second advisory CI job
+reports what a narrowed run would have been. It gates nothing: `Test static
+site` still runs all 115 checks on every Pull Request and remains the required
+check.
+
+### Only the data tier ships
+
+Three tiers were designed, declared and costed. The read audit then found two of
+them unsafe, and they were withdrawn rather than shadowed:
+
+| Tier | Verdict |
+| --- | --- |
+| data | 20 checks, no holes, every member mutation-tested. **Ships.** |
+| gallery-editorial | 9 holes: nine checks outside it read `gallery-data/*.json`. Withdrawn. |
+| runtime | **55 holes.** The private media pipeline imports `gallery-contract.js`, `gallery-media-policy.js`, `gallery-upload-contract.js` and `gallery-podium-framing.js`, all root runtime files, so a change to any of them can change the verdict of dozens of checks a 25-check runtime tier would skip. Withdrawn. |
+| gallery-admin | 109 checks against the suite's 115: a saving of nothing. Withdrawn. |
+
+`gallery-data/**`, the root runtime files, `assets/`, `vendor/` and
+`gallery-admin/**` therefore fall to `full`. Shadowing a tier the audit already
+calls wrong would gather agreement evidence about the wrong thing.
+
+### The audit moved three checks into the data tier
+
+This answers the question directly: do the validator and updater self-tests
+belong in the scripts tier?
+
+Their traced reads said to look closer -- `tests/export-bundle-validation.mjs`
+reads 74 real exported files and `tests/staged-export-workflow.mjs` 74 -- and a
+mutation test settled it. Dropping one row from one leaderboard CSV:
+
+| Check | Verdict changed? |
+| --- | --- |
+| `tests/export-bundle-validation.mjs` | **yes** - moved to the data tier |
+| `tests/staged-export-workflow.mjs` | **yes** - moved to the data tier |
+| `tests/verify-production-data.mjs` | **yes** - moved to the data tier |
+| `tests/gallery-photo-review-bridge.mjs` | no |
+| `tests/simple-data-update.mjs` | no |
+| `tests/gallery-admin-catalog.mjs` | no |
+| `tests/gallery-family-uploader-browser.mjs` | no |
+
+So the first draft was wrong about three of them: a check whose answer a refresh
+can change belongs to the refresh, whatever it is nominally testing. The four
+that read exported data without depending on it are declared in
+`dataSurfaceExceptions` with that evidence, rather than loosening the audit --
+a NEW check that reads `data/` still fails until somebody reviews it into one
+column or the other.
+
+`tests/staged-export-workflow.mjs` is worth a note: it passed the first mutation
+tried (one file's ExportBundleID) and failed the next two (a dropped row, a
+removed manifest row). One mutation is not a membership test.
+
+### What the tiers cost, measured
+
+Every check was timed on its own -- 115 checks, 2226 s (37.1 min) sequentially
+-- so the table is costed rather than guessed:
+
+| Tier | Checks | Solo cost | Saving |
+| --- | --- | --- | --- |
+| data | 20 | 559 s (9.3 min) | 75% |
+| full | 115 | 2226 s (37.1 min) | - |
+
+The data tier grew from 400 s to 559 s when the audit moved three checks into
+it, `tests/export-bundle-validation.mjs` at 154 s being almost all of that. A
+75% saving on the routine case, honestly measured, is worth more than the 82%
+the first draft claimed while missing three checks that a refresh can break.
+
+The data tier's saving is almost entirely one exclusion:
+`tests/gallery-d1-expression-depth.mjs` at **621.8 s**, Cloudflare D1
+expression-depth parity, which a promoted CSV bundle cannot affect. A routine
+refresh has been running it every time.
+
+**There is no gallery-admin tier.** One was designed on an estimate of ~17
+minutes. Measured, it was 2225 s against the suite's 2226 s -- a saving of
+nothing, because the private media pipeline *is* most of the suite and the only
+checks a `gallery-admin/**` change cannot affect are five that run in under a
+second between them. It was dropped on that measurement; those paths fall to
+`full` like anything else unrecognised. A tier that names a saving it does not
+deliver is worse than no tier.
+
+### Why the data tier is a bundle predicate, not a union over paths
+
+The first design classified each changed path and took the union. Every real
+refresh carries `gallery-admin/generated/catalog-snapshot.js`, so under that
+rule all three of the last refreshes would have been read as gallery-admin
+changes and run the private pipeline -- the exact cost the tier exists to
+avoid.
+
+The data tier is therefore `isLightweightDataRefresh`, exported from
+`scripts/validate-pr-release-path.mjs` and shared with the release-path gate so
+the two cannot disagree about what a refresh is: the complete 72-CSV bundle,
+the routine derived artifacts, optionally the handoff note, no new CSV and no
+changed header. A partial bundle is not a cheaper refresh, it is a broken one,
+and classifies as `full` with reason `incomplete-bundle`.
+
+The predicate is shared but the title gate is not: `assessReleasePath` returns
+`full-preview` for any title without `[skip netlify]`, and a refresh is a
+refresh whatever the title says, so the tier is decided from the diff alone.
+
+### The declared table is the source of truth
+
+`scripts/change-tiers.mjs` holds it, and the classifier consults no generated
+data at runtime. The membership rule is the only one: a check belongs to a tier
+when that tier's paths can change its verdict. That puts the validator and
+updater self-tests -- `export-bundle-validation` (154 s),
+`staged-export-workflow`, `pages-deployment-verification`, the data-update
+tests (269 s and 107 s) -- in the scripts tier, because each exercises its
+subject against fixtures it builds itself and new CSVs cannot change its
+answer.
+
+The floor is three checks, not ten: repository safety, the Node engine and the
+browser runtime contract, about half a second together. The suite's own
+contracts -- the lane table, the suspension watch, the parallel runner, the
+release paths -- only a change to `scripts/` or `tests/` can break, so by the
+same rule they belong to the scripts tier. Keeping them as a safety margin
+would have cost 58 s on every tier.
+
+### The trace record
+
+`tests/fixtures/check-read-surfaces.json` keeps only the paths a tier can be
+declared over: exported data, editorial metadata, brand assets, vendored
+libraries and the published root files. A full trace is 6324 paths and 371 KB,
+four fifths of it module resolution -- every check "reads" the `scripts/` and
+`tests/` files it imports, and no tier is declared over those because any change
+there runs everything anyway. Filtered, it is 1298 paths and 62 KB with nothing
+the audit uses removed.
+
+Two notes on producing it. The trace is only trustworthy for a check that ran to
+completion, so the tracer reports any check that failed while traced; four did
+on the first run, and three were contamination from concurrent work of mine
+rather than anything about the checks. The fourth,
+`tests/gallery-photo-review-browser.mjs`, failed because the artifact had been
+rebuilt from mutated data and so carried a bundle ID the repository no longer
+had -- `Stale result export.` was the check being right.
+
+### The read trace audits the table; it does not generate it
+
+`scripts/trace-check-reads.mjs` runs every check once under an `fs` hook and
+records which repository files it opened, into
+`tests/fixtures/check-read-surfaces.json`. `tests/change-tier.mjs` then fails
+when a check reads a tier's files and is not in that tier.
+
+One direction only, deliberately. A check inside a tier that never opened one
+of its files is not a fault -- it can be responsible for a path it does not
+read, by asserting the file is absent or by asserting on output built from it.
+Tracing sees reads, never responsibility.
+
+An earlier attempt to derive the table statically, by scanning each check's
+transitive module closure for path mentions, said a `data/**` change needed 39
+of 114 checks -- including `gallery-batch-review-refresh` and
+`gallery-withdrawal-finalizer-service`. It matches the word `data` or a CSV
+name anywhere in any imported module. That approach was abandoned, and the
+lesson is why the trace measures rather than infers.
+
+### Checks run with their registered arguments
+
+Found while wiring the tier runner, and it would have been a quiet disaster.
+The suite registers three checks with a flag --
+`['scripts/sync-vendor.mjs', '--check']`,
+`['scripts/sync-private-face-detector.mjs', '--check']` and
+`['scripts/build-gallery-admin-catalog.mjs', '--check']`. Without `--check`
+those scripts REGENERATE what they are supposed to be verifying. A runner that
+spawned the bare script path would have turned three checks into three silent
+rewrites of the working tree, passing every time.
+
+`readRegisteredCheckCommands` now reads the arguments along with the path, and
+the tier runner, the proof runner and the read tracer all use them.
+`tests/change-tier.mjs` asserts that any of those three appearing in a tier is
+registered with `--check`. No damage was done: both files were already current,
+so write mode happened to be a no-op.
+
+### How a data fault is judged
+
+The proof applies each data fault on top of a complete synthetic refresh -- one
+new consistent ExportBundleID across all 72 public CSVs, the manifest among
+them, plus the regenerated catalogue -- because that is how a data change really
+arrives.
+
+The manifest being one of the 72 rather than an extra caused the first proof run
+to fail outright: the builder rewrote the whole list and then rewrote the
+manifest again, looking for an identifier it had just replaced. The base failed
+to build, every data fault was skipped, and the run reported `base-invalid`
+seven times rather than quietly passing -- which is what the control exists
+for. A
+single mutated CSV is `incomplete-bundle` and classifies as `full`, so judging
+the data tier against a one-file diff would prove nothing about the data tier.
+
+The base runs first with no fault in it, and must both classify as the data
+tier and pass it. A fault "caught" by a tier that already fails on clean data
+has been caught by nothing.
+
+The classifier stays in the loop: each fault's tier comes from the diff it
+produces, exactly as on a real Pull Request. Where a data fault does not present
+as a complete refresh -- adding a new CSV is not a refresh -- it routes to the
+full suite and that is reported rather than overridden.
+
+The runner mutates the working tree in place and restores it precisely,
+refusing any path that already has uncommitted changes. An interrupted run
+cannot restore: a killed run during development left `data/athlete_results.csv`
+modified, which `git checkout --` undid. Nothing is ever committed by it.
+
+### Agreement tracking
+
+The advisory job emits one fixed-shape line per Pull Request --
+`CHANGE_TIER_SUMMARY pr= head= tier= reason= result= data_refresh= checks=
+seconds=` -- carrying no paths and no diff content, because the Actions log for
+a public repository is public. It emits on every run, including those that
+narrow nothing, since those still count towards the criterion.
+
+`scripts/collect-tier-agreement.mjs` reads the Actions history and reports the
+count of agreeing runs, the number of real refreshes classified as the data
+tier, and any disagreement. It is read-only: it lists runs and reads logs, and
+writes, merges and triggers nothing. The disagreement that matters is a tier
+passing where the required suite failed -- that is the tier table being wrong,
+and it is the whole reason for shadow mode.
+
+### The nine-fault proof, run
+
+Control first: a clean synthetic refresh classifies as the data tier and passes
+all 20 of its checks. Without that, a fault "caught" by a tier that already
+fails on clean data would have been caught by nothing.
+
+| # | Fault | Routed to | Outcome |
+| --- | --- | --- | --- |
+| 1 | a dropped CSV row | data (20) | caught by `validate-csv` |
+| 2 | a mismatched ExportBundleID | data (20) | caught by `validate-csv` |
+| 3 | a file missing from the manifest | data (20) | caught by `validate-csv` |
+| 4 | Family data in Everyone | data (20) | caught by `validate-csv` |
+| 5 | a News time precision the contract forbids | data (20) | caught by `validate-csv` |
+| 6 | a calculator conformance mismatch | data (20) | caught by `validate-csv` |
+| 7 | an unescaped value in markup | full (115) | **undetected by any check** |
+| 8 | suppression broken in `gallery-contract.js` | full (115) | caught by `tests/gallery-contract.mjs` |
+| 10 | suppression result discarded in `gallery.js` | full (115) | caught by `tests/gallery-framing-uploader-integration.mjs` |
+| 9 | a stray file in the artifact | full, `incomplete-bundle` | caught by `validate-csv` |
+
+Eight of nine caught, and ten of ten once fault 8 was re-seeded as a runtime
+defect. No tier ever passed where the full suite failed, which is the result
+that would have condemned the table. 52m 32s for the nine, 103 s for the
+re-seeded pair, and the working tree restored clean after each.
+
+Fault 9 routes to the full suite rather than the data tier, because a new CSV is
+not a refresh -- reported rather than overridden.
+
+### Fault 8 re-seeded as a runtime defect
+
+The first version of fault 8 added a suppressed athlete's tag to a public
+manifest, and `build-gallery-admin-catalog --check` caught it -- because
+suppressing a tagged athlete makes the catalogue stale, not because anything had
+noticed a photo being shown. That is an accident, not a guarantee, so it was
+re-seeded as a runtime defect with the catalogue kept current.
+
+There is no separate podium suppression to break. Suppression is applied once,
+at `gallery.js:64`, and the championship podium decoration and the Race moments
+panels both read the filtered list. That is the right architecture, and it means
+a single defect at that line exposes every surface at once. So the two sites
+where a defect could realistically be introduced were seeded instead:
+
+| Site | Defect | Caught by |
+| --- | --- | --- |
+| `gallery-contract.js` | the filter returns everything it was given | `tests/gallery-contract.mjs` |
+| `gallery.js` | the filter runs and its result is discarded | `tests/gallery-framing-uploader-integration.mjs` |
+
+**Both are caught, so there is no third coverage gap.** The second is worth
+recording because the check that caught it is not an obvious guard and might
+have been catching it incidentally: breaking `gallery.js` the same way with the
+suppression list left EMPTY passes. It therefore fails on the suppressed photo
+appearing, which is the guarantee, not on the edit.
+
+Fault 7 is a suite coverage gap, recorded separately above.
+
+### Three bugs the proof found in itself
+
+Each would have produced a flattering result:
+
+1. The base failed to build, because `listDataCsvFiles` returns 72 public CSVs
+   *of which the manifest is one*, and the builder rewrote it twice. Every data
+   fault reported `base-invalid` rather than passing against a base that was
+   never valid.
+2. Fault 2 looked for the committed bundle identifier that the base had just
+   replaced, so it could not be seeded at all.
+3. `readCsvMetadata(head, head, ...)` compares the head commit against itself
+   and so reported a file the run had just CREATED as present at both ends with
+   an unchanged header. The classifier was told a brand-new CSV belonged to a
+   complete refresh and agreed; fault 9 routed to the data tier on a fiction. A
+   harness that feeds the classifier false metadata can only flatter it.
+
+### Shadow-mode exit criterion
+
+20 Pull Requests where the tier's outcome and the required job's agree,
+including at least three real data refreshes classified as the data tier, plus
+the nine-fault proof green. Nothing is promoted before that.
+
+
 ## Browser checks render the published artifact — 10 November 2026
 
 Every check that serves the real site now serves `test-artifacts/preview-site`

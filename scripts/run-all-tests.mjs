@@ -61,6 +61,7 @@ const repositoryChecks = [
     ['Suspension watch contract tests', ['tests/suspension-watch.mjs']],
     ['Suspension boundary contract tests', ['tests/suspension-boundary.mjs']],
     ['Check lane contract tests', ['tests/check-lanes.mjs']],
+    ['Change tier contract tests', ['tests/change-tier.mjs']],
     ['Parallel runner contract tests', ['tests/parallel-runner.mjs']],
     ['Vendored library validation', ['scripts/sync-vendor.mjs', '--check']],
     ['CSV validation', ['scripts/validate-csv.mjs']],
