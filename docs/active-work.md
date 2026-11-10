@@ -1,5 +1,66 @@
 # Active Work
 
+## Open: a browser-smoke evaluate races a navigation — 9 November 2026
+
+One headed run in five fails with:
+
+```
+everyone/desktop: locator.evaluate: Execution context was destroyed, most
+likely because of a navigation
+```
+
+Seen in run 4 of five headed `tests/browser-smoke.mjs` runs on 9 November,
+aborting that run; the other four completed cleanly and the headless run
+passed. Not introduced by the threshold change: the original code used
+`locator.evaluate` at the same point, one call returning a number where it now
+returns an object, so the exposure is unchanged. Which navigation raced it is
+unidentified, because the message names neither the page nor the step.
+
+To fix by wrapping that call so its failure names the page and the step it was
+measuring. Not by retrying it: a retry would hide which step raced and how
+often, and nothing in this suite retries.
+
+## Chart resize failure: attribution corrected — 9 November 2026
+
+The Modern Standby finding covered two full-suite failures. They are not
+equally settled, and the earlier handoff note above conflated them.
+
+Suite #2 ran 6 November 14:35:13 to 15:52, with the System log recording a
+standby entry (506) at 14:52:14 and the exit (507) at 15:52:15. It failed
+`gallery-batch-review-refresh`, about 17 minutes in, which is where the
+standby entry falls. That attribution stands: 20 isolated runs on an awake
+machine never reproduced it.
+
+Suite #3 ran 7 November 08:12:17 to 08:55:50, entirely inside a standby
+window. It failed the progression chart's resize check.
+
+The chart failure is **not established as solely caused by Modern Standby**.
+Standby remains a plausible trigger for suite #3, but the same check has since
+failed twice on an awake machine with no `INVALID` line:
+
+- 8 November 12:02:28 to 12:45:04, sequential, against the then 5,000 ms
+  budget. That run took 42m 36s. The next full run on the same machine the
+  same hour, 12:58:10 to 13:27:56, took 29m 46s, and other awake runs fall
+  between 29m 46s and 37m 09s. So the machine was slow for a reason nobody has
+  identified, despite a keep-awake hold being held throughout and the
+  suspension watch reporting no gap. Slow is not suspended, and neither is
+  explained.
+- 9 November, `FAMILY_RUNNING_TEST_JOBS=4`, against the current 30,000 ms
+  budget.
+
+So at least one other trigger exists. The two are not equivalent evidence: a
+5-second budget expiring is consistent with a slow machine, while 30 seconds
+is not, and in both the canvas sat exactly one viewport step behind a
+container that had already reflowed correctly. Neither CPU saturation (six
+busy cores of twelve, chart check alone) nor a second concurrent Chromium
+reproduces it.
+
+`tests/browser-smoke.mjs` now records, on a timeout only, the
+`requestAnimationFrame` ticks observed during the wait, the
+`ResizeObserver` and `Chart.resize` callback counts, visibility and focus, the
+whole container-to-backing-store size chain, and a screenshot, so the next
+occurrence explains itself. The parallel default stays 1 until it does.
+
 ## Stage 3, the parallel runner — local implementation, 9 November 2026
 
 Branch `codex/stage-3-parallel-runner` from `ecec3d7`. 113 checks now, with

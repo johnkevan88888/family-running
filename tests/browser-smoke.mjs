@@ -5373,6 +5373,123 @@ async function assertProgressionSizing(page, mode, viewport) {
     // then wide. A fresh navigation alone misses a chart that gets stuck small.
     const widths = viewport.name === 'desktop' ? [390, 768, 1920, 2560, 1440] : [originalViewport.width];
 
+    // Probes for a failure nobody has explained yet.
+    //
+    // This wait has expired twice with the canvas exactly one viewport step
+    // behind while its container had already reflowed correctly -- once against
+    // a 5 s budget and once against 30 s. A thirty-second wait for a
+    // `ResizeObserver` callback is not a slow machine, so the question is
+    // whether the callback and the frames arrive at all. Neither CPU
+    // saturation nor a second concurrent Chromium reproduces it, so the next
+    // occurrence has to explain itself.
+    //
+    // Behaviour-neutral: these only count things. They are installed before the
+    // walk and read only when a wait expires.
+    await page.evaluate(() => {
+        window.__chartProbe = { frames: 0, resizeCallbacks: 0, chartResizes: 0, installedAt: performance.now() };
+
+        const tick = () => {
+            window.__chartProbe.frames += 1;
+            requestAnimationFrame(tick);
+        };
+
+        requestAnimationFrame(tick);
+
+        const canvas = document.getElementById('age-grade-chart');
+        const section = document.getElementById('progression');
+
+        // A second observer on the same element Chart.js watches. If ours fires
+        // and the canvas has not changed, Chart.js heard it too and did not
+        // act; if ours never fires, the notification itself is not arriving.
+        if (typeof ResizeObserver === 'function' && section) {
+            new ResizeObserver(() => { window.__chartProbe.resizeCallbacks += 1; }).observe(section);
+        }
+
+        const chart = canvas && window.Chart ? Chart.getChart(canvas) : null;
+
+        if (chart && typeof chart.resize === 'function') {
+            const original = chart.resize.bind(chart);
+
+            chart.resize = (...args) => {
+                window.__chartProbe.chartResizes += 1;
+                return original(...args);
+            };
+        }
+    });
+
+    // Everything a reader would want and cannot get afterwards. Read only on a
+    // timeout, so a passing run is unchanged.
+    const chartDiagnostics = () => page.evaluate(() => {
+        const canvas = document.getElementById('age-grade-chart');
+        const section = document.getElementById('progression');
+        const style = getComputedStyle(section);
+        const rect = canvas.getBoundingClientRect();
+        const chart = Chart.getChart(canvas);
+        const probe = window.__chartProbe || {};
+
+        return {
+            frames: probe.frames ?? null,
+            resizeCallbacks: probe.resizeCallbacks ?? null,
+            chartResizes: probe.chartResizes ?? null,
+            msSinceProbeInstalled: probe.installedAt === undefined
+                ? null
+                : Math.round(performance.now() - probe.installedAt),
+            visibilityState: document.visibilityState,
+            hasFocus: document.hasFocus(),
+            innerWidth: window.innerWidth,
+            devicePixelRatio: window.devicePixelRatio,
+            sectionClientWidth: section.clientWidth,
+            sectionPadding: `${style.paddingLeft} ${style.paddingRight}`,
+            // Chart.js sizes the canvas from its PARENT, not from the section,
+            // so the parent's own width is the measurement that decides the
+            // outcome. Recording only the section left the one gap that
+            // mattered when this first fired.
+            frame: (() => {
+                const parent = canvas.parentElement;
+
+                if (!parent) {
+                    return null;
+                }
+
+                const parentStyle = getComputedStyle(parent);
+                const parentRect = parent.getBoundingClientRect();
+
+                return {
+                    tag: parent.tagName.toLowerCase(),
+                    className: parent.className || null,
+                    clientWidth: parent.clientWidth,
+                    rectWidth: Number(parentRect.width.toFixed(2)),
+                    rectHeight: Number(parentRect.height.toFixed(2)),
+                    display: parentStyle.display,
+                    position: parentStyle.position,
+                    width: parentStyle.width,
+                    height: parentStyle.height,
+                    boxSizing: parentStyle.boxSizing
+                };
+            })(),
+            canvasPosition: getComputedStyle(canvas).position,
+            offsetParentTag: canvas.offsetParent ? canvas.offsetParent.tagName.toLowerCase() : null,
+            canvasRect: { width: Number(rect.width.toFixed(2)), height: Number(rect.height.toFixed(2)) },
+            canvasAttributes: { width: canvas.width, height: canvas.height },
+            canvasStyle: { width: canvas.style.width, height: canvas.style.height },
+            chartSize: chart ? { width: chart.width, height: chart.height } : null
+        };
+    }).catch(error => ({ unavailable: firstMessageLine(error) }));
+
+    const reportChartDiagnostics = async (label, width) => {
+        const detail = await chartDiagnostics();
+        const shot = path.join(artifactsDir, `${mode}-${viewport.name}-chart-stall-${width}px.png`);
+
+        failures.push(`${mode}/${viewport.name}: ${label} at ${width}px; chart diagnostics ${JSON.stringify(detail)}`);
+
+        try {
+            await page.screenshot({ path: shot, fullPage: false });
+            failures.push(`${mode}/${viewport.name}: chart stall screenshot saved to ${path.relative(repoRoot, shot)}`);
+        } catch (error) {
+            failures.push(`${mode}/${viewport.name}: chart stall screenshot could not be saved: ${firstMessageLine(error)}`);
+        }
+    };
+
     try {
         for (const width of widths) {
             await page.setViewportSize({ width, height: originalViewport.height });
@@ -5415,6 +5532,7 @@ async function assertProgressionSizing(page, mode, viewport) {
 
             if (!fits.ok) {
                 failures.push(`${mode}/${viewport.name}: ${fits.message}`);
+                await reportChartDiagnostics('the chart never fitted', width);
             }
             // Fitting for one frame must not hide a canvas that keeps shrinking
             // or growing, so require the fitted size to HOLD continuously. A
@@ -5458,11 +5576,28 @@ async function assertProgressionSizing(page, mode, viewport) {
 
             if (!stable.ok) {
                 failures.push(`${mode}/${viewport.name}: ${stable.message}`);
+                await reportChartDiagnostics('the chart size never settled', width);
             }
             if (width >= 1920) {
-                const canvasWidth = await page.locator('#age-grade-chart').evaluate(canvas => canvas.getBoundingClientRect().width);
-                if (canvasWidth < Math.min(width - 100, 2150)) {
-                    failures.push(`${mode}/${viewport.name}: progression chart remained unnecessarily narrow at ${width}px (${canvasWidth}px canvas).`);
+                // Measured against the viewport's CONTENT width, not the width
+                // that was asked for. A real window spends about 16px of it on
+                // a scrollbar and headless Chromium spends none, so a bound
+                // derived from the requested width passes headless at 1824px
+                // and fails a visible window at 1808px -- which it did, five
+                // runs out of five, with nothing wrong with the page.
+                //
+                // `clientWidth` is what the page actually has to lay out in, so
+                // this still catches a chart that is genuinely too narrow
+                // instead of being loosened until nothing can trip it.
+                const measured = await page.locator('#age-grade-chart').evaluate(canvas => ({
+                    canvasWidth: canvas.getBoundingClientRect().width,
+                    contentWidth: document.documentElement.clientWidth
+                }));
+                const allowed = Math.min(measured.contentWidth - 100, 2150);
+
+                if (measured.canvasWidth < allowed) {
+                    failures.push(`${mode}/${viewport.name}: progression chart remained unnecessarily narrow at ${width}px ` +
+                        `(${measured.canvasWidth}px canvas, ${measured.contentWidth}px of content width, ${allowed}px expected).`);
                 }
             }
             if (await readData() !== originalData) {
