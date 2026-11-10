@@ -153,6 +153,37 @@ export function assessReleasePath({
         };
     }
 
+    const errors = assessLightweightDataRefresh({
+        normalizedFiles,
+        dataCsvFiles,
+        csvMetadata,
+        expectedDataCsvFiles
+    });
+
+    return {
+        pathway: 'lightweight-data-refresh',
+        errors
+    };
+}
+
+/**
+ * The lightweight data refresh predicate, shared by the release-path gate and
+ * the change-tier classifier.
+ *
+ * It is the complete contract for one promoted export reaching the repository:
+ * every public CSV in the head commit's bundle changed together, the routine
+ * derived artifacts came with them, nothing else changed except optionally the
+ * handoff note, and no CSV is new or has a different header. A partial bundle
+ * is not a cheaper refresh, it is a broken one.
+ *
+ * Returns the reasons it is NOT one; an empty array means it is.
+ */
+export function assessLightweightDataRefresh({
+    normalizedFiles,
+    dataCsvFiles,
+    csvMetadata = new Map(),
+    expectedDataCsvFiles = null
+}) {
     const disallowedFiles = normalizedFiles.filter(
         file => file !== ACTIVE_WORK_PATH &&
             !DATA_CSV_PATH.test(file) &&
@@ -200,10 +231,35 @@ export function assessReleasePath({
         }
     }
 
-    return {
-        pathway: 'lightweight-data-refresh',
-        errors
-    };
+    return errors;
+}
+
+/**
+ * True when the diff is exactly one complete promoted data refresh.
+ *
+ * `assessReleasePath` cannot answer this for the tier classifier, because it
+ * returns `full-preview` for any title without the `[skip netlify]` marker. A
+ * refresh is a refresh whatever the title says, so the tier is decided from the
+ * diff alone and both callers share this predicate instead.
+ */
+export function isLightweightDataRefresh({
+    changedFiles = [],
+    csvMetadata = new Map(),
+    expectedDataCsvFiles = null
+}) {
+    const normalizedFiles = [...new Set(changedFiles.map(normalizePath))].sort();
+    const dataCsvFiles = normalizedFiles.filter(file => DATA_CSV_PATH.test(file));
+
+    if (dataCsvFiles.length === 0) {
+        return false;
+    }
+
+    return assessLightweightDataRefresh({
+        normalizedFiles,
+        dataCsvFiles,
+        csvMetadata,
+        expectedDataCsvFiles
+    }).length === 0;
 }
 
 export function hasNetlifySkipMarker(title) {
@@ -215,11 +271,11 @@ function isKnownNoVisualPath(file) {
         NO_VISUAL_SAFE_PREFIXES.some(prefix => file.startsWith(prefix));
 }
 
-function normalizePath(file) {
+export function normalizePath(file) {
     return String(file).replaceAll('\\', '/');
 }
 
-function readCsvMetadata(baseSha, headSha, files) {
+export function readCsvMetadata(baseSha, headSha, files) {
     const csvFiles = files.filter(file => DATA_CSV_PATH.test(file));
     const addedFiles = diffFileSet(baseSha, headSha, 'A');
     const deletedFiles = diffFileSet(baseSha, headSha, 'D');
@@ -233,7 +289,7 @@ function readCsvMetadata(baseSha, headSha, files) {
     }]));
 }
 
-function listDataCsvFiles(commitSha) {
+export function listDataCsvFiles(commitSha) {
     return execFileSync(
         'git',
         ['ls-tree', '-r', '--name-only', '-z', commitSha, '--', 'data'],
