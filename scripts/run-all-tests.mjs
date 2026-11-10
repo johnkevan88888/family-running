@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { assessNodeVersion } from './node-engine.mjs';
-import { capacityFor, phaseOf, resourcesFor } from './check-lanes.mjs';
+import { capacityFor, environmentFor, phaseOf, resourcesFor } from './check-lanes.mjs';
 import {
     createSuspensionWatch,
     formatSuspensionVerdict,
@@ -67,16 +67,13 @@ const repositoryChecks = [
     ['Gallery validation', ['scripts/validate-gallery.mjs']],
     ['Age-grade master/slave contract tests', ['tests/age-grade-contract.mjs']],
     ['Gallery contract tests', ['tests/gallery-contract.mjs']],
-    ['Gallery whole-photo thumbnail layout tests', ['tests/gallery-thumbnail-layout.mjs']],
     ['Championship photo-framing validation', ['scripts/validate-gallery-podium-framing.mjs']],
     ['Championship photo-framing contract and geometry tests', ['tests/gallery-podium-framing.mjs']],
     ['Championship photo-framing editor tests', ['tests/gallery-podium-editor.mjs']],
-    ['Championship photo-framing browser tests', ['tests/gallery-podium-framing-browser.mjs']],
     ['Pinned protected face-detector validation', ['scripts/sync-private-face-detector.mjs', '--check']],
     ['Protected face-detector offline vendoring tamper tests', ['tests/gallery-private-face-vendor.mjs']],
     ['Protected face-detector and manual editor browser tests', ['tests/gallery-private-face-browser.mjs']],
     ['Protected framing owner route and asset boundaries', ['tests/gallery-framing-owner-boundaries.mjs']],
-    ['Gallery photo result details tests', ['tests/gallery-photo-details.mjs']],
     ['Gallery age-export schema tests', ['tests/gallery-age-export.mjs']],
     ['Gallery upload contract tests', ['tests/gallery-upload-contract.mjs']],
     ['Gallery private roster contract tests', ['tests/gallery-private-roster.mjs']],
@@ -155,7 +152,6 @@ const repositoryChecks = [
     ['Analytics configuration tests', ['tests/analytics-config.mjs']],
     ['PR release-path tests', ['tests/pr-release-path.mjs']],
     ['Photo-only review scope and fallback tests', ['tests/gallery-photo-review-path.mjs']],
-    ['Photo-only actual-candidate browser tests', ['tests/gallery-photo-review-browser.mjs']],
     ['Simple data-update workflow tests', ['tests/simple-data-update.mjs']],
     ['Isolated data-update workspace tests', ['tests/data-update-workspace.mjs']],
     ['Automatic data-branch refresh and fresh review tests', ['tests/data-update-refresh.mjs']],
@@ -165,8 +161,20 @@ const repositoryChecks = [
     ['Export bundle validation regression tests', ['tests/export-bundle-validation.mjs']],
     ['Staged export workflow regression tests', ['tests/staged-export-workflow.mjs']],
     ['Personal-best reconciliation tests', ['tests/personal-best-reconciliation.mjs']],
+    // The artifact, then everything served from it. At --jobs=1 the runner
+    // follows registration order, so a check that renders the published site
+    // registered above the build would be served last run's artifact, or none
+    // at all. These four used to sit beside their related gallery checks, which
+    // read better and was wrong the moment they stopped serving the repository
+    // root. `tests/check-lanes.mjs` asserts this ordering so the next move back
+    // fails a check rather than the suite.
     ['Preview artifact safety tests', ['tests/preview-artifact-safety.mjs']],
     ['Preview artifact build', ['scripts/build-preview-artifact.mjs']],
+    ['Published-site browser root contract tests', ['tests/published-site-browser-root.mjs']],
+    ['Gallery whole-photo thumbnail layout tests', ['tests/gallery-thumbnail-layout.mjs']],
+    ['Gallery photo result details tests', ['tests/gallery-photo-details.mjs']],
+    ['Photo-only actual-candidate browser tests', ['tests/gallery-photo-review-browser.mjs']],
+    ['Championship photo-framing browser tests', ['tests/gallery-podium-framing-browser.mjs']],
     ['Browser smoke tests', ['tests/browser-smoke.mjs']]
 ];
 
@@ -435,7 +443,7 @@ function collectNode(args, chunks) {
     return new Promise((resolve, reject) => {
         const child = spawn(process.execPath, args, {
             cwd: repoRoot,
-            env: process.env,
+            env: { ...process.env, ...environmentFor(args[0]) },
             stdio: ['ignore', 'pipe', 'pipe']
         });
 
@@ -465,7 +473,7 @@ function runNode(args) {
     return new Promise((resolve, reject) => {
         const child = spawn(process.execPath, args, {
             cwd: repoRoot,
-            env: process.env,
+            env: { ...process.env, ...environmentFor(args[0]) },
             stdio: 'inherit'
         });
 

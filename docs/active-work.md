@@ -1,5 +1,123 @@
 # Active Work
 
+## Browser checks render the published artifact — 10 November 2026
+
+Every check that serves the real site now serves `test-artifacts/preview-site`
+instead of the repository root, so CI renders what GitHub Pages deploys.
+
+The gap this closes: the repository is a superset of the site. A runtime file
+absent from `publishedSiteEntries` still exists in the working tree, so a check
+served from the root loaded it and passed while production answered 404 for the
+same request. `tests/preview-artifact-safety.mjs` already compared two
+hardcoded runtime lists against the allowlist, but nothing proved the published
+set complete for a page nobody had thought to list — and rendering the site was
+the one check that could have.
+
+`scripts/check-lanes.mjs` is the single place that decides it:
+`publishedSiteScripts` names the five site-serving browser checks and
+`environmentFor` hands each one `SITE_ROOT`. Both the full suite and
+`scripts/run-gallery-photo-checks.mjs` take it from there, so a check cannot be
+served the artifact in one and the repository in the other.
+
+`tests/published-site-browser-root.mjs` (new, 35 s) proves the chain rather
+than asserting about it. It copies the built artifact, withholds `gallery.js`,
+and requires `tests/gallery-thumbnail-layout.mjs` — a real registered browser
+check — to fail against the incomplete copy and pass against the complete one.
+Both directions, because a proof that it fails is worthless without the control
+showing it passes.
+
+Two ordering faults were found and fixed in the writing, not after:
+
+- Four site-serving checks were registered **above** the artifact build in
+  `scripts/run-all-tests.mjs`. At `--jobs=1` the runner follows registration
+  order, so they would have rendered the previous run's artifact. Moved below
+  the build; `tests/check-lanes.mjs` now asserts the ordering, and a control
+  that moves one back fails with
+  `tests/gallery-thumbnail-layout.mjs renders the published artifact, so it
+  must be registered after the build`.
+- `scripts/run-gallery-photo-checks.mjs` had the same fault: three of them ran
+  before its own build. Reordered and asserted.
+
+### A missing artifact has to say so, not just fail
+
+`scripts/serve-site.mjs` refuses a root that is not a directory, so a server
+cannot answer 404 to everything and have a check report an empty page.
+
+That was not enough on its own, and the gap was found by asking the question
+rather than assuming: with the artifact deleted, all four site-serving checks in
+the photo-only group failed and none served a 404, but only two said anything
+useful. `tests/gallery-photo-details.mjs` and
+`tests/gallery-photo-review-browser.mjs` read a site file -- `utils.js`,
+`gallery-data/hidden-athlete-ids.json` -- BEFORE standing up a server, so they
+aborted on a bare `ENOENT` for whichever file came first and never reached the
+refusal.
+
+The root is now resolved through one guard, `resolveSiteRoot(fallbackRoot)` in
+`scripts/serve-site.mjs`, which checks it where it is resolved rather than at
+the first read. All five site-serving checks call it, none reads
+`process.env.SITE_ROOT` directly, and
+`tests/published-site-browser-root.mjs` asserts both and requires every one of
+them to emit the message with the artifact absent. After the fix all four give
+the identical line, exit 1, zero 404s:
+
+```
+Cannot serve <path>: it is not a directory. A site root pointing at the
+published artifact needs "node scripts/build-preview-artifact.mjs" to have
+run first.
+```
+
+### Why the photo-only path needed checking separately
+
+The two CI steps are mutually exclusive: `pnpm test` runs when the scope is not
+`photo-only`, and `scripts/run-gallery-photo-checks.mjs` runs when it is. So on
+a photo-only Pull Request the full suite never runs, and that group executes
+the site-serving checks on its own.
+
+Its ordering was wrong before this change, the same fault as the suite's:
+thumbnails, photo details and framing-browser at positions 11, 12 and 14 with
+the build at 16. Reordered, and asserted against the real `photoReviewChecks`
+list.
+
+The new invariants cannot regress on that path, which is why the contract check
+was not added to it. `scripts/classify-gallery-photo-review.mjs` admits
+photo-only only for exactly one *modified* gallery manifest, so such a Pull
+Request cannot touch the runner, the lanes or a test; any code change forces the
+full suite, which carries both.
+
+The derivations in `tests/check-lanes.mjs` and the new check exclude
+themselves from their own scans. A file that names what it is looking for finds
+itself first: that trap bit four times here, after biting the launcher
+derivation the same way in Stage 3. The exclusions say so where they are.
+
+Also widened, deliberately: expectations a check reads from a site file — the
+data CSVs, the brand image, the gallery manifests, the framing document — are
+read from the served root as well, so an assertion compares the served page
+against the served data rather than against the repository's copy of it.
+
+### Validation
+
+- Full suite on the final code: **114 checks, exit 0, 34m 57s**, zero
+  `INVALID` lines, pinned Chromium 149.0.7827.55. The new contract check and the
+  four moved checks all ran in their new position, against the artifact the
+  suite had just built. Slower than the 25m 6s run on the same machine an hour
+  earlier; the contract check accounts for about 37 s of that and the rest is
+  unexplained variance, as a 42m run on 8 November was.
+- Focused photo-only path: **all 17 groups, exit 0, 344 s**, with the build at
+  group 13 and every site-serving check after it.
+- The five site-serving checks run individually against the artifact:
+  `browser-smoke` pass, `gallery-thumbnail-layout` 4 s,
+  `gallery-photo-details` 14 s, `gallery-photo-review-browser` 21 s,
+  `gallery-podium-framing-browser` 120 s.
+- Negative controls: withholding `gallery.js` fails the carrier (exit 1);
+  moving a site-serving check above the build fails `tests/check-lanes.mjs`;
+  a missing document root is refused by name.
+
+Not done here: the standalone `pnpm run test:browser` script still defaults to
+the repository root, which is the convenient default while editing a page.
+`docs/testing-and-release-protocol.md` records the two-line form that
+reproduces CI.
+
+
 ## Open: a browser-smoke evaluate races a navigation — 9 November 2026
 
 One headed run in five fails with:

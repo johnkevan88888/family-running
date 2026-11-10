@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
-import { createStaticServer } from '../scripts/serve-site.mjs';
+import { createStaticServer, resolveSiteRoot } from '../scripts/serve-site.mjs';
 import { launchChromium } from '../scripts/browser-runtime.mjs';
 import { parseCsv } from '../scripts/export-bundle-tools.mjs';
 import galleryContract from '../gallery-contract.js';
@@ -15,7 +15,12 @@ import { assertPhotoReviewDetails } from './helpers/gallery-photo-review-details
 // layout and exact public fields, not real-photo pixels or delivery. The focused
 // synthetic thumbnail/framing suites supply independent pixel/suppression tests.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const siteRoot = process.env.SITE_ROOT ? path.resolve(process.env.SITE_ROOT) : root;
+// SITE_ROOT when the suite sets it -- the published artifact, so this check
+// renders exactly what GitHub Pages deploys -- and the repository root for a
+// standalone run. Refuses a root that is not there, before any site file is
+// read, so a forgotten artifact build says so rather than failing on whichever
+// file came first.
+const siteRoot = await resolveSiteRoot(root);
 const screenshots = path.join(root, 'test-artifacts', 'screenshots');
 const read = relative => fs.readFile(path.join(siteRoot, ...relative.split('/')), 'utf8');
 const suppression = JSON.parse(await read('gallery-data/hidden-athlete-ids.json'));

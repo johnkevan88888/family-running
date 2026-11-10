@@ -1,14 +1,21 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createStaticServer } from '../scripts/serve-site.mjs';
+import { createStaticServer, resolveSiteRoot } from '../scripts/serve-site.mjs';
 import { launchChromium, waitForLoadedImage } from '../scripts/browser-runtime.mjs';
 import podiumFraming from '../gallery-podium-framing.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const siteRoot = process.env.SITE_ROOT
-    ? path.resolve(process.env.SITE_ROOT)
-    : repoRoot;
+// The document root the pages are served from. The suite sets SITE_ROOT to the
+// published artifact, so CI renders exactly what GitHub Pages deploys: a
+// runtime file absent from `publishedSiteEntries` is absent here too and the
+// check fails, where serving the repository root would have loaded it from the
+// working tree and passed. Every expectation read from a site file -- the data
+// CSVs, the brand image, the framing document, the gallery manifests -- is read
+// from this root as well, so the assertions compare the served page against the
+// served data rather than against the repository's copy of it.
+// `repoRoot` stays for what belongs to the repository: screenshots.
+const siteRoot = await resolveSiteRoot(repoRoot);
 const artifactsDir = path.join(repoRoot, 'test-artifacts', 'screenshots');
 const modes = ['family', 'everyone'];
 
@@ -3898,7 +3905,7 @@ async function runGalleryEdgeCaseTests(browserInstance) {
     const context = await browserInstance.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
     const requestedPaths = [];
-    const image = await fs.readFile(path.join(repoRoot, 'assets', 'brand', 'og-image.png'));
+    const image = await fs.readFile(path.join(siteRoot, 'assets', 'brand', 'og-image.png'));
 
     page.on('request', request => {
         if (isSameOrigin(request.url())) {
@@ -6113,7 +6120,7 @@ async function athleteMedalForbiddenLeaderboardPaths(mode) {
 }
 
 async function readCsvObjects(relativePath) {
-    const text = await fs.readFile(path.join(repoRoot, relativePath), 'utf8');
+    const text = await fs.readFile(path.join(siteRoot, relativePath), 'utf8');
     const rows = parseCsv(text);
     const headers = rows[0] || [];
 
@@ -6124,7 +6131,7 @@ async function readCsvObjects(relativePath) {
 
 async function publicCsvExists(relativePath) {
     try {
-        await fs.access(path.join(repoRoot, relativePath));
+        await fs.access(path.join(siteRoot, relativePath));
         return true;
     } catch {
         return false;

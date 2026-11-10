@@ -2,11 +2,17 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createStaticServer } from '../scripts/serve-site.mjs';
+import { createStaticServer, resolveSiteRoot } from '../scripts/serve-site.mjs';
 import { launchChromium, waitForLoadedImage } from '../scripts/browser-runtime.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const artifacts = path.join(root, 'test-artifacts', 'screenshots');
+// SITE_ROOT when the suite sets it -- the published artifact, so this check
+// renders exactly what GitHub Pages deploys -- and the repository root for a
+// standalone run. Refuses a root that is not there, before any site file is
+// read, so a forgotten artifact build says so rather than failing on whichever
+// file came first.
+const siteRoot = await resolveSiteRoot(root);
 const shapes = [
     ['portrait', 360, 480],
     ['landscape', 480, 320],
@@ -30,7 +36,7 @@ const manifest = { schemaVersion: '1.0', items: shapes.map(([name]) => ({
     featured: false, athleteIds: []
 })) };
 
-const server = await createStaticServer({ root, port: 0, silent: true });
+const server = await createStaticServer({ root: siteRoot, port: 0, silent: true });
 let browser;
 try {
     await fs.mkdir(artifacts, { recursive: true });

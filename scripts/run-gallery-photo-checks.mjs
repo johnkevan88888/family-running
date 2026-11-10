@@ -4,6 +4,9 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { environmentFor } from './check-lanes.mjs';
+import { defaultPreviewOutputDir } from './preview-artifact-contract.mjs';
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const photoReviewChecks = [
     ['Repository safety', ['scripts/validate-repository-safety.mjs']],
@@ -16,13 +19,16 @@ export const photoReviewChecks = [
     ['Consent upload contract', ['tests/gallery-upload-contract.mjs']],
     ['Metadata/media policy', ['tests/gallery-media-policy.mjs']],
     ['One-file candidate consent and exclusion contract', ['tests/gallery-manifest-candidate.mjs']],
-    ['Whole-photo thumbnails', ['tests/gallery-thumbnail-layout.mjs']],
-    ['Exported photo result details', ['tests/gallery-photo-details.mjs']],
     ['Public framing geometry', ['tests/gallery-podium-framing.mjs']],
-    ['Framing and suppression browser regressions', ['tests/gallery-podium-framing-browser.mjs']],
     // Sequential: artifact-safety temporarily probes data/; CSV must finish first.
     ['Preview artifact safety', ['tests/preview-artifact-safety.mjs']],
     ['Actual public artifact', ['scripts/build-preview-artifact.mjs']],
+    // Everything served from that artifact runs after it is built. These four
+    // used to sit above, beside the checks they relate to, which was fine while
+    // they served the repository root and wrong the moment they stopped.
+    ['Whole-photo thumbnails', ['tests/gallery-thumbnail-layout.mjs']],
+    ['Exported photo result details', ['tests/gallery-photo-details.mjs']],
+    ['Framing and suppression browser regressions', ['tests/gallery-podium-framing-browser.mjs']],
     ['Actual-candidate both-mode responsive browser review', ['tests/gallery-photo-review-browser.mjs']]
 ];
 
@@ -31,9 +37,13 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     for (const [label, args] of photoReviewChecks) {
         console.log(`\n== ${label} ==`);
         await new Promise((resolve, reject) => {
-            const env = { ...process.env };
-            if (args[0] === 'scripts/build-preview-artifact.mjs') env.PREVIEW_OUTPUT_DIR = path.join(root, 'test-artifacts', 'preview-site');
-            if (args[0] === 'tests/gallery-photo-review-browser.mjs') env.SITE_ROOT = path.join(root, 'test-artifacts', 'preview-site');
+            // One decision, taken in `check-lanes.mjs`: every check that serves
+            // the real site is served the published artifact, here as in the
+            // full suite. This group used to name the directory itself and set
+            // SITE_ROOT for one check only, so a photo review could pass here
+            // against the repository root and fail in the suite.
+            const env = { ...process.env, ...environmentFor(args[0]) };
+            if (args[0] === 'scripts/build-preview-artifact.mjs') env.PREVIEW_OUTPUT_DIR = defaultPreviewOutputDir;
             const child = spawn(process.execPath, args, { cwd: root, env, stdio: 'inherit', windowsHide: true });
             child.on('error', reject);
             child.on('exit', code => code === 0 ? resolve() : reject(new Error(`${args[0]} failed (${code}).`)));

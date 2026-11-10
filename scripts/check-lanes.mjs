@@ -1,6 +1,6 @@
 // Which checks may run beside which, and which must not.
 //
-// The suite is 111 checks and about 30 minutes on this machine. Almost all of
+// The suite is 114 checks and about 30 minutes on this machine. Almost all of
 // them are independent: they read tracked files, build synthetic fixtures in
 // their own temporary directories and assert. A few are not, and running those
 // concurrently would produce failures that look like code faults and are not.
@@ -10,6 +10,8 @@
 // `tests/check-lanes.mjs` derives both resource groups from the test sources
 // and fails if a declaration here disagrees, so a new browser check or a new
 // user of the shared data-update paths cannot join the suite unnoticed.
+
+import { defaultPreviewOutputDir } from './preview-artifact-contract.mjs';
 
 /** Checks run first, serially: a broken repository fails in seconds. */
 export const gateScripts = Object.freeze([
@@ -59,6 +61,33 @@ export const browserScripts = Object.freeze([
     'tests/gallery-podium-framing-browser.mjs',
     'tests/gallery-private-face-browser.mjs',
     'tests/gallery-private-library-browser.mjs',
+    'tests/gallery-thumbnail-layout.mjs',
+    // Launches no Chromium itself: it SPAWNS a browser check twice, against a
+    // complete artifact and an incomplete one. The instance is just as real, so
+    // it holds the resource like any other.
+    'tests/published-site-browser-root.mjs'
+]);
+
+/**
+ * Browser checks that serve the real site rather than a synthetic fixture.
+ *
+ * They are pointed at the PUBLISHED ARTIFACT, not the repository root, so what
+ * CI renders is exactly what GitHub Pages deploys. The difference is not
+ * cosmetic: a runtime file absent from `publishedSiteEntries` still exists in
+ * the repository, so a check served from the root loads it happily and passes
+ * while production 404s. Served from the artifact, the same omission fails the
+ * suite -- `tests/published-site-browser-root.mjs` proves that it does.
+ *
+ * This is why the artifact phase runs before the browser lane. A check here
+ * cannot run before `scripts/build-preview-artifact.mjs` has produced the
+ * directory, and `scripts/serve-site.mjs` refuses a root that is not there
+ * rather than serving 404s that would read as a site fault.
+ */
+export const publishedSiteScripts = Object.freeze([
+    'tests/browser-smoke.mjs',
+    'tests/gallery-photo-details.mjs',
+    'tests/gallery-photo-review-browser.mjs',
+    'tests/gallery-podium-framing-browser.mjs',
     'tests/gallery-thumbnail-layout.mjs'
 ]);
 
@@ -85,6 +114,7 @@ const gateSet = new Set(gateScripts);
 const artifactSet = new Set(artifactScripts);
 const browserSet = new Set(browserScripts);
 const dataUpdateSet = new Set(dataUpdateScripts);
+const publishedSiteSet = new Set(publishedSiteScripts);
 
 /** 'gate', 'artifact' or 'pool'. The phases run in that order. */
 export function phaseOf(script) {
@@ -109,6 +139,19 @@ export function resourcesFor(script) {
     }
 
     return resources;
+}
+
+/**
+ * Extra environment a check needs, merged over the runner's own. Empty for
+ * almost everything: only the checks that serve the real site are told where
+ * the published artifact is.
+ */
+export function environmentFor(script) {
+    if (publishedSiteSet.has(script)) {
+        return { SITE_ROOT: defaultPreviewOutputDir };
+    }
+
+    return {};
 }
 
 /**

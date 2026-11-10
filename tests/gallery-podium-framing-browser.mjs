@@ -4,13 +4,19 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import { createStaticServer } from '../scripts/serve-site.mjs';
+import { createStaticServer, resolveSiteRoot } from '../scripts/serve-site.mjs';
 import { launchChromium, waitForLoadedImage } from '../scripts/browser-runtime.mjs';
 
 // These are generated diagrams, not photographs or face detection. Colour is
 // deliberately checked in the rendered screenshot, not merely in CSS values.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const screenshots = path.join(root, 'test-artifacts', 'screenshots');
+// SITE_ROOT when the suite sets it -- the published artifact, so this check
+// renders exactly what GitHub Pages deploys -- and the repository root for a
+// standalone run. Refuses a root that is not there, before any site file is
+// read, so a forgotten artifact build says so rather than failing on whichever
+// file came first.
+const siteRoot = await resolveSiteRoot(root);
 const mediaOrigin = 'https://media.example.com';
 const areas = ['family', 'everyone'];
 const dimensions = [
@@ -39,7 +45,7 @@ frames[cropKey(laterItem, 'carolyn-kevan')] = { x: 50, y: 50, zoom: 4 };
 frames[cropKey(photo('synthetic-not-in-manifest', ['invented-athlete'], false), 'invented-athlete')] =
     { x: 50, y: 50, zoom: 4 };
 const framing = { schemaVersion: '1.0', frames };
-const server = await createStaticServer({ root, port: 0, silent: true });
+const server = await createStaticServer({ root: siteRoot, port: 0, silent: true });
 let browser;
 
 try {

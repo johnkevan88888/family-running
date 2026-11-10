@@ -18,6 +18,14 @@ const MIME_TYPES = new Map([
 
 export async function createStaticServer(options = {}) {
     const root = path.resolve(options.root || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
+
+    // Fail closed on a root that is not there. A server rooted at a missing
+    // directory can only answer 404, and a browser check reading those 404s
+    // reports an empty page -- which looks exactly like a broken site rather
+    // than like a missing document root.
+    if (!(await isDirectory(root))) {
+        throw new Error(missingSiteRootMessage(root));
+    }
     const host = options.host || '127.0.0.1';
     const requestedPort = options.port !== undefined
         ? options.port
@@ -141,4 +149,39 @@ if (invokedPath === thisPath) {
 
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
+}
+
+/**
+ * The document root a check serves the site from: SITE_ROOT when set,
+ * otherwise `fallbackRoot` (the repository, for a standalone run).
+ *
+ * Checked here rather than at the first read, because the checks served the
+ * published artifact read site files -- `utils.js`, the gallery manifests, the
+ * data CSVs -- before they stand up a server. Resolving through this function
+ * means a missing artifact produces one actionable message wherever it is
+ * noticed, instead of a bare ENOENT for whichever file that check happened to
+ * open first.
+ */
+export async function resolveSiteRoot(fallbackRoot) {
+    const root = path.resolve(process.env.SITE_ROOT || fallbackRoot);
+
+    if (!(await isDirectory(root))) {
+        throw new Error(missingSiteRootMessage(root));
+    }
+
+    return root;
+}
+
+function missingSiteRootMessage(root) {
+    return `Cannot serve ${root}: it is not a directory. ` +
+        'A site root pointing at the published artifact needs ' +
+        '"node scripts/build-preview-artifact.mjs" to have run first.';
+}
+
+async function isDirectory(candidate) {
+    try {
+        return (await stat(candidate)).isDirectory();
+    } catch {
+        return false;
+    }
 }
