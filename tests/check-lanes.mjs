@@ -11,6 +11,7 @@ import {
     dataUpdateScripts,
     gateScripts,
     phaseOf,
+    publishedSiteScripts,
     resourceCapacity,
     resourcesFor
 } from '../scripts/check-lanes.mjs';
@@ -87,11 +88,29 @@ assert.ok(
     'registration order must already put the artifact checks in their phase order'
 );
 
+// Every check served from the published artifact must be registered AFTER the
+// build. At --jobs=1 the runner follows registration order rather than the
+// phases, so one registered above the build renders last run's artifact or is
+// refused a document root -- neither of which is the site under test.
+const buildAt = registered.findIndex(check => check.script === 'scripts/build-preview-artifact.mjs');
+
+for (const script of publishedSiteScripts) {
+    const at = registered.findIndex(check => check.script === script);
+
+    assert.ok(at > buildAt, `${script} renders the published artifact, so it must be registered after the build`);
+}
+
 // -- The browser group, derived -------------------------------------------
 //
-// A check belongs to it when it IMPORTS `launchChromium`. Naming the function
-// in a comment or a string does not count: `tests/browser-runtime.mjs` is the
-// contract test and quotes it throughout without ever launching anything.
+// A check belongs to it when it IMPORTS `launchChromium`, or when it SPAWNS a
+// check that does. Naming the function in a comment or a string does not count:
+// `tests/browser-runtime.mjs` is the contract test and quotes it throughout
+// without ever launching anything.
+//
+// The spawn case is not a technicality. A check that runs another check in a
+// child process consumes a Chromium just as surely as one that launches it
+// directly, and scheduling it as an ordinary check would let it start beside a
+// full browser lane -- which is the contention this resource exists to cap.
 
 const launchers = fs.readdirSync(path.join(repoRoot, 'tests'))
     .filter(name => name.endsWith('.mjs'))
@@ -116,10 +135,36 @@ const launchers = fs.readdirSync(path.join(repoRoot, 'tests'))
     .map(name => path.posix.join('tests', name))
     .sort();
 
+// A check that spawns one of those launchers holds the resource through its
+// child. Matched on an actual child-process launch -- `spawn` with this Node
+// binary -- together with the launcher's own path, so quoting a script name in
+// prose is not enough.
+//
+// This file is excluded from its own scan. It is the deriver: it names every
+// browser check and both needles, so it matches itself and launches nothing.
+// The same trap caught the launcher derivation above, for the same reason.
+const spawnNeedle = 'spawn(process.execPath';
+const spawners = fs.readdirSync(path.join(repoRoot, 'tests'))
+    .filter(name => name.endsWith('.mjs'))
+    .map(name => path.posix.join('tests', name))
+    .filter(script => script !== 'tests/check-lanes.mjs' && !launchers.includes(script))
+    .filter(script => {
+        const source = read(script);
+
+        return source.includes(spawnNeedle) &&
+            launchers.some(launcher => source.includes(`'${launcher}'`));
+    })
+    .sort();
+
 assert.deepEqual(
     [...browserScripts].sort(),
-    launchers,
-    'every check that imports launchChromium must hold the browser resource, and nothing else may'
+    [...launchers, ...spawners].sort(),
+    'every check that launches or spawns a Chromium must hold the browser resource, and nothing else may'
+);
+assert.deepEqual(
+    spawners,
+    ['tests/published-site-browser-root.mjs'],
+    'the spawn case is one check; a second one means re-reading why it needs a child browser at all'
 );
 assert.equal(
     browserScripts.includes('tests/browser-runtime.mjs'),
@@ -174,5 +219,6 @@ assert.equal(capacityFor(dataUpdateResource, 8), 1, 'more jobs never widens a mu
 assert.equal(capacityFor('a resource nobody declared', 4), 4, 'an unknown resource falls back to the run width');
 
 console.log(`Check lane contract passed: ${registered.length} registered checks, ` +
-    `${gateScripts.length} gates, ${browserScripts.length} browser checks and ` +
+    `${gateScripts.length} gates, ${browserScripts.length} browser checks ` +
+    `(${launchers.length} launching, ${spawners.length} spawning) and ` +
     `${dataUpdateScripts.length} sharing fixed paths, all derived from source.`);

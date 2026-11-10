@@ -2293,3 +2293,44 @@ the manifest contract but do not add visible photo copy. See
   change requires a same-release JavaScript and test update; otherwise export
   or page initialization fails closed. Calculator CSVs are site-specific and
   join the normal full-bundle staging, reconciliation, and promotion workflow.
+
+## Browser checks render the published artifact, not the repository
+
+- **Status:** Accepted and implemented
+- **Date:** 10 November 2026
+- **Decision:** Every check in the suite that serves the real site serves
+  `test-artifacts/preview-site` rather than the repository root.
+  `scripts/check-lanes.mjs` declares that set in `publishedSiteScripts` and is
+  the only place that decides it, so the full suite and the focused photo review
+  group cannot disagree. Those checks are registered after the artifact build
+  because `--jobs=1` follows registration order, and the focused photo-only
+  group orders its own list the same way -- it runs instead of the full suite on
+  a photo-only Pull Request, not beside it. A site root is resolved through
+  `resolveSiteRoot` in `scripts/serve-site.mjs`, which refuses one that is not a
+  directory. Each check still falls back
+  to the repository root when `SITE_ROOT` is unset, which keeps a standalone run
+  convenient while editing a page.
+- **Rationale:** The repository is a superset of the site. A runtime file absent
+  from `publishedSiteEntries` still exists in the working tree, so a check served
+  from the root loaded it and passed while production answered 404 for the same
+  request. The allowlist exists to prevent exactly that mistake, and rendering
+  the site was the one check that could not catch it. Partial coverage existed —
+  `tests/preview-artifact-safety.mjs` compares two hardcoded runtime lists
+  against the allowlist — but nothing proved the published set complete for a
+  page nobody had thought to list.
+- **Consequences:** `tests/published-site-browser-root.mjs` derives the
+  site-serving set from the sources rather than trusting the declaration, so a
+  new browser check that serves the repository root fails a check rather than
+  passing quietly, and it proves the chain by running a real registered browser
+  check against an artifact with one listed entry withheld: it must fail there
+  and pass against the complete copy. Four gallery checks moved in the registry
+  to sit after the build. Expectations inside a check that are read from a site
+  file — the data CSVs, the brand image, the gallery manifests — are read from
+  the served root too, so an assertion compares the served page against the
+  served data rather than against the repository's copy of it. A browser check
+  now depends on the artifact build having run, which it did already: the
+  artifact phase was ordered ahead of the browser lane in Stage 3 for this.
+  Refusing at the point the root is resolved rather than at the first read
+  matters because these checks read site files before they serve anything: two
+  of them aborted on a bare `ENOENT` for `utils.js` and
+  `gallery-data/hidden-athlete-ids.json` until the guard was shared.

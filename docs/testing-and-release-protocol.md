@@ -1440,13 +1440,41 @@ The same artifact is deployed to GitHub Pages by
 `.github/workflows/deploy-pages.yml` on every push to `main`. Pages no longer
 serves the repository root, so files such as `AGENTS.md`, `docs/`, `scripts/`,
 and `package.json` are not readable from the production domain. Anything a
-visitor's browser genuinely needs must be listed in `runtimeEntries`, and the
-suite can prove the published set is complete by serving the artifact directly:
+visitor's browser genuinely needs must be listed in `publishedSiteEntries`.
+
+The suite proves that list is complete rather than taking it on trust. Every
+browser check that serves the real site renders the built artifact, not the
+repository root: `scripts/check-lanes.mjs` declares them in
+`publishedSiteScripts` and hands each one `SITE_ROOT`, and they are registered
+after the artifact build so `--jobs=1` reaches them in the right order. A
+runtime file left off the list is therefore absent from what the browser loads,
+and the check fails. `tests/published-site-browser-root.mjs` demonstrates it:
+it copies the artifact, withholds one listed entry, and requires a real
+registered browser check to fail against the incomplete copy and pass against
+the complete one.
+
+This matters because the repository is a superset of the site. A check served
+from the repository root loads an unpublished runtime file from the working tree
+quite happily and passes, while production answers 404 for the same request.
+
+Each of those checks still runs standalone against the repository root when
+`SITE_ROOT` is unset, which is the convenient default while editing a page. To
+reproduce what CI renders, build first and point it at the artifact:
 
 ```bash
 pnpm run build:site
 SITE_ROOT=test-artifacts/preview-site pnpm run test:browser
 ```
+
+Each of those checks resolves its root through `resolveSiteRoot` in
+`scripts/serve-site.mjs`, which refuses one that is not a directory. The check
+happens where the root is resolved rather than at the first read, because these
+checks read site files before they serve anything -- so a run that forgets the
+build is told to run it, instead of failing on whichever file it opened first.
+
+`scripts/run-gallery-photo-checks.mjs` orders its own list the same way. It
+*replaces* the full suite on a photo-only Pull Request rather than running
+beside it, so it builds the artifact before any check served from it.
 
 A no-visual-change `[skip netlify]` pathway covers changes that cannot alter
 what the static preview would show. It is allowed when no changed file is
